@@ -1,0 +1,29 @@
+{
+ "name": "plugged-frontend",
+ "private": true,
+ "type": "module",
+ "scripts": {
+  "dev": "vite",
+  "build": "vite build",
+  "test": "vitest run",
+  "coverage": "vitest run --coverage"
+ },
+ "dependencies": {
+  "react": "^18.3.1",
+  "react-dom": "^18.3.1",
+  "jspdf": "^2.5.1",
+  "svg2pdf.js": "^2.2.3"
+ },
+ "devDependencies": {
+  "@vitejs/plugin-react": "^4.3.1",
+  "vite": "^5.4.0",
+  "vitest": "^2.1.0",
+  "@vitest/coverage-v8": "^2.1.0",
+  "jsdom": "^25.0.0",
+  "@testing-library/react": "^16.0.0",
+  "@testing-library/dom": "^10.4.0",
+  "@testing-library/jest-dom": "^6.5.0"
+ },
+ "license": "AGPL-3.0-only",
+ "author": "pleysje"
+}

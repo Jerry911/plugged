@@ -1,0 +1,13 @@
+<!doctype html><html lang="nl"><head><meta charset="utf-8"><title>Plugged</title>
+<style>
+body{margin:0;font:14px system-ui,sans-serif}.bar{flex-wrap:wrap;display:flex;gap:6px;padding:8px;background:#1f3a5f;color:#fff;align-items:center}
+.bar button,.pal button,.tb button{padding:5px 9px;cursor:pointer}.bar .on{background:#ffd54a;font-weight:700}
+.row{display:flex;gap:10px;padding:10px}.side{width:260px;flex:none}.pal button{display:flex;gap:6px;align-items:center;width:100%;margin:2px 0;text-align:left}
+.main{flex:1;min-width:0}.sheet{width:100%;max-width:1100px;background:#fff;border:1px solid #888;box-shadow:0 2px 8px #0003}
+.warn{background:#fff3cd;border:1px solid #e0a800;padding:6px;margin:6px 0}.ok{background:#d4edda;padding:6px;margin:6px 0}
+.tree div{display:flex;gap:4px;align-items:center;padding:2px;border-radius:3px}.tree .sel{background:#cfe3ff}
+.form{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px;margin-bottom:8px}.form label{font-size:11px;display:block}.form input{width:100%;box-sizing:border-box}
+.verify{margin:8px 10px;padding:8px;border:1px solid #888;background:#fafafa}.iss{cursor:pointer;list-style:none;padding:3px}.iss.error{color:#b00020}.iss.warn{color:#8a6d00}.iss.info{color:#055}
+.export{position:absolute;left:-9999px;top:0;width:1100px}
+@media print{.ui{display:none!important}.export{position:static!important;width:auto!important}.export .sheet{display:block;width:297mm;height:210mm;max-width:none;border:0;box-shadow:none;page-break-after:always}@page{size:A4 landscape;margin:0}}
+</style></head><body><div id="root"></div><script type="module" src="/src/main.jsx"></script></body></html>

@@ -14,7 +14,7 @@ export const outdent=(ns,id)=>ns.flatMap(n=>{const c=n.children.find(x=>x.id===i
 export const layout=(ns,d=0,c={x:0})=>ns.map(n=>{const ch=layout(n.children,d+1,c);return{n,d,ch,x:ch.length?(ch[0].x+ch.at(-1).x)/2:c.x++}})
 export const leaves=ns=>ns.reduce((a,n)=>a+(n.children.length?leaves(n.children):1),0)
 export const depth=ns=>ns.length?1+Math.max(...ns.map(n=>depth(n.children))):0
-export const EenSheet=({p,pg,no,total,sel,onSel})=>{
+export const EenSheet=({p,pg,no,total,sel,onSel,onFooter})=>{
  const lay=layout(pg.tree),k=Math.min(1,270/(Math.max(1,leaves(pg.tree))*24),160/(depth(pg.tree)*32+10))
  const draw=(l,par)=>{const x=15+l.x*24,y=20+l.d*32;return [
   par&&<polyline key={l.n.id+'l'} fill="none" stroke="#000" strokeWidth=".4" points={`${par.x},${par.y+5} ${par.x},${y-9} ${x},${y-9} ${x},${y-5}`}/>,
@@ -23,11 +23,13 @@ export const EenSheet=({p,pg,no,total,sel,onSel})=>{
    <Sym shapes={typeOf(p,l.n.type).shapes} x={x} y={y} s={10}/><text x={x} y={y+9} fontSize="2.6" textAnchor="middle">{l.n.label}</text>
    {l.n.info&&<text x={x} y={y+13} fontSize="2.1" textAnchor="middle" fill="#444">{l.n.info}</text>}</g>,
   ...l.ch.flatMap(c=>draw(c,{x,y}))]}
- return <Sheet p={p} page={no} total={total} name={'Eendraadschema – '+pg.name}><g transform={`scale(${k})`}>{lay.flatMap(l=>draw(l))}</g></Sheet>}
-export default function Eendraad({p,setP,idx,focus}){
+ return <Sheet p={p} page={no} total={total} onFooter={onFooter} name={'Eendraadschema – '+pg.name}><g transform={`scale(${k})`}>{lay.flatMap(l=>draw(l))}</g></Sheet>}
+export default function Eendraad({p,setP,idx,focus,onFooter}){
  const pg=p.een[idx],tree=pg.tree,T=allTypes(p),[sel,setSel]=useState(null),[free,setFree]=useState(false),[q,setQ]=useState('')
  useEffect(()=>{focus&&setSel(focus.id)},[focus])
  const set=t=>setP({...p,een:p.een.map((g,i)=>i===idx?{...g,tree:t}:g)}),s=sel&&find(tree,sel)
+ const remove=()=>{if(s){set(upd(tree,s.id,()=>[]));setSel(null)}}
+ useEffect(()=>{const f=e=>{if(/INPUT|TEXTAREA|SELECT/.test(e.target.tagName)||!s)return;if(e.key==='Delete'||e.key==='Backspace'){e.preventDefault();remove()}};addEventListener('keydown',f);return()=>removeEventListener('keydown',f)})
  const add=t=>{const n={id:uid(),type:t.k,label:t.name,info:'',children:[]}
   if(!t.parents.length||(!s&&free)) return set([...tree,n])
   if(!s) return alert('Selecteer eerst een element waaronder dit past.')
@@ -46,5 +48,6 @@ export default function Eendraad({p,setP,idx,focus}){
    <input placeholder="Specs (bv. B16 2P 2,5mm²)" value={s.info||''} onChange={e=>set(upd(tree,s.id,x=>[{...x,info:e.target.value}]))} style={{width:'100%',boxSizing:'border-box',marginTop:4}}/>
    <div className="tb"><button onClick={ob((t,i)=>mv(t,i,-1))}>↑</button><button onClick={ob((t,i)=>mv(t,i,1))}>↓</button>
    <button title="Hoger niveau" onClick={ob(outdent)}>←</button><button title="Onder vorige" onClick={ob(indent)}>→</button>
-   <button onClick={()=>set(upd(tree,s.id,x=>[x,...reid([x])]))}>⧉</button><button onClick={()=>{set(upd(tree,s.id,()=>[]));setSel(null)}}>✕</button></div></div>}</div>
-  <div className="main"><EenSheet p={p} pg={pg} no={idx+1} total={p.een.length+p.sit.length} sel={sel} onSel={setSel}/></div></div>}
+   <button onClick={()=>set(upd(tree,s.id,x=>[x,...reid([x])]))}>⧉</button></div></div>}</div>
+  <div className="main"><div className="tb ui sheetbar"><button className="danger" disabled={!s} onClick={remove}>🗑 Verwijder (Del)</button><span>{s?`Selectie: ${s.label}`:'Klik een element in de opbouw of in de tekening om het te selecteren'}</span></div>
+  <EenSheet p={p} pg={pg} no={idx+1} total={p.een.length+p.sit.length} sel={sel} onSel={setSel} onFooter={onFooter}/></div></div>}

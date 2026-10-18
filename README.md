@@ -14,6 +14,12 @@ Multi-page diagrams, drag/edit on the plan, PDF export (jsPDF + svg2pdf.js, vect
 Checks: hierarchy, aansluiting/aarding present, kring under a differentieel, differentieel sensitivity (max 30 mA with stopcontacten), empty bord/diff/kring, kring specs and cable-vs-protection table, max stopcontacten/lichtpunten per kring, appliances on their own kring, switches without lamp, duplicate kring names, incomplete footer, components missing on the situatieschema.
 Limits are guideline values in `LIMITS` (rules.js): verify them against the current AREI before relying on them.
 
+## Shortcuts and editing
+- **Del / Backspace**: delete the selected node (eendraadschema) or wall/symbol (situatieschema); there is also a red "Verwijder (Del)" button above each sheet.
+- **Ctrl/Cmd+Z**: undo, **Ctrl/Cmd+Y** or **Ctrl/Cmd+Shift+Z**: redo (also buttons in the header; changes made within 0.5 s, like typing or dragging, form one step; 100 steps are kept).
+- **Footer**: click any cell of the footer on a sheet (or the yellow "Kaderinfo" button) to edit it.
+- **Grid**: dropdown bottom right in the situatieschema; the dots show the snap grid (larger dots every 10 mm).
+
 ## License
 GNU Affero General Public License v3.0 (see `LICENSE` and `NOTICE`). Copyright 2026 pleysje.
 You may use, modify and redistribute Plugged, including running it as a network service, but every modified version must be released under the same license with its source available to its users, keep the notices, mark changes and credit the original ("Based on Plugged by pleysje"). Note: the AGPL does not prohibit commercial use.

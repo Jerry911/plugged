@@ -8,6 +8,10 @@ body{margin:0;font:14px system-ui,sans-serif}.bar{flex-wrap:wrap;display:flex;ga
 .tree div{display:flex;gap:4px;align-items:center;padding:2px;border-radius:3px}.tree .sel{background:#cfe3ff}
 .form{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px;margin-bottom:8px}.form label{font-size:11px;display:block}.form input{width:100%;box-sizing:border-box}
 .verify{margin:8px 10px;padding:8px;border:1px solid #888;background:#fafafa}.iss{cursor:pointer;list-style:none;padding:3px}.iss.error{color:#b00020}.iss.warn{color:#8a6d00}.iss.info{color:#055}
+.dlg{position:fixed;right:10px;bottom:10px;width:380px;max-width:calc(100vw - 20px);max-height:70vh;overflow:auto;background:#fff;border:2px solid #1f3a5f;border-radius:6px;padding:8px;z-index:20;box-shadow:0 4px 16px #0005}
+.fcell{fill:transparent;cursor:pointer}.fcell:hover{fill:#ffd54a;fill-opacity:.45}.sheetbar{display:flex;gap:8px;align-items:center;margin:0 0 6px}
+.danger{background:#c62828;color:#fff;border:0;border-radius:3px;font-weight:600}.danger:disabled{background:#ccc;color:#777}.bar .accent{background:#ffd54a;font-weight:700}
+.gridsel{position:absolute;right:2%;bottom:13%;background:#fffe;padding:2px 6px;border:1px solid #666;border-radius:4px;font-size:12px}
 .export{position:absolute;left:-9999px;top:0;width:1100px}
 @media print{.ui{display:none!important}.export{position:static!important;width:auto!important}.export .sheet{display:block;width:297mm;height:210mm;max-width:none;border:0;box-shadow:none;page-break-after:always}@page{size:A4 landscape;margin:0}}
 </style></head><body><div id="root"></div><script type="module" src="/src/main.jsx"></script></body></html>

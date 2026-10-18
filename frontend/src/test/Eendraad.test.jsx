@@ -1,4 +1,4 @@
-// Copyright 2026 pleysje
+// Copyright 2026 Pleysier Jeroen
 // SPDX-License-Identifier: AGPL-3.0-only
 import {fireEvent, screen} from '@testing-library/react'
 import Eendraad, {EenSheet} from '../Eendraad.jsx'

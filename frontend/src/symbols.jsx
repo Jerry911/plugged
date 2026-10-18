@@ -1,4 +1,4 @@
-// Copyright 2026 pleysje
+// Copyright 2026 Pleysier Jeroen
 // SPDX-License-Identifier: AGPL-3.0-only
 // 24x24 grid shapes. Simplified approximations of AREI/EN 60617 symbols: refine here or in the custom tab.
 const L = (x1, y1, x2, y2) => ({t: 'line', x1, y1, x2, y2}), C = (cx, cy, r) => ({t: 'circle', cx, cy, r}),

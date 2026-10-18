@@ -1,4 +1,4 @@
-// Copyright 2026 pleysje
+// Copyright 2026 Pleysier Jeroen
 // SPDX-License-Identifier: AGPL-3.0-only
 import {useState} from 'react'
 import {Sym} from './symbols'

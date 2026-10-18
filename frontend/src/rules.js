@@ -1,4 +1,4 @@
-// Copyright 2026 pleysje
+// Copyright 2026 Pleysier Jeroen
 // SPDX-License-Identifier: AGPL-3.0-only
 // Simplified verification of an eendraadschema against common AREI/RGIE requirements.
 // Guideline checks only (limits live in LIMITS so they are easy to adjust); NOT a substitute for an inspection by an accredited body.

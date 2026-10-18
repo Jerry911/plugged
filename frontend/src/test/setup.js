@@ -1,4 +1,4 @@
-// Copyright 2026 pleysje
+// Copyright 2026 Pleysier Jeroen
 // SPDX-License-Identifier: AGPL-3.0-only
 import '@testing-library/jest-dom/vitest'
 // jsdom lacks SVG geometry + PointerEvent: minimal polyfills so clientX/clientY map 1:1 to SVG user units.

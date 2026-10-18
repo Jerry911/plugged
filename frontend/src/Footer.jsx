@@ -1,4 +1,4 @@
-// Copyright 2026 pleysje
+// Copyright 2026 Pleysier Jeroen
 // SPDX-License-Identifier: AGPL-3.0-only
 export const FIELDS = [['titel', 'Titel'], ['straat', 'Straat'], ['nr', 'Nr'], ['postcode', 'Postcode'], ['gemeente', 'Gemeente'], ['eigenaar', 'Eigenaar'], ['ean', 'EAN-nr'], ['tekenaar', 'Getekend door'], ['datum', 'Datum'], ['schaal', 'Schaal'], ['rev', 'Revisie'], ['dossier', 'Dossiernr'], ['stelsel', 'Stelsel (bv. 230V TT)'], ['keurder', 'Keuringsorganisme']]
 export const FooterForm = ({p, setP, focus}) => <div className="form">{FIELDS.map(([k, l]) =>

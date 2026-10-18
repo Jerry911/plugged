@@ -21,5 +21,5 @@ Limits are guideline values in `LIMITS` (rules.js): verify them against the curr
 - **Grid**: dropdown bottom right in the situatieschema; the dots show the snap grid (larger dots every 10 mm).
 
 ## License
-GNU Affero General Public License v3.0 (see `LICENSE` and `NOTICE`). Copyright 2026 pleysje.
+GNU Affero General Public License v3.0 (see `LICENSE` and `NOTICE`). Copyright 2026 Pleysier Jeroen.
 You may use, modify and redistribute Plugged, including running it as a network service, but every modified version must be released under the same license with its source available to its users, keep the notices, mark changes and credit the original ("Based on Plugged by pleysje"). Note: the AGPL does not prohibit commercial use.

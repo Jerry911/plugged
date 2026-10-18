@@ -1,4 +1,4 @@
-// Copyright 2026 pleysje
+// Copyright 2026 Pleysier Jeroen
 // SPDX-License-Identifier: AGPL-3.0-only
 import {fireEvent, render, screen} from '@testing-library/react'
 import {FIELDS, FooterDialog, FooterForm, Sheet} from '../Footer.jsx'

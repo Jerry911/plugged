@@ -225,20 +225,20 @@ export default function App() {
                 />
                 <button onClick={save}>Opslaan</button>
                 <button onClick={exportJson}>JSON ↓</button>
-                <label>
+                <span>
                     <input
                         type="file"
                         accept=".json"
                         hidden
                         onChange={(ev) => ev.target.files[0]?.text().then((t) => setP(norm(JSON.parse(t))))}
                     />
-                    <span style={{cursor: 'pointer'}}>JSON ↑</span>
-                </label>
+                    <button onClick={(ev) => ev.currentTarget.previousElementSibling.click()}>JSON ↑</button>
+                </span>
                 <button onClick={() => setShowV((v) => !v)}>
                     Controleer{ec ? ` ✖${ec}` : ''}
                     {wc ? ` ⚠${wc}` : ''}
                 </button>
-                <label>
+                <span>
                     <input
                         type="file"
                         accept=".eds"
@@ -249,10 +249,10 @@ export default function App() {
                             ev.target.value = ''
                         }}
                     />
-                    <span style={{cursor: 'pointer'}} title="Importeer een .eds-bestand van eendraadschema.goethals-jacobs.be">
-                        EDS ↑
-                    </span>
-                </label>
+                    <button title="Importeer een .eds-bestand" onClick={(ev) => ev.currentTarget.previousElementSibling.click()}>
+                        Importeer
+                    </button>
+                </span>
                 <button onClick={() => setJob('pdf')}>PDF</button>
                 <button onClick={() => setJob('print')}>Afdrukken</button>
             </div>

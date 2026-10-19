@@ -46,6 +46,22 @@ export const defaultTree = () => [
 ]
 const line = (x1, y1, x2, y2) => ({k: 'line', x1, y1, x2, y2}),
     text = (x, y, s, o = {}) => ({k: 'text', x, y, s, ...o})
+export const reach = (shapes) => {
+    let l = Infinity,
+        r = -Infinity
+    const hit = (a, b) => {
+        l = Math.min(l, a)
+        r = Math.max(r, b)
+    }
+    shapes.forEach((h) => {
+        if (h.t === 'circle' && Math.abs(h.cy - 12) <= h.r) {
+            const d = Math.sqrt(h.r ** 2 - (h.cy - 12) ** 2)
+            hit(h.cx - d, h.cx + d)
+        } else if (h.t === 'rect' && h.y <= 12 && 12 <= h.y + h.h) hit(h.x, h.x + h.w)
+        else if (h.t === 'line' && h.y1 === 12 && h.y2 === 12) hit(Math.min(h.x1, h.x2), Math.max(h.x1, h.x2))
+    })
+    return l <= r ? [l, r] : null
+}
 const own = (n) => (n.label ? 100 : Number(n.p?.aantal) > 1 ? 80 : 66)
 const ext = (n) =>
     BOXT.has(n.type)
@@ -89,6 +105,10 @@ function node(p, n, x, y, out) {
         n.children.forEach((c) => {
             const sx = cx
             out.push(line(sx, y - 25, sx, up))
+            if (c.type === 'kring') {
+                if (c.p?.kabel) out.push(text(sx + 13, y - 38, c.p.kabel, {rot: 1}))
+                if (c.label) out.push(text(sx - 5, y - 38, c.label, {rot: 1, bold: 1, size: 13, id: c.id}))
+            }
             const st = stack(p, c.type === 'kring' ? c.children : [c], sx, up, out, STUB, false)
             top = Math.min(top, st.top)
             cx = Math.max(st.r, sx + STUB + SYM) + GAP
@@ -103,6 +123,14 @@ function node(p, n, x, y, out) {
     const cnt = Number(pr.aantal) > 1 ? 'x' + pr.aantal : '',
         w = Math.max(SYM + 6, tw(lab) + 8, tw(cnt) + 8)
     out.push({k: 'sym', shapes: t.shapes, x: x + w / 2, y, s: SYM, id: n.id})
+    const rc = reach(t.shapes),
+        mid = x + w / 2
+    if (rc) {
+        const a = mid + ((rc[0] - 12) * SYM) / 24,
+            b = mid + ((rc[1] - 12) * SYM) / 24
+        if (a > x) out.push(line(x, y, a, y))
+        if (n.children.length && b < x + w) out.push(line(b, y, x + w, y))
+    }
     if (cnt) out.push(text(x + w / 2, y + 38, cnt, {anchor: 'middle'}))
     if (lab) out.push(text(x + w / 2, y + (cnt ? 54 : 40), lab, {anchor: 'middle', italic: 1}))
     let r = x + w,

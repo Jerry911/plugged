@@ -55,7 +55,7 @@ const KR = EL,
     E = 'Energie',
     G = 'Overig'
 const lamp = [C(12, 12, 7), L(7, 7, 17, 17), L(17, 7, 7, 17)],
-    sw = [C(9, 16, 2), L(10.5, 14.5, 18, 6)],
+    sw = [C(7, 12, 2), L(8.5, 10.5, 17, 4)],
     box = (s) => [B(3, 3, 18, 18), ...s]
 export const BUILTIN = [
     X('aansluiting', 'Aansluiting net', V, [], [B(4, 6, 16, 12), L(4, 6, 20, 18), L(4, 18, 20, 6)], false),
@@ -90,8 +90,8 @@ export const BUILTIN = [
     X('tl', 'TL-armatuur', O, LP, [B(2, 9, 20, 6), L(2, 12, 22, 12)]),
     X('noodlicht', 'Noodverlichting', O, LP, [...lamp, B(10, 10, 4, 4)]),
     X('schakelaar', 'Enkelpolige schakelaar', O, KR, sw),
-    X('wissel', 'Wisselschakelaar', O, KR, [...sw, L(10.5, 14.5, 6, 6)]),
-    X('dimmer', 'Dimmer', O, KR, [...sw, L(14, 16, 22, 16)]),
+    X('wissel', 'Wisselschakelaar', O, KR, [...sw, L(5.5, 10.5, 1.5, 4)]),
+    X('dimmer', 'Dimmer', O, KR, [...sw, L(13, 15.5, 21, 15.5)]),
     X('drukknop', 'Drukknop', O, KR, [C(12, 12, 6), C(12, 12, 3)]),
     X('bel', 'Bel / zoemer', O, KR, [C(12, 12, 7), T(12, 15, 'B')]),
     X('rookmelder', 'Rookmelder', O, KR, [C(12, 12, 8), T(12, 15, 'R')]),

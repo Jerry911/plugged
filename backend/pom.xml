@@ -19,7 +19,7 @@
     <properties>
         <java.version>21</java.version>
         <frontend.dir>${project.basedir}/../frontend</frontend.dir>
-        <node.version>v22.16.0</node.version>
+        <node.version>v22.22.2</node.version>
         <frontend-maven-plugin.version>1.15.1</frontend-maven-plugin.version>
         <!-- -Dfrontend.skip=true skips node install, frontend build and frontend tests; -DskipTests skips backend and frontend tests -->
         <frontend.skip>false</frontend.skip>

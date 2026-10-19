@@ -3,7 +3,7 @@
 import {fireEvent, screen} from '@testing-library/react'
 import Eendraad from '../Eendraad.jsx'
 import {base, mount, node} from './utils.jsx'
-import {defaultTree} from '../board.js'
+import {defaultTree} from '../boardModel.js'
 
 const pal = (n) => screen.getAllByText(n)[0],
     row = (n) => screen.getAllByText(n).at(-1)

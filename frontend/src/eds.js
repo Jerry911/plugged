@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Import of files exported by https://eendraadschema.goethals-jacobs.be/ (.eds = "EDS004" header + base64(zlib(JSON))).
 import pako from 'pako'
-import {infoOf} from './board'
+import {infoOf} from './boardModel'
 import {uid} from './util'
 
 const MAP = {

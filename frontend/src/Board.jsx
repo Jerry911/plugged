@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import {Sym} from './symbols'
 import {Sheet} from './Footer'
-import {BUSX0, U} from './board'
+import {BUSX0, U} from './boardModel'
 
 const B = '#0a6cff'
 const Item = ({it, sel, onSel}) => {

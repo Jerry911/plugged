@@ -4,7 +4,7 @@ import {useEffect, useRef, useState} from 'react'
 import {Sym, typeOf} from './symbols'
 import {Sheet} from './Footer'
 import {allNodes, nameOf, uid, unplacedOf} from './util'
-import {numbering} from './board'
+import {numbering} from './boardModel'
 
 const dflt = {sym: 7, text: 4, door: 10, window: 10}
 export const SitSheet = ({p, pg, no, total, ed, onFooter}) => {

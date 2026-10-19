@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import {useEffect, useState} from 'react'
 import {allTypes, Sym, typeOf} from './symbols'
-import {BoardSheet} from './Board'
-import {defaultProps, infoOf, nextLetter, sheetPlan} from './board'
+import {BoardSheet} from './Board.jsx'
+import {defaultProps, infoOf, nextLetter, sheetPlan} from './boardModel'
 import {flat, nameOf, reid, uid} from './util'
 
 export const upd = (ns, id, f) => ns.flatMap((n) => (n.id === id ? f(n) : [{...n, children: upd(n.children, id, f)}]))

@@ -3,7 +3,7 @@
 import {render, screen} from '@testing-library/react'
 import {AllSheets, makePdf} from '../Export.jsx'
 import {base, node} from './utils.jsx'
-import {defaultTree} from '../board.js'
+import {defaultTree} from '../boardModel.js'
 
 const docs = []
 const add = vi.fn(),

@@ -2,21 +2,22 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import {jsPDF} from 'jspdf'
 import {svg2pdf} from 'svg2pdf.js'
-import {BoardSheet} from './Board'
-import {sheetPlan} from './board'
+import {BoardSheet} from './Board.jsx'
+import {sheetPlan} from './boardModel'
 import {SitSheet} from './Situatie'
 
 export const AllSheets = ({p}) => (
     <div className="export">
         {sheetPlan(p).map((e) =>
             e.kind === 'een' ? (
-                <BoardSheet key={e.no} p={p} pg={e.pg} b={e.b} sl={e.sl} no={e.no} total={e.total} />
+                <BoardSheet key={e.no} p={p} pg={e.pg} b={e.b} sl={e.sl} no={e.no} total={e.total}/>
             ) : (
-                <SitSheet key={e.no} p={p} pg={e.pg} no={e.no} total={e.total} />
+                <SitSheet key={e.no} p={p} pg={e.pg} no={e.no} total={e.total}/>
             ),
         )}
     </div>
 )
+
 export async function makePdf(p, root) {
     const els = root.querySelectorAll('svg.sheet'),
         doc = new jsPDF({orientation: 'landscape', unit: 'mm', format: 'a4'})

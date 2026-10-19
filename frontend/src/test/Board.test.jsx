@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import {fireEvent, render} from '@testing-library/react'
 import {BoardSheet} from '../Board.jsx'
-import {board, slices} from '../board.js'
+import {board, slices} from '../boardModel.js'
 import {base, node} from './utils.jsx'
 
 const kring = (id, kids = [], p = {}, extra = {}) =>

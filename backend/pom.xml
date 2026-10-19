@@ -17,7 +17,14 @@
         </license>
     </licenses>
     <properties>
-        <java.version>17</java.version>
+        <java.version>21</java.version>
+        <frontend.dir>${project.basedir}/../frontend</frontend.dir>
+        <node.version>v22.16.0</node.version>
+        <frontend-maven-plugin.version>1.15.1</frontend-maven-plugin.version>
+        <!-- -Dfrontend.skip=true skips node install, frontend build and frontend tests; -DskipTests skips backend and frontend tests -->
+        <frontend.skip>false</frontend.skip>
+        <skipTests>false</skipTests>
+        <frontend.tests.skip>${skipTests}</frontend.tests.skip>
     </properties>
     <dependencies>
         <dependency>
@@ -54,6 +61,56 @@
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+            <plugin>
+                <groupId>com.github.eirslett</groupId>
+                <artifactId>frontend-maven-plugin</artifactId>
+                <version>${frontend-maven-plugin.version}</version>
+                <configuration>
+                    <workingDirectory>${frontend.dir}</workingDirectory>
+                    <installDirectory>${frontend.dir}</installDirectory>
+                    <skip>${frontend.skip}</skip>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>install-node-and-npm</id>
+                        <goals>
+                            <goal>install-node-and-npm</goal>
+                        </goals>
+                        <configuration>
+                            <nodeVersion>${node.version}</nodeVersion>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>npm-ci</id>
+                        <goals>
+                            <goal>npm</goal>
+                        </goals>
+                        <configuration>
+                            <arguments>ci</arguments>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>npm-build</id>
+                        <goals>
+                            <goal>npm</goal>
+                        </goals>
+                        <configuration>
+                            <arguments>run build</arguments>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>npm-test</id>
+                        <phase>test</phase>
+                        <goals>
+                            <goal>npm</goal>
+                        </goals>
+                        <configuration>
+                            <arguments>test</arguments>
+                            <skip>${frontend.tests.skip}</skip>
+                        </configuration>
+                    </execution>
+                </executions>
             </plugin>
             <plugin>
                 <groupId>org.jacoco</groupId>
@@ -97,4 +154,18 @@
             </plugin>
         </plugins>
     </build>
+    <profiles>
+        <profile>
+            <id>skip-frontend</id>
+            <activation>
+                <property>
+                    <name>frontend.skip</name>
+                    <value>true</value>
+                </property>
+            </activation>
+            <properties>
+                <frontend.tests.skip>true</frontend.tests.skip>
+            </properties>
+        </profile>
+    </profiles>
 </project>

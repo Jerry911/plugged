@@ -1,0 +1,12 @@
+services:
+  plugged:
+    build: .
+    image: plugged:latest
+    ports:
+      - "8080:8080"
+    volumes:
+      - plugged-data:/data
+    restart: unless-stopped
+
+volumes:
+  plugged-data:

@@ -3,6 +3,7 @@
 import {useEffect, useRef, useState} from 'react'
 import {Sym, typeOf} from './symbols'
 import {Sheet} from './Footer'
+import ZoomPane from './ZoomPane.jsx'
 import {allNodes, nameOf, uid, unplacedOf} from './util'
 import {numbering} from './boardModel'
 import {dirTo, fmtLen, hitsInBox, itemBox, parseDims, parseLen, r2, rectWalls, scaleOf, toSheet, unionBox, wallBox} from './geometry'
@@ -677,11 +678,11 @@ export default function Situatie({p, setP, idx, onFooter}) {
             </div>
             <div className="main">
                 <div style={{position: 'relative', maxWidth: panelOpen ? 1100 : 1480}}>
-                    <div className="zoomscroll" style={{overflow: 'auto', maxHeight: zoom > 1 ? '82vh' : 'none'}}>
+                    <ZoomPane zoom={zoom} rightPan>
                         <div style={{width: `${zoom * 100}%`}}>
                             <SitSheet p={p} pg={pg} {...numbering(p, pg)} ed={ed} onFooter={onFooter} />
                         </div>
-                    </div>
+                    </ZoomPane>
                     <div className="ui zoomctl">
                         <button
                             className={showDims ? 'on' : ''}

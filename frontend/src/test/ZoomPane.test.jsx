@@ -138,3 +138,21 @@ test('extra style is merged and listeners are removed on unmount', () => {
     expect(spy).toHaveBeenCalledWith('keydown', expect.any(Function))
     expect(spy).toHaveBeenCalledWith('keyup', expect.any(Function))
 })
+
+test('rightPan: right-drag pans, swallows the context menu after a drag', () => {
+    const r = render(
+        <ZoomPane zoom={2} rightPan>
+            <div data-testid="inner" style={{width: 2000, height: 2000}} />
+        </ZoomPane>,
+    )
+    const pane = r.container.querySelector('.zoomscroll'),
+        seen = vi.fn()
+    pane.addEventListener('contextmenu', seen)
+    pane.scrollLeft = 100
+    fireEvent.pointerDown(screen.getByTestId('inner'), {button: 2, clientX: 50, clientY: 50})
+    fireEvent.pointerMove(window, {clientX: 20, clientY: 50})
+    expect(pane.scrollLeft).toBe(130)
+    fireEvent.pointerUp(window)
+    expect(fireEvent.contextMenu(screen.getByTestId('inner'))).toBe(false)
+    expect(seen).not.toHaveBeenCalled()
+})

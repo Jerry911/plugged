@@ -7,12 +7,14 @@ const FORM = /INPUT|TEXTAREA|SELECT|BUTTON/
  * Scroll container that can also be panned by dragging.
  * always: plain left-drag pans (use where the content has no drag interactions).
  * otherwise: pan with the middle mouse button or Space + left-drag, so drawing tools keep working.
+ * rightPan: also pan while holding the right mouse button (a plain right click still reaches the content).
  */
-export default function ZoomPane({zoom, always = false, style, children}) {
+export default function ZoomPane({zoom, always = false, rightPan = false, style, children}) {
     const ref = useRef(null),
         drag = useRef(null),
         space = useRef(false),
         swallow = useRef(false),
+        noMenu = useRef(false),
         can = zoom > 1
     useEffect(() => {
         const kd = (e) => {
@@ -32,9 +34,10 @@ export default function ZoomPane({zoom, always = false, style, children}) {
         const el = ref.current
         if (!can || !el || FORM.test(e.target.tagName ?? '')) return
         const mid = e.button === 1,
+            right = e.button === 2 && rightPan,
             left = e.button === 0 && (always || space.current)
-        if (!mid && !left) return
-        if (!always || mid) {
+        if (!mid && !right && !left) return
+        if (!always || mid || right) {
             e.preventDefault()
             e.stopPropagation() // keep drawing tools from starting
         }
@@ -58,6 +61,8 @@ export default function ZoomPane({zoom, always = false, style, children}) {
             if (drag.current?.moved) {
                 swallow.current = true // a drag must not count as a click underneath
                 setTimeout(() => (swallow.current = false), 0)
+                noMenu.current = true // ...nor open/handle a context menu when the right button is released
+                setTimeout(() => (noMenu.current = false), 100)
             }
             drag.current = null
             el.style.cursor = always ? 'grab' : ''
@@ -75,6 +80,12 @@ export default function ZoomPane({zoom, always = false, style, children}) {
             onPointerDownCapture={down}
             onClickCapture={(e) => {
                 if (swallow.current) e.stopPropagation()
+            }}
+            onContextMenuCapture={(e) => {
+                if (rightPan && (noMenu.current || drag.current?.moved)) {
+                    e.preventDefault()
+                    e.stopPropagation()
+                }
             }}
             onAuxClick={(e) => e.preventDefault()}
         >

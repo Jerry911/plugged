@@ -56,7 +56,7 @@ test('edit properties, move, indent, outdent, duplicate, delete', () => {
     expect(spy.p.een[0].tree.map((n) => n.id)).toEqual(['A', 'C'])
     fireEvent.click(screen.getByText('⧉'))
     expect(spy.p.een[0].tree).toHaveLength(3)
-    fireEvent.click(screen.getByRole('button', {name: /Verwijder/}))
+    fireEvent.keyDown(document.body, {key: 'Delete'})
     expect(spy.p.een[0].tree).toHaveLength(2)
 })
 test('custom components appear in palette', () => {
@@ -66,15 +66,12 @@ test('custom components appear in palette', () => {
 })
 test('Delete/Backspace remove the selected node; ignored in inputs and without selection', () => {
     const {spy} = mount(Eendraad, withTree([node('Aa', 'bord'), node('Bb', 'bord')]), {idx: 0}),
-        b = document.body,
-        btn = () => screen.getByRole('button', {name: /Verwijder/})
+        b = document.body
     fireEvent.keyDown(b, {key: 'Delete'})
     expect(spy.p.een[0].tree).toHaveLength(2)
-    expect(btn()).toBeDisabled()
-    screen.getByText(/Klik een element/)
+    expect(screen.queryByText('Eigenschappen')).toBeNull()
     fireEvent.click(row('Aa'))
-    screen.getByText('Selectie: Aa')
-    expect(btn()).toBeEnabled()
+    expect(selected()).toHaveTextContent(/^Aa/)
     fireEvent.keyDown(screen.getByDisplayValue('Aa'), {key: 'Delete'})
     fireEvent.keyDown(b, {key: 'x'})
     expect(spy.p.een[0].tree).toHaveLength(2)
@@ -84,10 +81,10 @@ test('Delete/Backspace remove the selected node; ignored in inputs and without s
     fireEvent.keyDown(b, {key: 'Backspace'})
     expect(spy.p.een[0].tree).toHaveLength(0)
 })
-test('toolbar delete button removes node with its children', () => {
+test('Delete key removes node with its children', () => {
     const {spy} = mount(Eendraad, withTree([node('Aa', 'bord', [node('K', 'kring')])]), {idx: 0})
     fireEvent.click(row('Aa'))
-    fireEvent.click(screen.getByRole('button', {name: '🗑 Verwijder (Del)'}))
+    fireEvent.keyDown(document.body, {key: 'Delete'})
     expect(spy.p.een[0].tree).toEqual([])
 })
 test('footer cells in the diagram call onFooter', () => {
@@ -98,6 +95,7 @@ test('footer cells in the diagram call onFooter', () => {
 })
 
 const DEF = () => ({...base(), een: [{id: 'e1', name: 'Blad 1', tree: defaultTree()}]})
+const selected = () => document.querySelector('.tree .sel')
 const board1 = (spy) => spy.p.een[0].tree[0].children[0]
 test('circuits are appended to the board from left to right with defaults and free letters', () => {
     const {spy} = mount(Eendraad, DEF(), {idx: 0})
@@ -117,10 +115,10 @@ test('elements go into the selected circuit; the circuit stays selected; a new c
     fireEvent.click(pal('Stopcontact'))
     fireEvent.click(pal('Lichtpunt'))
     expect(board1(spy).children[0].children.map((c) => c.type)).toEqual(['stopcontact', 'stopcontact', 'lichtpunt'])
-    screen.getByText('Selectie: A')
+    expect(selected()).toHaveTextContent(/^A/)
     fireEvent.click(pal('Kring (automaat)'))
     expect(board1(spy).children).toHaveLength(2)
-    screen.getByText('Selectie: B')
+    expect(selected()).toHaveTextContent(/^B/)
 })
 test('without selection an element is added to the last circuit', () => {
     const t = defaultTree()
@@ -175,10 +173,10 @@ test('clicking a circuit letter or a symbol in the drawing selects it', () => {
     ]
     const {container} = mount(Eendraad, withTree(t), {idx: 0})
     fireEvent.click([...container.querySelectorAll('svg.sheet text')].find((x) => x.textContent === 'K'))
-    screen.getByText('Selectie: K')
+    expect(selected()).toHaveTextContent(/^K/)
     screen.getByText('Eigenschappen')
     fireEvent.click(container.querySelector('svg.sheet g[style*="pointer"]'))
-    screen.getByText('Selectie: S')
+    expect(selected()).toHaveTextContent(/^S/)
 })
 test('wide boards are shown on several sheets', () => {
     const t = defaultTree()

@@ -3,7 +3,8 @@
 import {useEffect, useMemo, useRef, useState} from 'react'
 import Eendraad from './Eendraad'
 import Situatie from './Situatie'
-import Custom from './Custom'
+import Componenten from './Componenten'
+import {useLibrary} from './library'
 import {FooterDialog} from './Footer'
 import {useHistory} from './history'
 import {defaultTree} from './boardModel'
@@ -12,6 +13,7 @@ import Verify from './Verify'
 import {verify} from './rules'
 import {AllSheets, makePdf} from './Export'
 import {reid, uid, unplacedOf} from './util'
+import {BUILTIN_KEYS, ELEMENT_KEYS, setLibrary} from './symbols'
 
 const init = {
     footer: {datum: new Date().toISOString().slice(0, 10), schaal: '1:50', rev: 'A'},
@@ -112,7 +114,9 @@ export default function App() {
         [showV, setShowV] = useState(false),
         [focus, setFocus] = useState(null),
         ref = useRef()
-    const issues = useMemo(() => verify(p), [p]),
+    const {lib, save: saveComp, remove: removeComp, reset: resetComp} = useLibrary()
+    setLibrary(lib)
+    const issues = useMemo(() => verify(p), [p, lib]),
         ec = issues.filter((i) => i.level === 'error').length,
         wc = issues.filter((i) => i.level === 'warn').length
     const openFooter = (k) => setFooter({k, n: Date.now()})
@@ -123,6 +127,16 @@ export default function App() {
         if (i.page != null) setEi(i.page)
         if (i.nodeId) setFocus({id: i.nodeId, n: Date.now()})
     }
+    useEffect(() => {
+        // components stored inside a project (old projects, JSON import) move into the shared library
+        if (!p.custom?.length) return
+        p.custom.forEach((c) => {
+            const k = 'custom:' + c.id
+            if (!lib.some((x) => x.k === k))
+                saveComp({k, name: c.name, cat: c.cat || 'Eigen', parents: c.parents || ELEMENT_KEYS, place: c.place !== false, shapes: c.shapes})
+        })
+        setP((cur) => ({...cur, custom: []}))
+    }, [p.custom])
     useEffect(() => {
         fetch('/api/projects/' + pid)
             .then((r) => (r.ok ? r.json() : null))
@@ -187,11 +201,15 @@ export default function App() {
     }
     const exportJson = () => {
         const a = document.createElement('a')
-        a.href = URL.createObjectURL(new Blob([JSON.stringify(p)], {type: 'application/json'}))
+        // own components travel along with the project file (as `custom`) so it opens on another installation
+        const custom = lib
+            .filter((c) => !BUILTIN_KEYS.has(c.k))
+            .map((c) => ({id: c.k.replace(/^custom:/, ''), name: c.name, cat: c.cat, parents: c.parents, place: c.place, shapes: c.shapes}))
+        a.href = URL.createObjectURL(new Blob([JSON.stringify({...p, custom})], {type: 'application/json'}))
         a.download = (p.footer.titel || 'schema') + '.json'
         a.click()
     }
-    const tabs = ['Eendraadschema', 'Situatieschema', 'Eigen componenten'],
+    const tabs = ['Eendraadschema', 'Situatieschema', 'Componenten'],
         un = unplacedOf(p).length,
         e = Math.min(ei, p.een.length - 1),
         s = Math.min(si, p.sit.length - 1)
@@ -271,7 +289,7 @@ export default function App() {
                         <Situatie key={p.sit[s].id} p={p} setP={setP} idx={s} onFooter={openFooter} />
                     </>
                 )}
-                {tab === 2 && <Custom p={p} setP={setP} />}
+                {tab === 2 && <Componenten lib={lib} onSave={saveComp} onRemove={removeComp} onReset={resetComp} />}
             </div>
             {job && (
                 <div ref={ref}>

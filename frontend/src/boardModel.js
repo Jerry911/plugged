@@ -59,6 +59,15 @@ export const reach = (shapes) => {
             hit(h.cx - d, h.cx + d)
         } else if (h.t === 'rect' && h.y <= 12 && 12 <= h.y + h.h) hit(h.x, h.x + h.w)
         else if (h.t === 'line' && h.y1 === 12 && h.y2 === 12) hit(Math.min(h.x1, h.x2), Math.max(h.x1, h.x2))
+        else if (h.t === 'arc' && Math.abs(12 - h.cy) <= h.r) {
+            const dy = 12 - h.cy,
+                d = Math.sqrt(h.r ** 2 - dy ** 2),
+                span = (((h.a2 - h.a1) % 360) + 360) % 360
+            ;[h.cx - d, h.cx + d].forEach((x) => {
+                const ang = (Math.atan2(dy, x - h.cx) * 180) / Math.PI
+                if ((((ang - h.a1) % 360) + 360) % 360 <= span + 1e-9) hit(x, x)
+            })
+        }
     })
     return l <= r ? [l, r] : null
 }

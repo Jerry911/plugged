@@ -103,7 +103,7 @@ test('select, drag, inspect, keyboard and erase items', () => {
     expect(sit(spy).items).toHaveLength(1)
     fireEvent.click(screen.getByText('⧉'))
     expect(sit(spy).items).toHaveLength(2)
-    fireEvent.click(screen.getByRole('button', {name: '🗑 Verwijder (Del)'}))
+    fireEvent.click(screen.getByRole('button', {name: 'Verwijder selectie'}))
     expect(sit(spy).items).toHaveLength(1)
     fireEvent.click(grab())
     fireEvent.click(sv(container), {clientX: 5, clientY: 5})
@@ -156,7 +156,8 @@ test('walls: select, move, handles, delete, erase', () => {
     fireEvent.pointerDown(container.querySelectorAll('circle[r="1.8"]')[1], {clientX: 50, clientY: 30})
     fireEvent.pointerMove(sv(container), {clientX: 55, clientY: 30})
     expect(sit(spy).walls[0].x2).toBe(55)
-    fireEvent.click(screen.getByRole('button', {name: '🗑 Verwijder (Del)'}))
+    fireEvent.pointerUp(sv(container))
+    fireEvent.click(screen.getByRole('button', {name: 'Verwijder selectie'}))
     expect(sit(spy).walls).toHaveLength(1)
     tool('Wis')
     fireEvent.pointerDown(hit(0), {clientX: 20, clientY: 60})
@@ -194,17 +195,18 @@ test('grid dots follow the snap setting; the selector lives in the drawing', () 
     expect(container.querySelectorAll('rect[fill^="url(#g"]')).toHaveLength(2)
     expect(container.querySelector('#gMinor circle').getAttribute('r')).not.toBe('0')
 })
-test('toolbar delete button is disabled until something is selected', () => {
+test('canvas delete button only appears once something is selected', () => {
     const init = P()
     init.sit[0].items = [{id: 'i1', kind: 'text', x: 20, y: 20, txt: 'Hal', s: 4, r: 0}]
     const {container, spy} = mount(Situatie, init, {idx: 0}),
-        btn = () => screen.getByRole('button', {name: '🗑 Verwijder (Del)'})
-    expect(btn()).toBeDisabled()
+        btn = () => screen.queryByRole('button', {name: 'Verwijder selectie'})
+    expect(btn()).toBeNull()
     fireEvent.pointerDown(container.querySelector('svg.sheet g[style*="move"]'), {clientX: 20, clientY: 20})
-    expect(btn()).toBeEnabled()
+    fireEvent.pointerUp(container.querySelector('svg.sheet'))
+    expect(btn()).not.toBeNull()
     fireEvent.click(btn())
     expect(sit(spy).items).toHaveLength(0)
-    expect(btn()).toBeDisabled()
+    expect(btn()).toBeNull()
 })
 test('footer cells call onFooter', () => {
     const fn = vi.fn(),

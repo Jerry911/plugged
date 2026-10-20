@@ -1,0 +1,69 @@
+// Copyright 2026 Pleysier Jeroen
+// SPDX-License-Identifier: AGPL-3.0-only
+package com.pleysje.plugged;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.http.MediaType;
+import org.springframework.test.web.servlet.MockMvc;
+
+import static org.hamcrest.Matchers.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+
+@SpringBootTest
+@AutoConfigureMockMvc
+class ComponentControllerTest {
+    @Autowired
+    MockMvc mvc;
+    @Autowired
+    ComponentRepo repo;
+
+    @BeforeEach
+    void clean() {
+        repo.deleteAll();
+    }
+
+    private void putOne(String k, String json) throws Exception {
+        mvc.perform(put("/api/components/" + k).contentType(MediaType.APPLICATION_JSON).content(json)).andExpect(status().isNoContent());
+    }
+
+    @Test
+    void startsEmpty() throws Exception {
+        mvc.perform(get("/api/components")).andExpect(status().isOk()).andExpect(jsonPath("$", hasSize(0)));
+    }
+
+    @Test
+    void putThenListRoundTrips() throws Exception {
+        putOne("oven", "{\"k\":\"oven\",\"name\":\"Oven\"}");
+        mvc.perform(get("/api/components")).andExpect(jsonPath("$", hasSize(1))).andExpect(jsonPath("$[0].k", is("oven")))
+                .andExpect(jsonPath("$[0].json", containsString("\"name\":\"Oven\"")));
+    }
+
+    @Test
+    void putOverwritesAndKeysMayContainColon() throws Exception {
+        putOne("custom:x1", "{\"v\":1}");
+        putOne("custom:x1", "{\"v\":2}");
+        mvc.perform(get("/api/components")).andExpect(jsonPath("$", hasSize(1))).andExpect(jsonPath("$[0].json", is("{\"v\":2}")));
+    }
+
+    @Test
+    void bulkPutUpsertsMany() throws Exception {
+        putOne("a", "{\"v\":0}");
+        mvc.perform(put("/api/components").contentType(MediaType.APPLICATION_JSON)
+                .content("[{\"k\":\"a\",\"json\":\"{\\\"v\\\":1}\"},{\"k\":\"b\",\"json\":\"{\\\"v\\\":2}\"}]")).andExpect(status().isNoContent());
+        mvc.perform(get("/api/components")).andExpect(jsonPath("$", hasSize(2)));
+        org.junit.jupiter.api.Assertions.assertEquals("{\"v\":1}", repo.findById("a").orElseThrow().getJson());
+    }
+
+    @Test
+    void deleteRemovesAndUnknownIsOk() throws Exception {
+        putOne("a", "{}");
+        mvc.perform(delete("/api/components/a")).andExpect(status().isOk());
+        mvc.perform(get("/api/components")).andExpect(jsonPath("$", hasSize(0)));
+        mvc.perform(delete("/api/components/nope")).andExpect(status().isOk());
+    }
+}

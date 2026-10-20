@@ -32,8 +32,8 @@ test('starts with empty project, switches tabs, saves', async () => {
     screen.getByRole('button', {name: /Kaderinfo/})
     fireEvent.click(screen.getByText('Situatieschema'))
     screen.getByText('Selecteer')
-    fireEvent.click(screen.getByText('Eigen componenten'))
-    screen.getByText('Eigen componenten', {selector: 'b'})
+    fireEvent.click(screen.getByText('Componenten'))
+    screen.getByText('＋ Nieuw component')
     fireEvent.click(screen.getByText('Opslaan'))
     await screen.findByText('Opgeslagen ✓')
     expect(JSON.parse(puts()[0][1].body).een).toHaveLength(1)
@@ -232,4 +232,40 @@ test('EDS import without unknown types and with an invalid file', async () => {
     fireEvent.change(input, {target: {files: [{text: async () => 'nope'}]}})
     await waitFor(() => expect(window.alert).toHaveBeenCalledWith('Dit is geen geldig .eds-bestand.'))
     fireEvent.change(input, {target: {files: []}})
+})
+
+const readBlob = (b) =>
+    new Promise((res) => {
+        const r = new FileReader()
+        r.onload = () => res(r.result)
+        r.readAsText(b)
+    })
+const zelf = {k: 'custom:z', name: 'Zelf', cat: 'Eigen', parents: ['kring'], place: true, shapes: [{t: 'line', x1: 0, y1: 12, x2: 24, y2: 12}]}
+test('library comes from the database, is seeded with the standard components and travels along in the JSON export', async () => {
+    global.fetch = vi.fn(async (url, o) =>
+        o?.method === 'PUT' ? {ok: true} : url === '/api/components' ? {ok: true, json: async () => [{k: 'custom:z', json: JSON.stringify(zelf)}]} : {ok: false},
+    )
+    render(<App />)
+    fireEvent.click(screen.getByText('Componenten'))
+    await screen.findByText('Zelf')
+    const seed = global.fetch.mock.calls.find((c) => c[0] === '/api/components' && c[1]?.method === 'PUT')
+    expect(JSON.parse(seed[1].body).length).toBeGreaterThan(40)
+    fireEvent.click(screen.getByText('JSON ↓'))
+    const out = JSON.parse(await readBlob(URL.createObjectURL.mock.calls[0][0]))
+    expect(out.custom).toEqual([{id: 'z', name: 'Zelf', cat: 'Eigen', parents: ['kring'], place: true, shapes: zelf.shapes}])
+})
+test('components stored inside an old project move into the library', async () => {
+    setup({
+        een: [{id: 'a', name: 'A', tree: [node('c', 'custom:c1')]}],
+        sit: [{id: 'b', name: 'P', walls: [], items: []}],
+        custom: [{id: 'c1', name: 'Mijn ding', shapes: [{t: 'line', x1: 0, y1: 12, x2: 24, y2: 12}]}],
+        footer: {},
+    })
+    render(<App />)
+    await waitFor(() => expect(global.fetch).toHaveBeenCalledWith('/api/components/custom%3Ac1', expect.objectContaining({method: 'PUT'})))
+    fireEvent.click(screen.getByText('Componenten'))
+    screen.getByText('Mijn ding')
+    fireEvent.click(screen.getByText('Opslaan'))
+    await screen.findByText('Opgeslagen ✓')
+    expect(JSON.parse(puts().at(-1)[1].body).custom).toEqual([])
 })

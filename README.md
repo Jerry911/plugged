@@ -5,6 +5,10 @@ Prod: `npm run build` in frontend (outputs into backend static), then `mvn packa
 Project is saved as one JSON doc (id 1) in a file-based H2 DB under backend/data.
 Multi-page diagrams, drag/edit on the plan, PDF export (jsPDF + svg2pdf.js, vector, A4 landscape, all sheets). Built-in symbols are simplified: refine in frontend/src/symbols.jsx.
 
+## Componenten (symbol library)
+- The **Componenten** tab has a menu with all components on the left and the selected component on the right: name, category, where it may hang, placeable on the situatieschema, and a 24x24 drawing canvas (line, circle, rectangle, half circle, text) with a **Raster** dropdown (0.5 / 1 / 2 / 4) that sets the grid and the snapping. The connection point of a symbol is the red centre line (y = 12).
+- All standard components (defined in `frontend/src/symbols.jsx`) are stored in the H2 database (table `component_doc`, REST `/api/components`) and seeded on first start; defaults added in a later version are added automatically. Standard components can be edited and restored ("Standaard herstellen"); own components can be duplicated and deleted. The library is shared by all projects; own components are also written into the exported project JSON (`custom`).
+
 ## Tests
 - Frontend: `cd frontend && npm test` (Vitest + React Testing Library, jsdom); `npm run coverage` enforces thresholds (95% lines/functions, 90% branches). Currently ~100% lines.
 - Backend: `cd backend && mvn verify` (JUnit 5, Spring Boot Test, MockMvc, @DataJpaTest, JaCoCo with a 90% line gate; report in `target/site/jacoco`).

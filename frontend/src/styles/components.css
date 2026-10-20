@@ -1,0 +1,18 @@
+/* Reusable widgets: buttons, messages, palette, tree, forms, dialog, badges */
+.bar button,.pal button,.tb button{padding:5px 9px;cursor:pointer}
+.pal button{display:flex;gap:6px;align-items:center;width:100%;margin:2px 0;text-align:left}
+.danger{background:#c62828;color:#fff;border:0;border-radius:3px;font-weight:600}
+.danger:disabled{background:#ccc;color:#777}
+.warn{background:#fff3cd;border:1px solid #e0a800;padding:6px;margin:6px 0}
+.ok{background:#d4edda;padding:6px;margin:6px 0}
+.badge{margin-left:3px;background:#c62828;color:#fff;border-radius:8px;padding:0 5px;font-size:11px}
+.tree div{display:flex;gap:4px;align-items:center;padding:2px;border-radius:3px}
+.tree .sel{background:#cfe3ff}
+.form{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px;margin-bottom:8px}
+.form label{font-size:11px;display:block}
+.form input{width:100%;box-sizing:border-box}
+.iss{cursor:pointer;list-style:none;padding:3px}
+.iss.error{color:#b00020}
+.iss.warn{color:#8a6d00}
+.iss.info{color:#055}
+.dlg{position:fixed;right:10px;bottom:10px;width:380px;max-width:calc(100vw - 20px);max-height:70vh;overflow:auto;background:#fff;border:2px solid #1f3a5f;border-radius:6px;padding:8px;z-index:20;box-shadow:0 4px 16px #0005}

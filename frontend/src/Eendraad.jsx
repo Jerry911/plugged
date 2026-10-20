@@ -280,8 +280,10 @@ export default function Eendraad({p, setP, idx, focus, onFooter}) {
                             />
                         )}
                         <div className="tb">
-                            <button title="Hoger niveau" onClick={ob(outdent)}>↑</button>
-                            <button title="Onder vorige" onClick={ob(indent)}>↓</button>
+                            <button onClick={ob((t, i) => mv(t, i, -1))}>↑</button>
+                            <button onClick={ob((t, i) => mv(t, i, 1))}>↓</button>
+                            <button title="Hoger niveau" onClick={ob(outdent)}>←</button>
+                            <button title="Onder vorige" onClick={ob(indent)}>→</button>
                             <button onClick={() => set(upd(tree, s.id, (x) => [x, ...reid([x])]))}>⧉</button>
                         </div>
                     </div>

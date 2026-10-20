@@ -94,25 +94,23 @@ const Head = ({h}) => (
         )}
     </g>
 )
+// Width of the head (kWh meter, earth, main differential) in drawing units; it is repeated at the left of every sheet.
+const HEADW = 262
 export const BoardSheet = ({p, pg, b, sl, no, total, sel, onSel, onFooter}) => {
     const W = Math.max(1, sl.x1 - sl.x0),
         s = Math.min(U, 277 / W, 135 / Math.max(1, -sl.minY)),
-        y = Math.min(147, 12 + -sl.minY * s)
+        y = Math.min(147, 12 + -sl.minY * s),
+        // when the board continues on another sheet the bus runs to the page margin (10..287 mm) so the markers get room
+        left = sl.first ? BUSX0 : sl.x0,
+        right = sl.last ? sl.x1 : sl.x0 + 277 / s,
+        hx = sl.first ? 0 : sl.x0
     return (
         <Sheet p={p} page={no} total={total} onFooter={onFooter} name={'Eendraadschema – ' + pg.name}>
             <g transform={`translate(10,${y}) scale(${s}) translate(${-sl.x0},0)`} fontFamily="Verdana, DejaVu Sans, sans-serif">
-                <line x1={sl.first ? BUSX0 : sl.x0} y1="0" x2={sl.x1} y2="0" stroke="#000" strokeWidth="5" />
-                {sl.first && <Head h={b.head} />}
-                {!sl.first && (
-                    <text x={sl.x0 + 4} y="26" fontSize="13">
-                        ← vervolg van blad {no - 1}
-                    </text>
-                )}
-                {!sl.last && (
-                    <text x={sl.x1 - 4} y="26" fontSize="13" textAnchor="end">
-                        vervolg op blad {no + 1} →
-                    </text>
-                )}
+                <line x1={left} y1="0" x2={right} y2="0" stroke="#000" strokeWidth="5" />
+                <g transform={`translate(${hx},0)`}>
+                    <Head h={b.head} />
+                </g>
                 {b.circuits.slice(sl.from, sl.to).map((c) => (
                     <g key={c.n.id} transform={`translate(${c.x},0)`}>
                         {c.items.map((it, i) => (
@@ -121,6 +119,17 @@ export const BoardSheet = ({p, pg, b, sl, no, total, sel, onSel, onFooter}) => {
                     </g>
                 ))}
             </g>
+            {/* continuation markers in page coordinates (mm): left next to the head, right at the page margin */}
+            {!sl.first && (
+                <text x={10 + (HEADW + 8) * s} y={y + 4.5} fontSize="3.2" fontFamily="Verdana, DejaVu Sans, sans-serif">
+                    ← vervolg van blad {no - 1}
+                </text>
+            )}
+            {!sl.last && (
+                <text x="287" y={y + 4.5} fontSize="3.2" textAnchor="end" fontFamily="Verdana, DejaVu Sans, sans-serif">
+                    vervolg op blad {no + 1} →
+                </text>
+            )}
         </Sheet>
     )
 }

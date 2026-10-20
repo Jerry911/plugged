@@ -208,9 +208,9 @@ export default function Eendraad({p, setP, idx, focus, onFooter}) {
                 <div className="tree">{rows(tree)}</div>
                 {s && (
                     <div className="warn">
-                        <b>Eigenschappen</b>
+                        <div><b>Eigenschappen</b></div>
                         <label>
-                            {s.type === 'kring' ? 'Letter' : 'Naam'}
+                            {s.type === 'kring' ? 'Letter' : 'Tekst'}
                             <input
                                 value={s.label}
                                 onChange={(e) => set(upd(tree, s.id, (x) => [{...x, label: e.target.value}]))}

@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import {fireEvent, render} from '@testing-library/react'
 import {BoardSheet} from '../Board.jsx'
-import {board, slices} from '../boardModel.js'
+import {board, slices, BUSX0} from '../boardModel.js'
 import {base, node} from './utils.jsx'
 
 const kring = (id, kids = [], p = {}, extra = {}) =>
@@ -42,7 +42,42 @@ test('continuation markers on multi-sheet boards', () => {
     r[1].getByText('← vervolg van blad 1')
     r[1].getByText('vervolg op blad 3 →')
     r.at(-1).getByText(`← vervolg van blad ${r.length - 1}`)
-    expect(r[1].container.textContent).not.toMatch(/kWh/)
+    r.forEach(({container}) => expect(container.textContent).toMatch(/kWh/))
+})
+test('the head is repeated on every sheet and the bus runs page wide where the board continues', () => {
+    const r = sheets(tree(Array.from({length: 40}, (_, i) => kring('K' + i, [node('s' + i, 'stopcontact')]))))
+    expect(r.length).toBeGreaterThan(2)
+    r.forEach(({container}, i) => {
+        ;['kWh', 'Δ300mA', '4P - 40A'].forEach((t) => expect(container.textContent).toContain(t))
+        const g = container.querySelector('g[transform*="scale"]'),
+            [, sc, x0] = /scale\(([\d.]+)\) translate\((-?[\d.]+)/.exec(g.getAttribute('transform')),
+            bus = container.querySelector('line[stroke-width="5"]'),
+            x1 = Number(bus.getAttribute('x1')),
+            x2 = Number(bus.getAttribute('x2'))
+        // not the last sheet: the bus ends at the right page margin (277 mm after the left margin)
+        if (i < r.length - 1) expect((x2 + Number(x0)) * Number(sc)).toBeCloseTo(277, 1)
+        // not the first sheet: the bus starts at the left page margin
+        if (i) expect(x1).toBe(-Number(x0))
+        else expect(x1).toBe(BUSX0)
+    })
+})
+test('continuation markers are in page coordinates, so they never overlap on a narrow sheet', () => {
+    const r = sheets(tree(Array.from({length: 40}, (_, i) => kring('K' + i, [node('s' + i, 'stopcontact')]))))
+    // all sheets are rendered into the same document body, so query inside each sheet's own container
+    const markers = (container) => [...container.querySelectorAll('svg.sheet > text')]
+    r.slice(1, -1).forEach(({container}) => {
+        const a = markers(container).find((t) => /← vervolg van blad/.test(t.textContent)),
+            c = markers(container).find((t) => /vervolg op blad .* →/.test(t.textContent))
+        expect(a).toBeTruthy()
+        expect(c).toBeTruthy()
+        expect(c.getAttribute('text-anchor')).toBe('end')
+        // the left marker starts well before the right one, and both are plain page-level texts (not scaled with the drawing)
+        expect(Number(a.getAttribute('x')) + 40).toBeLessThan(Number(c.getAttribute('x')) - 40)
+        expect(a.closest('g[transform*="scale"]')).toBeNull()
+        expect(c.closest('g[transform*="scale"]')).toBeNull()
+    })
+    expect(markers(r[0].container).some((t) => /← vervolg van/.test(t.textContent))).toBe(false)
+    expect(markers(r.at(-1).container).some((t) => /vervolg op blad/.test(t.textContent))).toBe(false)
 })
 test('selection: clickable items, highlight and callbacks', () => {
     const onSel = vi.fn(),

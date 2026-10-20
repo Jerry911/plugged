@@ -1,7 +1,7 @@
 // Copyright 2026 Pleysier Jeroen
 // SPDX-License-Identifier: AGPL-3.0-only
 // Busbar-style layout of an eendraadschema: a horizontal bus with circuits placed left to right (units ~ px, see U for mm).
-import {typeOf} from './symbols'
+import {stackOf, sockShapes, typeOf} from './symbols'
 import {flat, uid} from './util'
 
 export const U = 0.16,
@@ -129,10 +129,13 @@ function node(p, n, x, y, out) {
         )
         return {r: x + w, top, bot: y + 30}
     }
-    const cnt = Number(pr.aantal) > 1 ? 'x' + pr.aantal : '',
+    const sk = stackOf(t, pr),
+        stacked = sk?.hor,
+        shapes = stacked ? sockShapes({...t.sock, n: sk.n}, true) : t.shapes,
+        cnt = Number(pr.aantal) > 1 && !stacked ? 'x' + pr.aantal : '',
         w = Math.max(SYM + 6, tw(lab) + 8, tw(cnt) + 8)
-    out.push({k: 'sym', shapes: t.shapes, x: x + w / 2, y, s: SYM, id: n.id})
-    const rc = reach(t.shapes),
+    out.push({k: 'sym', shapes, x: x + w / 2, y, s: SYM, id: n.id})
+    const rc = reach(shapes),
         mid = x + w / 2
     if (rc) {
         const a = mid + ((rc[0] - 12) * SYM) / 24,

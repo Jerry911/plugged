@@ -1,7 +1,7 @@
 // Copyright 2026 Pleysier Jeroen
 // SPDX-License-Identifier: AGPL-3.0-only
 import {useEffect, useState} from 'react'
-import {allTypes, Sym, typeOf} from './symbols'
+import {allTypes, stackOf, Sym, typeOf} from './symbols'
 import {BoardSheet} from './Board.jsx'
 import {defaultProps, infoOf, nextLetter, sheetPlan} from './boardModel'
 import {flat, nameOf, reid, uid} from './util'
@@ -212,6 +212,16 @@ export default function Eendraad({p, setP, idx, focus, onFooter}) {
                                 />
                             </label>
                         ))}
+                        {stackOf(typeOf(p, s.type), s.p) && (
+                            <label>
+                                <input
+                                    type="checkbox"
+                                    checked={stackOf(typeOf(p, s.type), s.p).hor}
+                                    onChange={(e) => setProp('hor', e.target.checked)}
+                                />{' '}
+                                Horizontaal (gestapeld bij meerdere)
+                            </label>
+                        )}
                         {s.type !== 'kring' && (
                             <input
                                 placeholder="Specs (bv. B16 2P 2,5mm²)"

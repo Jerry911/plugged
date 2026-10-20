@@ -91,7 +91,7 @@ test('chains make circuits wider and push following circuits to the right', () =
 test('multiple children are stacked upwards, counts and labels are shown', () => {
     const c = circuit(
         base(),
-        kring('K', [node('s', 'stopcontact', [], {p: {aantal: 3, nr: '7'}}), node('l', 'lichtpunt', [], {label: 'Gang'})]),
+        kring('K', [node('s', 'stopcontact', [], {p: {aantal: 3, nr: '7', hor: false}}), node('l', 'lichtpunt', [], {label: 'Gang'})]),
     )
     const ys = syms(c.items).map((i) => i.y)
     expect(ys[1]).toBeLessThan(ys[0] - 60)
@@ -194,4 +194,14 @@ test('a sub-board directly under the bus is drawn as an unprotected column', () 
     expect(b.circuits[0].n).toMatchObject({id: 'S~', type: 'kring'})
     expect(b.circuits[0].items.some((i) => i.k === 'rect' && i.id === 'S')).toBe(true)
     expect(b.circuits[0].items.some((i) => i.fill)).toBe(false)
+})
+
+test('sockets stack horizontally from two on, unless p.hor says otherwise', () => {
+    const arcs = (p) => syms(circuit(base(), kring('K', [node('s', 'stopcontact', [], {p})])).items)[0].shapes.filter((h) => h.t === 'arc').length
+    expect(arcs({})).toBe(1)
+    expect(arcs({aantal: 3})).toBe(3)
+    expect(arcs({aantal: 3, hor: false})).toBe(1)
+    expect(arcs({hor: true})).toBe(1)
+    const txt = texts(circuit(base(), kring('K', [node('s', 'stopcontact', [], {p: {aantal: 2}})])).items).map((x) => x.s)
+    expect(txt).not.toContain('x2')
 })

@@ -10,7 +10,7 @@ export const mergeLibrary = (stored = []) => {
     const by = new Map(stored.map((c) => [c.k, c])),
         keys = new Set(DEFAULTS.map((d) => d.k)),
         extra = stored.filter((c) => !keys.has(c.k)).sort((a, b) => (a.name || '').localeCompare(b.name || ''))
-    return [...DEFAULTS.map((d) => (by.has(d.k) ? {...d, ...by.get(d.k)} : d)), ...extra]
+    return [...DEFAULTS.map((d) => (by.has(d.k) && by.get(d.k).v === d.v ? {...d, ...by.get(d.k)} : d)), ...extra]
 }
 const parse = (rows) =>
     rows.flatMap((r) => {

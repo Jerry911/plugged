@@ -18,6 +18,12 @@ test('mergeLibrary keeps the defaults in order, lets stored versions win and sor
     expect(m.find((c) => c.k === 'oven').name).toBe('Mijn oven')
     expect(m.slice(DEFAULTS.length).map((c) => c.k)).toEqual(['custom:z', 'custom:a', 'custom:b'])
 })
+test('a stored standard component made with an older symbol version is replaced by the current standard', () => {
+    const old = {...DEFAULTS.find((d) => d.k === 'oven'), v: 0, name: 'Oud'}
+    expect(mergeLibrary([old]).find((c) => c.k === 'oven')).toEqual(DEFAULTS.find((d) => d.k === 'oven'))
+    const {v, ...unversioned} = old
+    expect(mergeLibrary([unversioned]).find((c) => c.k === 'oven').name).toBe('Oven')
+})
 test('useLibrary loads the stored components and seeds the missing defaults', async () => {
     const edited = {...DEFAULTS[1], name: 'Aangepast'}
     mock(async () => ({ok: true, json: async () => rows(mine, edited)}))

@@ -4,7 +4,8 @@ import {fireEvent, render, screen, waitFor, within} from '@testing-library/react
 import Componenten from '../Componenten.jsx'
 import {BUILTIN as DEFAULTS} from '../symbols.jsx'
 
-const svg = (c) => c.querySelector('svg[viewBox="0 0 24 24"]'),
+const nOf = (k) => DEFAULTS.find((d) => d.k === k).shapes.length,
+    svg = (c) => c.querySelector('svg[viewBox="0 0 24 24"]'),
     clk = (s, x, y) => fireEvent.click(s, {clientX: x, clientY: y}),
     mine = {k: 'custom:1', name: 'Mijn ding', cat: 'Eigen', parents: ['kring'], place: true, shapes: [{t: 'line', x1: 1, y1: 12, x2: 20, y2: 12}]}
 const mount = (lib = DEFAULTS, ok = true) => {
@@ -119,16 +120,17 @@ test('requires a name and at least one shape', () => {
 test('undo, clear and removing single shapes; shapes are listed', () => {
     const {container} = mount()
     fireEvent.click(screen.getByText('Teller (kWh)'))
-    screen.getByText('Vormen (2)')
-    screen.getByText(/Rechthoek \(/)
+    const n = nOf('teller')
+    screen.getByText(`Vormen (${n})`)
+    screen.getAllByText(/Rechthoek \(/)
     screen.getByText(/“kWh”/)
     fireEvent.click(screen.getAllByTitle('Vorm verwijderen')[0])
-    screen.getByText('Vormen (1)')
+    screen.getByText(`Vormen (${n - 1})`)
     clk(svg(container), 1, 1)
     clk(svg(container), 5, 5)
-    screen.getByText('Vormen (2)')
+    screen.getByText(`Vormen (${n})`)
     fireEvent.click(screen.getByText('↶'))
-    screen.getByText('Vormen (1)')
+    screen.getByText(`Vormen (${n - 1})`)
     fireEvent.click(screen.getByText('Leegmaken'))
     screen.getByText('Vormen (0)')
 })
@@ -138,7 +140,7 @@ test('all shape kinds are described in the shape list', () => {
     screen.getAllByText(/Lijn \(/)
     screen.getAllByText(/Cirkel \(/)
     pick('Stopcontact')
-    screen.getByText(/Boog \(9,12\) r=6 -90°…90°/)
+    screen.getByText(/Boog \(14,20\) r=4.5 180°…360°/)
 })
 test('parents and placement can be changed', async () => {
     const {save} = mount([...DEFAULTS, mine])
@@ -167,7 +169,7 @@ test('a standard component can be restored to its default', async () => {
     await screen.findByText('Standaard hersteld ✓')
     expect(reset).toHaveBeenCalledWith('oven')
     expect(screen.getByText('Standaard herstellen')).toBeDisabled()
-    screen.getByText('Vormen (2)')
+    screen.getByText(`Vormen (${nOf('oven')})`)
 })
 test('own components can be removed after confirmation', async () => {
     const {remove} = mount([...DEFAULTS, mine])

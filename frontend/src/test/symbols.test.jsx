@@ -1,7 +1,7 @@
 // Copyright 2026 Pleysier Jeroen
 // SPDX-License-Identifier: AGPL-3.0-only
 import {render} from '@testing-library/react'
-import {allTypes, arcPath, BUILTIN, BUILTIN_KEYS, setLibrary, Sym, typeOf} from '../symbols.jsx'
+import {allTypes, arcPath, BUILTIN, BUILTIN_KEYS, setLibrary, sockShapes, stackOf, Sym, SYMV, typeOf} from '../symbols.jsx'
 import {reach} from '../boardModel.js'
 
 test('keys unique and parents refer to existing types', () => {
@@ -104,17 +104,63 @@ test('switch lines touch: supply line ends on the hinge circle, lever starts on 
             py = lever.y1 + t * (lever.y2 - lever.y1)
         expect(Math.hypot(f.x1 - px, f.y1 - py)).toBeLessThan(0.05)
     })
-    expect(flags.length).toBeGreaterThan(0)
-    expect(typeOf({}, 'wissel').shapes.length).toBe(typeOf({}, 'schakelaar').shapes.length)
+    expect(flags).toHaveLength(1)
+    expect(typeOf({}, 'schakelaar2').shapes).toHaveLength(typeOf({}, 'schakelaar').shapes.length + 1)
+    expect(typeOf({}, 'schakelaar3').shapes).toHaveLength(typeOf({}, 'schakelaar').shapes.length + 2)
 })
-test('lamp cross ends lie on the circle', () => {
-    const [c, a, b] = typeOf({}, 'lichtpunt').shapes
-    ;[[a.x1, a.y1], [a.x2, a.y2], [b.x1, b.y1], [b.x2, b.y2]].forEach(([x, y]) => expect(Math.hypot(x - c.cx, y - c.cy)).toBeCloseTo(c.r, 1))
+test('multi-way switches have a lever with a flag on both sides of the hinge circle', () => {
+    const levers = (k) => typeOf({}, k).shapes.filter((h) => h.t === 'line' && h.y1 !== 12 && h.x1 !== h.x2 && Math.abs(h.y2 - h.y1) > 4)
+    expect(levers('wissel')).toHaveLength(2)
+    expect(levers('omschakelaar')).toHaveLength(2)
+    expect(levers('kruis')).toHaveLength(4)
 })
+test('lichtpunt is a supply line that ends in the centre of a cross', () => {
+    const [wire, a, b] = typeOf({}, 'lichtpunt').shapes
+    expect(wire.y1).toBe(12)
+    expect([(a.x1 + a.x2) / 2, (b.x1 + b.x2) / 2]).toEqual([wire.x2, wire.x2])
+    expect([(a.y1 + a.y2) / 2, (b.y1 + b.y2) / 2]).toEqual([12, 12])
+})
+test('filled shapes are drawn with a fill, all others without', () => {
+    const {container} = render(
+        <svg>
+            <Sym shapes={[{t: 'circle', cx: 1, cy: 1, r: 1, f: 1}, {t: 'circle', cx: 1, cy: 1, r: 1}, {t: 'rect', x: 0, y: 0, w: 2, h: 2, f: 1}, {t: 'rect', x: 0, y: 0, w: 2, h: 2}]} stroke="#123" />
+        </svg>,
+    )
+    const fills = [...container.querySelectorAll('circle, rect')].map((e) => e.getAttribute('fill'))
+    expect(fills).toEqual(['#123', null, '#123', null])
+})
+test('every standard component carries the current symbol version', () => BUILTIN.forEach((t) => expect(t.v, t.k).toBe(SYMV)))
 test('reach follows arcs that cross the centre line', () => {
     expect(reach([{t: 'arc', cx: 9, cy: 12, r: 6, a1: -90, a2: 90}])).toEqual([15, 15])
     expect(reach([{t: 'arc', cx: 9, cy: 12, r: 6, a1: 90, a2: 270}])).toEqual([3, 3])
     expect(reach([{t: 'arc', cx: 12, cy: 17, r: 7, a1: 180, a2: 360}])[0]).toBeCloseTo(7.1, 1)
     expect(reach([{t: 'arc', cx: 12, cy: 17, r: 7, a1: 0, a2: 90}])).toBeNull()
     expect(reach([{t: 'arc', cx: 12, cy: 40, r: 7, a1: 0, a2: 360}])).toBeNull()
+})
+
+test('socket variants: bar for the protective conductor, feet for kinderveiligheid, stacked arcs when horizontal', () => {
+    const lines = (s) => s.filter((h) => h.t === 'line').length
+    const plain = sockShapes({pe: false}),
+        pe = sockShapes({pe: true}),
+        kid = sockShapes({pe: true, kid: true})
+    expect(lines(pe)).toBe(lines(plain) + 1)
+    expect(lines(kid)).toBe(lines(pe) + 2)
+    expect(sockShapes({n: 3})).toContainEqual(expect.objectContaining({s: '3'}))
+    const h = sockShapes({kid: true, n: 3}, true)
+    expect(h.filter((s) => s.t === 'arc')).toHaveLength(3)
+    expect(h.filter((s) => s.t === 'arc').every((a) => a.cx + a.r <= 24)).toBe(true)
+    expect(sockShapes({h: true}, true)).toContainEqual(expect.objectContaining({s: 'h'}))
+    expect(sockShapes({h: true})).toContainEqual(expect.objectContaining({s: 'h'}))
+    expect(reach(sockShapes({n: 4}, true))).not.toBeNull()
+})
+test('stackOf only applies to sockets and multiplies the type count with p.aantal', () => {
+    expect(stackOf(typeOf({}, 'lichtpunt'), {aantal: 3})).toBeNull()
+    expect(stackOf(typeOf({}, 'stopcontact'))).toEqual({n: 1, hor: false})
+    expect(stackOf(typeOf({}, 'stopcontact2'), {aantal: 2})).toEqual({n: 4, hor: true})
+    expect(stackOf(typeOf({}, 'stopcontact'), {aantal: 2, hor: false})).toEqual({n: 2, hor: false})
+})
+test('symbols are drawn with round joins so lever and flag touch', () => {
+    const {container} = render(<svg><Sym shapes={typeOf({}, 'schakelaar').shapes} /></svg>)
+    expect(container.querySelector('g').getAttribute('stroke-linejoin')).toBe('round')
+    expect(container.querySelector('g').getAttribute('stroke-linecap')).toBe('round')
 })

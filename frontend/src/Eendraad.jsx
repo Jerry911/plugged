@@ -5,6 +5,7 @@ import {allTypes, Sym, typeOf} from './symbols'
 import {BoardSheet} from './Board.jsx'
 import {defaultProps, infoOf, nextLetter, sheetPlan} from './boardModel'
 import {flat, nameOf, reid, uid} from './util'
+import {ZOOMS} from './Situatie.jsx'
 
 export const upd = (ns, id, f) => ns.flatMap((n) => (n.id === id ? f(n) : [{...n, children: upd(n.children, id, f)}]))
 export const find = (ns, id) => {
@@ -66,7 +67,8 @@ export default function Eendraad({p, setP, idx, focus, onFooter}) {
         T = allTypes(p),
         [sel, setSel] = useState(null),
         [free, setFree] = useState(false),
-        [q, setQ] = useState('')
+        [q, setQ] = useState(''),
+        [zoom, setZoom] = useState(1)
     useEffect(() => {
         focus && setSel(focus.id)
     }, [focus])
@@ -229,18 +231,45 @@ export default function Eendraad({p, setP, idx, focus, onFooter}) {
             </div>
             <div className="main">
                 {plan.map((e) => (
-                    <BoardSheet
+                    <div
                         key={e.no}
-                        p={p}
-                        pg={pg}
-                        b={e.b}
-                        sl={e.sl}
-                        no={e.no}
-                        total={e.total}
-                        sel={sel}
-                        onSel={setSel}
-                        onFooter={onFooter}
-                    />
+                        style={{position: 'relative', maxWidth: 1100, width: zoom < 1 ? `${zoom * 100}%` : '100%', marginBottom: 10}}
+                    >
+                        <div className="zoomscroll" style={{overflow: 'auto', maxHeight: zoom > 1 ? '82vh' : 'none'}}>
+                            <div style={{width: `${Math.max(zoom, 1) * 100}%`}}>
+                                <BoardSheet
+                                    p={p}
+                                    pg={pg}
+                                    b={e.b}
+                                    sl={e.sl}
+                                    no={e.no}
+                                    total={e.total}
+                                    sel={sel}
+                                    onSel={setSel}
+                                    onFooter={onFooter}
+                                />
+                            </div>
+                        </div>
+                        <div className="ui zoomctl inset" style={{right: zoom > 1 ? 24 : 8}}>
+                            <button
+                                title="Uitzoomen"
+                                disabled={zoom <= ZOOMS[0]}
+                                onClick={() => setZoom((z) => ZOOMS[Math.max(0, ZOOMS.indexOf(z) - 1)])}
+                            >
+                                −
+                            </button>
+                            <button title="Zoom terugzetten (100%)" onClick={() => setZoom(1)}>
+                                {Math.round(zoom * 100)}%
+                            </button>
+                            <button
+                                title="Inzoomen"
+                                disabled={zoom >= ZOOMS.at(-1)}
+                                onClick={() => setZoom((z) => ZOOMS[Math.min(ZOOMS.length - 1, ZOOMS.indexOf(z) + 1)])}
+                            >
+                                +
+                            </button>
+                        </div>
+                    </div>
                 ))}
             </div>
         </div>

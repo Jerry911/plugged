@@ -1,3 +1,33 @@
 /* PDF export and printing */
-.export{position:absolute;left:-9999px;top:0;width:1100px}
-@media print{.ui{display:none!important}.export{position:static!important;width:auto!important}.export .sheet{display:block;width:297mm;height:210mm;max-width:none;border:0;box-shadow:none;page-break-after:always}@page{size:A4 landscape;margin:0}}
+.export {
+    position: absolute;
+    left: -9999px;
+    top: 0;
+    width: 1100px
+}
+
+@media print {
+    .ui {
+        display: none !important
+    }
+
+    .export {
+        position: static !important;
+        width: auto !important
+    }
+
+    .export .sheet {
+        display: block;
+        width: 297mm;
+        height: 210mm;
+        max-width: none;
+        border: 0;
+        box-shadow: none;
+        page-break-after: always
+    }
+
+    @page {
+        size: A4 landscape;
+        margin: 0
+    }
+}

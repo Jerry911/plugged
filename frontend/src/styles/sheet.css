@@ -1,11 +1,76 @@
 /* Drawing sheets and the overlays on top of them */
-.sheet{width:100%;max-width:1100px;background:#fff;border:1px solid #888;box-shadow:0 2px 8px #0003}
-.sheetbar{display:flex;gap:8px;align-items:center;margin:0 0 6px}
-.fcell{fill:transparent;cursor:pointer}
-.fcell:hover{fill:#ffd54a;fill-opacity:.45}
-.gridsel{position:absolute;right:2%;bottom:13%;background:#fffe;padding:2px 6px;border:1px solid #666;border-radius:4px;font-size:12px}
-.zoomscroll .sheet{max-width:none}
-.zoomctl{position:absolute;top:6px;right:20px;display:flex;gap:2px;background:#fffe;border:1px solid #666;border-radius:4px;padding:2px}
-.zoomctl button{min-width:30px}
-.dimbox{position:absolute;left:50%;bottom:14%;transform:translateX(-50%);background:#fffe;border:1px solid #0a6cff;border-radius:4px;padding:3px 6px;font-size:13px}
-.dimbox input.bad{outline:2px solid #c62828}
+.sheet {
+    width: 100%;
+    max-width: 1100px;
+    background: #fff;
+    border: 1px solid #888;
+    box-shadow: 0 2px 8px #0003
+}
+
+.sheetbar {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin: 0 0 6px
+}
+
+.fcell {
+    fill: transparent;
+    cursor: pointer
+}
+
+.fcell:hover {
+    fill: #ffd54a;
+    fill-opacity: .45
+}
+
+.gridsel {
+    position: absolute;
+    right: 2%;
+    bottom: 13%;
+    background: #fffe;
+    padding: 2px 6px;
+    border: 1px solid #666;
+    border-radius: 4px;
+    font-size: 12px
+}
+
+.zoomscroll .sheet {
+    max-width: none
+}
+
+.zoomctl {
+    position: absolute;
+    top: 6px;
+    right: 20px;
+    display: flex;
+    gap: 2px;
+    background: #fffe;
+    border: 1px solid #666;
+    border-radius: 4px;
+    padding: 2px
+}
+
+.zoomctl button {
+    min-width: 30px
+}
+
+.dimbox {
+    position: absolute;
+    left: 50%;
+    bottom: 14%;
+    transform: translateX(-50%);
+    background: #fffe;
+    border: 1px solid #0a6cff;
+    border-radius: 4px;
+    padding: 3px 6px;
+    font-size: 13px
+}
+
+.dimbox input.bad {
+    outline: 2px solid #c62828
+}
+
+.zoomctl.inset {
+    top: 14px
+}

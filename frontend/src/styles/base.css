@@ -1,2 +1,5 @@
 /* Global resets and typography */
-body{margin:0;font:14px system-ui,sans-serif}
+body {
+    margin: 0;
+    font: 14px system-ui, sans-serif
+}

@@ -118,12 +118,10 @@ test('footer from owner lines and info', () => {
     expect(edsToProject({data: []}).footer).toEqual({})
     expect(edsToProject({data: [], properties: {owner: 'Alleen naam'}}).footer).toEqual({eigenaar: 'Alleen naam'})
 })
-test('situatieschema symbols are mapped, snapped, clamped and filtered', () => {
-    const it = edsToProject(J()).sit[0].items
-    expect(it).toHaveLength(2)
-    expect(it[0]).toMatchObject({kind: 'sym', node: 'e7', x: 25, y: 50, r: 90, s: 7})
-    expect(it[1]).toMatchObject({node: 'e8', x: 280, y: 175, r: 0})
-    expect(edsToProject({data: []}).sit[0].items).toEqual([])
+test('only the eendraadschema is imported: the situatieschema is ignored', () => {
+    const r = edsToProject(J())
+    expect(r.sit).toBeUndefined()
+    expect(Object.keys(r).sort()).toEqual(['een', 'footer', 'stats'])
 })
 test('importEds decodes and converts; imported schema verifies without errors', () => {
     const r = importEds(enc(J()))

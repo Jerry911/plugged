@@ -25,19 +25,19 @@ const norm = (d) =>
     d.een
         ? {...init, ...d}
         : {
-              ...init,
-              footer: {...init.footer, ...d.footer},
-              custom: d.custom || [],
-              een: [{id: uid(), name: 'Blad 1', tree: d.tree || []}],
-              sit: [
-                  {
-                      id: uid(),
-                      name: 'Plattegrond 1',
-                      walls: d.plan?.walls || [],
-                      items: (d.plan?.items || []).map((i) => ({...i, r: i.r ?? i.a ?? 0})),
-                  },
-              ],
-          }
+            ...init,
+            footer: {...init.footer, ...d.footer},
+            custom: d.custom || [],
+            een: [{id: uid(), name: 'Blad 1', tree: d.tree || []}],
+            sit: [
+                {
+                    id: uid(),
+                    name: 'Plattegrond 1',
+                    walls: d.plan?.walls || [],
+                    items: (d.plan?.items || []).map((i) => ({...i, r: i.r ?? i.a ?? 0})),
+                },
+            ],
+        }
 const PageBar = ({p, setP, k, idx, setIdx}) => {
     const L = p[k],
         set = (l) => setP({...p, [k]: l}),
@@ -189,7 +189,8 @@ export default function App() {
     const importEdsText = (t) => {
         try {
             const r = importEds(t)
-            setP((cur) => ({...cur, een: r.een, sit: r.sit, footer: {...cur.footer, ...r.footer}}))
+            // the situatieschema is not imported: keep the pages and walls, but drop symbols that pointed to the replaced nodes
+            setP((cur) => ({...cur, een: r.een, sit: cur.sit.map((g) => ({...g, items: []})), footer: {...cur.footer, ...r.footer}}))
             setEi(0)
             setSi(0)
             setMsg(

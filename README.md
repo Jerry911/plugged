@@ -21,7 +21,7 @@ Limits are guideline values in `LIMITS` (rules.js): verify them against the curr
 ## Eendraadschema layout and EDS import
 - The eendraadschema is drawn like the original tool: a horizontal bus with the kWh meter, main differential and earth below it, and circuits placed from left to right (each circuit gets as much width as its elements need). When a sheet is full the next circuits continue on the next A4 sheet ("vervolg op blad N").
 - New projects start with an aansluiting (kWh meter, 4P 40A 300 mA differential) and a geaard verdeelbord. Choose "Kring (automaat)" in the palette to append a circuit; elements are added to the selected circuit (or to the last one).
-- **EDS ↑** in the header imports a file exported from https://eendraadschema.goethals-jacobs.be/ (circuits, elements, owner/address for the footer and the symbols on the situatieschema). Unknown element types become "Vrij element"; the import message lists them.
+- **EDS ↑** in the header imports a file exported from https://eendraadschema.goethals-jacobs.be/ (circuits, elements and owner/address for the footer; the situatieschema in the file is not imported, existing situatieschema pages and walls are kept and their symbols are cleared). Unknown element types become "Vrij element"; the import message lists them.
 
 ## Build, tests and Docker
 - `cd backend && mvn clean install` builds everything: it installs Node 22 locally (into `frontend/node`), runs `npm ci`, builds the React app into the jar, runs the backend tests **and the frontend tests** (`npm test`), then enforces the JaCoCo gate.

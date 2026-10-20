@@ -1,6 +1,7 @@
 // Copyright 2026 Pleysier Jeroen
 // SPDX-License-Identifier: AGPL-3.0-only
 // Import of files exported by https://eendraadschema.goethals-jacobs.be/ (.eds = "EDS004" header + base64(zlib(JSON))).
+// Only the eendraadschema (circuits, elements) and the owner/address footer are imported; the situatieschema (sitplanjson) is ignored.
 import pako from 'pako'
 import {infoOf} from './boardModel'
 import {uid} from './util'
@@ -127,23 +128,9 @@ export function edsToProject(j) {
         footer.gemeente = c[2]
     }
     if (pr.info) footer.stelsel = pr.info
-    const K = 0.26,
-        cl = (v, lo, hi) => Math.min(hi, Math.max(lo, Math.round((v * K) / 5) * 5))
-    const items = ((j.sitplanjson && j.sitplanjson.elements) || [])
-        .filter((e) => by.has(Number(e.electroItemId)))
-        .map((e, i) => ({
-            id: 'i' + i,
-            kind: 'sym',
-            node: 'e' + e.electroItemId,
-            x: cl(Number(e.posx), 10, 280),
-            y: cl(Number(e.posy), 10, 175),
-            r: Number(e.rotate) || 0,
-            s: 7,
-        }))
     const unknown = [...new Set(rows.map((r) => r.props.type).filter((t) => !MAP[t]))]
     return {
         een: [{id: uid(), name: 'Blad 1', tree}],
-        sit: [{id: uid(), name: 'Situatieschema', walls: [], items}],
         footer,
         stats: {nodes: count(tree), circuits: rows.filter((r) => r.props.type === 'Kring').length, unknown},
     }

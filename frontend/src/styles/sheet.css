@@ -41,8 +41,8 @@
 
 .zoomctl {
     position: absolute;
-    top: 6px;
-    right: 20px;
+    top: 1.8em;
+    right: 1.7em;
     display: flex;
     gap: 2px;
     background: #fffe;
@@ -69,8 +69,4 @@
 
 .dimbox input.bad {
     outline: 2px solid #c62828
-}
-
-.zoomctl.inset {
-    top: 14px
 }

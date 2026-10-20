@@ -233,8 +233,7 @@ export default function Eendraad({p, setP, idx, focus, onFooter}) {
                 {plan.map((e) => (
                     <div
                         key={e.no}
-                        style={{position: 'relative', maxWidth: 1100, width: zoom < 1 ? `${zoom * 100}%` : '100%', marginBottom: 10}}
-                    >
+                        style={{position: 'relative', width: zoom < 1 ? `${zoom * 100}%` : '100%', marginBottom: 10}}>
                         <div className="zoomscroll" style={{overflow: 'auto', maxHeight: zoom > 1 ? '82vh' : 'none'}}>
                             <div style={{width: `${Math.max(zoom, 1) * 100}%`}}>
                                 <BoardSheet
@@ -250,7 +249,7 @@ export default function Eendraad({p, setP, idx, focus, onFooter}) {
                                 />
                             </div>
                         </div>
-                        <div className="ui zoomctl inset" style={{right: zoom > 1 ? 24 : 8}}>
+                        <div className="ui zoomctl inset">
                             <button
                                 title="Uitzoomen"
                                 disabled={zoom <= ZOOMS[0]}

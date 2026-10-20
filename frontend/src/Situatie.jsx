@@ -674,18 +674,6 @@ export default function Situatie({p, setP, idx, onFooter}) {
                 </div>
             </div>
             <div className="main">
-                <div className="tb ui sheetbar">
-                    <button className="danger" disabled={!sel.length} onClick={removeSel}>
-                        🗑 Verwijder (Del)
-                    </button>
-                    <span>
-                        {sel.length > 1
-                            ? `${sel.length} elementen geselecteerd: Del verwijdert, pijltjes verplaatsen`
-                            : sel.length
-                              ? 'Selectie actief: Del verwijdert, pijltjes verplaatsen'
-                              : 'Kies "Selecteer" en klik een element of sleep een kader om te selecteren'}
-                    </span>
-                </div>
                 <div style={{position: 'relative', maxWidth: panelOpen ? 1100 : 1480}}>
                     <div className="zoomscroll" style={{overflow: 'auto', maxHeight: zoom > 1 ? '82vh' : 'none'}}>
                         <div style={{width: `${zoom * 100}%`}}>

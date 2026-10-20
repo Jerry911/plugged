@@ -228,12 +228,6 @@ export default function Eendraad({p, setP, idx, focus, onFooter}) {
                 )}
             </div>
             <div className="main">
-                <div className="tb ui sheetbar">
-                    <button className="danger" disabled={!s} onClick={remove}>
-                        🗑 Verwijder (Del)
-                    </button>
-                    <span>{s ? `Selectie: ${nameOf(p, s)}` : 'Klik een element in de opbouw of in de tekening om het te selecteren'}</span>
-                </div>
                 {plan.map((e) => (
                     <BoardSheet
                         key={e.no}

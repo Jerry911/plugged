@@ -10,12 +10,10 @@
 }
 
 .pal button {
-    display: flex;
-    gap: 6px;
     align-items: center;
-    width: 100%;
-    margin: 2px 0;
-    text-align: left
+    width: 15%;
+    margin: 1em 0.5em 0 0;
+    text-align: center
 }
 
 .danger {
@@ -54,7 +52,7 @@
 }
 
 .tree {
-    max-height: 60vh;
+    max-height: 25vh;
     overflow: auto
 }
 

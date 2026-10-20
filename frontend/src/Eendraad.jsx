@@ -166,7 +166,7 @@ export default function Eendraad({p, setP, idx, focus, onFooter}) {
                     const Ls = T.filter((t) => t.cat === c && t.name.toLowerCase().includes(q.toLowerCase()))
                     return (
                         Ls.length > 0 && (
-                            <details key={c} open={!!q || c === T[0].cat}>
+                            <details key={c} open={!!q}>
                                 <summary>
                                     <b>{c}</b>
                                 </summary>

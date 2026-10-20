@@ -29,6 +29,12 @@ Limits are guideline values in `LIMITS` (rules.js): verify them against the curr
 - Drawing and dragging snap to the grid points (grid size selectable bottom right; a blue marker shows the snapped point, with a preview for walls and rooms). Tick **Vrij tekenen** (bottom right, off by default) to draw at any position.
 - Zoom with the − / % / + buttons in the top right of the drawing (50%–400%); click the percentage to reset.
 
+## Situatieschema: selecting, dimensions and layout
+- **Right click** cancels what you are drawing and switches back to *Selecteer*.
+- **Select**: click an element (hit areas are generous) or drag a box on an empty spot to select everything it touches; Shift adds/toggles. A selection moves (drag, arrow keys), rotates (R), duplicates and is deleted (Del or the trash button at the top right of the selection) as one group.
+- **Dimensions**: lengths are shown along the walls, computed from the footer scale (`1:50` by default). The **Maten** button (top right of the drawing) shows/hides them; the setting is stored per sheet and also applies to PDF/print. While drawing a wall or room you can type its size and press Enter: `3,5` or `350cm` for a wall, `4x3,5` for a room (metres unless you add `cm`/`mm`); the direction follows the cursor. Selected walls and doors/windows have a length/width field.
+- The **Nergens geplaatst** list lives in a panel right of the drawing; collapse it with the `>` button and the drawing takes the extra width.
+
 ## Shortcuts and editing
 - **Del / Backspace**: delete the selected node (eendraadschema) or wall/symbol (situatieschema); there is also a red "Verwijder (Del)" button above each sheet.
 - **Ctrl/Cmd+Z**: undo, **Ctrl/Cmd+Y** or **Ctrl/Cmd+Shift+Z**: redo (also buttons in the header; changes made within 0.5 s, like typing or dragging, form one step; 100 steps are kept).

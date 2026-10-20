@@ -131,6 +131,28 @@ export default function Eendraad({p, setP, idx, focus, onFooter}) {
                 return [{...x, p: np, ...(x.type === 'kring' ? {info: infoOf(np)} : {})}]
             }),
         )
+    // change the type of the selected element; the name follows when it was still the default one
+    const changeType = (k) =>
+        set(
+            upd(tree, s.id, (x) => {
+                const old = typeOf(p, x.type),
+                    nu = typeOf(p, k)
+                return [{...x, type: k, label: !x.label || x.label === old.name ? nu.name : x.label}]
+            }),
+        )
+    // the types the selected element can become: same kind (not a distribution part) that fits under its parent
+    const parentOf = (ns, id, par = null) => {
+        for (const n of ns) {
+            if (n.id === id) return par
+            const r = parentOf(n.children, id, n)
+            if (r !== undefined) return r
+        }
+    }
+    const swapTypes = (() => {
+        if (!s || DIST.includes(s.type)) return []
+        const par = parentOf(tree, s.id)
+        return T.filter((t) => t.place && !DIST.includes(t.k) && (t.k === s.type || free || !par || t.parents.includes(par.type)))
+    })()
     const rows = (ns, d = 0) =>
         ns.flatMap((n) => [
             <div
@@ -194,6 +216,32 @@ export default function Eendraad({p, setP, idx, focus, onFooter}) {
                                 onChange={(e) => set(upd(tree, s.id, (x) => [{...x, label: e.target.value}]))}
                                 style={{width: '100%', boxSizing: 'border-box'}}
                             />
+                        </label>
+                        <label>
+                            Type
+                            <select
+                                aria-label="Type"
+                                value={s.type}
+                                disabled={!swapTypes.length}
+                                onChange={(e) => changeType(e.target.value)}
+                                style={{width: '100%', boxSizing: 'border-box'}}
+                            >
+                                {swapTypes.length ? (
+                                    [...new Set(swapTypes.map((t) => t.cat))].map((c) => (
+                                        <optgroup key={c} label={c}>
+                                            {swapTypes
+                                                .filter((t) => t.cat === c)
+                                                .map((t) => (
+                                                    <option key={t.k} value={t.k}>
+                                                        {t.name}
+                                                    </option>
+                                                ))}
+                                        </optgroup>
+                                    ))
+                                ) : (
+                                    <option value={s.type}>{typeOf(p, s.type).name}</option>
+                                )}
+                            </select>
                         </label>
                         {s.type === 'bord' && (
                             <label>

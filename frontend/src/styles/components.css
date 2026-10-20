@@ -10,6 +10,15 @@
 }
 
 .pal button {
+    display: flex;
+    gap: 6px;
+    width: 100%;
+    margin: 2px 0;
+    text-align: left
+}
+
+.pal .tb button {
+    display: inline;
     align-items: center;
     width: 15%;
     margin: 1em 0.5em 0 0;

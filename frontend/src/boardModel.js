@@ -158,6 +158,24 @@ function node(p, n, x, y, out) {
     }
     return {r, top, bot}
 }
+// Bounding box [x1, y1, x2, y2] of a drawn item (text sizes are estimated), used to pack circuits tighter.
+const box = (it) => {
+    if (it.k === 'line') return [Math.min(it.x1, it.x2) - 2, Math.min(it.y1, it.y2) - 2, Math.max(it.x1, it.x2) + 2, Math.max(it.y1, it.y2) + 2]
+    if (it.k === 'rect') return [it.x - 2, it.y - 2, it.x + it.w + 2, it.y + it.h + 2]
+    if (it.k === 'sym') return [it.x - SYM / 2 - 4, it.y - SYM / 2 - 4, it.x + SYM / 2 + 4, it.y + SYM / 2 + 4]
+    if (it.k !== 'text') return null
+    const size = it.size || 13,
+        w = String(it.s ?? '').length * size * (it.bold ? 0.7 : 0.62),
+        up = size * 0.85,
+        dn = size * 0.3
+    if (it.rot) {
+        // rotated -90 degrees: the text runs upwards from (x, y)
+        const [a, b] = it.anchor === 'middle' ? [it.y - w / 2, it.y + w / 2] : it.anchor === 'end' ? [it.y, it.y + w] : [it.y - w, it.y]
+        return [it.x - up, a, it.x + dn, b]
+    }
+    const [a, b] = it.anchor === 'middle' ? [it.x - w / 2, it.x + w / 2] : it.anchor === 'end' ? [it.x - w, it.x] : [it.x, it.x + w]
+    return [a, it.y - up, b, it.y + dn]
+}
 export function circuit(p, n) {
     const out = [],
         pr = n.p || {},
@@ -208,17 +226,44 @@ export function board(p, pg) {
                         : [],
         )
     const cs = bus ? circs(bus) : []
-    let x = BUSX0
-    const circuits = cs.map((c) => {
+    // Circuits are placed left to right. A circuit that is lower than the overhang of earlier circuits on the same sheet
+    // (their wide rows sit higher up) slides left underneath that overhang, which saves width (and sometimes a whole sheet).
+    // Without such an overhang the spacing is exactly `previous width + SP`. `brk` marks the first circuit of a new sheet.
+    let x0 = 0,
+        right = 0,
+        placed = []
+    const circuits = cs.map((c, i) => {
         const l = circuit(p, c),
-            o = {...l, x}
-        x += l.w + SP
-        return o
+            bx = l.items.map(box).filter(Boolean),
+            px = bx.reduce((a, b) => Math.max(a, b[2]), 0),
+            m = {x: 0, bx, pad: Math.max(0, l.w - px)}
+        let x = i ? right + SP : BUSX0,
+            brk = false
+        if (placed.length) {
+            let lo = placed.at(-1).x + SP
+            for (const q of placed) {
+                let reach = -Infinity
+                for (const b of q.bx) if (b[3] >= l.minY - 12 && b[1] <= 6) reach = Math.max(reach, b[2])
+                if (reach > -Infinity) lo = Math.max(lo, q.x + reach + q.pad + SP)
+            }
+            x = Math.min(x, lo)
+            if (Math.max(right, x + l.w) - x0 > MAXW) {
+                x = right + SP
+                x0 = x - 10
+                placed = []
+                brk = true
+            }
+        }
+        m.x = x
+        placed.push(m)
+        right = brk || i === 0 ? x + l.w : Math.max(right, x + l.w)
+        return {...l, x, brk}
     })
-    const q = root?.p
+    const end = cs.length ? right + SP : BUSX0,
+        q = root?.p
     return {
         circuits,
-        end: x,
+        end,
         bus,
         head: {
             q,
@@ -232,12 +277,12 @@ export function slices(b) {
     const out = []
     let cur = null
     b.circuits.forEach((c, i) => {
-        if (!cur || (c.x + c.w - cur.x0 > MAXW && cur.to > cur.from)) {
+        if (!cur || c.brk) {
             cur = {from: i, to: i, x0: cur ? c.x - 10 : 0, x1: 0, minY: -120}
             out.push(cur)
         }
         cur.to = i + 1
-        cur.x1 = c.x + c.w
+        cur.x1 = Math.max(cur.x1, c.x + c.w)
         cur.minY = Math.min(cur.minY, c.minY)
     })
     if (!out.length) out.push({from: 0, to: 0, x0: 0, x1: 0, minY: -120})

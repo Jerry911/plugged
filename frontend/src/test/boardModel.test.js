@@ -13,6 +13,7 @@ import {
     numbering,
     MAXW,
     SP,
+    SYM,
     BUSX0,
 } from '../boardModel.js'
 import {base, node} from './utils.jsx'
@@ -203,6 +204,37 @@ test('scoped sheetPlan numbers eendraad sheets and situatie pages separately', (
         [2, 2],
     ])
     expect(numbering(p, p.een[1])).toEqual({no: een.length, total: een.length})
+})
+const symBoxes = (c) => c.items.filter((i) => i.k === 'sym').map((i) => [c.x + i.x - SYM / 2, i.y - SYM / 2, c.x + i.x + SYM / 2, i.y + SYM / 2]),
+    overlap = (a, b) => a[0] < b[2] && b[0] < a[2] && a[1] < b[3] && b[1] < a[3]
+const tallWide = () =>
+    kring('M', [
+        ...['a', 'b', 'c', 'd', 'e', 'f'].map((id) => node(id, 'stopcontact')),
+        node('g', 'stopcontact', chain(5)),
+    ])
+test('a lower circuit slides left underneath the overhang of the previous one', () => {
+    const p = proj(tree([tallWide(), kring('N', [node('s', 'stopcontact'), node('t', 'stopcontact')])])),
+        b = board(p, p.een[0]),
+        [m, n] = b.circuits
+    expect(n.x).toBeLessThan(m.x + m.w + SP)
+    expect(n.x).toBeGreaterThan(m.x)
+    symBoxes(m).forEach((a) => symBoxes(n).forEach((c) => expect(overlap(a, c)).toBe(false)))
+    expect(b.end).toBe(Math.max(m.x + m.w, n.x + n.w) + SP)
+})
+test('a circuit that is as tall as the overhang is not tucked in', () => {
+    const p = proj(tree([tallWide(), kring('T', Array.from({length: 12}, (_, i) => node('t' + i, 'stopcontact')))])),
+        [m, n] = board(p, p.een[0]).circuits
+    expect(n.x).toBe(m.x + m.w + SP)
+})
+test('tucking in saves width so more circuits fit on a sheet', () => {
+    const ks = Array.from({length: 24}, (_, i) => (i % 2 ? kring('N' + i, [node('s', 'stopcontact')]) : tallWide()))
+    const p = proj(tree(ks)),
+        b = board(p, p.een[0]),
+        s = slices(b)
+    expect(s.map((x) => x.to - x.from).reduce((a, c) => a + c)).toBe(24)
+    s.forEach((x) => expect(x.x1 - x.x0).toBeLessThanOrEqual(MAXW + SP + 260))
+    const plain = b.circuits.reduce((a, c) => a + c.w + SP, 0)
+    expect(b.circuits.at(-1).x + b.circuits.at(-1).w).toBeLessThan(plain)
 })
 test('a sub-board directly under the bus is drawn as an unprotected column', () => {
     const p = proj(tree([node('S', 'subbord', [kring('k', [node('m', 'motor')])], {label: 'Veranda'}), kring('K2')]))

@@ -19,7 +19,7 @@ Checks: hierarchy, aansluiting/aarding present, kring under a differentieel, dif
 Limits are guideline values in `LIMITS` (rules.js): verify them against the current AREI before relying on them.
 
 ## Eendraadschema layout and EDS import
-- The eendraadschema is drawn like the original tool: a horizontal bus with the kWh meter, main differential and earth below it, and circuits placed from left to right (each circuit gets as much width as its elements need). When a sheet is full the next circuits continue on the next A4 sheet ("vervolg op blad N").
+- The eendraadschema is drawn like the original tool: a horizontal bus with the kWh meter, main differential and earth below it, and circuits placed from left to right (each circuit gets as much width as its elements need; a circuit that is lower than the overhang of the previous circuits slides left underneath it to save width and sheets). When a sheet is full the next circuits continue on the next A4 sheet ("vervolg op blad N").
 - New projects start with an aansluiting (kWh meter, 4P 40A 300 mA differential) and a geaard verdeelbord. Choose "Kring (automaat)" in the palette to append a circuit; elements are added to the selected circuit (or to the last one).
 - **EDS ↑** in the header imports a file exported from https://eendraadschema.goethals-jacobs.be/ (circuits, elements and owner/address for the footer; the situatieschema in the file is not imported, existing situatieschema pages and walls are kept and their symbols are cleared). Unknown element types become "Vrij element"; the import message lists them.
 

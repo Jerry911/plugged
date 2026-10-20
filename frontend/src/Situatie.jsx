@@ -656,6 +656,7 @@ export default function Situatie({p, setP, idx, onFooter}) {
                 )}
                 <div className="pal">
                     <b>Componenten ({placed} op dit blad)</b>
+                    <div className="pallist">
                     {nodes.map((n) => (
                         <button
                             key={n.id}
@@ -671,6 +672,7 @@ export default function Situatie({p, setP, idx, onFooter}) {
                             {unplaced.includes(n) ? '⚠' : '✓'} {nameOf(p, n)}
                         </button>
                     ))}
+                </div>
                 </div>
             </div>
             <div className="main">

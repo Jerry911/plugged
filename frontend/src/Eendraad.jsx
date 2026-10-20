@@ -6,6 +6,7 @@ import {BoardSheet} from './Board.jsx'
 import {defaultProps, infoOf, nextLetter, sheetPlan} from './boardModel'
 import {flat, nameOf, reid, uid} from './util'
 import {ZOOMS} from './Situatie.jsx'
+import ZoomPane from "./ZoomPane.jsx";
 
 export const upd = (ns, id, f) => ns.flatMap((n) => (n.id === id ? f(n) : [{...n, children: upd(n.children, id, f)}]))
 export const find = (ns, id) => {
@@ -36,7 +37,10 @@ export const indent = (ns, id) => {
 export const outdent = (ns, id) =>
     ns.flatMap((n) => {
         const c = n.children.find((x) => x.id === id)
-        return c ? [{...n, children: n.children.filter((x) => x !== c)}, c] : [{...n, children: outdent(n.children, id)}]
+        return c ? [{...n, children: n.children.filter((x) => x !== c)}, c] : [{
+            ...n,
+            children: outdent(n.children, id)
+        }]
     })
 const DIST = ['aansluiting', 'teller', 'hoofdschakelaar', 'bord', 'diff', 'kring', 'domotica', 'subbord']
 const FIELDS = {
@@ -136,7 +140,7 @@ export default function Eendraad({p, setP, idx, focus, onFooter}) {
                 onClick={() => setSel(n.id)}
             >
                 <svg width="20" height="20" viewBox="0 0 22 22">
-                    <Sym shapes={typeOf(p, n.type).shapes} x={11} y={11} s={20} />
+                    <Sym shapes={typeOf(p, n.type).shapes} x={11} y={11} s={20}/>
                 </svg>
                 <span>{nameOf(p, n)}</span>
                 <small style={{color: '#666'}}>{n.info}</small>
@@ -156,7 +160,7 @@ export default function Eendraad({p, setP, idx, focus, onFooter}) {
                     style={{width: '100%', boxSizing: 'border-box'}}
                 />
                 <label>
-                    <input type="checkbox" checked={free} onChange={(e) => setFree(e.target.checked)} /> Vrije hiërarchie
+                    <input type="checkbox" checked={free} onChange={(e) => setFree(e.target.checked)}/> Vrije hiërarchie
                 </label>
                 {[...new Set(T.map((t) => t.cat))].map((c) => {
                     const Ls = T.filter((t) => t.cat === c && t.name.toLowerCase().includes(q.toLowerCase()))
@@ -169,7 +173,7 @@ export default function Eendraad({p, setP, idx, focus, onFooter}) {
                                 {Ls.map((t) => (
                                     <button key={t.k} onClick={() => add(t)}>
                                         <svg width="20" height="20" viewBox="0 0 20 20">
-                                            <Sym shapes={t.shapes} x={10} y={10} s={18} />
+                                            <Sym shapes={t.shapes} x={10} y={10} s={18}/>
                                         </svg>
                                         {t.name}
                                     </button>
@@ -193,7 +197,8 @@ export default function Eendraad({p, setP, idx, focus, onFooter}) {
                         </label>
                         {s.type === 'bord' && (
                             <label>
-                                <input type="checkbox" checked={!!s.p?.geaard} onChange={(e) => setProp('geaard', e.target.checked)} />{' '}
+                                <input type="checkbox" checked={!!s.p?.geaard}
+                                       onChange={(e) => setProp('geaard', e.target.checked)}/>{' '}
                                 Geaard
                             </label>
                         )}
@@ -234,7 +239,7 @@ export default function Eendraad({p, setP, idx, focus, onFooter}) {
                     <div
                         key={e.no}
                         style={{position: 'relative', width: zoom < 1 ? `${zoom * 100}%` : '100%', marginBottom: 10}}>
-                        <div className="zoomscroll" style={{overflow: 'auto', maxHeight: zoom > 1 ? '82vh' : 'none'}}>
+                        <ZoomPane zoom={zoom} always>
                             <div style={{width: `${Math.max(zoom, 1) * 100}%`}}>
                                 <BoardSheet
                                     p={p}
@@ -248,7 +253,7 @@ export default function Eendraad({p, setP, idx, focus, onFooter}) {
                                     onFooter={onFooter}
                                 />
                             </div>
-                        </div>
+                        </ZoomPane>
                         <div className="ui zoomctl inset">
                             <button
                                 title="Uitzoomen"

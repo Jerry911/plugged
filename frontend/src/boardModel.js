@@ -78,9 +78,9 @@ const ext = (n) =>
             ? 300
             : 100
         : Math.max(
-              own(n),
-              n.children.reduce((a, c) => a + ext(c), 0),
-          )
+            own(n),
+            n.children.reduce((a, c) => a + ext(c), 0),
+        )
 function stack(p, kids, sx, y, out, stub, num) {
     let acc = 0,
         r = sx,
@@ -202,10 +202,10 @@ export function board(p, pg) {
             c.type === 'kring'
                 ? [c]
                 : c.type === 'subbord'
-                  ? [{id: c.id + '~', type: 'kring', label: '', info: '', p: {bescherming: 'geen'}, children: [c]}]
-                  : ['diff', 'zekering', 'hoofdschakelaar'].includes(c.type)
-                    ? circs(c)
-                    : [],
+                    ? [{id: c.id + '~', type: 'kring', label: '', info: '', p: {bescherming: 'geen'}, children: [c]}]
+                    : ['diff', 'zekering', 'hoofdschakelaar'].includes(c.type)
+                        ? circs(c)
+                        : [],
         )
     const cs = bus ? circs(bus) : []
     let x = BUSX0
@@ -249,7 +249,9 @@ export function slices(b) {
     })
     return out
 }
-export function sheetPlan(p) {
+// `scoped`: number the eendraad sheets and the situatieschema pages separately (as shown in their own tab: Blad 6/6 and Blad 1/1);
+// otherwise one continuous numbering over all printed sheets (PDF export).
+export function sheetPlan(p, scoped = false) {
     const plan = [
         ...p.een.flatMap((pg) => {
             const b = board(p, pg)
@@ -257,9 +259,14 @@ export function sheetPlan(p) {
         }),
         ...p.sit.map((pg) => ({kind: 'sit', pg})),
     ]
-    return plan.map((e, i) => ({...e, no: i + 1, total: plan.length}))
+    if (!scoped) return plan.map((e, i) => ({...e, no: i + 1, total: plan.length}))
+    const seen = {},
+        total = {}
+    plan.forEach((e) => (total[e.kind] = (total[e.kind] || 0) + 1))
+    return plan.map((e) => ({...e, no: (seen[e.kind] = (seen[e.kind] || 0) + 1), total: total[e.kind]}))
 }
+// numbering of a page within its own tab
 export const numbering = (p, pg) => {
-    const pl = sheetPlan(p)
-    return {no: pl.findIndex((e) => e.pg === pg) + 1, total: pl.length}
+    const e = sheetPlan(p, true).find((x) => x.pg === pg)
+    return e ? {no: e.no, total: e.total} : {no: 0, total: 0}
 }

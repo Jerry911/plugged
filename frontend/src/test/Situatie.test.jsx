@@ -224,7 +224,7 @@ test('footer page number counts all printed een sheets before the situatieschema
         ],
     }
     mount(Situatie, p, {idx: 0})
-    screen.getByText('Blad 3/3')
+    screen.getByText('Blad 1/1')
 })
 
 test('drawing snaps to grid points by default; free drawing is an opt-in checkbox', () => {

@@ -149,7 +149,7 @@ export default function Eendraad({p, setP, idx, focus, onFooter}) {
         ])
     const ob = (f) => () => set(f(tree, s.id)),
         fields = s && (FIELDS[s.type] || (['bord'].includes(s.type) ? [] : OTHER)),
-        plan = sheetPlan(p).filter((e) => e.kind === 'een' && e.pg === pg)
+        plan = sheetPlan(p, true).filter((e) => e.kind === 'een' && e.pg === pg)
     return (
         <div className="row">
             <div className="side ui pal">

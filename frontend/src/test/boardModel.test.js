@@ -184,8 +184,25 @@ test('sheetPlan numbers every printed sheet, een first then situatie', () => {
     expect(new Set(pl.map((e) => e.total))).toEqual(new Set([pl.length]))
     expect(pl.slice(-2).map((e) => e.kind)).toEqual(['sit', 'sit'])
     expect(pl.filter((e) => e.kind === 'een').at(-1).pg.id).toBe('e2')
-    expect(numbering(p, p.sit[1])).toEqual({no: pl.length, total: pl.length})
+    expect(numbering(p, p.sit[1])).toEqual({no: 2, total: 2})
     expect(numbering(p, p.een[0]).no).toBe(1)
+})
+test('scoped sheetPlan numbers eendraad sheets and situatie pages separately', () => {
+    const p = proj(tree(Array.from({length: 40}, (_, i) => kring('K' + i, chain(1)))))
+    p.een.push({id: 'e2', name: '2', tree: []})
+    p.sit.push({id: 's2', name: 'S2', walls: [], items: []})
+    const all = sheetPlan(p),
+        pl = sheetPlan(p, true),
+        een = pl.filter((e) => e.kind === 'een'),
+        sit = pl.filter((e) => e.kind === 'sit')
+    expect(een.map((e) => e.no)).toEqual(een.map((_, i) => i + 1))
+    expect(new Set(een.map((e) => e.total))).toEqual(new Set([een.length]))
+    expect(een.length + sit.length).toBe(all.length)
+    expect(sit.map((e) => [e.no, e.total])).toEqual([
+        [1, 2],
+        [2, 2],
+    ])
+    expect(numbering(p, p.een[1])).toEqual({no: een.length, total: een.length})
 })
 test('a sub-board directly under the bus is drawn as an unprotected column', () => {
     const p = proj(tree([node('S', 'subbord', [kring('k', [node('m', 'motor')])], {label: 'Veranda'}), kring('K2')]))

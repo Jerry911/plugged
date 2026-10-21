@@ -61,6 +61,7 @@ const ICONS = {
     outdent: <Ico><path d="M21 6H11"/><path d="M21 12h-6"/><path d="M21 18H11"/><path d="M7 8l-4 4 4 4"/></Ico>,
     indent: <Ico><path d="M21 6H11"/><path d="M21 12h-6"/><path d="M21 18H11"/><path d="M3 8l4 4-4 4"/></Ico>,
     ccw: <Ico><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></Ico>,
+    trash: <Ico><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></Ico>,
     cw: <Ico><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 4v5h-5"/></Ico>,
 }
 const DIST = ['aansluiting', 'teller', 'hoofdschakelaar', 'bord', 'diff', 'kring', 'domotica', 'subbord']
@@ -225,12 +226,20 @@ export default function Eendraad({p, setP, idx, focus, onFooter}) {
                         )
                     )
                 })}
-                <br/>
-                <b>Opbouw</b>
-                <div className="tree">{rows(tree)}</div>
                 {s && (
                     <div className="warn">
-                        <div><b>Eigenschappen</b></div>
+                        <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+                            <b>Eigenschappen</b>
+                            <button
+                                id="eds-close"
+                                title="Eigenschappen sluiten"
+                                aria-label="Eigenschappen sluiten"
+                                style={{display: 'inline-flex', width: 'auto', padding: '2px 7px'}}
+                                onClick={() => setSel(null)}
+                            >
+                                ✕
+                            </button>
+                        </div>
                         <label>
                             {s.type === 'kring' ? 'Letter' : 'Tekst'}
                             <input
@@ -342,6 +351,14 @@ export default function Eendraad({p, setP, idx, focus, onFooter}) {
                                 ⧉
                             </button>
                             <button
+                                id="eds-delete"
+                                title="Verwijderen (met onderliggende elementen)"
+                                aria-label="Verwijderen"
+                                onClick={remove}
+                            >
+                                {ICONS.trash}
+                            </button>
+                            <button
                                 id="eds-rotate-ccw"
                                 title={`Symbool ${ROT_STEP}° tegen de klok in draaien`}
                                 aria-label="Tegen de klok in draaien"
@@ -363,6 +380,9 @@ export default function Eendraad({p, setP, idx, focus, onFooter}) {
                         </div>
                     </div>
                 )}
+                <br/>
+                <b>Opbouw</b>
+                <div className="tree">{rows(tree)}</div>
             </div>
             <div className="main">
                 {plan.map((e) => (
@@ -381,6 +401,7 @@ export default function Eendraad({p, setP, idx, focus, onFooter}) {
                                     sel={sel}
                                     onSel={setSel}
                                     onFooter={onFooter}
+                                    onDelete={remove}
                                 />
                             </div>
                         </ZoomPane>

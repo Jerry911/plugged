@@ -5,13 +5,35 @@ import {Sheet} from './Footer'
 import {BUSX0, U} from './boardModel'
 
 const B = '#0a6cff'
-const Item = ({it, sel, onSel}) => {
+// small trash can in the top right corner of the selected element (only when the sheet is given an onDelete handler)
+const Trash = ({x, y, onDelete}) => (
+    <g
+        id="eds-drawing-delete"
+        style={{cursor: 'pointer'}}
+        onClick={(e) => {
+            e.stopPropagation()
+            onDelete()
+        }}
+    >
+        <title>Verwijderen</title>
+        <circle cx={x} cy={y} r="10" fill="#fff" stroke="#c0392b" strokeWidth="1.5" />
+        <g transform={`translate(${x},${y}) scale(0.62) translate(-12,-12)`} fill="none" stroke="#c0392b" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M3 6h18" />
+            <path d="M8 6V4h8v2" />
+            <path d="M19 6l-1 14H6L5 6" />
+            <path d="M10 11v6" />
+            <path d="M14 11v6" />
+        </g>
+    </g>
+)
+const Item = ({it, sel, onSel, onDelete}) => {
     const on = sel && it.id === sel,
         c = on ? B : '#000',
         h = it.id && onSel ? {onClick: () => onSel(it.id), style: {cursor: 'pointer'}} : {}
     if (it.k === 'line') return <line x1={it.x1} y1={it.y1} x2={it.x2} y2={it.y2} stroke="#000" strokeWidth="2" />
     if (it.k === 'sym')
         return (
+            <>
             <g {...h}>
                 <rect x={it.x - 30} y={it.y - 30} width="60" height="60" fill="transparent" />
                 {it.r ? (
@@ -22,9 +44,12 @@ const Item = ({it, sel, onSel}) => {
                     <Sym shapes={it.shapes} x={it.x} y={it.y} s={it.s} stroke={c} />
                 )}
             </g>
+            {on && onDelete && <Trash x={it.x + 30} y={it.y - 30} onDelete={onDelete} />}
+            </>
         )
     if (it.k === 'rect')
         return (
+            <>
             <rect
                 {...h}
                 x={it.x}
@@ -35,6 +60,8 @@ const Item = ({it, sel, onSel}) => {
                 stroke={c}
                 strokeWidth={it.id ? 3 : 1.5}
             />
+            {on && onDelete && <Trash x={it.x + it.w} y={it.y} onDelete={onDelete} />}
+            </>
         )
     return (
         <text
@@ -102,7 +129,7 @@ const Head = ({h}) => (
 )
 // Width of the head (kWh meter, earth, main differential) in drawing units; it is repeated at the left of every sheet.
 const HEADW = 262
-export const BoardSheet = ({p, pg, b, sl, no, total, sel, onSel, onFooter}) => {
+export const BoardSheet = ({p, pg, b, sl, no, total, sel, onSel, onFooter, onDelete}) => {
     const W = Math.max(1, sl.x1 - sl.x0),
         s = Math.min(U, 277 / W, 135 / Math.max(1, -sl.minY)),
         y = Math.min(147, 12 + -sl.minY * s),
@@ -120,7 +147,7 @@ export const BoardSheet = ({p, pg, b, sl, no, total, sel, onSel, onFooter}) => {
                 {b.circuits.slice(sl.from, sl.to).map((c) => (
                     <g key={c.n.id} transform={`translate(${c.x},0)`}>
                         {c.items.map((it, i) => (
-                            <Item key={i} it={it} sel={sel} onSel={onSel} />
+                            <Item key={i} it={it} sel={sel} onSel={onSel} onDelete={onDelete} />
                         ))}
                     </g>
                 ))}

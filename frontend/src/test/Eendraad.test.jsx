@@ -101,6 +101,38 @@ test('a turned symbol is drawn turned in the schema', () => {
     const {container} = mount(Eendraad, {...base(), een: [{id: 'e1', name: 'x', tree: t}]}, {idx: 0})
     expect(container.querySelector('svg.sheet g[transform^="rotate(90 "]')).toBeInTheDocument()
 })
+test('Eigenschappen sits above Opbouw and can be closed with the cross', () => {
+    mount(Eendraad, withTree([node('Aa', 'bord'), node('Cc', 'bord')]), {idx: 0})
+    expect(btn('eds-close')).toBeNull()
+    fireEvent.click(row('Cc'))
+    const eig = screen.getByText('Eigenschappen'),
+        opb = screen.getByText('Opbouw')
+    expect(eig.compareDocumentPosition(opb) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    fireEvent.click(btn('eds-close'))
+    expect(screen.queryByText('Eigenschappen')).toBeNull()
+    expect(selected()).toBeNull()
+})
+test('trash button in the toolbar deletes the selected element with its children', () => {
+    const {spy} = mount(Eendraad, withTree([node('Aa', 'bord', [node('Bb', 'kring')]), node('Cc', 'bord')]), {idx: 0})
+    fireEvent.click(row('Aa'))
+    expect(btn('eds-delete')).toHaveAttribute('title')
+    fireEvent.click(btn('eds-delete'))
+    expect(spy.p.een[0].tree.map((n) => n.id)).toEqual(['Cc'])
+    expect(screen.queryByText('Eigenschappen')).toBeNull()
+})
+test('a trash can appears on the selected symbol in the drawing and deletes it', () => {
+    const t = defaultTree()
+    t[0].children[0].children = [node('K', 'kring', [node('S', 'stopcontact'), node('T', 'stopcontact')])]
+    const {spy} = mount(Eendraad, {...base(), een: [{id: 'e1', name: 'x', tree: t}]}, {idx: 0}),
+        treeRow = (l) => [...document.querySelectorAll('.tree div')].find((d) => d.textContent.startsWith(l)),
+        kids = () => spy.p.een[0].tree[0].children[0].children[0].children
+    expect(btn('eds-drawing-delete')).toBeNull()
+    fireEvent.click(treeRow('S'))
+    expect(document.querySelectorAll('#eds-drawing-delete')).toHaveLength(1)
+    fireEvent.click(btn('eds-drawing-delete'))
+    expect(kids().map((n) => n.id)).toEqual(['T'])
+    expect(btn('eds-drawing-delete')).toBeNull()
+})
 test('custom components appear in palette', () => {
     const p = {...base(), custom: [{id: '9', name: 'Mijn ding', shapes: []}]}
     mount(Eendraad, p, {idx: 0})

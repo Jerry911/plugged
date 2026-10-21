@@ -120,7 +120,9 @@ export const SitSheet = ({p, pg, no, total, ed, onFooter}) => {
                     // linked to a component of the eendraadschema (name + marking), or a general library component (`type`, no marking)
                     const n = i.node ? nodes.find((n) => n.id === i.node) : null,
                         gen = !i.node && i.type ? allTypes(p).find((t) => t.k === i.type) : null,
-                        shapes = n ? typeOf(p, n.type).shapes : gen?.shapes
+                        shapes = n ? typeOf(p, n.type).shapes : gen?.shapes,
+                        // text next to the symbol: the marking of the eendraadschema component (A5), unless the user typed their own
+                        txt = i.mark ?? (n ? marks.get(n.id) || '' : '')
                     return (
                         <g key={i.id} {...g}>
                             <g transform={`translate(${i.x},${i.y})`}>
@@ -130,12 +132,14 @@ export const SitSheet = ({p, pg, no, total, ed, onFooter}) => {
                                     {shapes ? <Sym shapes={shapes} s={sz} /> : <circle r="3" fill="none" stroke="red" />}
                                 </g>
                             </g>
-                            <text x={i.x} y={i.y + sz / 2 + 2.5} fontSize="2.2" textAnchor="middle">
-                                {n ? nameOf(p, n) : gen ? gen.name : '(verwijderd)'}
-                            </text>
-                            {n && marks.get(n.id) && (
+                            {!shapes && (
+                                <text x={i.x} y={i.y + sz / 2 + 2.5} fontSize="2.2" textAnchor="middle">
+                                    (verwijderd)
+                                </text>
+                            )}
+                            {txt && (
                                 <text x={i.x + sz / 2 + 1} y={i.y} fontSize="2.6" fontWeight="bold" dominantBaseline="middle">
-                                    {marks.get(n.id)}
+                                    {txt}
                                 </text>
                             )}
                         </g>
@@ -735,6 +739,23 @@ export default function Situatie({p, setP, idx, onFooter}) {
                                     />
                                 </label>
                             </>
+                        )}
+                        {it.kind === 'sym' && (
+                            <label>
+                                Tekst{' '}
+                                <input
+                                    id="sym-text"
+                                    value={it.mark ?? (it.node ? marks.get(it.node) || '' : '')}
+                                    placeholder="bv. A5"
+                                    onChange={(e) => upI({mark: e.target.value})}
+                                    style={{width: 80}}
+                                />
+                                {it.node && it.mark !== undefined && (
+                                    <button type="button" id="sym-text-reset" title="Terug naar het nummer uit het eendraadschema" onClick={() => upI({mark: undefined})}>
+                                        ↺
+                                    </button>
+                                )}
+                            </label>
                         )}
                         {it.kind === 'text' && <input value={it.txt} onChange={(e) => upI({txt: e.target.value})} />}
                         <div className="tb">

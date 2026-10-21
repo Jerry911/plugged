@@ -883,15 +883,43 @@ test('left list: general library components, filtered by name or category', () =
     fireEvent.change(f, {target: {value: ''}})
     expect(ids()).toContain('comp-stopcontact')
 })
-test('a general component is drawn with its name but no marking; an eendraadschema component gets the marking', () => {
+test('a placed symbol shows only the symbol; the marking appears only for eendraadschema components', () => {
     const {container} = mount(Situatie, circ(), {idx: 0})
     const texts = () => [...sv(container).querySelectorAll('text')].map((t) => t.textContent)
+    const before = texts().length
     fireEvent.click(container.querySelector('#comp-stopcontact'))
     clk(container, 50, 50)
-    expect(texts()).toContain('Stopcontact')
-    expect(texts().some((t) => /^A\d/.test(t))).toBe(false)
+    expect(texts()).toHaveLength(before) // no type name, no marking
     fireEvent.click(container.querySelector('#unplaced-p7'))
+    expect(texts()).toHaveLength(before + 1) // marking only, not the name 'Schakelaar'
     expect(texts()).toContain('A7')
+    expect(texts()).not.toContain('Schakelaar')
+})
+test('the text next to a symbol can be edited, cleared and reset to the marking', () => {
+    const {container, spy} = mount(Situatie, circ(), {idx: 0})
+    const texts = () => [...sv(container).querySelectorAll('text')].map((t) => t.textContent)
+    fireEvent.click(container.querySelector('#unplaced-p7')) // placed and selected
+    const input = () => container.querySelector('#sym-text')
+    expect(input().value).toBe('A7')
+    fireEvent.change(input(), {target: {value: 'A7b'}})
+    expect(sit(spy).items[0].mark).toBe('A7b')
+    expect(texts()).toContain('A7b')
+    expect(texts()).not.toContain('A7')
+    fireEvent.change(input(), {target: {value: ''}})
+    expect(texts()).not.toContain('A7b')
+    fireEvent.change(input(), {target: {value: 'X'}})
+    fireEvent.click(container.querySelector('#sym-text-reset'))
+    expect(sit(spy).items[0].mark).toBeUndefined()
+    expect(texts()).toContain('A7')
+    // a general component can get a text too, but has no reset button
+    fireEvent.click(container.querySelector('#comp-stopcontact'))
+    clk(container, 50, 50)
+    tool('Selecteer')
+    fireEvent.pointerDown(sv(container).querySelectorAll('g[style*="move"]')[1], {clientX: 50, clientY: 50})
+    expect(input().value).toBe('')
+    expect(container.querySelector('#sym-text-reset')).toBeNull()
+    fireEvent.change(input(), {target: {value: 'WCD'}})
+    expect(texts()).toContain('WCD')
 })
 test('components can be hidden from the unplaced list and restored; the choice is stored in the project', () => {
     const {container, spy} = mount(Situatie, circ(), {idx: 0})

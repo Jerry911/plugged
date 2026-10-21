@@ -243,7 +243,7 @@ export default function App() {
                     title="Project-nr"
                 />
                 <button onClick={save}>Opslaan</button>
-                <button onClick={exportJson}>JSON ↓</button>
+                <button title="Exporteer een projectbestand (.json)" onClick={exportJson}>JSON ↑</button>
                 <span>
                     <input
                         type="file"
@@ -251,7 +251,9 @@ export default function App() {
                         hidden
                         onChange={(ev) => ev.target.files[0]?.text().then((t) => setP(norm(JSON.parse(t))))}
                     />
-                    <button onClick={(ev) => ev.currentTarget.previousElementSibling.click()}>JSON ↑</button>
+                    <button
+                        title="Importeer een projectbestand (.json)"
+                        onClick={(ev) => ev.currentTarget.previousElementSibling.click()}>JSON ↓</button>
                 </span>
                 <button onClick={() => setShowV((v) => !v)}>
                     Controleer{ec ? ` ✖${ec}` : ''}

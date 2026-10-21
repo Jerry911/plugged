@@ -1,7 +1,7 @@
 // Copyright 2026 Pleysier Jeroen
 // SPDX-License-Identifier: AGPL-3.0-only
 import {useEffect, useRef, useState} from 'react'
-import {Sym, typeOf} from './symbols'
+import {Sym, allTypes, typeOf} from './symbols'
 import {Sheet} from './Footer'
 import ZoomPane from './ZoomPane.jsx'
 import {allNodes, hiddenOf, marksOf, nameOf, uid, unplacedOf} from './util'
@@ -48,14 +48,14 @@ const CompBtn = ({p, n, mark, id, on, flag, title, onClick}) => (
         {mark && <span className="mark">{mark}</span>}
     </button>
 )
-// every search term must occur in the name, type name or marking
-const matches = (p, n, mark, q) => {
-    const hay = [nameOf(p, n), typeOf(p, n.type).name, mark || ''].join(' ').toLowerCase()
+// every search term must occur in the component's name or category
+const matches = (t, q) => {
+    const hay = [t.name, t.cat || ''].join(' ').toLowerCase()
     return q
         .toLowerCase()
         .split(/\s+/)
         .filter(Boolean)
-        .every((t) => hay.includes(t))
+        .every((w) => hay.includes(w))
 }
 
 export const SitSheet = ({p, pg, no, total, ed, onFooter}) => {
@@ -117,18 +117,21 @@ export const SitSheet = ({p, pg, no, total, ed, onFooter}) => {
                     />
                 )
                 if (i.kind === 'sym') {
-                    const n = nodes.find((n) => n.id === i.node)
+                    // linked to a component of the eendraadschema (name + marking), or a general library component (`type`, no marking)
+                    const n = i.node ? nodes.find((n) => n.id === i.node) : null,
+                        gen = !i.node && i.type ? allTypes(p).find((t) => t.k === i.type) : null,
+                        shapes = n ? typeOf(p, n.type).shapes : gen?.shapes
                     return (
                         <g key={i.id} {...g}>
                             <g transform={`translate(${i.x},${i.y})`}>
                                 {ed && <circle r={Math.max(sz / 2 + 1.5, 4.5)} fill="transparent" />}
                                 {hi}
                                 <g transform={`rotate(${i.r || 0})`}>
-                                    {n ? <Sym shapes={typeOf(p, n.type).shapes} s={sz} /> : <circle r="3" fill="none" stroke="red" />}
+                                    {shapes ? <Sym shapes={shapes} s={sz} /> : <circle r="3" fill="none" stroke="red" />}
                                 </g>
                             </g>
                             <text x={i.x} y={i.y + sz / 2 + 2.5} fontSize="2.2" textAnchor="middle">
-                                {n ? nameOf(p, n) : '(verwijderd)'}
+                                {n ? nameOf(p, n) : gen ? gen.name : '(verwijderd)'}
                             </text>
                             {n && marks.get(n.id) && (
                                 <text x={i.x + sz / 2 + 1} y={i.y} fontSize="2.6" fontWeight="bold" dominantBaseline="middle">
@@ -302,7 +305,7 @@ export default function Situatie({p, setP, idx, onFooter}) {
     const pg = p.sit[idx],
         {walls, items} = pg,
         [tool, setTool] = useState('select'),
-        [node, setNode] = useState(null),
+        [ctype, setCtype] = useState(null),
         [pend, setPend] = useState(null),
         [snap, setSnap] = useState(5),
         [free, setFree] = useState(false),
@@ -327,8 +330,8 @@ export default function Situatie({p, setP, idx, onFooter}) {
         unplaced = unplacedOf(p),
         hidden = hiddenOf(p),
         marks = marksOf(p),
-        shown = nodes.filter((n) => matches(p, n, marks.get(n.id), filter)),
-        placed = pg.items.filter((i) => i.kind === 'sym').length
+        shown = allTypes(p).filter((t) => t.place && matches(t, filter)),
+        placed = pg.items.filter((i) => i.kind === 'sym' && !i.node).length
     const raw = (e) => {
         const s = ref.current,
             m = s.createSVGPoint()
@@ -436,7 +439,7 @@ export default function Situatie({p, setP, idx, onFooter}) {
             const n = nearest(q),
                 on = n.d < 8
             setPg({items: [...items, {id: uid(), kind: tool, x: on ? n.x : q.x, y: on ? n.y : q.y, r: on ? n.r : 0, w: 10}]})
-        } else if (tool === 'sym' && node) setPg({items: [...items, {id: uid(), kind: 'sym', node, x: q.x, y: q.y, r: 0, s: 7}]})
+        } else if (tool === 'sym' && ctype) setPg({items: [...items, {id: uid(), kind: 'sym', type: ctype, x: q.x, y: q.y, r: 0, s: 7}]})
         else if (tool === 'text') {
             const t = prompt('Tekst')
             t && setPg({items: [...items, {id: uid(), kind: 'text', x: q.x, y: q.y, txt: t, s: 4, r: 0}]})
@@ -772,26 +775,26 @@ export default function Situatie({p, setP, idx, onFooter}) {
                         id="comp-filter"
                         type="search"
                         aria-label="Zoek component"
-                        placeholder="Zoek op naam, type of nummer (bv. A7)"
+                        placeholder="Zoek een algemeen component"
                         value={filter}
                         onChange={(e) => setFilter(e.target.value)}
                         style={{width: '100%', boxSizing: 'border-box', margin: '4px 0'}}
                     />
                     <div className="pallist">
-                        {shown.map((n) => (
+                        {shown.map((t) => (
                             <CompBtn
-                                key={n.id}
+                                key={t.k}
                                 p={p}
-                                n={n}
-                                id={'comp-' + n.id}
-                                on={node === n.id}
+                                n={{type: t.k, label: t.name}}
+                                id={'comp-' + t.k}
+                                on={ctype === t.k}
                                 onClick={() => {
-                                    setNode(n.id)
+                                    setCtype(t.k)
                                     setTool('sym')
                                 }}
                             />
                         ))}
-                        {!shown.length && <i>{nodes.length ? 'Geen componenten gevonden' : 'Nog geen componenten'}</i>}
+                        {!shown.length && <i>Geen componenten gevonden</i>}
                     </div>
                 </div>
             </div>

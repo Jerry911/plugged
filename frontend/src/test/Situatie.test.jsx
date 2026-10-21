@@ -5,10 +5,7 @@ import Situatie, {SitSheet, ZOOMS} from '../Situatie.jsx'
 import {base, mount, node} from './utils.jsx'
 import {marksOf} from '../util'
 
-const P = () => ({
-    ...base(),
-    een: [{id: 'e1', name: 'B', tree: [node('n1', 'stopcontact', [], {label: 'Keuken stopcontact'})]}]
-})
+const P = () => ({...base(), een: [{id: 'e1', name: 'B', tree: [node('n1', 'stopcontact', [], {label: 'Keuken stopcontact'})]}]})
 const sv = (c) => c.querySelector('svg.sheet'),
     clk = (c, x, y) => fireEvent.click(sv(c), {clientX: x, clientY: y}),
     tool = (n) => fireEvent.click(screen.getByRole('button', {name: n}))
@@ -60,9 +57,15 @@ test('symbols and warnings, auto place, text tool', () => {
     tool('Symbool')
     clk(container, 50, 50)
     expect(sit(spy).items).toHaveLength(0)
-    fireEvent.click(container.querySelector('#comp-n1'))
+    // left list = general components: placed without a link to the eendraadschema, so n1 stays unplaced
+    fireEvent.click(container.querySelector('#comp-stopcontact'))
     clk(container, 50, 50)
-    expect(sit(spy).items[0]).toMatchObject({kind: 'sym', node: 'n1', x: 50, y: 50})
+    expect(sit(spy).items[0]).toMatchObject({kind: 'sym', type: 'stopcontact', x: 50, y: 50})
+    expect(sit(spy).items[0].node).toBeUndefined()
+    screen.getByText(/Nergens geplaatst \(1\)/)
+    // right list = the eendraadschema's own components: linked through `node`
+    fireEvent.click(container.querySelector('#unplaced-n1'))
+    expect(sit(spy).items[1]).toMatchObject({kind: 'sym', node: 'n1'})
     screen.getByText('✓ Alle componenten geplaatst')
     vi.spyOn(window, 'prompt').mockReturnValueOnce('Lokaal').mockReturnValueOnce(null)
     tool('Tekst')
@@ -152,12 +155,12 @@ test('walls: select, move, handles, delete, erase', () => {
     expect(screen.getByLabelText(/Lengte/).value).toBe('2,00 m')
     fireEvent.pointerMove(sv(container), {clientX: 20, clientY: 30})
     expect(sit(spy).walls[0]).toMatchObject({y1: 30, y2: 30})
-    const hs = container.querySelectorAll('circle[r="1.8"]')
+    const hs = sv(container).querySelectorAll('circle[r="1.8"]')
     fireEvent.pointerDown(hs[0], {clientX: 10, clientY: 30})
     fireEvent.pointerMove(sv(container), {clientX: 15, clientY: 35})
     expect(sit(spy).walls[0]).toMatchObject({x1: 15, y1: 35, x2: 50})
     fireEvent.pointerUp(sv(container))
-    fireEvent.pointerDown(container.querySelectorAll('circle[r="1.8"]')[1], {clientX: 50, clientY: 30})
+    fireEvent.pointerDown(sv(container).querySelectorAll('circle[r="1.8"]')[1], {clientX: 50, clientY: 30})
     fireEvent.pointerMove(sv(container), {clientX: 55, clientY: 30})
     expect(sit(spy).walls[0].x2).toBe(55)
     fireEvent.pointerUp(sv(container))
@@ -180,7 +183,7 @@ test('SitSheet static: orphan symbol, text, window, no handles', () => {
                 {id: '3', kind: 'window', x: 5, y: 0, r: 0},
             ],
         }
-    const {container} = render(<SitSheet p={p} pg={pg} no={2} total={3}/>)
+    const {container} = render(<SitSheet p={p} pg={pg} no={2} total={3} />)
     screen.getByText('(verwijderd)')
     screen.getByText('Hi')
     expect(container.querySelector('line[stroke="transparent"]')).toBeNull()
@@ -392,7 +395,7 @@ test('dragging on an empty spot draws a box and selects everything it touches', 
     up(container)
     expect(boxRect(container)).toBeNull()
     screen.getByText('3 elementen geselecteerd')
-    expect(container.querySelectorAll('circle[r="1.8"]')).toHaveLength(0)
+    expect(sv(container).querySelectorAll('circle[r="1.8"]')).toHaveLength(0)
     // the click that follows the drag must not clear the selection, the next one does
     fireEvent.click(sv(container), {clientX: 150, clientY: 150})
     screen.getByText('3 elementen geselecteerd')
@@ -592,15 +595,15 @@ test('the scale of the footer drives the dimensions', () => {
     expect(texts(container).filter((t) => t === '4,00 m')).toHaveLength(1)
     expect(texts(container)).toContain('5,66 m')
     const q = {...p, footer: {...p.footer, schaal: 'groot'}}
-    const r = render(<SitSheet p={q} pg={q.sit[0]} no={1} total={1}/>)
+    const r = render(<SitSheet p={q} pg={q.sit[0]} no={1} total={1} />)
     expect(r.container.textContent).toContain('2,00 m')
 })
 test('static sheets (PDF/print) follow the per-sheet dimension setting', () => {
     const p = P(),
         pg = {id: 's', name: 'X', walls: [wall('w', 10, 20, 50, 20)], items: []}
-    const a = render(<SitSheet p={p} pg={pg} no={1} total={1}/>)
+    const a = render(<SitSheet p={p} pg={pg} no={1} total={1} />)
     expect(a.container.textContent).toContain('2,00 m')
-    const b = render(<SitSheet p={p} pg={{...pg, dims: false}} no={1} total={1}/>)
+    const b = render(<SitSheet p={p} pg={{...pg, dims: false}} no={1} total={1} />)
     expect(b.container.textContent).not.toContain('2,00 m')
     expect(b.container.querySelector('[aria-label="Verwijder selectie"]')).toBeNull()
 })
@@ -863,22 +866,32 @@ test('deleting a placed symbol puts it back in the unplaced list', () => {
     expect(sit(spy).items).toHaveLength(0)
     expect(rightPanel(container).querySelector('#unplaced-p7 .mark').textContent).toBe('A7')
 })
-test('component list: filter by name, type or marking', () => {
+test('left list: general library components, filtered by name or category', () => {
     const {container} = mount(Situatie, circ(), {idx: 0})
     const f = container.querySelector('#comp-filter'),
         ids = () => [...container.querySelectorAll('.pallist button')].map((b) => b.id)
-    expect(ids()).toHaveLength(8)
-    fireEvent.change(f, {target: {value: 'a7'}})
-    expect(ids()).toEqual(['comp-p7', 'comp-l7'])
-    fireEvent.change(f, {target: {value: 'stop 3'}})
-    expect(ids()).toEqual(['comp-p3'])
-    fireEvent.change(f, {target: {value: 'LAMP'}})
-    expect(ids()).toEqual(['comp-l7'])
+    expect(ids()).toContain('comp-stopcontact')
+    expect(ids()).not.toContain('comp-p7') // no eendraadschema components here
+    expect(ids()).not.toContain('comp-aansluiting') // types that cannot be placed are left out
+    expect(container.querySelector('.pallist .mark')).toBeNull() // general components carry no marking
+    fireEvent.change(f, {target: {value: 'kinder'}})
+    expect(ids()).toEqual(expect.arrayContaining(['comp-stopcontact_kid', 'comp-stopcontact_pekid']))
+    expect(ids()).not.toContain('comp-stopcontact')
     fireEvent.change(f, {target: {value: 'zzz'}})
     expect(ids()).toEqual([])
     screen.getByText('Geen componenten gevonden')
     fireEvent.change(f, {target: {value: ''}})
-    expect(ids()).toHaveLength(8)
+    expect(ids()).toContain('comp-stopcontact')
+})
+test('a general component is drawn with its name but no marking; an eendraadschema component gets the marking', () => {
+    const {container} = mount(Situatie, circ(), {idx: 0})
+    const texts = () => [...sv(container).querySelectorAll('text')].map((t) => t.textContent)
+    fireEvent.click(container.querySelector('#comp-stopcontact'))
+    clk(container, 50, 50)
+    expect(texts()).toContain('Stopcontact')
+    expect(texts().some((t) => /^A\d/.test(t))).toBe(false)
+    fireEvent.click(container.querySelector('#unplaced-p7'))
+    expect(texts()).toContain('A7')
 })
 test('components can be hidden from the unplaced list and restored; the choice is stored in the project', () => {
     const {container, spy} = mount(Situatie, circ(), {idx: 0})

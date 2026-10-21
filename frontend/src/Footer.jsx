@@ -33,7 +33,7 @@ export const FooterForm = ({p, setP, focus}) => (
 export const FooterDialog = ({p, setP, focus, onClose}) => (
     <div className="dlg ui" role="dialog" aria-label="Kaderinfo" onKeyDown={(e) => e.key === 'Escape' && onClose()}>
         <div className="tb">
-            <b>Kaderinfo (onderaan elk blad)</b> <button onClick={onClose}>Sluiten</button>
+            <b>Kaderinfo (onderaan elk blad)</b> <button className="sheetInfoBtn" onClick={onClose}>✕</button>
         </div>
         <FooterForm p={p} setP={setP} focus={focus} />
     </div>

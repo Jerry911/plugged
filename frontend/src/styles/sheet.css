@@ -71,3 +71,12 @@
 .dimbox input.bad {
     outline: 2px solid #c62828
 }
+
+.dimbox .dimerr {
+    color: #c62828
+}
+
+.dimbox .dimhint {
+    color: #666;
+    font-size: 11px
+}

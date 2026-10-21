@@ -116,3 +116,10 @@ test('hitsInBox returns walls and items that touch the rectangle', () => {
     ])
     expect(hitsInBox({x0: 200, y0: 200, x1: 210, y1: 210}, walls, items)).toEqual([])
 })
+import {suggestScale as _sug} from '../geometry'
+test('suggestScale picks the smallest larger standard scale that fits', () => {
+    expect(_sug(4, 50)).toBeNull()
+    expect(_sug(50, 50)).toBe(200)
+    expect(_sug(50, 200)).toBeNull()
+    expect(_sug(1e6, 50)).toBeNull()
+})

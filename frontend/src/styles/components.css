@@ -9,6 +9,12 @@
     overflow: auto
 }
 
+.sheetInfoBtn {
+    float: right;
+    background-color: red;
+    color: white;
+}
+
 .pal button {
     display: flex;
     gap: 6px;

@@ -80,6 +80,6 @@ test('FooterDialog focuses the requested field and closes on Escape / button', (
     fireEvent.keyDown(d, {key: 'a'})
     expect(close).not.toHaveBeenCalled()
     fireEvent.keyDown(d, {key: 'Escape'})
-    fireEvent.click(screen.getByText('Sluiten'))
+    fireEvent.click(screen.getByText('✕'))
     expect(close).toHaveBeenCalledTimes(2)
 })

@@ -22,6 +22,11 @@ export const toSheet = (metres, scale) => {
     const v = (metres * 1000) / scale
     return v > 0 && v <= MAX_SHEET_LEN ? v : null
 }
+// smallest standard scale (larger than the current one) at which `metres` fits on the sheet; null when it already fits
+const SCALES = [50, 75, 100, 125, 150, 200, 250, 500, 1000, 2000, 5000]
+export const FIT_SHEET_LEN = 280
+export const suggestScale = (metres, scale) =>
+    (metres * 1000) / scale <= FIT_SHEET_LEN ? null : SCALES.find((s) => s > scale && (metres * 1000) / s <= FIT_SHEET_LEN) ?? null
 export const fromSheet = (mm, scale) => (mm * scale) / 1000
 export const fmtLen = (mm, scale) => fromSheet(mm, scale).toFixed(2).replace('.', ',') + ' m'
 // "4x3,5" -> {w:4,h:3.5} (metres); a single value gives a square

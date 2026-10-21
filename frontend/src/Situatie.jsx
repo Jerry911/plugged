@@ -6,7 +6,7 @@ import {Sheet} from './Footer'
 import ZoomPane from './ZoomPane.jsx'
 import {allNodes, nameOf, uid, unplacedOf} from './util'
 import {numbering} from './boardModel'
-import {dirTo, fmtLen, hitsInBox, itemBox, parseDims, parseLen, r2, rectWalls, scaleOf, toSheet, unionBox, wallBox} from './geometry'
+import {dirTo, fmtLen, hitsInBox, itemBox, parseDims, parseLen, r2, rectWalls, scaleOf, suggestScale, toSheet, unionBox, wallBox} from './geometry'
 
 const dflt = {sym: 7, text: 4, door: 10, window: 10}
 const BLUE = '#0a6cff'
@@ -168,6 +168,28 @@ export const SitSheet = ({p, pg, no, total, ed, onFooter}) => {
                 )
             })}
             {E.pend && <circle cx={E.pend.x} cy={E.pend.y} r="1" fill="red" />}
+            {E.pend && E.typedEnd && (
+                <>
+                    {E.tool === 'wall' ? (
+                        <>
+                            <line x1={E.pend.x} y1={E.pend.y} x2={E.typedEnd.x} y2={E.typedEnd.y} stroke={BLUE} strokeWidth="1.2" opacity=".6" pointerEvents="none" />
+                            <Dim a={E.pend} b={E.typedEnd} sc={sc} color={BLUE} />
+                        </>
+                    ) : (
+                        <rect
+                            x={Math.min(E.pend.x, E.typedEnd.x)}
+                            y={Math.min(E.pend.y, E.typedEnd.y)}
+                            width={Math.abs(E.typedEnd.x - E.pend.x)}
+                            height={Math.abs(E.typedEnd.y - E.pend.y)}
+                            fill="none"
+                            stroke={BLUE}
+                            strokeWidth="1.2"
+                            opacity=".6"
+                            pointerEvents="none"
+                        />
+                    )}
+                </>
+            )}
             {E.pend && E.cur && E.tool === 'wall' && (
                 <>
                     <line
@@ -263,10 +285,12 @@ export default function Situatie({p, setP, idx, onFooter}) {
         [drag, setDrag] = useState(null),
         [box, setBox] = useState(null),
         [dimText, setDimText] = useState(''),
+        [, bump] = useState(0),
         [panelOpen, setPanelOpen] = useState(true),
         ref = useRef(),
         dimRef = useRef(),
-        justBoxed = useRef(false)
+        justBoxed = useRef(false),
+        aim = useRef(null) // last cursor position while drawing: survives the mouse leaving the sheet, gives the direction of a typed length
     const sc = scaleOf(p.footer),
         showDims = pg.dims !== false
     const setPg = (patch) => setP({...p, sit: p.sit.map((g, i) => (i === idx ? {...g, ...patch} : g))})
@@ -420,6 +444,7 @@ export default function Situatie({p, setP, idx, onFooter}) {
         if (drag) return dragTo(drag, raw(e))
         if (tool !== 'select' && tool !== 'erase') {
             const c = pt(e)
+            aim.current = c
             if (!cur || cur.x !== c.x || cur.y !== c.y) setCur(c)
         }
     }
@@ -448,25 +473,42 @@ export default function Situatie({p, setP, idx, onFooter}) {
         setCur(null)
         setBox(null)
         setDimText('')
+        aim.current = null
     }
-    // typed dimensions while drawing: a wall length, or "width x height" for a room (metres unless a unit is typed)
-    const dimValid = tool === 'room' ? !!parseDims(dimText) : parseLen(dimText) != null
-    const commitDim = () => {
-        if (!pend) return
+    // typed dimensions while drawing: a wall length, or "width x height" for a room (metres unless a unit is typed).
+    // The direction comes from the last known cursor position (kept while the mouse is over the input).
+    const onSheet = (q) => q.x >= 0 && q.x <= 297 && q.y >= 0 && q.y <= 185
+    const typed = (() => {
+        if (!pend) return null
         if (tool === 'wall') {
-            const len = parseLen(dimText) != null ? toSheet(parseLen(dimText), sc) : null
-            if (!len) return
-            const u = dirTo(pend, cur || {x: pend.x + 1, y: pend.y}),
-                end = {x: r2(pend.x + u.x * len), y: r2(pend.y + u.y * len)}
-            setPg({walls: [...walls, {id: uid(), x1: pend.x, y1: pend.y, x2: end.x, y2: end.y}]})
-            setPend(end)
-            setDimText('')
-        } else if (tool === 'room') {
+            const m = parseLen(dimText),
+                len = m != null ? toSheet(m, sc) : null
+            if (!len) return null
+            const u = dirTo(pend, aim.current || {x: pend.x + 1, y: pend.y})
+            return {end: {x: r2(pend.x + u.x * len), y: r2(pend.y + u.y * len)}}
+        }
+        if (tool === 'room') {
             const d = parseDims(dimText),
                 w = d && toSheet(d.w, sc),
                 h = d && toSheet(d.h, sc)
-            if (!w || !h) return
-            addRoom(pend, {x: r2(pend.x + (cur && cur.x < pend.x ? -w : w)), y: r2(pend.y + (cur && cur.y < pend.y ? -h : h))})
+            if (!w || !h) return null
+            return {end: {x: r2(pend.x + (aim.current && aim.current.x < pend.x ? -w : w)), y: r2(pend.y + (aim.current && aim.current.y < pend.y ? -h : h))}}
+        }
+        return null
+    })()
+    const parsed = tool === 'room' ? !!parseDims(dimText) : parseLen(dimText) != null
+    const needM = tool === 'room' ? Math.max(parseDims(dimText)?.w ?? 0, parseDims(dimText)?.h ?? 0) : (parseLen(dimText) ?? 0),
+        bigger = parsed ? suggestScale(needM, sc) : null
+    const dimValid = parsed && !!typed && onSheet(typed.end)
+    const dimErr = !dimText ? '' : !parsed ? 'Ongeldige waarde' : !typed || bigger ? 'Past niet op het blad bij 1:' + sc : !onSheet(typed.end) ? 'Valt buiten het blad: richt de muis anders' : ''
+    const commitDim = () => {
+        if (!pend || !dimValid) return
+        if (tool === 'wall') {
+            setPg({walls: [...walls, {id: uid(), x1: pend.x, y1: pend.y, x2: typed.end.x, y2: typed.end.y}]})
+            setPend(typed.end)
+            setDimText('')
+        } else if (tool === 'room') {
+            addRoom(pend, typed.end)
             reset()
         }
     }
@@ -540,6 +582,7 @@ export default function Situatie({p, setP, idx, onFooter}) {
         sel,
         ep,
         pend,
+        typedEnd: dimValid ? typed.end : null,
         snap,
         tool,
         box,
@@ -717,16 +760,31 @@ export default function Situatie({p, setP, idx, onFooter}) {
                                 <input
                                     ref={dimRef}
                                     className={dimText && !dimValid ? 'bad' : ''}
+                                    title={dimErr}
                                     value={dimText}
                                     placeholder={tool === 'room' ? 'bv. 4x3,5 (m)' : 'bv. 3,5 of 350cm'}
+                                    aria-description="Pijltjestoetsen kiezen de richting"
                                     onChange={(e) => setDimText(e.target.value)}
                                     onKeyDown={(e) => {
+                                        const dir = {ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1]}[e.key]
                                         if (e.key === 'Enter') commitDim()
                                         else if (e.key === 'Escape') reset()
+                                        else if (dir) {
+                                            // arrow keys choose the direction of the typed length
+                                            e.preventDefault()
+                                            aim.current = {x: pend.x + dir[0], y: pend.y + dir[1]}
+                                            bump((n) => n + 1)
+                                        }
                                     }}
                                 />
                             </label>{' '}
                             <button onClick={commitDim}>OK</button>
+                            {bigger && (
+                                <button onClick={() => setP({...p, footer: {...p.footer, schaal: '1:' + bigger}})}>Schaal 1:{bigger}</button>
+                            )}
+                            <div>
+                                {dimErr ? <span className="dimerr"> {dimErr}</span> : <span className="dimhint"> ←↑↓→ richting</span>}
+                            </div>
                         </div>
                     )}
                     <div className="ui gridsel" style={zoom === 1 ? undefined : {bottom: 12}}>

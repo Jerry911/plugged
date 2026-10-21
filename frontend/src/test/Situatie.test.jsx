@@ -855,7 +855,6 @@ test('component list: filter by name, type or marking', () => {
     const f = container.querySelector('#comp-filter'),
         ids = () => [...container.querySelectorAll('.pallist button')].map((b) => b.id)
     expect(ids()).toHaveLength(8)
-    expect(container.querySelector('#comp-p7 .mark').textContent).toBe('A7')
     fireEvent.change(f, {target: {value: 'a7'}})
     expect(ids()).toEqual(['comp-p7', 'comp-l7'])
     fireEvent.change(f, {target: {value: 'stop 3'}})

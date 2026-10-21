@@ -578,6 +578,16 @@ export default function Situatie({p, setP, idx, onFooter}) {
         addEventListener('keydown', f)
         return () => removeEventListener('keydown', f)
     })
+    // Escape cancels the current tool/placement, same as a right click
+    useEffect(() => {
+        const f = (e) => {
+            if (e.key !== 'Escape' || tool === 'select') return
+            reset()
+            setTool('select')
+        }
+        addEventListener('keydown', f)
+        return () => removeEventListener('keydown', f)
+    })
     const auto = () =>
         setPg({
             items: [

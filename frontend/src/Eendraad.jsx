@@ -64,6 +64,27 @@ const ICONS = {
     trash: <Ico><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></Ico>,
     cw: <Ico><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 4v5h-5"/></Ico>,
 }
+// ids of the ancestors of a node (to unfold them when the node gets selected)
+const ancestorsOf = (ns, id, acc = []) => {
+    for (const n of ns) {
+        if (n.id === id) return acc
+        const r = ancestorsOf(n.children, id, [...acc, n.id])
+        if (r) return r
+    }
+}
+// markers in the Opbouw list: 'main' = arrow of a main level (distribution part) under its parent, open/closed = fold state
+const Mark = ({kind}) => (
+    <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true" fill="currentColor" stroke="none">
+        {kind === 'main' && (
+            <g fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M3 2v7h7"/>
+                <path d="M7.5 5.5L10.5 9l-3 3.5"/>
+            </g>
+        )}
+        {kind === 'open' && <path d="M3 5l4 5 4-5z"/>}
+        {kind === 'closed' && <path d="M5 3l5 4-5 4z"/>}
+    </svg>
+)
 const DIST = ['aansluiting', 'teller', 'hoofdschakelaar', 'bord', 'diff', 'kring', 'domotica', 'subbord']
 const FIELDS = {
     kring: [
@@ -94,10 +115,16 @@ export default function Eendraad({p, setP, idx, focus, onFooter}) {
         [sel, setSel] = useState(null),
         [free, setFree] = useState(false),
         [q, setQ] = useState(''),
-        [zoom, setZoom] = useState(1)
+        [zoom, setZoom] = useState(1),
+        [folded, setFolded] = useState(() => new Set())
     useEffect(() => {
         focus && setSel(focus.id)
     }, [focus])
+    const unfold = (ids) => setFolded((f) => (ids.some((i) => f.has(i)) ? new Set([...f].filter((i) => !ids.includes(i))) : f))
+    // a selected element (e.g. clicked in the drawing) is never hidden inside a folded level
+    useEffect(() => {
+        if (sel) unfold(ancestorsOf(tree, sel) || [])
+    }, [sel])
     const set = (t) => setP({...p, een: p.een.map((g, i) => (i === idx ? {...g, tree: t} : g))}),
         s = sel && find(tree, sel)
     const remove = () => {
@@ -144,6 +171,7 @@ export default function Eendraad({p, setP, idx, focus, onFooter}) {
             )
         }
         set(upd(tree, par.id, (x) => [{...x, children: [...x.children, n]}]))
+        unfold([par.id])
         if (DIST.includes(t.k)) setSel(n.id)
     }
     const setProp = (k, v) =>
@@ -176,21 +204,65 @@ export default function Eendraad({p, setP, idx, focus, onFooter}) {
         return T.filter((t) => t.place && !DIST.includes(t.k) && (t.k === s.type || free || !par || t.parents.includes(par.type)))
     })()
     const rows = (ns, d = 0) =>
-        ns.flatMap((n) => [
-            <div
-                key={n.id}
-                className={sel === n.id ? 'sel' : ''}
-                style={{paddingLeft: d * 14, cursor: 'pointer'}}
-                onClick={() => setSel(n.id)}
-            >
-                <svg width="20" height="20" viewBox="0 0 22 22">
-                    <Sym shapes={typeOf(p, n.type).shapes} x={11} y={11} s={20}/>
-                </svg>
-                <span>{nameOf(p, n)}</span>
-                <small style={{color: '#666'}}>{n.info}</small>
-            </div>,
-            ...rows(n.children, d + 1),
-        ])
+        ns.flatMap((n) => {
+            const kids = n.children.length,
+                open = !folded.has(n.id),
+                main = DIST.includes(n.type),
+                hidden = kids ? flat(n.children).length : 0
+            return [
+                <div
+                    key={n.id}
+                    className={sel === n.id ? 'sel' : ''}
+                    style={{paddingLeft: d * 10 + 2, cursor: 'pointer'}}
+                    onClick={() => setSel(n.id)}
+                >
+                    <span style={{display: 'inline-flex', width: 14, flex: 'none'}}>
+                        {kids ? (
+                            <button
+                                id={`eds-toggle-${n.id}`}
+                                title={open ? 'Inklappen' : `Uitklappen (${hidden} verborgen)`}
+                                aria-label={open ? 'Inklappen' : 'Uitklappen'}
+                                aria-expanded={open}
+                                style={{
+                                    display: 'inline-flex',
+                                    width: 14,
+                                    height: 14,
+                                    margin: 0,
+                                    padding: 0,
+                                    border: 'none',
+                                    background: 'none',
+                                    color: 'inherit',
+                                    cursor: 'pointer',
+                                }}
+                                onClick={(e) => {
+                                    e.stopPropagation()
+                                    setFolded((f) => {
+                                        const g = new Set(f)
+                                        g.has(n.id) ? g.delete(n.id) : g.add(n.id)
+                                        return g
+                                    })
+                                }}
+                            >
+                                <Mark kind={!open ? 'closed' : main && d > 0 ? 'main' : 'open'}/>
+                            </button>
+                        ) : (
+                            main && d > 0 && (
+                                <span style={{opacity: 0.45, display: 'inline-flex'}}>
+                                    <Mark kind="main"/>
+                                </span>
+                            )
+                        )}
+                    </span>
+                    <svg width="20" height="20" viewBox="0 0 22 22">
+                        <Sym shapes={typeOf(p, n.type).shapes} x={11} y={11} s={20}/>
+                    </svg>
+                    <span style={main ? {fontWeight: 600} : undefined}>{nameOf(p, n)}</span>
+                    <small style={{color: '#666'}}>{n.info}</small>
+                    {!open && <small style={{color: '#666'}}>(+{hidden})</small>}
+                </div>,
+                ...(open ? rows(n.children, d + 1) : []),
+            ]
+        })
     const ob = (f) => () => set(f(tree, s.id)),
         fields = s && (FIELDS[s.type] || (['bord'].includes(s.type) ? [] : OTHER)),
         plan = sheetPlan(p, true).filter((e) => e.kind === 'een' && e.pg === pg)

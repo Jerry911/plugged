@@ -133,6 +133,46 @@ test('a trash can appears on the selected symbol in the drawing and deletes it',
     expect(kids().map((n) => n.id)).toEqual(['T'])
     expect(btn('eds-drawing-delete')).toBeNull()
 })
+test('main levels can be folded and unfolded with the arrow in the Opbouw list', () => {
+    const t = [node('Aa', 'aansluiting', [node('Bb', 'bord', [node('Kk', 'kring', [node('Ss', 'stopcontact'), node('Tt', 'stopcontact')])])])],
+        {spy} = mount(Eendraad, withTree(t), {idx: 0}),
+        names = () => [...document.querySelectorAll('.tree div')].map((d) => d.textContent)
+    expect(names()).toHaveLength(5)
+    expect(btn('eds-toggle-Ss')).toBeNull()
+    expect(btn('eds-toggle-Kk')).toHaveAttribute('aria-expanded', 'true')
+    fireEvent.click(btn('eds-toggle-Kk'))
+    expect(names()).toHaveLength(3)
+    expect(names()[2]).toContain('(+2)')
+    expect(btn('eds-toggle-Kk')).toHaveAttribute('aria-expanded', 'false')
+    expect(selected()).toBeNull() // folding does not select
+    fireEvent.click(btn('eds-toggle-Bb'))
+    expect(names()).toHaveLength(2)
+    fireEvent.click(btn('eds-toggle-Bb'))
+    fireEvent.click(btn('eds-toggle-Kk'))
+    expect(names()).toHaveLength(5)
+    expect(spy.p.een[0].tree).toEqual(t) // the data is untouched
+})
+test('selecting a hidden element in the drawing unfolds its levels', () => {
+    const t = [node('Aa', 'aansluiting', [node('Bb', 'bord', [node('Kk', 'kring', [node('Ss', 'stopcontact')])])])],
+        {container} = mount(Eendraad, withTree(t), {idx: 0})
+    fireEvent.click(btn('eds-toggle-Kk'))
+    expect(document.querySelectorAll('.tree div')).toHaveLength(3)
+    fireEvent.click(container.querySelector('svg.sheet g[style*="pointer"]'))
+    expect(document.querySelectorAll('.tree div')).toHaveLength(4)
+    expect(selected()).toHaveTextContent(/^Ss/)
+})
+test('adding an element to a folded circuit unfolds it', () => {
+    const {spy} = mount(Eendraad, DEF(), {idx: 0})
+    fireEvent.click(pal('Kring (automaat)'))
+    fireEvent.click(pal('Stopcontact'))
+    const k = document.querySelectorAll('.tree div')[2] // Aansluiting net > Verdeelbord > circuit A
+    expect(k).toHaveTextContent(/^A/)
+    fireEvent.click(k.querySelector('button'))
+    expect(document.querySelectorAll('.tree div')).toHaveLength(3)
+    fireEvent.click(pal('Lichtpunt'))
+    expect(document.querySelectorAll('.tree div')).toHaveLength(5)
+    expect(board1(spy).children[0].children).toHaveLength(2)
+})
 test('custom components appear in palette', () => {
     const p = {...base(), custom: [{id: '9', name: 'Mijn ding', shapes: []}]}
     mount(Eendraad, p, {idx: 0})

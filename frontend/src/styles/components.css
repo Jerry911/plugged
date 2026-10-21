@@ -143,3 +143,29 @@
     z-index: 20;
     box-shadow: 0 4px 16px #0005
 }
+
+
+.compbtn .nm {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap
+}
+
+.compbtn .flag {
+    flex: none
+}
+
+.compbtn .mark {
+    flex: none;
+    margin-left: auto;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums
+}
+
+.unplist {
+    max-height: 62vh;
+    overflow: auto;
+    margin: 4px 0
+}

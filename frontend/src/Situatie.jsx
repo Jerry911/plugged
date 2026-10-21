@@ -4,7 +4,7 @@ import {useEffect, useRef, useState} from 'react'
 import {Sym, typeOf} from './symbols'
 import {Sheet} from './Footer'
 import ZoomPane from './ZoomPane.jsx'
-import {allNodes, nameOf, uid, unplacedOf} from './util'
+import {allNodes, marksOf, nameOf, uid, unplacedOf} from './util'
 import {numbering} from './boardModel'
 import {dirTo, fmtLen, hitsInBox, itemBox, parseDims, parseLen, r2, rectWalls, scaleOf, suggestScale, toSheet, unionBox, wallBox} from './geometry'
 
@@ -37,8 +37,30 @@ const Dim = ({a, b, sc, color = '#555', off = 3}) => {
     )
 }
 
+// one component as a button: symbol, name on the left, marking (e.g. A7) aligned right
+const CompBtn = ({p, n, mark, id, on, flag, title, onClick}) => (
+    <button id={id} type="button" className="compbtn" title={title} style={on ? {background: '#cfe3ff'} : undefined} onClick={onClick}>
+        <svg width="20" height="20" viewBox="0 0 20 20" style={{flex: 'none'}}>
+            <Sym shapes={typeOf(p, n.type).shapes} x={10} y={10} s={18} />
+        </svg>
+        {flag && <span className="flag">{flag}</span>}
+        <span className="nm">{nameOf(p, n)}</span>
+        {mark && <span className="mark">{mark}</span>}
+    </button>
+)
+// every search term must occur in the name, type name or marking
+const matches = (p, n, mark, q) => {
+    const hay = [nameOf(p, n), typeOf(p, n.type).name, mark || ''].join(' ').toLowerCase()
+    return q
+        .toLowerCase()
+        .split(/\s+/)
+        .filter(Boolean)
+        .every((t) => hay.includes(t))
+}
+
 export const SitSheet = ({p, pg, no, total, ed, onFooter}) => {
     const nodes = allNodes(p),
+        marks = marksOf(p),
         {walls, items} = pg,
         E = ed || {},
         sc = scaleOf(p.footer),
@@ -108,6 +130,11 @@ export const SitSheet = ({p, pg, no, total, ed, onFooter}) => {
                             <text x={i.x} y={i.y + sz / 2 + 2.5} fontSize="2.2" textAnchor="middle">
                                 {n ? nameOf(p, n) : '(verwijderd)'}
                             </text>
+                            {n && marks.get(n.id) && (
+                                <text x={i.x + sz / 2 + 1} y={i.y} fontSize="2.6" fontWeight="bold" dominantBaseline="middle">
+                                    {marks.get(n.id)}
+                                </text>
+                            )}
                         </g>
                     )
                 }
@@ -287,6 +314,7 @@ export default function Situatie({p, setP, idx, onFooter}) {
         [dimText, setDimText] = useState(''),
         [, bump] = useState(0),
         [panelOpen, setPanelOpen] = useState(true),
+        [filter, setFilter] = useState(''),
         ref = useRef(),
         dimRef = useRef(),
         justBoxed = useRef(false),
@@ -296,6 +324,8 @@ export default function Situatie({p, setP, idx, onFooter}) {
     const setPg = (patch) => setP({...p, sit: p.sit.map((g, i) => (i === idx ? {...g, ...patch} : g))})
     const nodes = allNodes(p),
         unplaced = unplacedOf(p),
+        marks = marksOf(p),
+        shown = nodes.filter((n) => matches(p, n, marks.get(n.id), filter)),
         placed = pg.items.filter((i) => i.kind === 'sym').length
     const raw = (e) => {
         const s = ref.current,
@@ -563,6 +593,25 @@ export default function Situatie({p, setP, idx, onFooter}) {
                 })),
             ],
         })
+    // put one component on the drawing at the first free spot, starting in the middle of the sheet; it ends up selected so it can be dragged
+    const placeNode = (nid) => {
+        const syms = items.filter((i) => i.kind === 'sym'),
+            off = (k) => (k % 2 ? (k + 1) / 2 : -k / 2) // 0, 1, -1, 2, -2, ...
+        let spot = {x: sn(148), y: sn(92)}
+        for (let k = 0; k < 26 * 14; k++) {
+            const x = Math.min(282, Math.max(15, sn(148 + off(k % 26) * 10))),
+                y = Math.min(172, Math.max(15, sn(92 + off(Math.floor(k / 26)) * 12)))
+            if (!syms.some((i) => Math.abs(i.x - x) < 9 && Math.abs(i.y - y) < 9)) {
+                spot = {x, y}
+                break
+            }
+        }
+        const id = uid()
+        setPg({items: [...items, {id, kind: 'sym', node: nid, x: spot.x, y: spot.y, r: 0, s: 7}]})
+        setSel([{k: 'item', id}])
+        setTool('select')
+        reset()
+    }
     const Tool = ({k, l}) => (
         <button
             className={tool === k ? 'on' : ''}
@@ -699,24 +748,34 @@ export default function Situatie({p, setP, idx, onFooter}) {
                     </div>
                 )}
                 <div className="pal">
-                    <b>Componenten ({placed} op dit blad)</b>
+                    <b>
+                        Componenten ({placed} op dit blad)
+                    </b>
+                    <input
+                        id="comp-filter"
+                        type="search"
+                        aria-label="Zoek component"
+                        placeholder="Zoek op naam, type of nummer (bv. A7)"
+                        value={filter}
+                        onChange={(e) => setFilter(e.target.value)}
+                        style={{width: '100%', boxSizing: 'border-box', margin: '4px 0'}}
+                    />
                     <div className="pallist">
-                    {nodes.map((n) => (
-                        <button
-                            key={n.id}
-                            style={{background: node === n.id ? '#cfe3ff' : ''}}
-                            onClick={() => {
-                                setNode(n.id)
-                                setTool('sym')
-                            }}
-                        >
-                            <svg width="20" height="20" viewBox="0 0 20 20">
-                                <Sym shapes={typeOf(p, n.type).shapes} x={10} y={10} s={18} />
-                            </svg>
-                            {unplaced.includes(n) ? '⚠' : '✓'} {nameOf(p, n)}
-                        </button>
-                    ))}
-                </div>
+                        {shown.map((n) => (
+                            <CompBtn
+                                key={n.id}
+                                p={p}
+                                n={n}
+                                id={'comp-' + n.id}
+                                on={node === n.id}
+                                onClick={() => {
+                                    setNode(n.id)
+                                    setTool('sym')
+                                }}
+                            />
+                        ))}
+                        {!shown.length && <i>{nodes.length ? 'Geen componenten gevonden' : 'Nog geen componenten'}</i>}
+                    </div>
                 </div>
             </div>
             <div className="main">
@@ -818,11 +877,19 @@ export default function Situatie({p, setP, idx, onFooter}) {
                     (unplaced.length ? (
                         <div className="warn">
                             ⚠ Nergens geplaatst ({unplaced.length}):
-                            <ul>
+                            <div className="pal unplist">
                                 {unplaced.map((n) => (
-                                    <li key={n.id}>{nameOf(p, n)}</li>
+                                    <CompBtn
+                                        key={n.id}
+                                        p={p}
+                                        n={n}
+                                        id={'unplaced-' + n.id}
+                                        mark={marks.get(n.id)}
+                                        title="Klik om op het blad te plaatsen"
+                                        onClick={() => placeNode(n.id)}
+                                    />
                                 ))}
-                            </ul>
+                            </div>
                             <button onClick={auto}>Plaats ontbrekende op dit blad</button>
                         </div>
                     ) : (

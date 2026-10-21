@@ -3,6 +3,7 @@
 import {fireEvent, render, screen} from '@testing-library/react'
 import Situatie, {SitSheet, ZOOMS} from '../Situatie.jsx'
 import {base, mount, node} from './utils.jsx'
+import {marksOf} from '../util'
 
 const P = () => ({...base(), een: [{id: 'e1', name: 'B', tree: [node('n1', 'stopcontact', [], {label: 'Keuken stopcontact'})]}]})
 const sv = (c) => c.querySelector('svg.sheet'),
@@ -56,7 +57,7 @@ test('symbols and warnings, auto place, text tool', () => {
     tool('Symbool')
     clk(container, 50, 50)
     expect(sit(spy).items).toHaveLength(0)
-    fireEvent.click(screen.getByRole('button', {name: /Keuken stopcontact/}))
+    fireEvent.click(container.querySelector('#comp-n1'))
     clk(container, 50, 50)
     expect(sit(spy).items[0]).toMatchObject({kind: 'sym', node: 'n1', x: 50, y: 50})
     screen.getByText('✓ Alle componenten geplaatst')
@@ -796,4 +797,74 @@ test('"Plaats ontbrekende" works from the right panel', () => {
     const {spy} = mount(Situatie, P(), {idx: 0})
     fireEvent.click(screen.getByText('Plaats ontbrekende op dit blad'))
     expect(sit(spy).items[0]).toMatchObject({kind: 'sym', node: 'n1'})
+})
+
+// ---- search, markings and clickable "nergens geplaatst" ----
+// circuit A with 7 points; point 7 is a switch with a lamp hanging under it
+const circ = () => {
+    const pts = [1, 2, 3, 4, 5, 6].map((i) => node('p' + i, 'stopcontact', [], {label: 'Stop ' + i}))
+    pts.push(node('p7', 'schakelaar', [node('l7', 'lichtpunt', [], {label: 'Lamp'})], {label: 'Schakelaar'}))
+    return {...base(), een: [{id: 'e1', name: 'B', tree: [node('k', 'kring', pts, {label: 'A'})]}]}
+}
+const rightPanel = (c) => c.querySelector('.rightpanel')
+test('markings: a point and everything under it share circuit letter + point number', () => {
+    expect(marksOf(circ()).get('p7')).toBe('A7')
+    expect(marksOf(circ()).get('l7')).toBe('A7')
+    expect(marksOf(circ()).get('p1')).toBe('A1')
+    expect(marksOf(circ()).has('k')).toBe(false)
+    const q = circ()
+    q.een[0].tree[0].children[0].p = {nr: '12'}
+    expect(marksOf(q).get('p1')).toBe('A12')
+})
+test('unplaced list: buttons with the marking right-aligned, clicking places the symbol and removes it from the list', () => {
+    const {container, spy} = mount(Situatie, circ(), {idx: 0})
+    const btn = () => rightPanel(container).querySelector('#unplaced-p7')
+    expect(btn().tagName).toBe('BUTTON')
+    expect(btn().querySelector('.nm').textContent).toBe('Schakelaar')
+    expect(btn().querySelector('.mark').textContent).toBe('A7')
+    expect(btn().lastElementChild).toHaveClass('mark')
+    expect(rightPanel(container).querySelector('#unplaced-l7 .mark').textContent).toBe('A7')
+    expect(rightPanel(container).textContent).toContain('Nergens geplaatst (8)')
+    fireEvent.click(btn())
+    expect(sit(spy).items).toHaveLength(1)
+    expect(sit(spy).items[0]).toMatchObject({kind: 'sym', node: 'p7', r: 0})
+    expect(rightPanel(container).querySelector('#unplaced-p7')).toBeNull()
+    expect(rightPanel(container).textContent).toContain('Nergens geplaatst (7)')
+    // the placed symbol is drawn with its marking
+    expect([...sv(container).querySelectorAll('text')].some((x) => x.textContent === 'A7')).toBe(true)
+})
+test('unplaced list: successive clicks do not stack symbols on one spot', () => {
+    const {container, spy} = mount(Situatie, circ(), {idx: 0})
+    fireEvent.click(container.querySelector('#unplaced-p1'))
+    fireEvent.click(container.querySelector('#unplaced-p2'))
+    const [a, b] = sit(spy).items
+    expect(a.x !== b.x || a.y !== b.y).toBe(true)
+})
+test('deleting a placed symbol puts it back in the unplaced list', () => {
+    const init = circ()
+    init.sit[0].items = [{id: 'i1', kind: 'sym', node: 'p7', x: 100, y: 100, r: 0, s: 7}]
+    const {container, spy} = mount(Situatie, init, {idx: 0})
+    expect(rightPanel(container).querySelector('#unplaced-p7')).toBeNull()
+    fireEvent.pointerDown(container.querySelector('svg.sheet g[style*="move"]'), {clientX: 100, clientY: 100})
+    fireEvent.keyDown(document.body, {key: 'Delete'})
+    expect(sit(spy).items).toHaveLength(0)
+    expect(rightPanel(container).querySelector('#unplaced-p7 .mark').textContent).toBe('A7')
+})
+test('component list: filter by name, type or marking', () => {
+    const {container} = mount(Situatie, circ(), {idx: 0})
+    const f = container.querySelector('#comp-filter'),
+        ids = () => [...container.querySelectorAll('.pallist button')].map((b) => b.id)
+    expect(ids()).toHaveLength(8)
+    expect(container.querySelector('#comp-p7 .mark').textContent).toBe('A7')
+    fireEvent.change(f, {target: {value: 'a7'}})
+    expect(ids()).toEqual(['comp-p7', 'comp-l7'])
+    fireEvent.change(f, {target: {value: 'stop 3'}})
+    expect(ids()).toEqual(['comp-p3'])
+    fireEvent.change(f, {target: {value: 'LAMP'}})
+    expect(ids()).toEqual(['comp-l7'])
+    fireEvent.change(f, {target: {value: 'zzz'}})
+    expect(ids()).toEqual([])
+    screen.getByText('Geen componenten gevonden')
+    fireEvent.change(f, {target: {value: ''}})
+    expect(ids()).toHaveLength(8)
 })

@@ -16,3 +16,17 @@ export const unplacedOf = (p) => {
     )
     return allNodes(p).filter((n) => !s.has(n.id))
 }
+// Marking of every element under a circuit, e.g. 'A7' = circuit A, point 7. Same numbering as drawn on the eendraadschema
+// (the point's own nr, else its position under the circuit). Everything hanging under a point (a switch and its lamp) shares its marking.
+export const marksOf = (p) => {
+    const out = new Map(),
+        walk = (ns, mark) =>
+            ns.forEach((n) => {
+                if (mark) out.set(n.id, mark)
+                if (n.type === 'kring')
+                    n.children.forEach((c, i) => walk([c], n.label ? n.label + (c.p?.nr || i + 1) : null))
+                else walk(n.children, mark)
+            })
+    p.een.forEach((g) => walk(g.tree, null))
+    return out
+}

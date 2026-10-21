@@ -132,7 +132,8 @@ export function verify(p) {
             .filter((i) => i.kind === 'sym')
             .map((i) => i.node),
     )
-    const un = allNodes(p).filter((n) => !placed.has(n.id)),
+    const hid = new Set(p.hidden || []),
+        un = allNodes(p).filter((n) => !placed.has(n.id) && !hid.has(n.id)),
         pgOf = (n) => p.een.find((g) => flat(g.tree).includes(n))
     if (un.length > 8)
         add(

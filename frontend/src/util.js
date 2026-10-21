@@ -14,7 +14,13 @@ export const unplacedOf = (p) => {
             .filter((i) => i.kind === 'sym')
             .map((i) => i.node),
     )
-    return allNodes(p).filter((n) => !s.has(n.id))
+    const hid = new Set(p.hidden || [])
+    return allNodes(p).filter((n) => !s.has(n.id) && !hid.has(n.id))
+}
+// components the user marked as not needed on the situatieschema (stored in the project, so it is saved with it)
+export const hiddenOf = (p) => {
+    const hid = new Set(p.hidden || [])
+    return allNodes(p).filter((n) => hid.has(n.id))
 }
 // Marking of every element under a circuit, e.g. 'A7' = circuit A, point 7. Same numbering as drawn on the eendraadschema
 // (the point's own nr, else its position under the circuit). Everything hanging under a point (a switch and its lamp) shares its marking.

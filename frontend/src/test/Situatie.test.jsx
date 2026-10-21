@@ -5,7 +5,10 @@ import Situatie, {SitSheet, ZOOMS} from '../Situatie.jsx'
 import {base, mount, node} from './utils.jsx'
 import {marksOf} from '../util'
 
-const P = () => ({...base(), een: [{id: 'e1', name: 'B', tree: [node('n1', 'stopcontact', [], {label: 'Keuken stopcontact'})]}]})
+const P = () => ({
+    ...base(),
+    een: [{id: 'e1', name: 'B', tree: [node('n1', 'stopcontact', [], {label: 'Keuken stopcontact'})]}]
+})
 const sv = (c) => c.querySelector('svg.sheet'),
     clk = (c, x, y) => fireEvent.click(sv(c), {clientX: x, clientY: y}),
     tool = (n) => fireEvent.click(screen.getByRole('button', {name: n}))
@@ -177,7 +180,7 @@ test('SitSheet static: orphan symbol, text, window, no handles', () => {
                 {id: '3', kind: 'window', x: 5, y: 0, r: 0},
             ],
         }
-    const {container} = render(<SitSheet p={p} pg={pg} no={2} total={3} />)
+    const {container} = render(<SitSheet p={p} pg={pg} no={2} total={3}/>)
     screen.getByText('(verwijderd)')
     screen.getByText('Hi')
     expect(container.querySelector('line[stroke="transparent"]')).toBeNull()
@@ -250,6 +253,15 @@ test('drawing snaps to grid points by default; free drawing is an opt-in checkbo
     clk(container, 13.9, 21)
     clk(container, 26, 21)
     expect(sit(spy).walls[2]).toMatchObject({x1: 15, y1: 20, x2: 25, y2: 20})
+})
+test('Escape cancels the active tool like a right click', () => {
+    const {container, spy} = mount(Situatie, P(), {idx: 0})
+    tool('Muur')
+    clk(container, 12, 17)
+    fireEvent.keyDown(window, {key: 'Escape'})
+    expect(screen.getByText('Selecteer')).toHaveClass('on')
+    clk(container, 48, 17)
+    expect(sit(spy)?.walls ?? []).toHaveLength(0)
 })
 test('a cursor marker shows the snapped grid point; walls and rooms get a preview', () => {
     const {container} = mount(Situatie, P(), {idx: 0}),
@@ -580,15 +592,15 @@ test('the scale of the footer drives the dimensions', () => {
     expect(texts(container).filter((t) => t === '4,00 m')).toHaveLength(1)
     expect(texts(container)).toContain('5,66 m')
     const q = {...p, footer: {...p.footer, schaal: 'groot'}}
-    const r = render(<SitSheet p={q} pg={q.sit[0]} no={1} total={1} />)
+    const r = render(<SitSheet p={q} pg={q.sit[0]} no={1} total={1}/>)
     expect(r.container.textContent).toContain('2,00 m')
 })
 test('static sheets (PDF/print) follow the per-sheet dimension setting', () => {
     const p = P(),
         pg = {id: 's', name: 'X', walls: [wall('w', 10, 20, 50, 20)], items: []}
-    const a = render(<SitSheet p={p} pg={pg} no={1} total={1} />)
+    const a = render(<SitSheet p={p} pg={pg} no={1} total={1}/>)
     expect(a.container.textContent).toContain('2,00 m')
-    const b = render(<SitSheet p={p} pg={{...pg, dims: false}} no={1} total={1} />)
+    const b = render(<SitSheet p={p} pg={{...pg, dims: false}} no={1} total={1}/>)
     expect(b.container.textContent).not.toContain('2,00 m')
     expect(b.container.querySelector('[aria-label="Verwijder selectie"]')).toBeNull()
 })
@@ -807,6 +819,7 @@ const circ = () => {
     return {...base(), een: [{id: 'e1', name: 'B', tree: [node('k', 'kring', pts, {label: 'A'})]}]}
 }
 const rightPanel = (c) => c.querySelector('.rightpanel')
+const unplacedIds = (c) => [...c.querySelectorAll('.warn .unprow button[id^="hide-"]')].map((b) => b.id.slice(5))
 test('markings: a point and everything under it share circuit letter + point number', () => {
     expect(marksOf(circ()).get('p7')).toBe('A7')
     expect(marksOf(circ()).get('l7')).toBe('A7')
@@ -866,4 +879,47 @@ test('component list: filter by name, type or marking', () => {
     screen.getByText('Geen componenten gevonden')
     fireEvent.change(f, {target: {value: ''}})
     expect(ids()).toHaveLength(8)
+})
+test('components can be hidden from the unplaced list and restored; the choice is stored in the project', () => {
+    const {container, spy} = mount(Situatie, circ(), {idx: 0})
+    expect(container.querySelector('#unplaced-p7')).not.toBeNull()
+    expect(container.querySelector('#toggle-hidden')).toBeNull()
+    fireEvent.click(container.querySelector('#hide-p7'))
+    expect(spy.p.hidden).toEqual(['p7'])
+    expect(container.querySelector('#unplaced-p7')).toBeNull()
+    expect(rightPanel(container).textContent).toContain('Nergens geplaatst (7)')
+    fireEvent.click(container.querySelector('#toggle-hidden'))
+    expect(container.querySelector('#hidden-p7')).not.toBeNull()
+    fireEvent.click(container.querySelector('#unhide-p7'))
+    expect(spy.p.hidden).toEqual([])
+    expect(container.querySelector('#unplaced-p7')).not.toBeNull()
+    expect(container.querySelector('#toggle-hidden')).toBeNull()
+})
+test('hiding several components keeps them all; hiding everything shows the "all placed" message and the restore list', () => {
+    const {container, spy} = mount(Situatie, circ(), {idx: 0})
+    fireEvent.click(container.querySelector('#hide-p1'))
+    fireEvent.click(container.querySelector('#hide-p2'))
+    expect([...spy.p.hidden].sort()).toEqual(['p1', 'p2'])
+    unplacedIds(container).forEach((id) => fireEvent.click(container.querySelector('#hide-' + id)))
+    expect(spy.p.hidden).toHaveLength(8)
+    screen.getByText('✓ Alle componenten geplaatst')
+    expect(container.querySelector('#toggle-hidden').textContent).toContain('(8)')
+    expect(container.querySelector('#toggle-hidden')).toHaveAttribute('aria-expanded', 'false')
+    fireEvent.click(container.querySelector('#toggle-hidden'))
+    expect(container.querySelector('#toggle-hidden')).toHaveAttribute('aria-expanded', 'true')
+    expect(container.querySelectorAll('.hiddenlist .unprow')).toHaveLength(8)
+})
+test('"Plaats ontbrekende" skips hidden components', () => {
+    const p = circ()
+    p.hidden = ['p1', 'p2', 'p3', 'p4', 'p5', 'p6', 'p7']
+    const {spy} = mount(Situatie, p, {idx: 0})
+    fireEvent.click(screen.getByText('Plaats ontbrekende op dit blad'))
+    expect(sit(spy).items.map((i) => i.node)).toEqual(['l7'])
+})
+test('a hidden component placed on the sheet anyway stays on the sheet', () => {
+    const p = circ()
+    p.hidden = ['p7']
+    p.sit[0].items = [{id: 'i1', kind: 'sym', node: 'p7', x: 100, y: 100, r: 0, s: 7}]
+    const {container} = mount(Situatie, p, {idx: 0})
+    expect([...sv(container).querySelectorAll('text')].some((x) => x.textContent === 'A7')).toBe(true)
 })

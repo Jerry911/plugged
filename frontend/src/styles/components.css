@@ -169,3 +169,103 @@
     overflow: auto;
     margin: 4px 0
 }
+
+.pal.unplist {
+    overflow-y: auto;
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* Older IE and Edge */
+}
+
+.pal.unplist::-webkit-scrollbar {
+    display: none; /* Chrome, Safari, newer Edge */
+}
+
+/* unplaced list: a component row with a small icon button to hide / restore it */
+.unprow {
+    display: flex;
+    align-items: stretch;
+    gap: 4px;
+    margin: 3px 0
+}
+
+.pal .unprow .compbtn {
+    flex: 1;
+    width: auto;
+    min-width: 0;
+    margin: 0
+}
+
+.pal .unprow .iconbtn {
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    margin: 0;
+    padding: 0;
+    color: #555;
+    background: #fff;
+    border: 1px solid #b5b5b5;
+    border-radius: 4px;
+    cursor: pointer
+}
+
+.iconbtn svg {
+    width: 16px;
+    height: 16px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round
+}
+
+.pal .unprow .iconbtn.hide:hover,
+.pal .unprow .iconbtn.hide:focus-visible {
+    background: #fdecea;
+    color: #c62828;
+    border-color: #c62828
+}
+
+.pal .unprow .iconbtn.show:hover,
+.pal .unprow .iconbtn.show:focus-visible {
+    background: #e6f4ea;
+    color: #1e7e34;
+    border-color: #1e7e34
+}
+
+.unhint {
+    margin: 6px 0 0;
+    font-size: 12px;
+    color: #6b5a1e
+}
+
+.hiddenlist {
+    margin: 6px 0;
+    padding: 6px;
+    border: 1px dashed #aaa;
+    border-radius: 6px;
+    background: #f7f7f7
+}
+
+.hiddenlist .toggle {
+    width: 100%;
+    text-align: left;
+    background: none;
+    border: none;
+    padding: 2px 0;
+    color: #444;
+    font-weight: 600;
+    cursor: pointer
+}
+
+.hiddenlist .unplist {
+    max-height: 30vh;
+    opacity: .85
+}
+
+.hiddenlist .hint {
+    margin: 2px 0 4px;
+    font-size: 12px;
+    color: #666
+}

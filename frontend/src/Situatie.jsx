@@ -4,7 +4,7 @@ import {useEffect, useRef, useState} from 'react'
 import {Sym, typeOf} from './symbols'
 import {Sheet} from './Footer'
 import ZoomPane from './ZoomPane.jsx'
-import {allNodes, marksOf, nameOf, uid, unplacedOf} from './util'
+import {allNodes, hiddenOf, marksOf, nameOf, uid, unplacedOf} from './util'
 import {numbering} from './boardModel'
 import {dirTo, fmtLen, hitsInBox, itemBox, parseDims, parseLen, r2, rectWalls, scaleOf, suggestScale, toSheet, unionBox, wallBox} from './geometry'
 
@@ -315,6 +315,7 @@ export default function Situatie({p, setP, idx, onFooter}) {
         [, bump] = useState(0),
         [panelOpen, setPanelOpen] = useState(true),
         [filter, setFilter] = useState(''),
+        [showHidden, setShowHidden] = useState(false),
         ref = useRef(),
         dimRef = useRef(),
         justBoxed = useRef(false),
@@ -324,6 +325,7 @@ export default function Situatie({p, setP, idx, onFooter}) {
     const setPg = (patch) => setP({...p, sit: p.sit.map((g, i) => (i === idx ? {...g, ...patch} : g))})
     const nodes = allNodes(p),
         unplaced = unplacedOf(p),
+        hidden = hiddenOf(p),
         marks = marksOf(p),
         shown = nodes.filter((n) => matches(p, n, marks.get(n.id), filter)),
         placed = pg.items.filter((i) => i.kind === 'sym').length
@@ -361,23 +363,23 @@ export default function Situatie({p, setP, idx, onFooter}) {
         k === 'wall'
             ? setPg({walls: walls.map((w) => (w.id !== id ? w : {...w, x1: w.x1 + dx, y1: w.y1 + dy, x2: w.x2 + dx, y2: w.y2 + dy}))})
             : setPg({
-                  items: items.map((i) => {
-                      if (i.id !== id) return i
-                      const t = {x: i.x + dx, y: i.y + dy}
-                      if (i.kind === 'door' || i.kind === 'window') {
-                          const n = nearest(t)
-                          if (n.d < 8) return {...i, x: n.x, y: n.y, r: n.r}
-                      }
-                      return {...i, ...t}
-                  }),
-              })
+                items: items.map((i) => {
+                    if (i.id !== id) return i
+                    const t = {x: i.x + dx, y: i.y + dy}
+                    if (i.kind === 'door' || i.kind === 'window') {
+                        const n = nearest(t)
+                        if (n.d < 8) return {...i, x: n.x, y: n.y, r: n.r}
+                    }
+                    return {...i, ...t}
+                }),
+            })
     const moveSel = (dx, dy) =>
         sel.length === 1
             ? shiftOne(sel[0].k, sel[0].id, dx, dy)
             : setPg({
-                  walls: walls.map((w) => (ids.has(w.id) ? {...w, x1: w.x1 + dx, y1: w.y1 + dy, x2: w.x2 + dx, y2: w.y2 + dy} : w)),
-                  items: items.map((i) => (ids.has(i.id) ? {...i, x: i.x + dx, y: i.y + dy} : i)),
-              })
+                walls: walls.map((w) => (ids.has(w.id) ? {...w, x1: w.x1 + dx, y1: w.y1 + dy, x2: w.x2 + dx, y2: w.y2 + dy} : w)),
+                items: items.map((i) => (ids.has(i.id) ? {...i, x: i.x + dx, y: i.y + dy} : i)),
+            })
     const rotateSel = (deg) => setPg({items: items.map((i) => (ids.has(i.id) ? {...i, r: (i.r || 0) + deg} : i))})
     const duplicateSel = () => {
         const nw = walls
@@ -588,6 +590,11 @@ export default function Situatie({p, setP, idx, onFooter}) {
         addEventListener('keydown', f)
         return () => removeEventListener('keydown', f)
     })
+    // hide a component from the 'niet geplaatst' list (it does not belong on the situatieschema) or bring it back
+    const setHidden = (nid, on) => {
+        const rest = (p.hidden || []).filter((h) => h !== nid)
+        setP({...p, hidden: on ? [...rest, nid] : rest})
+    }
     const auto = () =>
         setPg({
             items: [
@@ -883,28 +890,70 @@ export default function Situatie({p, setP, idx, onFooter}) {
                     {panelOpen ? '>' : '<'}
                     {!panelOpen && unplaced.length > 0 && <span className="badge">{unplaced.length}</span>}
                 </button>
-                {panelOpen &&
-                    (unplaced.length ? (
-                        <div className="warn">
-                            ⚠ Nergens geplaatst ({unplaced.length}):
-                            <div className="pal unplist">
-                                {unplaced.map((n) => (
-                                    <CompBtn
-                                        key={n.id}
-                                        p={p}
-                                        n={n}
-                                        id={'unplaced-' + n.id}
-                                        mark={marks.get(n.id)}
-                                        title="Klik om op het blad te plaatsen"
-                                        onClick={() => placeNode(n.id)}
-                                    />
-                                ))}
+                {panelOpen && (
+                    <>
+                        {unplaced.length ? (
+                            <div className="warn">
+                                ⚠ Nergens geplaatst ({unplaced.length}):
+                                <div className="pal unplist">
+                                    {unplaced.map((n) => (
+                                        <div key={n.id} className="unprow">
+                                            <CompBtn
+                                                p={p}
+                                                n={n}
+                                                id={'unplaced-' + n.id}
+                                                mark={marks.get(n.id)}
+                                                title="Klik om op het blad te plaatsen"
+                                                onClick={() => placeNode(n.id)}
+                                            />
+                                            <button
+                                                type="button"
+                                                className="iconbtn hide"
+                                                id={'hide-' + n.id}
+                                                title="Niet nodig op het situatieschema (verbergen)"
+                                                aria-label={'Verberg ' + nameOf(p, n)}
+                                                onClick={() => setHidden(n.id, true)}
+                                            >
+                                                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3l18 18" /><path d="M10.6 5.1A10.9 10.9 0 0 1 12 5c6 0 10 7 10 7a17.6 17.6 0 0 1-3.2 4M6.4 6.4A17.7 17.7 0 0 0 2 12s4 7 10 7a10 10 0 0 0 4.2-.9" /><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2" /></svg>
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                                <button onClick={auto}>Plaats ontbrekende op dit blad</button>
+                                <div className="unhint">Niet nodig op het situatieschema? Klik op het oogje om een component te verbergen.</div>
                             </div>
-                            <button onClick={auto}>Plaats ontbrekende op dit blad</button>
-                        </div>
-                    ) : (
-                        <div className="ok">✓ Alle componenten geplaatst</div>
-                    ))}
+                        ) : (
+                            <div className="ok">✓ Alle componenten geplaatst</div>
+                        )}
+                        {hidden.length > 0 && (
+                            <div className="hiddenlist">
+                                <button id="toggle-hidden" className="toggle" aria-expanded={showHidden} onClick={() => setShowHidden((v) => !v)}>
+                                    {showHidden ? '▾' : '▸'} Niet nodig op situatieschema ({hidden.length})
+                                </button>
+                                {showHidden && (
+                                    <div className="pal unplist">
+                                        <div className="hint">Deze componenten tellen niet mee. Klik op de pijl om ze terug te zetten.</div>
+                                        {hidden.map((n) => (
+                                            <div key={n.id} className="unprow">
+                                                <CompBtn p={p} n={n} id={'hidden-' + n.id} mark={marks.get(n.id)} />
+                                                <button
+                                                    type="button"
+                                                    className="iconbtn show"
+                                                    id={'unhide-' + n.id}
+                                                    title="Weer tonen in de lijst"
+                                                    aria-label={'Toon ' + nameOf(p, n)}
+                                                    onClick={() => setHidden(n.id, false)}
+                                                >
+                                                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 14L4 9l5-5" /><path d="M4 9h10a6 6 0 0 1 0 12h-3" /></svg>
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </>
+                )}
             </div>
         </div>
     )

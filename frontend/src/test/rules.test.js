@@ -292,3 +292,10 @@ test('nested circuits are valid; empty circuit names are not duplicates', () => 
     expect(rule(p, 'hierarchy')).toHaveLength(0)
     expect(rule(p, 'kring.duplicate')).toHaveLength(0)
 })
+test('components hidden from the situatieschema are not reported as missing', () => {
+    const p = ok()
+    p.sit[0].items = p.sit[0].items.filter((i) => i.node !== 'S1')
+    expect(rule(p, 'plan.unplaced')).toHaveLength(1)
+    p.hidden = ['S1']
+    expect(rule(p, 'plan.unplaced')).toHaveLength(0)
+})

@@ -1,6 +1,6 @@
 // Copyright 2026 Pleysier Jeroen
 // SPDX-License-Identifier: AGPL-3.0-only
-import {allNodes, flat, reid, uid, unplacedOf} from '../util.js'
+import {allNodes, flat, hiddenOf, reid, uid, unplacedOf} from '../util.js'
 import {base, node} from './utils.jsx'
 
 const tree = [node('a', 'aansluiting', [node('b', 'bord', [node('s', 'stopcontact'), node('l', 'lichtpunt')])])]
@@ -36,4 +36,11 @@ test('unplacedOf ignores placed nodes across pages', () => {
         ],
     }
     expect(unplacedOf(p).map((n) => n.id)).toEqual(['b', 'l'])
+})
+test('hidden nodes leave unplacedOf and show up in hiddenOf; unknown ids are ignored', () => {
+    const p = {...base(), een: [{id: 'e', name: 'x', tree}], sit: [{id: 's', name: 'y', walls: [], items: []}], hidden: ['b', 'nope']}
+    expect(unplacedOf(p).map((n) => n.id)).toEqual(['s', 'l'])
+    expect(hiddenOf(p).map((n) => n.id)).toEqual(['b'])
+    expect(hiddenOf({...p, hidden: undefined})).toEqual([])
+    expect(unplacedOf({...p, hidden: undefined}).map((n) => n.id)).toEqual(['b', 's', 'l'])
 })

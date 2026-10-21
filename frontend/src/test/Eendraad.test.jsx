@@ -1,10 +1,11 @@
 // Copyright 2026 Pleysier Jeroen
 // SPDX-License-Identifier: AGPL-3.0-only
 import {fireEvent, screen} from '@testing-library/react'
-import Eendraad from '../Eendraad.jsx'
+import Eendraad, {rotate} from '../Eendraad.jsx'
 import {base, mount, node} from './utils.jsx'
 import {defaultTree} from '../boardModel.js'
 
+const btn = (id) => document.getElementById(id)
 const pal = (n) => screen.getAllByText(n)[0],
     row = (n) => screen.getAllByText(n).at(-1)
 beforeEach(() => {
@@ -47,17 +48,58 @@ test('edit properties, move, indent, outdent, duplicate, delete', () => {
     expect(spy.p.een[0].tree[1].label).toBe('Cx')
     fireEvent.change(screen.getByPlaceholderText(/Specs/), {target: {value: 'B16'}})
     expect(spy.p.een[0].tree[1].info).toBe('B16')
-    fireEvent.click(screen.getByText('↑'))
+    fireEvent.click(btn('eds-earlier'))
     expect(spy.p.een[0].tree[0].label).toBe('Cx')
-    fireEvent.click(screen.getByText('↓'))
-    fireEvent.click(screen.getByText('→'))
+    fireEvent.click(btn('eds-later'))
+    fireEvent.click(btn('eds-indent'))
     expect(spy.p.een[0].tree[0].children.map((n) => n.id)).toEqual(['B', 'C'])
-    fireEvent.click(screen.getByText('←'))
+    fireEvent.click(btn('eds-outdent'))
     expect(spy.p.een[0].tree.map((n) => n.id)).toEqual(['A', 'C'])
-    fireEvent.click(screen.getByText('⧉'))
+    fireEvent.click(btn('eds-duplicate'))
     expect(spy.p.een[0].tree).toHaveLength(3)
     fireEvent.keyDown(document.body, {key: 'Delete'})
     expect(spy.p.een[0].tree).toHaveLength(2)
+})
+test('toolbar buttons have a tooltip and an accessible name', () => {
+    mount(Eendraad, withTree([node('A', 'bord'), node('C', 'bord')]), {idx: 0})
+    fireEvent.click(row('C'))
+    for (const id of ['eds-earlier', 'eds-later', 'eds-outdent', 'eds-indent', 'eds-duplicate', 'eds-rotate-ccw', 'eds-rotate-cw']) {
+        expect(btn(id)).toHaveAttribute('title')
+        expect(btn(id)).toHaveAttribute('aria-label')
+    }
+})
+test('rotate helper wraps around in both directions', () => {
+    const t = [node('A', 'stopcontact', [node('B', 'lamp')])]
+    expect(rotate(t, 'A', 15)[0].r).toBe(15)
+    expect(rotate(t, 'A', -15)[0].r).toBe(345)
+    expect(rotate(rotate(t, 'A', 350), 'A', 20)[0].r).toBe(10)
+    expect(rotate(t, 'B', 90)[0].children[0].r).toBe(90)
+})
+test('rotate buttons turn the selected symbol, full circle, and are disabled for distribution parts', () => {
+    const t = [node('A', 'aansluiting', [node('B', 'bord', [node('K', 'kring', [node('S', 'stopcontact')])])])],
+        {spy} = mount(Eendraad, withTree(t), {idx: 0}),
+        S = () => spy.p.een[0].tree[0].children[0].children[0].children[0]
+    // select through the tree list: the drawing also contains a (non-clickable) text 'S' for the label
+    const treeRow = (l) => [...document.querySelectorAll('.tree div')].find((d) => d.textContent.startsWith(l))
+    fireEvent.click(treeRow('K'))
+    expect(btn('eds-rotate-cw')).toBeDisabled()
+    expect(btn('eds-rotate-ccw')).toBeDisabled()
+    fireEvent.click(treeRow('S'))
+    expect(selected()).toHaveTextContent(/^S/)
+    fireEvent.click(btn('eds-rotate-cw'))
+    expect(S().r).toBe(15)
+    expect(btn('eds-rotation')).toHaveTextContent('15°')
+    fireEvent.click(btn('eds-rotate-ccw'))
+    fireEvent.click(btn('eds-rotate-ccw'))
+    expect(S().r).toBe(345)
+    for (let i = 0; i < 24; i++) fireEvent.click(btn('eds-rotate-cw'))
+    expect(S().r).toBe(345)
+})
+test('a turned symbol is drawn turned in the schema', () => {
+    const t = defaultTree()
+    t[0].children[0].children = [node('K', 'kring', [node('S', 'stopcontact', [], {r: 90})])]
+    const {container} = mount(Eendraad, {...base(), een: [{id: 'e1', name: 'x', tree: t}]}, {idx: 0})
+    expect(container.querySelector('svg.sheet g[transform^="rotate(90 "]')).toBeInTheDocument()
 })
 test('custom components appear in palette', () => {
     const p = {...base(), custom: [{id: '9', name: 'Mijn ding', shapes: []}]}

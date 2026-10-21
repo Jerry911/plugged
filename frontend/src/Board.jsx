@@ -14,7 +14,13 @@ const Item = ({it, sel, onSel}) => {
         return (
             <g {...h}>
                 <rect x={it.x - 30} y={it.y - 30} width="60" height="60" fill="transparent" />
-                <Sym shapes={it.shapes} x={it.x} y={it.y} s={it.s} stroke={c} />
+                {it.r ? (
+                    <g transform={`rotate(${it.r} ${it.x} ${it.y})`}>
+                        <Sym shapes={it.shapes} x={it.x} y={it.y} s={it.s} stroke={c} />
+                    </g>
+                ) : (
+                    <Sym shapes={it.shapes} x={it.x} y={it.y} s={it.s} stroke={c} />
+                )}
             </g>
         )
     if (it.k === 'rect')

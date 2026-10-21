@@ -134,7 +134,7 @@ function node(p, n, x, y, out) {
         shapes = stacked ? sockShapes({...t.sock, n: sk.n}, true) : t.shapes,
         cnt = Number(pr.aantal) > 1 && !stacked ? 'x' + pr.aantal : '',
         w = Math.max(SYM + 6, tw(lab) + 8, tw(cnt) + 8)
-    out.push({k: 'sym', shapes, x: x + w / 2, y, s: SYM, id: n.id})
+    out.push({k: 'sym', shapes, x: x + w / 2, y, s: SYM, id: n.id, ...(n.r ? {r: n.r} : {})})
     const rc = reach(shapes),
         mid = x + w / 2
     if (rc) {
@@ -162,7 +162,12 @@ function node(p, n, x, y, out) {
 const box = (it) => {
     if (it.k === 'line') return [Math.min(it.x1, it.x2) - 2, Math.min(it.y1, it.y2) - 2, Math.max(it.x1, it.x2) + 2, Math.max(it.y1, it.y2) + 2]
     if (it.k === 'rect') return [it.x - 2, it.y - 2, it.x + it.w + 2, it.y + it.h + 2]
-    if (it.k === 'sym') return [it.x - SYM / 2 - 4, it.y - SYM / 2 - 4, it.x + SYM / 2 + 4, it.y + SYM / 2 + 4]
+    if (it.k === 'sym') {
+        // a turned symbol needs more room: half the width of its turned bounding square
+        const a = ((it.r || 0) * Math.PI) / 180,
+            h = (SYM / 2) * (Math.abs(Math.cos(a)) + Math.abs(Math.sin(a))) + 4
+        return [it.x - h, it.y - h, it.x + h, it.y + h]
+    }
     if (it.k !== 'text') return null
     const size = it.size || 13,
         w = String(it.s ?? '').length * size * (it.bold ? 0.7 : 0.62),

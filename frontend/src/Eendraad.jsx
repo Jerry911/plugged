@@ -42,6 +42,27 @@ export const outdent = (ns, id) =>
             children: outdent(n.children, id)
         }]
     })
+// rotation step (degrees) of the turn buttons; an element can be turned a full 360 degrees in both directions
+export const ROT_STEP = 15
+export const rotate = (ns, id, deg) =>
+    upd(ns, id, (x) => [{...x, r: (((x.r || 0) + deg) % 360 + 360) % 360}])
+// small line icons for the toolbar buttons (stroke follows the text colour)
+const Ico = ({children}) => (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+         strokeLinejoin="round" aria-hidden="true">
+        {children}
+    </svg>
+)
+const ICONS = {
+    // move to an earlier / later position among the elements of the same group
+    earlier: <Ico><path d="M12 19V5"/><path d="M5 12l7-7 7 7"/></Ico>,
+    later: <Ico><path d="M12 5v14"/><path d="M19 12l-7 7-7-7"/></Ico>,
+    // one level up (out of its group) / one level down (into the previous element)
+    outdent: <Ico><path d="M21 6H11"/><path d="M21 12h-6"/><path d="M21 18H11"/><path d="M7 8l-4 4 4 4"/></Ico>,
+    indent: <Ico><path d="M21 6H11"/><path d="M21 12h-6"/><path d="M21 18H11"/><path d="M3 8l4 4-4 4"/></Ico>,
+    ccw: <Ico><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></Ico>,
+    cw: <Ico><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 4v5h-5"/></Ico>,
+}
 const DIST = ['aansluiting', 'teller', 'hoofdschakelaar', 'bord', 'diff', 'kring', 'domotica', 'subbord']
 const FIELDS = {
     kring: [
@@ -279,12 +300,66 @@ export default function Eendraad({p, setP, idx, focus, onFooter}) {
                                 style={{width: '100%', boxSizing: 'border-box', marginTop: 4}}
                             />
                         )}
-                        <div className="tb">
-                            <button onClick={ob((t, i) => mv(t, i, -1))}>↑</button>
-                            <button onClick={ob((t, i) => mv(t, i, 1))}>↓</button>
-                            <button title="Hoger niveau" onClick={ob(outdent)}>←</button>
-                            <button title="Onder vorige" onClick={ob(indent)}>→</button>
-                            <button onClick={() => set(upd(tree, s.id, (x) => [x, ...reid([x])]))}>⧉</button>
+                        <div className="tb icons">
+                            <button
+                                id="eds-earlier"
+                                title="Eerder in de volgorde (omhoog in de opbouw, naar links in het schema)"
+                                aria-label="Eerder in de volgorde"
+                                onClick={ob((t, i) => mv(t, i, -1))}
+                            >
+                                {ICONS.earlier}
+                            </button>
+                            <button
+                                id="eds-later"
+                                title="Later in de volgorde (omlaag in de opbouw, naar rechts in het schema)"
+                                aria-label="Later in de volgorde"
+                                onClick={ob((t, i) => mv(t, i, 1))}
+                            >
+                                {ICONS.later}
+                            </button>
+                            <button
+                                id="eds-outdent"
+                                title="Eén niveau hoger: uit de bovenliggende groep halen"
+                                aria-label="Eén niveau hoger"
+                                onClick={ob(outdent)}
+                            >
+                                {ICONS.outdent}
+                            </button>
+                            <button
+                                id="eds-indent"
+                                title="Eén niveau lager: onder het vorige element plaatsen"
+                                aria-label="Eén niveau lager"
+                                onClick={ob(indent)}
+                            >
+                                {ICONS.indent}
+                            </button>
+                            <button
+                                id="eds-duplicate"
+                                title="Dupliceren"
+                                aria-label="Dupliceren"
+                                onClick={() => set(upd(tree, s.id, (x) => [x, ...reid([x])]))}
+                            >
+                                ⧉
+                            </button>
+                            <button
+                                id="eds-rotate-ccw"
+                                title={`Symbool ${ROT_STEP}° tegen de klok in draaien`}
+                                aria-label="Tegen de klok in draaien"
+                                disabled={DIST.includes(s.type)}
+                                onClick={() => set(rotate(tree, s.id, -ROT_STEP))}
+                            >
+                                {ICONS.ccw}
+                            </button>
+                            <button
+                                id="eds-rotate-cw"
+                                title={`Symbool ${ROT_STEP}° met de klok mee draaien`}
+                                aria-label="Met de klok mee draaien"
+                                disabled={DIST.includes(s.type)}
+                                onClick={() => set(rotate(tree, s.id, ROT_STEP))}
+                            >
+                                {ICONS.cw}
+                            </button>
+                            {!DIST.includes(s.type) && !!s.r && <small id="eds-rotation"> {s.r}°</small>}
                         </div>
                     </div>
                 )}

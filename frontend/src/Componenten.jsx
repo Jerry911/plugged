@@ -229,9 +229,9 @@ export default function Componenten({lib, onSave, onRemove, onReset, onRestoreAl
                                                     title="Maak de huidige tekening de nieuwe standaard (overschrijft de standaardtekening)"
                                                     onClick={makeStandard}
                                                 >
-                                                    <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
-                                                        <path d="M12 3 2 21h20z" />
-                                                        <path d="M12 10v5M12 18v.01" />
+                                                    <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
+                                                        <path d="M8 1.5 1 14h14z" />
+                                                        <path d="M8 6v3.5M8 11.5v.01" />
                                                     </svg>
                                                     Maak standaard
                                                 </button>

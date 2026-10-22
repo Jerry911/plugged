@@ -29,7 +29,7 @@ import java.util.Map;
  * are then replaced by the new standard when the application starts (see {@link SymbolService#seed()}).
  */
 public final class StandardSymbols {
-    public static final int VERSION = 4;
+    public static final int VERSION = 5;
 
     private static final String V = "Verdeling", S = "Stopcontacten", O = "Verlichting & bediening", A = "Toestellen", E = "Energie", G = "Overig";
 
@@ -136,8 +136,8 @@ public final class StandardSymbols {
 
     /** automatic circuit breaker (kleine vermogensschakelaar): vertical, terminals above and below, a lever and (optional) a filled block */
     private static List<Map<String, Object>> breaker(boolean square) {
-        List<Map<String, Object>> out = of(line(13, 2, 13, 8), line(13, 15, 13, 22), line(13, 15, 9.5, 9));
-        if (square) out.add(block(8, 7, 2.6, 2.6));
+        List<Map<String, Object>> out = of(line(13, 2, 13, 5), line(13, 14, 13, 22), line(13, 14, 9.6, 5));
+        if (square) out.add(block(8.3, 2.4, 2.6, 2.6));
         return out;
     }
 

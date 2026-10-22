@@ -188,8 +188,17 @@ export function circuit(p, n) {
         cable = pr.kabel || '',
         y0 = -Math.max(215, 150 + tw(cable) + 40)
     const st = stack(p, n.children, xs, y0, out, STUB, true)
-    out.push(line(xs, 0, xs, y0))
-    if (!none) out.push(line(xs, -30, xs - 9, -52), {k: 'rect', x: xs - 14, y: -60, w: 7, h: 9, fill: 1})
+    if (none) out.push(line(xs, 0, xs, y0))
+    else {
+        // the line does not run through the breaker: it stops at the lower contact, the lever swings up and to the left
+        // and ends in a filled block (drawn along the lever), the line carries on above the lever
+        out.push(
+            line(xs, 0, xs, -30),
+            line(xs, -30, xs - 9, -52),
+            {...line(xs - 9, -52, xs - 12.8, -61.3), w: 8, fill: 1},
+            line(xs, -52, xs, y0),
+        )
+    }
     const long = (n.label || '').length > 3
     out.push(
         long

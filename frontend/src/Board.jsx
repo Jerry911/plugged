@@ -26,41 +26,43 @@ const Trash = ({x, y, onDelete}) => (
         </g>
     </g>
 )
+// symbols are drawn in a 24-unit box scaled by s/24: compensate so their stroke equals the connection lines
+const LINE_W = 2
 const Item = ({it, sel, onSel, onDelete}) => {
     const on = sel && it.id === sel,
         c = on ? B : '#000',
         h = it.id && onSel ? {onClick: () => onSel(it.id), style: {cursor: 'pointer'}} : {}
-    if (it.k === 'line') return <line x1={it.x1} y1={it.y1} x2={it.x2} y2={it.y2} stroke="#000" strokeWidth="2" />
+    if (it.k === 'line') return <line x1={it.x1} y1={it.y1} x2={it.x2} y2={it.y2} stroke="#000" strokeWidth={it.w || LINE_W} />
     if (it.k === 'sym')
         return (
             <>
-            <g {...h}>
-                <rect x={it.x - 30} y={it.y - 30} width="60" height="60" fill="transparent" />
-                {it.r ? (
-                    <g transform={`rotate(${it.r} ${it.x} ${it.y})`}>
-                        <Sym shapes={it.shapes} x={it.x} y={it.y} s={it.s} stroke={c} />
-                    </g>
-                ) : (
-                    <Sym shapes={it.shapes} x={it.x} y={it.y} s={it.s} stroke={c} />
-                )}
-            </g>
-            {on && onDelete && <Trash x={it.x + 30} y={it.y - 30} onDelete={onDelete} />}
+                <g {...h}>
+                    <rect x={it.x - 30} y={it.y - 30} width="60" height="60" fill="transparent" />
+                    {it.r ? (
+                        <g transform={`rotate(${it.r} ${it.x} ${it.y})`}>
+                            <Sym shapes={it.shapes} x={it.x} y={it.y} s={it.s} stroke={c} w={(LINE_W * 24) / it.s} />
+                        </g>
+                    ) : (
+                        <Sym shapes={it.shapes} x={it.x} y={it.y} s={it.s} stroke={c} w={(LINE_W * 24) / it.s} />
+                    )}
+                </g>
+                {on && onDelete && <Trash x={it.x + 30} y={it.y - 30} onDelete={onDelete} />}
             </>
         )
     if (it.k === 'rect')
         return (
             <>
-            <rect
-                {...h}
-                x={it.x}
-                y={it.y}
-                width={it.w}
-                height={it.h}
-                fill={it.fill ? '#000' : '#fff'}
-                stroke={c}
-                strokeWidth={it.id ? 3 : 1.5}
-            />
-            {on && onDelete && <Trash x={it.x + it.w} y={it.y} onDelete={onDelete} />}
+                <rect
+                    {...h}
+                    x={it.x}
+                    y={it.y}
+                    width={it.w}
+                    height={it.h}
+                    fill={it.fill ? '#000' : '#fff'}
+                    stroke={c}
+                    strokeWidth={it.id ? 3 : 1.5}
+                />
+                {on && onDelete && <Trash x={it.x + it.w} y={it.y} onDelete={onDelete} />}
             </>
         )
     return (

@@ -8,6 +8,8 @@ const DEFAULTS = standard
 
 const nOf = (k) => DEFAULTS.find((d) => d.k === k).shapes.length,
     svg = (c) => c.querySelector('svg[viewBox="0 0 24 24"]'),
+    // number of shapes in the drawing (the first <g> of the drawing holds them)
+    count = (c) => svg(c).querySelector('g').children.length,
     clk = (s, x, y) => fireEvent.click(s, {clientX: x, clientY: y}),
     mine = {k: 'custom:1', name: 'Mijn ding', cat: 'Eigen', parents: ['kring'], place: true, shapes: [{t: 'line', x1: 1, y1: 12, x2: 20, y2: 12}]}
 const fresh = {k: 'custom:nieuw', name: '', cat: 'Eigen', parents: ['kring'], place: true, shapes: []}
@@ -18,9 +20,10 @@ const mount = (lib = DEFAULTS, ok = true) => {
         remove: vi.fn(async () => true),
         reset: vi.fn(async (k) => (ok ? DEFAULTS.find((d) => d.k === k) : null)),
         restoreAll: vi.fn(async () => ok),
+        makeStandard: vi.fn(async (k) => (ok ? {...DEFAULTS.find((d) => d.k === k), modified: false} : null)),
         template: vi.fn(async () => (ok ? fresh : null)),
     }
-    return {...render(<Componenten lib={lib} onSave={f.save} onRemove={f.remove} onReset={f.reset} onRestoreAll={f.restoreAll} onTemplate={f.template} />), ...f}
+    return {...render(<Componenten lib={lib} onSave={f.save} onRemove={f.remove} onReset={f.reset} onRestoreAll={f.restoreAll} onMakeStandard={f.makeStandard} onTemplate={f.template} />), ...f}
 }
 const create = async () => {
     fireEvent.click(screen.getByText('＋ Nieuw component'))
@@ -81,7 +84,7 @@ test('draws line, circle, rect, half circle and text and saves a new component',
     fireEvent.click(screen.getByText('Tekst'))
     clk(s, 6, 6)
     clk(s, 7, 7)
-    screen.getByText('Vormen (7)')
+    expect(count(container)).toBe(7)
     fireEvent.change(name(), {target: {value: 'Test'}})
     fireEvent.change(screen.getByPlaceholderText('Categorie'), {target: {value: ''}})
     fireEvent.click(screen.getByText('Toevoegen'))
@@ -135,30 +138,18 @@ test('requires a name and at least one shape', async () => {
     fireEvent.click(screen.getByText('Toevoegen'))
     expect(window.alert).toHaveBeenCalledTimes(2)
 })
-test('undo, clear and removing single shapes; shapes are listed', () => {
+test('undo and clear', () => {
     const {container} = mount()
     fireEvent.click(screen.getByText('Teller (kWh)'))
     const n = nOf('teller')
-    screen.getByText(`Vormen (${n})`)
-    screen.getAllByText(/Rechthoek \(/)
-    screen.getByText(/“kWh”/)
-    fireEvent.click(screen.getAllByTitle('Vorm verwijderen')[0])
-    screen.getByText(`Vormen (${n - 1})`)
+    expect(count(container)).toBe(n)
     clk(svg(container), 1, 1)
     clk(svg(container), 5, 5)
-    screen.getByText(`Vormen (${n})`)
+    expect(count(container)).toBe(n + 1)
     fireEvent.click(screen.getByText('↶'))
-    screen.getByText(`Vormen (${n - 1})`)
+    expect(count(container)).toBe(n)
     fireEvent.click(screen.getByText('Leegmaken'))
-    screen.getByText('Vormen (0)')
-})
-test('all shape kinds are described in the shape list', () => {
-    mount()
-    pick('Dimmer')
-    screen.getAllByText(/Lijn \(/)
-    screen.getAllByText(/Cirkel \(/)
-    pick('Stopcontact')
-    screen.getByText(/Boog \(8.5,12\) r=4.5 90°…270°/)
+    expect(count(container)).toBe(0)
 })
 test('parents and placement can be changed', async () => {
     const {save} = mount([...DEFAULTS, mine])
@@ -187,7 +178,7 @@ test('a standard component can be restored to its default', async () => {
     await screen.findByText('Standaard hersteld ✓')
     expect(reset).toHaveBeenCalledWith('oven')
     expect(screen.getByText('Standaard herstellen')).toBeDisabled()
-    screen.getByText(`Vormen (${nOf('oven')})`)
+    expect(count(container)).toBe(nOf('oven'))
 })
 test('own components can be removed after confirmation', async () => {
     const {remove} = mount([...DEFAULTS, mine])
@@ -265,4 +256,98 @@ test('tells when restoring is not possible', async () => {
     fireEvent.click(screen.getByText('Alle standaard herstellen'))
     await waitFor(() => expect(restoreAll).toHaveBeenCalled())
     await screen.findByText(/Niet hersteld/)
+})
+test('after the first click the outline follows the mouse and the second click finalizes it on the grid', async () => {
+    const {container, save} = mount()
+    await create()
+    const s = svg(container),
+        preview = () => container.querySelector('g[stroke-dasharray]')
+    fireEvent.click(screen.getByText('Cirkel (midden, rand)'))
+    fireEvent.mouseMove(s, {clientX: 12, clientY: 12})
+    expect(preview()).toBeNull()
+    clk(s, 12, 12)
+    expect(preview().querySelector('circle')).toHaveAttribute('r', '1') // the mouse is still on the centre: minimum radius
+    fireEvent.mouseMove(s, {clientX: 15.2, clientY: 12})
+    expect(preview().querySelector('circle')).toHaveAttribute('r', '3')
+    fireEvent.mouseMove(s, {clientX: 16, clientY: 12})
+    expect(preview().querySelector('circle')).toHaveAttribute('r', '4')
+    expect(count(container)).toBe(0) // not final yet
+    clk(s, 16, 12)
+    expect(preview()).toBeNull()
+    expect(count(container)).toBe(1)
+    fireEvent.change(name(), {target: {value: 'Rond'}})
+    fireEvent.click(screen.getByText('Toevoegen'))
+    await waitFor(() => expect(save).toHaveBeenCalled())
+    expect(save.mock.calls[0][0].shapes[0]).toEqual({t: 'circle', cx: 12, cy: 12, r: 4})
+})
+test('Escape cancels the shape that is being drawn', async () => {
+    const {container} = mount()
+    await create()
+    const s = svg(container)
+    clk(s, 3, 3)
+    expect(container.querySelector('circle[fill="red"]')).toBeTruthy()
+    fireEvent.keyDown(window, {key: 'Escape'})
+    expect(container.querySelector('circle[fill="red"]')).toBeNull()
+})
+test('name and category have labels below each other, the grid selector sits in the drawing area, the menu list scrolls', async () => {
+    const {container} = mount()
+    await create()
+    screen.getByLabelText('Naam')
+    screen.getByLabelText('Categorie')
+    expect(container.querySelector('.cdraw .gridsel')).toContainElement(screen.getByLabelText('Raster'))
+    expect(container.querySelector('.pal .complist')).toBeTruthy()
+    // the action group and the tool group are separate groups
+    const actions = container.querySelector('.cactions'),
+        tools = container.querySelector('.ctools')
+    ;['Toevoegen', 'Dupliceer', '↶', 'Leegmaken'].forEach((t) => expect(within(actions).getByText(t)).toBeTruthy())
+    ;['Lijn', 'Tekst'].forEach((t) => expect(within(tools).getByText(t)).toBeTruthy())
+})
+test('the shapes list is gone', () => {
+    mount()
+    pick('Oven')
+    expect(screen.queryByText(/^Vormen \(/)).toBeNull()
+    expect(screen.queryAllByTitle('Vorm verwijderen')).toHaveLength(0)
+})
+test('name and category are right of the drawing below the previews and above the placement option; the hint is where they used to be', async () => {
+    const {container} = mount()
+    await create()
+    const info = container.querySelector('.cinfo'),
+        fields = container.querySelector('.cfields'),
+        place = screen.getByLabelText(/Plaatsbaar op het/),
+        hint = screen.getByText(/Teken op het raster van 24×24/)
+    expect(info).toContainElement(fields)
+    expect(fields.compareDocumentPosition(place) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(info.querySelector('svg').compareDocumentPosition(fields) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(hint.compareDocumentPosition(container.querySelector('.cactions')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(container.querySelector('.cwork').contains(hint)).toBe(false)
+})
+test('"Maak standaard" sits under "Standaard herstellen", is a danger button, and makes the current drawing the new standard', async () => {
+    const {makeStandard, save, container} = mount()
+    pick('Oven')
+    const group = within(container.querySelector('.ctools')),
+        restore = group.getByText('Standaard herstellen'),
+        make = group.getByText('Maak standaard').closest('button')
+    expect(restore.compareDocumentPosition(make) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(make).toHaveClass('danger')
+    expect(make.querySelector('svg')).toBeTruthy()
+    expect(make).toBeDisabled() // nothing changed yet
+    fireEvent.change(name(), {target: {value: 'Oven 2'}})
+    expect(make).toBeEnabled()
+    window.confirm.mockReturnValueOnce(false)
+    fireEvent.click(make)
+    expect(makeStandard).not.toHaveBeenCalled()
+    fireEvent.click(make)
+    await screen.findByText('Als nieuwe standaard ingesteld ✓')
+    // unsaved changes are saved first
+    expect(save).toHaveBeenCalledWith(expect.objectContaining({k: 'oven', name: 'Oven 2'}))
+    expect(makeStandard).toHaveBeenCalledWith('oven')
+})
+test('"Maak standaard" is only there for standard symbols and tells when the backend refuses', async () => {
+    mount([...DEFAULTS, mine], false)
+    pick('Mijn ding')
+    expect(screen.queryByText('Maak standaard')).toBeNull()
+    pick('Oven')
+    fireEvent.change(name(), {target: {value: 'Oven 2'}})
+    fireEvent.click(screen.getByText('Maak standaard').closest('button'))
+    await screen.findByText(/Niet opgeslagen: de backend/)
 })

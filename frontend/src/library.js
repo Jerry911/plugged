@@ -64,7 +64,7 @@ export function useLibrary() {
     useEffect(() => {
         load()
     }, [load])
-    // save, reset and template resolve to the symbol the backend answered with (null when it did not accept it); remove and restoreAll to true/false
+    // save, reset, makeStandard and template resolve to the symbol the backend answered with (null when it did not accept it); remove and restoreAll to true/false
     const save = useCallback(async (c) => {
         const r = await call(url(c.k), {method: 'PUT', headers: JSON_H, body: JSON.stringify(c)})
         if (!r) return null
@@ -84,6 +84,13 @@ export function useLibrary() {
         setLib((l) => put(l, s))
         return s
     }, [])
+    const makeStandard = useCallback(async (k) => {
+        const r = await call(url(k) + '/standard', {method: 'POST'})
+        if (!r) return null
+        const s = await r.json()
+        setLib((l) => put(l, s))
+        return s
+    }, [])
     const restoreAll = useCallback(async () => {
         const r = await call('/api/symbols/restore', {method: 'POST'})
         if (!r) return false
@@ -94,5 +101,5 @@ export function useLibrary() {
         const r = await call('/api/symbols/template')
         return r ? r.json() : null
     }, [])
-    return {lib, status, reload: load, save, remove, reset, restoreAll, template}
+    return {lib, status, reload: load, save, remove, reset, makeStandard, restoreAll, template}
 }

@@ -269,3 +269,133 @@
     font-size: 12px;
     color: #666
 }
+
+/* Symbol editor (Componenten): scrolling menu, fields, button groups left of the drawing, drawing with grid selector */
+.complist {
+    max-height: 65vh;
+    overflow-y: auto;
+    margin-top: 6px
+}
+
+.cfields {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-width: 360px;
+    margin-bottom: 8px
+}
+
+.cfields label {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    font-size: 12px;
+    font-weight: 600
+}
+
+.cfields input {
+    font-weight: 400;
+    padding: 4px 6px
+}
+
+.cgroup {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    padding: 6px;
+    border: 1px solid #c4c4c4;
+    border-radius: 6px;
+    background: #f6f6f6
+}
+
+.cactions {
+    margin-bottom: 8px
+}
+
+.cwork {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    flex-wrap: wrap
+}
+
+.ctools {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: 170px;
+    flex: none
+}
+
+.ctools .cgroup {
+    flex-direction: column;
+    align-items: stretch
+}
+
+.ctools button {
+    padding: 5px 9px;
+    cursor: pointer;
+    text-align: left
+}
+
+.cdraw {
+    position: relative;
+    flex: 1 1 360px;
+    max-width: 560px;
+    min-width: 280px
+}
+
+.cdraw svg {
+    display: block;
+    width: 100%;
+    border: 1px solid #888;
+    background: #fff;
+    cursor: crosshair
+}
+
+.cdraw .gridsel {
+    right: 6px;
+    bottom: 6px
+}
+
+.cinfo {
+    flex: 1 1 220px;
+    min-width: 220px
+}
+
+.chint {
+    margin: 0 0 8px;
+    padding: 6px 8px;
+    max-width: 760px;
+    font-size: 12px;
+    color: #444;
+    background: #f1f6fb;
+    border-left: 3px solid #1f3a5f
+}
+
+.cinfo .cfields {
+    max-width: none;
+    margin: 10px 0
+}
+
+.ctools button.cdanger {
+    display: flex;
+    align-items: center;
+    gap: 6px
+}
+
+.ctools button.cdanger svg {
+    flex: none;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round
+}
+
+.ctools button.cdanger:enabled {
+    background: #c62828;
+    color: #fff;
+    box-shadow: 0 0 0 2px #fdecea
+}

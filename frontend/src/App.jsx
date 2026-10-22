@@ -127,7 +127,7 @@ function Editor({library}) {
         [showV, setShowV] = useState(false),
         [focus, setFocus] = useState(null),
         ref = useRef()
-    const {lib, save: saveComp, remove: removeComp, reset: resetComp, restoreAll, template} = library
+    const {lib, save: saveComp, remove: removeComp, reset: resetComp, makeStandard, restoreAll, template} = library
     setLibrary(lib)
     const issues = useMemo(() => verify(p), [p, lib]),
         ec = issues.filter((i) => i.level === 'error').length,
@@ -305,7 +305,7 @@ function Editor({library}) {
                         <Situatie key={p.sit[s].id} p={p} setP={setP} idx={s} onFooter={openFooter} />
                     </>
                 )}
-                {tab === 2 && <Componenten lib={lib} onSave={saveComp} onRemove={removeComp} onReset={resetComp} onRestoreAll={restoreAll} onTemplate={template} />}
+                {tab === 2 && <Componenten lib={lib} onSave={saveComp} onRemove={removeComp} onReset={resetComp} onMakeStandard={makeStandard} onRestoreAll={restoreAll} onTemplate={template} />}
             </div>
             {job && (
                 <div ref={ref}>

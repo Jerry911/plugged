@@ -21,6 +21,8 @@ import org.springframework.web.server.ResponseStatusException;
 public class SymbolService {
     /** keys that are part of the URLs of the API */
     static final List<String> RESERVED = List.of("template", "restore");
+    /** prefix of the hidden rows that hold the standard a user chose with {@link #makeStandard}; they never show up in the catalog */
+    static final String BASE = "std:";
     private static final Pattern KEY = Pattern.compile("[A-Za-z0-9_.:-]{1,100}");
     private static final int MAX_SHAPES = 500, MAX_PARENTS = 500, CUSTOM_ORDER = 100_000;
 
@@ -34,13 +36,14 @@ public class SymbolService {
     public void seed() {
         for (SymbolDto std : StandardSymbols.all()) {
             SymbolEntity cur = repo.findById(std.k()).orElse(null);
-            if (cur == null || (cur.isBuiltin() && !cur.isModified() && cur.getStdVersion() < StandardSymbols.VERSION)) repo.save(fresh(std));
+            if (cur == null || (cur.isBuiltin() && !cur.isModified() && cur.getStdVersion() < StandardSymbols.VERSION)) repo.save(fresh(standardOf(std.k())));
         }
     }
 
     @Transactional(readOnly = true)
     public List<SymbolDto> list() {
         return repo.findAll().stream()
+                .filter(e -> !isBase(e.getK()))
                 .sorted(Comparator.comparingInt(SymbolEntity::getSortOrder).thenComparing(SymbolEntity::getName, String.CASE_INSENSITIVE_ORDER))
                 .map(SymbolMapper::toDto)
                 .toList();
@@ -48,6 +51,7 @@ public class SymbolService {
 
     @Transactional(readOnly = true)
     public SymbolDto get(String k) {
+        if (isBase(k)) throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Symbool niet gevonden: " + k);
         return SymbolMapper.toDto(repo.findById(k).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Symbool niet gevonden: " + k)));
     }
 
@@ -61,7 +65,7 @@ public class SymbolService {
     public SymbolDto save(String k, SymbolDto in) {
         validate(k, in);
         SymbolEntity e = SymbolMapper.toEntity(new SymbolDto(k, in.name(), in.cat(), in.parents(), in.place(), in.shapes(), in.sock(), 0, false, false));
-        SymbolDto std = StandardSymbols.find(k);
+        SymbolDto std = standardOf(k);
         SymbolEntity cur = repo.findById(k).orElse(null);
         if (std != null) {
             e.setBuiltin(true);
@@ -75,14 +79,48 @@ public class SymbolService {
     }
 
     public void delete(String k) {
+        if (isBase(k)) throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Symbool niet gevonden: " + k);
         SymbolEntity e = repo.findById(k).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Symbool niet gevonden: " + k));
         if (e.isBuiltin()) throw new ResponseStatusException(HttpStatus.CONFLICT, "Een standaardsymbool kan niet verwijderd worden, wel hersteld");
         repo.delete(e);
     }
 
+    /**
+     * The current definition of a standard symbol becomes its standard: restore, restore-all and the seeding then go back to this drawing.
+     * It is kept in a hidden row (key "std:" + k); the symbol itself is no longer marked as modified.
+     */
+    public SymbolDto makeStandard(String k) {
+        if (isBase(k)) throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Symbool niet gevonden: " + k);
+        SymbolEntity cur = repo.findById(k).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Symbool niet gevonden: " + k));
+        if (StandardSymbols.find(k) == null) throw new ResponseStatusException(HttpStatus.CONFLICT, "Alleen een standaardsymbool kan de nieuwe standaard worden: " + k);
+        SymbolDto d = SymbolMapper.toDto(cur);
+        SymbolEntity base = SymbolMapper.toEntity(new SymbolDto(BASE + k, d.name(), d.cat(), d.parents(), d.place(), d.shapes(), d.sock(), 0, false, false));
+        base.setSortOrder(CUSTOM_ORDER);
+        repo.save(base);
+        cur.setModified(false);
+        return SymbolMapper.toDto(repo.save(cur));
+    }
+
+    /** The standard definition of a symbol: the one the user chose with {@link #makeStandard}, else the one of the catalog; null for a symbol that is not a standard symbol. */
+    private SymbolDto standardOf(String k) {
+        SymbolDto std = StandardSymbols.find(k);
+        if (std == null) return null;
+        return repo.findById(BASE + k)
+                .map(b -> {
+                    SymbolDto d = SymbolMapper.toDto(b);
+                    return new SymbolDto(k, d.name(), d.cat(), d.parents(), d.place(), d.shapes(), d.sock(), std.v(), true, false);
+                })
+                .orElse(std);
+    }
+
+    private static boolean isBase(String k) {
+        return k != null && k.startsWith(BASE);
+    }
+
     /** Puts a standard symbol back to its standard drawing (also when the user changed or deleted it in the database). */
     public SymbolDto restore(String k) {
-        SymbolDto std = StandardSymbols.find(k);
+        if (isBase(k)) throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Symbool niet gevonden: " + k);
+        SymbolDto std = standardOf(k);
         if (std == null) {
             if (repo.existsById(k)) throw new ResponseStatusException(HttpStatus.CONFLICT, "Een eigen symbool heeft geen standaardtekening: " + k);
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Symbool niet gevonden: " + k);
@@ -92,7 +130,7 @@ public class SymbolService {
 
     /** Puts all standard symbols back to their standard drawings; the symbols of the user are left alone. */
     public List<SymbolDto> restoreAll() {
-        for (SymbolDto std : StandardSymbols.all()) repo.save(fresh(std));
+        for (SymbolDto std : StandardSymbols.all()) repo.save(fresh(standardOf(std.k())));
         return list();
     }
 
@@ -110,7 +148,7 @@ public class SymbolService {
     }
 
     static boolean validKey(String k) {
-        return k != null && KEY.matcher(k).matches() && !RESERVED.contains(k);
+        return k != null && KEY.matcher(k).matches() && !RESERVED.contains(k) && !isBase(k);
     }
 
     /** @throws ResponseStatusException 400 with the reason when the symbol cannot be stored */

@@ -109,6 +109,34 @@ class SymbolControllerTest {
     }
 
     @Test
+    void makingASymbolStandardChangesWhatRestoreGoesBackTo() throws Exception {
+        mvc.perform(put("/api/symbols/lichtpunt").contentType(MediaType.APPLICATION_JSON).content(symbol("lichtpunt", "Lamp", BOX)))
+                .andExpect(jsonPath("$.modified").value(true));
+        mvc.perform(post("/api/symbols/lichtpunt/standard")).andExpect(status().isOk())
+                .andExpect(jsonPath("$.name").value("Lamp"))
+                .andExpect(jsonPath("$.builtin").value(true))
+                .andExpect(jsonPath("$.modified").value(false));
+        mvc.perform(put("/api/symbols/lichtpunt").contentType(MediaType.APPLICATION_JSON).content(symbol("lichtpunt", "Nog een lamp", BOX)))
+                .andExpect(jsonPath("$.modified").value(true));
+        mvc.perform(post("/api/symbols/lichtpunt/restore")).andExpect(status().isOk())
+                .andExpect(jsonPath("$.name").value("Lamp"))
+                .andExpect(jsonPath("$.modified").value(false));
+        mvc.perform(post("/api/symbols/restore")).andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(StandardSymbols.all().size())))
+                .andExpect(jsonPath("$[?(@.k=='lichtpunt')].name").value("Lamp"));
+        // the hidden row of the chosen standard is not part of the catalog and cannot be reached
+        mvc.perform(get("/api/symbols/std:lichtpunt")).andExpect(status().isNotFound());
+        mvc.perform(delete("/api/symbols/std:lichtpunt")).andExpect(status().isNotFound());
+    }
+
+    @Test
+    void onlyStandardSymbolsCanBecomeTheNewStandard() throws Exception {
+        mvc.perform(put("/api/symbols/custom:s").contentType(MediaType.APPLICATION_JSON).content(symbol("custom:s", "S", BOX))).andExpect(status().isOk());
+        mvc.perform(post("/api/symbols/custom:s/standard")).andExpect(status().isConflict());
+        mvc.perform(post("/api/symbols/nope/standard")).andExpect(status().isNotFound());
+    }
+
+    @Test
     void savingTheStandardDrawingAgainIsNotAModification() throws Exception {
         String json = mvc.perform(get("/api/symbols/zekering")).andReturn().getResponse().getContentAsString();
         mvc.perform(put("/api/symbols/zekering").contentType(MediaType.APPLICATION_JSON).content(json))

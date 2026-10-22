@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.RestController;
  *   <li>GET /api/symbols: all symbols, in catalog order (standard symbols first)</li>
  *   <li>GET /api/symbols/template: a new, empty symbol of the user (fresh key, default parents)</li>
  *   <li>GET /api/symbols/{k}, PUT /api/symbols/{k} (create or update, 400 when invalid), DELETE /api/symbols/{k} (409 for a standard symbol)</li>
+ *   <li>POST /api/symbols/{k}/standard: the current drawing of a standard symbol becomes its standard (409 for an own symbol)</li>
  *   <li>POST /api/symbols/{k}/restore: back to the standard drawing; POST /api/symbols/restore: all standard symbols (returns the full list)</li>
  * </ul>
  */
@@ -60,6 +61,11 @@ public class SymbolController {
     @PostMapping("/restore")
     public List<SymbolDto> restoreAll() {
         return service.restoreAll();
+    }
+
+    @PostMapping("/{k}/standard")
+    public SymbolDto makeStandard(@PathVariable String k) {
+        return service.makeStandard(k);
     }
 
     @PostMapping("/{k}/restore")

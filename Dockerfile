@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 
 # ---- Build: Maven builds the React frontend (frontend-maven-plugin) and the Spring Boot jar ----
-FROM maven:3.9-eclipse-temurin-17 AS build
+FROM maven:3.9-eclipse-temurin-21 AS build
 WORKDIR /build
 COPY frontend frontend
 COPY backend backend
@@ -11,7 +11,7 @@ RUN --mount=type=cache,target=/root/.m2 \
     mvn -B -ntp -f backend/pom.xml clean package -DskipTests=$([ "$RUN_TESTS" = "true" ] && echo false || echo true)
 
 # ---- Runtime ----
-FROM eclipse-temurin:17-jre
+FROM eclipse-temurin:21-jre
 RUN useradd --system --uid 10001 --create-home plugged \
     && mkdir /data && chown plugged:plugged /data
 WORKDIR /app

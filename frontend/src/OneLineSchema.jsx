@@ -268,7 +268,7 @@ export default function OneLineSchema({p, setP, idx, focus, onFooter}) {
         plan = sheetPlan(p, true).filter((e) => e.kind === 'een' && e.pg === pg)
     return (
         <div className="row">
-            <div className="side ui pal">
+            <div className="side ui pal sticky-side">
                 <input
                     placeholder="Zoek element…"
                     value={q}

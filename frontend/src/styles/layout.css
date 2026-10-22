@@ -30,6 +30,16 @@
     flex: none
 }
 
+.side.sticky-side {
+    /* follow the viewport while scrolling; scroll inside if taller than the screen */
+    position: sticky;
+    top: 10px;
+    align-self: flex-start;
+    max-height: calc(100vh - 20px);
+    overflow-y: auto;
+    overscroll-behavior: contain
+}
+
 .main {
     flex: 1;
     min-width: 0

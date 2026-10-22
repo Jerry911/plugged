@@ -31,3 +31,11 @@
         margin: 0
     }
 }
+
+@media print {
+    .side.sticky-side {
+        position: static;
+        max-height: none;
+        overflow: visible
+    }
+}

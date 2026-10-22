@@ -2,15 +2,29 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import {fireEvent, render, screen, waitFor, within} from '@testing-library/react'
 import Componenten from '../Componenten.jsx'
-import {BUILTIN as DEFAULTS} from '../symbols.jsx'
+import standard from './fixtures/standard-symbols.json'
+
+const DEFAULTS = standard
 
 const nOf = (k) => DEFAULTS.find((d) => d.k === k).shapes.length,
     svg = (c) => c.querySelector('svg[viewBox="0 0 24 24"]'),
     clk = (s, x, y) => fireEvent.click(s, {clientX: x, clientY: y}),
     mine = {k: 'custom:1', name: 'Mijn ding', cat: 'Eigen', parents: ['kring'], place: true, shapes: [{t: 'line', x1: 1, y1: 12, x2: 20, y2: 12}]}
+const fresh = {k: 'custom:nieuw', name: '', cat: 'Eigen', parents: ['kring'], place: true, shapes: []}
+// the callbacks answer like the library hook does: save and reset give the symbol of the backend (null when refused)
 const mount = (lib = DEFAULTS, ok = true) => {
-    const f = {save: vi.fn(async () => ok), remove: vi.fn(async () => true), reset: vi.fn(async () => true)}
-    return {...render(<Componenten lib={lib} onSave={f.save} onRemove={f.remove} onReset={f.reset} />), ...f}
+    const f = {
+        save: vi.fn(async (c) => (ok ? {...c, modified: c.builtin} : null)),
+        remove: vi.fn(async () => true),
+        reset: vi.fn(async (k) => (ok ? DEFAULTS.find((d) => d.k === k) : null)),
+        restoreAll: vi.fn(async () => ok),
+        template: vi.fn(async () => (ok ? fresh : null)),
+    }
+    return {...render(<Componenten lib={lib} onSave={f.save} onRemove={f.remove} onReset={f.reset} onRestoreAll={f.restoreAll} onTemplate={f.template} />), ...f}
+}
+const create = async () => {
+    fireEvent.click(screen.getByText('＋ Nieuw component'))
+    await screen.findByPlaceholderText('Naam component')
 }
 const pick = (n) => fireEvent.click(within(document.querySelector('.pal')).getByText(n))
 const name = () => screen.getByPlaceholderText('Naam component')
@@ -33,15 +47,19 @@ test('opening a standard component shows its editor and saving keeps its key', a
     expect(name().value).toBe('Stopcontact')
     expect(screen.queryByText('Verwijder')).toBeNull()
     expect(screen.getByText('Standaard herstellen')).toBeDisabled()
+    screen.getByText('Standaardsymbool')
     fireEvent.change(name(), {target: {value: ' Stopcontact X '}})
     screen.getByText('● niet opgeslagen')
     fireEvent.click(screen.getByText('Opslaan'))
     await screen.findByText('Opgeslagen ✓')
     expect(save).toHaveBeenCalledWith(expect.objectContaining({k: 'stopcontact', name: 'Stopcontact X'}))
+    // the backend says the standard symbol was changed: it is marked, and can be restored
+    screen.getByText('Standaardsymbool, aangepast')
+    expect(screen.getByText('Standaard herstellen')).toBeEnabled()
 })
 test('draws line, circle, rect, half circle and text and saves a new component', async () => {
     const {container, save} = mount()
-    fireEvent.click(screen.getByText('＋ Nieuw component'))
+    await create()
     const s = svg(container)
     clk(s, 2, 3)
     expect(container.querySelector('circle[fill="red"]')).toBeTruthy()
@@ -79,7 +97,7 @@ test('draws line, circle, rect, half circle and text and saves a new component',
 })
 test('the grid size dropdown changes the drawing grid and snaps clicks to it', async () => {
     const {container, save} = mount()
-    fireEvent.click(screen.getByText('＋ Nieuw component'))
+    await create()
     const grid = screen.getByLabelText('Raster'),
         s = svg(container)
     expect([...grid.options].map((o) => o.value)).toEqual(['0.5', '1', '2', '4'])
@@ -104,9 +122,9 @@ test('the grid size dropdown changes the drawing grid and snaps clicks to it', a
     expect(l2).toEqual({t: 'line', x1: 4, y1: 6, x2: 4, y2: 6})
     expect(r).toEqual({t: 'rect', x: 4, y: 4, w: 2, h: 2})
 })
-test('requires a name and at least one shape', () => {
+test('requires a name and at least one shape', async () => {
     const {container} = mount()
-    fireEvent.click(screen.getByText('＋ Nieuw component'))
+    await create()
     fireEvent.click(screen.getByText('Toevoegen'))
     expect(window.alert).toHaveBeenCalledTimes(1)
     fireEvent.change(name(), {target: {value: 'A'}})
@@ -140,7 +158,7 @@ test('all shape kinds are described in the shape list', () => {
     screen.getAllByText(/Lijn \(/)
     screen.getAllByText(/Cirkel \(/)
     pick('Stopcontact')
-    screen.getByText(/Boog \(14,20\) r=4.5 180°…360°/)
+    screen.getByText(/Boog \(8.5,12\) r=4.5 90°…270°/)
 })
 test('parents and placement can be changed', async () => {
     const {save} = mount([...DEFAULTS, mine])
@@ -198,9 +216,53 @@ test('switching away from unsaved changes asks for confirmation', () => {
     pick('Motor')
     expect(name().value).toBe('Motor')
 })
-test('tells when the database could not be reached', async () => {
+test('tells when the backend did not accept the symbol, and keeps the changes', async () => {
     mount(DEFAULTS, false)
     pick('Oven')
+    fireEvent.change(name(), {target: {value: 'Oven 2'}})
     fireEvent.click(screen.getByText('Opslaan'))
-    await screen.findByText(/Niet in de database opgeslagen/)
+    await screen.findByText(/Niet opgeslagen: de backend/)
+    expect(name().value).toBe('Oven 2')
+})
+test('an edited standard symbol is marked in the menu, an own symbol is labelled as such', () => {
+    mount([...DEFAULTS.map((d) => (d.k === 'oven' ? {...d, modified: true} : d)), mine])
+    expect(within(document.querySelector('.pal')).getByText(/^Oven ✎$/)).toBeTruthy()
+    expect(within(document.querySelector('.pal')).queryByText(/^Motor ✎$/)).toBeNull()
+    pick('Oven ✎')
+    screen.getByText('Standaardsymbool, aangepast')
+    expect(screen.getByText('Standaard herstellen')).toBeEnabled()
+    pick('Mijn ding')
+    screen.getByText('Eigen symbool')
+})
+test('a new component starts from the template of the backend; without backend nothing starts', async () => {
+    const {template} = mount()
+    await create()
+    expect(template).toHaveBeenCalledTimes(1)
+    expect(screen.getByText('Eigen symbool')).toBeTruthy()
+    expect(screen.getByText('Mag hangen onder (1)')).toBeTruthy()
+    const down = mount(DEFAULTS, false)
+    fireEvent.click(down.getAllByText('＋ Nieuw component').at(-1))
+    await waitFor(() => expect(window.alert).toHaveBeenCalledWith(expect.stringMatching(/backend is niet bereikbaar/)))
+})
+test('all standard symbols can be restored after confirmation', async () => {
+    const {restoreAll} = mount()
+    pick('Oven')
+    window.confirm.mockReturnValueOnce(false)
+    fireEvent.click(screen.getByText('Alle standaard herstellen'))
+    expect(restoreAll).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByText('Alle standaard herstellen'))
+    await screen.findByText('Alle standaardsymbolen hersteld ✓')
+    expect(restoreAll).toHaveBeenCalledTimes(1)
+    screen.getByText(/Kies links een component/)
+})
+test('tells when restoring is not possible', async () => {
+    const {reset, restoreAll} = mount(DEFAULTS, false)
+    pick('Oven')
+    fireEvent.change(name(), {target: {value: 'Oven 2'}})
+    fireEvent.click(screen.getByText('Standaard herstellen'))
+    await screen.findByText(/Niet hersteld/)
+    expect(reset).toHaveBeenCalledWith('oven')
+    fireEvent.click(screen.getByText('Alle standaard herstellen'))
+    await waitFor(() => expect(restoreAll).toHaveBeenCalled())
+    await screen.findByText(/Niet hersteld/)
 })

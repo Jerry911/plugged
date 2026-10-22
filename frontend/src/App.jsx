@@ -13,7 +13,7 @@ import Verify from './Verify'
 import {verify} from './rules'
 import {AllSheets, makePdf} from './Export'
 import {reid, uid, unplacedOf} from './util'
-import {BUILTIN_KEYS, ELEMENT_KEYS, setLibrary} from './symbols'
+import {setLibrary} from './symbols'
 
 const init = {
     footer: {datum: new Date().toISOString().slice(0, 10), schaal: '1:50', rev: 'A'},
@@ -102,7 +102,20 @@ const PageBar = ({p, setP, k, idx, setIdx}) => {
         </div>
     )
 }
+// the editor needs the symbol library: show it only when the backend has delivered it
 export default function App() {
+    const library = useLibrary()
+    if (library.status === 'loading') return <p className="ui" style={{padding: 16}}>Symbolen laden…</p>
+    if (library.status === 'error')
+        return (
+            <div className="ui" style={{padding: 16}}>
+                <p>De symbolen konden niet geladen worden: de backend is niet bereikbaar.</p>
+                <button onClick={library.reload}>Opnieuw proberen</button>
+            </div>
+        )
+    return <Editor library={library} />
+}
+function Editor({library}) {
     const {p, setP, reset, undo, redo, canUndo, canRedo} = useHistory(init),
         [footer, setFooter] = useState(null),
         [tab, setTab] = useState(0),
@@ -114,7 +127,7 @@ export default function App() {
         [showV, setShowV] = useState(false),
         [focus, setFocus] = useState(null),
         ref = useRef()
-    const {lib, save: saveComp, remove: removeComp, reset: resetComp} = useLibrary()
+    const {lib, save: saveComp, remove: removeComp, reset: resetComp, restoreAll, template} = library
     setLibrary(lib)
     const issues = useMemo(() => verify(p), [p, lib]),
         ec = issues.filter((i) => i.level === 'error').length,
@@ -133,7 +146,7 @@ export default function App() {
         p.custom.forEach((c) => {
             const k = 'custom:' + c.id
             if (!lib.some((x) => x.k === k))
-                saveComp({k, name: c.name, cat: c.cat || 'Eigen', parents: c.parents || ELEMENT_KEYS, place: c.place !== false, shapes: c.shapes})
+                saveComp({k, name: c.name, cat: c.cat || 'Eigen', parents: c.parents, place: c.place !== false, shapes: c.shapes})
         })
         setP((cur) => ({...cur, custom: []}))
     }, [p.custom])
@@ -204,7 +217,7 @@ export default function App() {
         const a = document.createElement('a')
         // own components travel along with the project file (as `custom`) so it opens on another installation
         const custom = lib
-            .filter((c) => !BUILTIN_KEYS.has(c.k))
+            .filter((c) => !c.builtin)
             .map((c) => ({id: c.k.replace(/^custom:/, ''), name: c.name, cat: c.cat, parents: c.parents, place: c.place, shapes: c.shapes}))
         a.href = URL.createObjectURL(new Blob([JSON.stringify({...p, custom})], {type: 'application/json'}))
         a.download = (p.footer.titel || 'schema') + '.json'
@@ -292,7 +305,7 @@ export default function App() {
                         <Situatie key={p.sit[s].id} p={p} setP={setP} idx={s} onFooter={openFooter} />
                     </>
                 )}
-                {tab === 2 && <Componenten lib={lib} onSave={saveComp} onRemove={removeComp} onReset={resetComp} />}
+                {tab === 2 && <Componenten lib={lib} onSave={saveComp} onRemove={removeComp} onReset={resetComp} onRestoreAll={restoreAll} onTemplate={template} />}
             </div>
             {job && (
                 <div ref={ref}>

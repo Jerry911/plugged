@@ -1,101 +1,150 @@
 // Copyright 2026 Pleysier Jeroen
 // SPDX-License-Identifier: AGPL-3.0-only
 import {act, renderHook, waitFor} from '@testing-library/react'
-import {BUILTIN as DEFAULTS} from '../symbols.jsx'
-import {mergeLibrary, useLibrary} from '../library.js'
+import {useLibrary} from '../library.js'
+import standard from './fixtures/standard-symbols.json'
 
-const mine = {k: 'custom:b', name: 'Beta', cat: 'Eigen', parents: ['kring'], place: true, shapes: [{t: 'line', x1: 0, y1: 12, x2: 5, y2: 12}]}
-const rows = (...cs) => cs.map((c) => ({k: c.k, json: JSON.stringify(c)}))
-const bulk = () => global.fetch.mock.calls.find((c) => c[0] === '/api/components' && c[1]?.method === 'PUT')
-const mock = (get) => (global.fetch = vi.fn(async (url, o) => (o ? {ok: true} : get(url))))
+const mine = {k: 'custom:b', name: 'Beta', cat: 'Eigen', parents: ['kring'], place: true, shapes: [{t: 'line', x1: 0, y1: 12, x2: 5, y2: 12}], v: 0, builtin: false, modified: false}
+const json = (body, ok = true) => ({ok, json: async () => body})
+// a fake backend: serves the library, echoes saved symbols and answers restore / delete / template; `legacy` are rows of the old /api/components
+const backend = ({list = standard, legacy = null} = {}) => {
+    global.fetch = vi.fn(async (url, o = {}) => {
+        const m = o.method || 'GET'
+        if (url === '/api/symbols' && m === 'GET') return json(list)
+        if (url === '/api/symbols/restore') return json(standard)
+        if (url === '/api/symbols/template') return json({k: 'custom:nieuw', name: '', parents: ['kring'], shapes: []})
+        if (url.endsWith('/restore')) return json(standard.find((c) => c.k === decodeURIComponent(url.split('/')[3])))
+        if (url === '/api/components') return legacy ? json(legacy) : {ok: false}
+        if (url.startsWith('/api/components/')) return {ok: true}
+        if (url.startsWith('/api/symbols/') && m === 'PUT') return json({...JSON.parse(o.body), builtin: false, modified: false, v: 0})
+        if (url.startsWith('/api/symbols/') && m === 'DELETE') return {ok: true}
+        return {ok: false}
+    })
+}
+const load = async () => {
+    const h = renderHook(() => useLibrary())
+    await waitFor(() => expect(h.result.current.status).not.toBe('loading'))
+    return h
+}
 
-test('mergeLibrary keeps the defaults in order, lets stored versions win and sorts extras by name', () => {
-    expect(mergeLibrary()).toEqual(DEFAULTS)
-    const oven = {...DEFAULTS.find((d) => d.k === 'oven'), name: 'Mijn oven'},
-        alfa = {...mine, k: 'custom:a', name: 'Alfa'}
-    const m = mergeLibrary([mine, oven, alfa, {k: 'custom:z'}])
-    expect(m.slice(0, DEFAULTS.length).map((c) => c.k)).toEqual(DEFAULTS.map((d) => d.k))
-    expect(m.find((c) => c.k === 'oven').name).toBe('Mijn oven')
-    expect(m.slice(DEFAULTS.length).map((c) => c.k)).toEqual(['custom:z', 'custom:a', 'custom:b'])
-})
-test('a stored standard component made with an older symbol version is replaced by the current standard', () => {
-    const old = {...DEFAULTS.find((d) => d.k === 'oven'), v: 0, name: 'Oud'}
-    expect(mergeLibrary([old]).find((c) => c.k === 'oven')).toEqual(DEFAULTS.find((d) => d.k === 'oven'))
-    const {v, ...unversioned} = old
-    expect(mergeLibrary([unversioned]).find((c) => c.k === 'oven').name).toBe('Oven')
-})
-test('useLibrary loads the stored components and seeds the missing defaults', async () => {
-    const edited = {...DEFAULTS[1], name: 'Aangepast'}
-    mock(async () => ({ok: true, json: async () => rows(mine, edited)}))
+test('useLibrary loads the symbols of the backend', async () => {
+    backend()
     const {result} = renderHook(() => useLibrary())
-    expect(result.current.lib).toBe(DEFAULTS)
-    await waitFor(() => expect(result.current.lib).toHaveLength(DEFAULTS.length + 1))
-    expect(result.current.lib.find((c) => c.k === DEFAULTS[1].k).name).toBe('Aangepast')
-    const sent = JSON.parse(bulk()[1].body)
-    expect(sent).toHaveLength(DEFAULTS.length - 1)
-    expect(sent.map((r) => r.k)).not.toContain(DEFAULTS[1].k)
-    expect(JSON.parse(sent[0].json).k).toBe(sent[0].k)
+    expect(result.current).toMatchObject({status: 'loading', lib: []})
+    await waitFor(() => expect(result.current.status).toBe('ready'))
+    expect(result.current.lib).toEqual(standard)
+    expect(global.fetch).toHaveBeenCalledWith('/api/symbols', undefined)
 })
-test('useLibrary skips unreadable rows and does not seed when everything is stored', async () => {
-    mock(async () => ({ok: true, json: async () => [{k: 'bad', json: 'nope'}, ...rows(...DEFAULTS)]}))
-    const {result} = renderHook(() => useLibrary())
-    await waitFor(() => expect(result.current.lib).not.toBe(DEFAULTS))
-    expect(bulk()).toBeUndefined()
-    expect(result.current.lib).toHaveLength(DEFAULTS.length)
-})
-test('useLibrary keeps the defaults without a backend', async () => {
-    for (const get of [async () => ({ok: false}), async () => Promise.reject(new Error('down')), async () => ({ok: true, json: async () => ({not: 'a list'})})]) {
-        mock(get)
-        const {result, unmount} = renderHook(() => useLibrary())
-        await act(async () => {})
-        expect(result.current.lib).toBe(DEFAULTS)
+test('useLibrary reports an error without a backend or with an unexpected answer, and can try again', async () => {
+    for (const get of [async () => ({ok: false}), async () => Promise.reject(new Error('down')), async () => json({not: 'a list'}), async () => ({ok: true, json: async () => Promise.reject(new Error('bad json'))})]) {
+        global.fetch = vi.fn(get)
+        const {result, unmount} = await load()
+        expect(result.current.status).toBe('error')
+        expect(result.current.lib).toEqual([])
+        backend()
+        await act(async () => result.current.reload())
+        expect(result.current.status).toBe('ready')
         unmount()
     }
 })
-test('useLibrary ignores an answer that arrives after unmount', async () => {
-    let done
-    mock(() => new Promise((r) => (done = () => r({ok: true, json: async () => rows(mine)}))))
-    const {unmount} = renderHook(() => useLibrary())
-    unmount()
-    await act(async () => done())
-})
-test('save adds or replaces a component and reports whether the database accepted it', async () => {
-    mock(async () => ({ok: false}))
-    const {result} = renderHook(() => useLibrary())
-    await act(async () => {})
-    let ok
-    await act(async () => void (ok = await result.current.save(mine)))
-    expect(ok).toBe(true)
-    expect(result.current.lib.at(-1)).toEqual(mine)
-    expect(global.fetch).toHaveBeenCalledWith('/api/components/custom%3Ab', expect.objectContaining({method: 'PUT', body: JSON.stringify(mine)}))
+test('save sends the symbol, takes over what the backend answers and reports a refusal', async () => {
+    backend()
+    const {result} = await load()
+    let s
+    await act(async () => void (s = await result.current.save(mine)))
+    expect(s).toMatchObject({k: 'custom:b', builtin: false})
+    expect(result.current.lib.at(-1)).toEqual(s)
+    expect(global.fetch).toHaveBeenCalledWith('/api/symbols/custom%3Ab', expect.objectContaining({method: 'PUT', body: JSON.stringify(mine)}))
     await act(async () => void (await result.current.save({...mine, name: 'Beta 2'})))
     expect(result.current.lib.filter((c) => c.k === mine.k)).toHaveLength(1)
     expect(result.current.lib.at(-1).name).toBe('Beta 2')
+    const before = result.current.lib
     global.fetch = vi.fn(async () => ({ok: false}))
-    await act(async () => void (ok = await result.current.save(mine)))
-    expect(ok).toBe(false)
+    await act(async () => void (s = await result.current.save(mine)))
+    expect(s).toBeNull()
     global.fetch = vi.fn(async () => Promise.reject(new Error('down')))
-    await act(async () => void (ok = await result.current.save(mine)))
-    expect(ok).toBe(false)
+    await act(async () => void (s = await result.current.save(mine)))
+    expect(s).toBeNull()
+    expect(result.current.lib).toBe(before)
 })
-test('remove and reset', async () => {
-    mock(async () => ({ok: false}))
-    const {result} = renderHook(() => useLibrary())
-    await act(async () => {})
+test('remove only drops the symbol when the backend deleted it', async () => {
+    backend()
+    const {result} = await load()
     await act(async () => void (await result.current.save(mine)))
-    global.fetch = vi.fn(async () => ({ok: true}))
+    global.fetch = vi.fn(async () => ({ok: false}))
     let ok
     await act(async () => void (ok = await result.current.remove(mine.k)))
-    expect(ok).toBe(true)
-    expect(global.fetch).toHaveBeenCalledWith('/api/components/custom%3Ab', {method: 'DELETE'})
-    expect(result.current.lib.some((c) => c.k === mine.k)).toBe(false)
-    global.fetch = vi.fn(async () => Promise.reject(new Error('down')))
-    await act(async () => void (ok = await result.current.remove(mine.k)))
     expect(ok).toBe(false)
+    expect(result.current.lib.some((c) => c.k === mine.k)).toBe(true)
     global.fetch = vi.fn(async () => ({ok: true}))
-    const oven = DEFAULTS.find((d) => d.k === 'oven')
+    await act(async () => void (ok = await result.current.remove(mine.k)))
+    expect(ok).toBe(true)
+    expect(global.fetch).toHaveBeenCalledWith('/api/symbols/custom%3Ab', {method: 'DELETE'})
+    expect(result.current.lib.some((c) => c.k === mine.k)).toBe(false)
+})
+test('reset restores one standard symbol through the backend, restoreAll all of them', async () => {
+    backend()
+    const {result} = await load()
+    const oven = standard.find((d) => d.k === 'oven')
     await act(async () => void (await result.current.save({...oven, name: 'Anders'})))
-    await act(async () => void (await result.current.reset('oven')))
+    expect(result.current.lib.find((c) => c.k === 'oven').name).toBe('Anders')
+    let s
+    await act(async () => void (s = await result.current.reset('oven')))
+    expect(s).toEqual(oven)
     expect(result.current.lib.find((c) => c.k === 'oven')).toEqual(oven)
-    expect(global.fetch).toHaveBeenLastCalledWith('/api/components/oven', expect.objectContaining({body: JSON.stringify(oven)}))
+    expect(global.fetch).toHaveBeenLastCalledWith('/api/symbols/oven/restore', {method: 'POST'})
+    await act(async () => void (await result.current.save({...oven, name: 'Weer anders'})))
+    let ok
+    await act(async () => void (ok = await result.current.restoreAll()))
+    expect(ok).toBe(true)
+    expect(result.current.lib).toEqual(standard)
+    global.fetch = vi.fn(async () => ({ok: false}))
+    await act(async () => void (s = await result.current.reset('oven')))
+    await act(async () => void (ok = await result.current.restoreAll()))
+    expect([s, ok]).toEqual([null, false])
+})
+test('template gives a new symbol of the backend, or null', async () => {
+    backend()
+    const {result} = await load()
+    let t
+    await act(async () => void (t = await result.current.template()))
+    expect(t).toMatchObject({k: 'custom:nieuw', parents: ['kring']})
+    global.fetch = vi.fn(async () => ({ok: false}))
+    await act(async () => void (t = await result.current.template()))
+    expect(t).toBeNull()
+})
+test('own components of the old /api/components table are copied to the symbols table once and then removed', async () => {
+    const old = {k: 'custom:old', name: 'Oud', cat: 'Eigen', parents: ['kring'], place: true, shapes: mine.shapes, v: 3}
+    backend({
+        legacy: [
+            {k: 'custom:old', json: JSON.stringify(old)},
+            {k: 'oven', json: JSON.stringify({k: 'oven', name: 'Mijn oven'})},
+            {k: 'custom:bad', json: 'nope'},
+            {k: 'custom:b', json: JSON.stringify(mine)},
+        ],
+        list: [...standard, mine],
+    })
+    const {result} = await load()
+    expect(result.current.lib.map((c) => c.k)).toEqual([...standard.map((c) => c.k), 'custom:b', 'custom:old'])
+    const put = global.fetch.mock.calls.find((c) => c[0] === '/api/symbols/custom%3Aold')
+    expect(JSON.parse(put[1].body)).toEqual({k: 'custom:old', name: 'Oud', cat: 'Eigen', parents: ['kring'], place: true, shapes: mine.shapes})
+    // every old row is removed: the migrated one, the obsolete standard one, the unreadable one and the one that was already copied
+    const gone = global.fetch.mock.calls.filter((c) => c[1]?.method === 'DELETE' && c[0].startsWith('/api/components/')).map((c) => c[0])
+    expect(gone).toEqual(['/api/components/custom%3Aold', '/api/components/oven', '/api/components/custom%3Abad', '/api/components/custom%3Ab'])
+})
+test('an old component that the backend refuses stays in the old table', async () => {
+    backend({legacy: [{k: 'custom:old', json: JSON.stringify({name: 'Oud', shapes: []})}]})
+    const base = global.fetch
+    global.fetch = vi.fn(async (url, o) => (url === '/api/symbols/custom%3Aold' ? {ok: false} : base(url, o)))
+    const {result} = await load()
+    expect(result.current.lib).toEqual(standard)
+    expect(global.fetch.mock.calls.some((c) => c[1]?.method === 'DELETE')).toBe(false)
+})
+test('a broken old table does not stop the library from loading', async () => {
+    backend({legacy: [{k: 'custom:old', json: '{}'}]})
+    const base = global.fetch
+    global.fetch = vi.fn(async (url, o) => (url === '/api/components' ? {ok: true, json: async () => Promise.reject(new Error('bad'))} : base(url, o)))
+    const {result} = await load()
+    expect(result.current.status).toBe('ready')
+    expect(result.current.lib).toEqual(standard)
 })

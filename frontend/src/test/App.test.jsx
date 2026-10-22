@@ -4,6 +4,7 @@ import {act, fireEvent, render, screen, waitFor} from '@testing-library/react'
 import App from '../App.jsx'
 import {node} from './utils.jsx'
 import pako from 'pako'
+import standard from './fixtures/standard-symbols.json'
 
 const makePdf = vi.fn(async () => {})
 vi.mock('../Export.jsx', async (o) => ({...(await o()), makePdf: (...a) => makePdf(...a)}))
@@ -14,10 +15,28 @@ const old = {
     tree: [node('n', 'stopcontact', [], {label: 'Oud sc'})],
     plan: {walls: [], items: [{id: 'i', kind: 'door', a: 30, x: 1, y: 1}]},
 }
-const setup = (data = null, ok = true) => {
-    global.fetch = vi.fn(async (url, o) => (o?.method === 'PUT' ? {ok} : data ? {ok: true, json: async () => data} : {ok: false}))
+// the symbol library comes from the backend: serve the standard symbols (plus `extra`) and echo saved symbols back (with the defaults the backend adds)
+const symbols = (extra = []) => (url, o) =>
+    url === '/api/symbols'
+        ? {ok: true, json: async () => [...standard, ...extra]}
+        : url === '/api/symbols/template'
+          ? {ok: true, json: async () => ({k: 'custom:nieuw', name: '', cat: 'Eigen', parents: ['kring'], place: true, shapes: []})}
+          : url.startsWith('/api/symbols/') && o?.method === 'PUT'
+            ? {ok: true, json: async () => ({cat: 'Eigen', parents: ['kring'], place: true, ...JSON.parse(o.body), builtin: false, modified: false})}
+            : null
+const setup = (data = null, ok = true, extra = []) => {
+    global.fetch = vi.fn(
+        async (url, o) => symbols(extra)(url, o) ?? (o?.method === 'PUT' ? {ok} : data ? {ok: true, json: async () => data} : {ok: false}),
+    )
 }
-const puts = () => global.fetch.mock.calls.filter((c) => c[1]?.method === 'PUT')
+// project saves only (not the symbols)
+const puts = () => global.fetch.mock.calls.filter((c) => c[1]?.method === 'PUT' && c[0].startsWith('/api/projects'))
+// the editor appears once the backend has delivered the symbols
+const mount = async () => {
+    const r = render(<App />)
+    await screen.findByText('Componenten')
+    return r
+}
 beforeEach(() => {
     setup()
     window.alert = vi.fn()
@@ -27,7 +46,7 @@ beforeEach(() => {
     makePdf.mockClear()
 })
 test('starts with empty project, switches tabs, saves', async () => {
-    render(<App />)
+    await mount()
     await act(async () => {})
     screen.getByRole('button', {name: /Kaderinfo/})
     fireEvent.click(screen.getByText('Situatieschema'))
@@ -40,13 +59,13 @@ test('starts with empty project, switches tabs, saves', async () => {
 })
 test('save failure message', async () => {
     setup(null, false)
-    render(<App />)
+    await mount()
     fireEvent.click(screen.getByText('Opslaan'))
     await screen.findByText('Fout bij opslaan')
 })
 test('migrates old format on load', async () => {
     setup(old)
-    render(<App />)
+    await mount()
     await screen.findAllByText('Oud sc')
     fireEvent.click(screen.getByText('Opslaan'))
     await screen.findByText('Opgeslagen ✓')
@@ -58,7 +77,7 @@ test('migrates old format on load', async () => {
 })
 test('loads new format and other project numbers', async () => {
     setup({een: [{id: 'a', name: 'Eigen blad', tree: []}], sit: [{id: 'b', name: 'P', walls: [], items: []}], custom: [], footer: {}})
-    render(<App />)
+    await mount()
     await screen.findByText('Eigen blad')
     fireEvent.change(screen.getByTitle('Project-nr'), {target: {value: '2'}})
     await waitFor(() => expect(global.fetch).toHaveBeenCalledWith('/api/projects/2'))
@@ -69,7 +88,7 @@ test.each([
     ['Eendraadschema', 'Blad'],
     ['Situatieschema', 'Plattegrond'],
 ])('page bar on %s', async (tab, pre) => {
-    render(<App />)
+    await mount()
     await act(async () => {})
     fireEvent.click(screen.getByText(tab))
     fireEvent.click(screen.getByText('＋ blad'))
@@ -94,7 +113,7 @@ test('duplicating an eendraad page regenerates node ids', async () => {
         custom: [],
         footer: {},
     })
-    render(<App />)
+    await mount()
     await screen.findAllByText('n1')
     fireEvent.click(screen.getByText('⧉'))
     fireEvent.click(screen.getByText('Opslaan'))
@@ -108,7 +127,7 @@ test('duplicating an eendraad page regenerates node ids', async () => {
     expect(JSON.parse(puts()[1][1].body).sit[1].walls[0].id).not.toBe('w')
 })
 test('footer edits flow into the project', async () => {
-    render(<App />)
+    await mount()
     await act(async () => {})
     fireEvent.click(screen.getByRole('button', {name: /Kaderinfo/}))
     const i = document.querySelectorAll('.form input')[0]
@@ -116,7 +135,7 @@ test('footer edits flow into the project', async () => {
     screen.getAllByText('Villa')
 })
 test('pdf, print and json export / import', async () => {
-    render(<App />)
+    await mount()
     await act(async () => {})
     fireEvent.click(screen.getByText('PDF'))
     await waitFor(() => expect(makePdf).toHaveBeenCalled())
@@ -148,7 +167,7 @@ const flawed = {
 }
 test('Controleer button shows counts, lists issues and navigates to the node', async () => {
     setup(flawed)
-    render(<App />)
+    await mount()
     await screen.findAllByText('Hoofd')
     const btn = screen.getByRole('button', {name: /Controleer/})
     expect(btn.textContent).toMatch(/✖2.*⚠/)
@@ -162,7 +181,7 @@ test('Controleer button shows counts, lists issues and navigates to the node', a
 })
 test('footer issue goes to eendraad tab, plan issue to situatieschema, global issue without node', async () => {
     setup(flawed)
-    render(<App />)
+    await mount()
     await screen.findAllByText('Hoofd')
     fireEvent.click(screen.getByRole('button', {name: /Controleer/}))
     fireEvent.click(screen.getByText('Situatieschema'))
@@ -187,7 +206,7 @@ const EDS = () => ({
     properties: {owner: 'Jan<br>Dorpstraat 1<br>9000 Gent'},
 })
 test('a new project starts with aansluiting, kWh meter and bord; the verifier reports the empty board', async () => {
-    render(<App />)
+    await mount()
     await act(async () => {})
     expect(document.querySelector('svg.sheet').textContent).toContain('kWh')
     fireEvent.click(screen.getByRole('button', {name: /Controleer/}))
@@ -195,13 +214,13 @@ test('a new project starts with aansluiting, kWh meter and bord; the verifier re
 })
 test('an empty schema is reported as empty', async () => {
     setup({een: [{id: 'a', name: 'x', tree: []}], sit: [{id: 'b', name: 'P', walls: [], items: []}], custom: [], footer: {}})
-    render(<App />)
+    await mount()
     await screen.findByText('x')
     fireEvent.click(screen.getByRole('button', {name: /Controleer/}))
     screen.getByText('Het eendraadschema is leeg.')
 })
 test('new sheets start with a default board', async () => {
-    render(<App />)
+    await mount()
     await act(async () => {})
     fireEvent.click(screen.getByText('＋ blad'))
     fireEvent.click(screen.getByText('Opslaan'))
@@ -211,7 +230,7 @@ test('new sheets start with a default board', async () => {
     expect(b.een[1].tree[0].children[0].type).toBe('bord')
 })
 test('EDS import replaces schema and footer, reports a message and can be undone', async () => {
-    render(<App />)
+    await mount()
     await act(async () => {})
     const input = document.querySelector('input[accept=".eds"]')
     fireEvent.change(input, {target: {files: [{text: async () => enc(EDS())}]}})
@@ -222,7 +241,7 @@ test('EDS import replaces schema and footer, reports a message and can be undone
     expect(screen.queryByText('Keuken')).toBeNull()
 })
 test('EDS import without unknown types and with an invalid file', async () => {
-    render(<App />)
+    await mount()
     await act(async () => {})
     const input = document.querySelector('input[accept=".eds"]')
     const j = EDS()
@@ -240,16 +259,13 @@ const readBlob = (b) =>
         r.onload = () => res(r.result)
         r.readAsText(b)
     })
-const zelf = {k: 'custom:z', name: 'Zelf', cat: 'Eigen', parents: ['kring'], place: true, shapes: [{t: 'line', x1: 0, y1: 12, x2: 24, y2: 12}]}
-test('library comes from the database, is seeded with the standard components and travels along in the JSON export', async () => {
-    global.fetch = vi.fn(async (url, o) =>
-        o?.method === 'PUT' ? {ok: true} : url === '/api/components' ? {ok: true, json: async () => [{k: 'custom:z', json: JSON.stringify(zelf)}]} : {ok: false},
-    )
-    render(<App />)
+const zelf = {k: 'custom:z', name: 'Zelf', cat: 'Eigen', parents: ['kring'], place: true, shapes: [{t: 'line', x1: 0, y1: 12, x2: 24, y2: 12}], v: 0, builtin: false, modified: false}
+test('library comes from the backend and the own symbols travel along in the JSON export', async () => {
+    setup(null, true, [zelf])
+    await mount()
     fireEvent.click(screen.getByText('Componenten'))
     await screen.findByText('Zelf')
-    const seed = global.fetch.mock.calls.find((c) => c[0] === '/api/components' && c[1]?.method === 'PUT')
-    expect(JSON.parse(seed[1].body).length).toBeGreaterThan(40)
+    expect(global.fetch).toHaveBeenCalledWith('/api/symbols', undefined)
     fireEvent.click(screen.getByText('JSON ↑'))
     const out = JSON.parse(await readBlob(URL.createObjectURL.mock.calls[0][0]))
     expect(out.custom).toEqual([{id: 'z', name: 'Zelf', cat: 'Eigen', parents: ['kring'], place: true, shapes: zelf.shapes}])
@@ -261,11 +277,30 @@ test('components stored inside an old project move into the library', async () =
         custom: [{id: 'c1', name: 'Mijn ding', shapes: [{t: 'line', x1: 0, y1: 12, x2: 24, y2: 12}]}],
         footer: {},
     })
-    render(<App />)
-    await waitFor(() => expect(global.fetch).toHaveBeenCalledWith('/api/components/custom%3Ac1', expect.objectContaining({method: 'PUT'})))
+    await mount()
+    await waitFor(() => expect(global.fetch).toHaveBeenCalledWith('/api/symbols/custom%3Ac1', expect.objectContaining({method: 'PUT'})))
+    // no parents are sent: the backend gives it the default ones
+    expect(JSON.parse(global.fetch.mock.calls.find((c) => c[0] === '/api/symbols/custom%3Ac1')[1].body)).not.toHaveProperty('parents')
     fireEvent.click(screen.getByText('Componenten'))
-    screen.getByText('Mijn ding')
+    await screen.findByText('Mijn ding')
     fireEvent.click(screen.getByText('Opslaan'))
     await screen.findByText('Opgeslagen ✓')
     expect(JSON.parse(puts().at(-1)[1].body).custom).toEqual([])
+})
+test('shows a message with a retry button while the backend has no symbols', async () => {
+    let up = false
+    global.fetch = vi.fn(async (url, o) => (up ? symbols()(url, o) ?? {ok: false} : {ok: false}))
+    render(<App />)
+    await screen.findByText(/symbolen konden niet geladen worden/)
+    expect(screen.queryByText('Componenten')).toBeNull()
+    up = true
+    fireEvent.click(screen.getByText('Opnieuw proberen'))
+    await screen.findByText('Componenten')
+})
+test('shows that the symbols are loading', async () => {
+    let done
+    global.fetch = vi.fn(() => new Promise((res) => (done = res)))
+    render(<App />)
+    screen.getByText('Symbolen laden…')
+    await act(async () => done({ok: false}))
 })

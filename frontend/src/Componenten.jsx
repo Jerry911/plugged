@@ -1,16 +1,15 @@
 // Copyright 2026 Pleysier Jeroen
 // SPDX-License-Identifier: AGPL-3.0-only
-// Component library: menu with all components on the left, the selected component (name, category, allowed parents, drawing) on the right.
+// Symbol catalog: menu with all symbols on the left, the selected symbol (name, category, allowed parents, drawing) on the right.
+// The symbols come from the backend: standard ones (can be edited and restored to the standard drawing) and the user's own ones.
 import {useState} from 'react'
-import {BUILTIN as DEFAULTS, ELEMENT_KEYS, Sym} from './symbols'
+import {Sym} from './symbols'
 import {uid} from './util'
 
 const TOOLS = {line: 'Lijn', circle: 'Cirkel (midden, rand)', rect: 'Rechthoek', arc: 'Halve cirkel (midden, rand)', text: 'Tekst'},
-    KIND = {line: 'Lijn', circle: 'Cirkel', rect: 'Rechthoek', arc: 'Boog', text: 'Tekst'},
-    DEF = new Map(DEFAULTS.map((d) => [d.k, d]))
-// a component still equals its standard definition
-const isStd = (c) => JSON.stringify(DEF.get(c.k)) === JSON.stringify(c)
-const blank = () => ({k: 'custom:' + uid(), name: '', cat: 'Eigen', parents: ELEMENT_KEYS, place: true, shapes: []})
+    KIND = {line: 'Lijn', circle: 'Cirkel', rect: 'Rechthoek', arc: 'Boog', text: 'Tekst'}
+// where a symbol comes from, for the label above the drawing
+const origin = (c) => (c.builtin ? (c.modified ? 'Standaardsymbool, aangepast' : 'Standaardsymbool') : 'Eigen symbool')
 const describe = (h) =>
     h.t === 'line'
         ? `(${h.x1},${h.y1}) → (${h.x2},${h.y2})`
@@ -22,7 +21,7 @@ const describe = (h) =>
               ? `(${h.cx},${h.cy}) r=${h.r} ${h.a1}°…${h.a2}°`
               : `“${h.s}”`
 
-export default function Componenten({lib, onSave, onRemove, onReset}) {
+export default function Componenten({lib, onSave, onRemove, onReset, onRestoreAll, onTemplate}) {
     const [draft, setDraft] = useState(null),
         [orig, setOrig] = useState(null),
         [q, setQ] = useState(''),
@@ -31,7 +30,7 @@ export default function Componenten({lib, onSave, onRemove, onReset}) {
         [a, setA] = useState(null),
         [msg, setMsg] = useState('')
     const dirty = !!draft && JSON.stringify(draft) !== JSON.stringify(orig),
-        isDef = !!draft && DEF.has(draft.k),
+        isDef = !!draft?.builtin,
         known = lib.some((c) => draft && c.k === draft.k)
     const open = (c, fresh = false) => {
         if (dirty && !window.confirm('Niet-opgeslagen wijzigingen gaan verloren. Doorgaan?')) return
@@ -41,7 +40,10 @@ export default function Componenten({lib, onSave, onRemove, onReset}) {
         setA(null)
         setMsg('')
     }
-    const set = (o) => setDraft({...draft, ...o})
+    const set = (o) => {
+        setDraft({...draft, ...o})
+        setMsg('')
+    }
     const click = (e) => {
         const s = e.currentTarget,
             m = s.createSVGPoint()
@@ -70,13 +72,19 @@ export default function Componenten({lib, onSave, onRemove, onReset}) {
         set({shapes: [...draft.shapes, h]})
         setA(null)
     }
+    const create = async () => {
+        const t = await onTemplate()
+        if (!t) return alert('Nieuw component niet mogelijk: de backend is niet bereikbaar.')
+        open(t, true)
+    }
     const save = async () => {
         if (!draft.name.trim() || !draft.shapes.length) return alert('Geef een naam en teken minstens één vorm.')
         const c = {...draft, name: draft.name.trim(), cat: draft.cat.trim() || 'Eigen'}
-        const ok = await onSave(c)
-        setDraft(c)
-        setOrig(c)
-        setMsg(ok ? 'Opgeslagen ✓' : 'Niet in de database opgeslagen (backend niet bereikbaar)')
+        const s = await onSave(c)
+        if (!s) return setMsg('Niet opgeslagen: de backend is niet bereikbaar of weigerde het symbool')
+        setDraft(s)
+        setOrig(s)
+        setMsg('Opgeslagen ✓')
     }
     const remove = async () => {
         if (!window.confirm(`'${draft.name}' verwijderen? Projecten die dit component gebruiken tonen het dan als "Aansluiting net".`)) return
@@ -85,11 +93,18 @@ export default function Componenten({lib, onSave, onRemove, onReset}) {
         setOrig(null)
     }
     const reset = async () => {
-        const d = DEF.get(draft.k)
-        await onReset(draft.k)
-        setDraft({...d})
-        setOrig({...d})
+        const d = await onReset(draft.k)
+        if (!d) return setMsg('Niet hersteld: de backend is niet bereikbaar')
+        setDraft({...d, parents: [...d.parents], shapes: [...d.shapes]})
+        setOrig(d)
         setMsg('Standaard hersteld ✓')
+    }
+    const restoreAll = async () => {
+        if (!window.confirm('Alle standaardsymbolen terugzetten naar de standaardtekening? Je eigen aanpassingen aan standaardsymbolen gaan verloren; je eigen symbolen blijven.')) return
+        if (!(await onRestoreAll())) return setMsg('Niet hersteld: de backend is niet bereikbaar')
+        setDraft(null)
+        setOrig(null)
+        setMsg('Alle standaardsymbolen hersteld ✓')
     }
     const cats = [...new Set(lib.map((c) => c.cat))]
     return (
@@ -101,7 +116,10 @@ export default function Componenten({lib, onSave, onRemove, onReset}) {
                     onChange={(e) => setQ(e.target.value)}
                     style={{width: '100%', boxSizing: 'border-box'}}
                 />
-                <button onClick={() => open(blank(), true)}>＋ Nieuw component</button>
+                <button onClick={create}>＋ Nieuw component</button>
+                <button title="Zet alle standaardsymbolen terug naar de standaardtekening (eigen symbolen blijven)" onClick={restoreAll}>
+                    Alle standaard herstellen
+                </button>
                 {cats.map((c) => {
                     const Ls = lib.filter((t) => t.cat === c && t.name.toLowerCase().includes(q.toLowerCase()))
                     return (
@@ -116,6 +134,7 @@ export default function Componenten({lib, onSave, onRemove, onReset}) {
                                             <Sym shapes={t.shapes} x={13} y={13} s={24} />
                                         </svg>
                                         {t.name}
+                                        {t.builtin && t.modified ? ' ✎' : ''}
                                     </button>
                                 ))}
                             </details>
@@ -125,7 +144,10 @@ export default function Componenten({lib, onSave, onRemove, onReset}) {
             </div>
             <div className="main">
                 {!draft ? (
-                    <p>Kies links een component om te bekijken of aan te passen, of maak een nieuw component. Alle componenten verschijnen in het palet van het eendraadschema en op het situatieschema.</p>
+                    <>
+                        <p>Kies links een component om te bekijken of aan te passen, of maak een nieuw component. Alle componenten verschijnen in het palet van het eendraadschema en op het situatieschema.</p>
+                        {msg && <p>{msg}</p>}
+                    </>
                 ) : (
                     <>
                         <div className="tb">
@@ -149,9 +171,11 @@ export default function Componenten({lib, onSave, onRemove, onReset}) {
                             <button className="accent" onClick={save}>
                                 {known ? 'Opslaan' : 'Toevoegen'}
                             </button>
-                            <button onClick={() => open({...draft, k: 'custom:' + uid(), name: draft.name + ' (kopie)'}, true)}>Dupliceer</button>
+                            <button onClick={() => open({...draft, k: 'custom:' + uid(), name: draft.name + ' (kopie)', builtin: false, modified: false, v: 0}, true)}>
+                                Dupliceer
+                            </button>
                             {isDef && (
-                                <button disabled={isStd(draft)} onClick={reset}>
+                                <button disabled={!draft.modified && !dirty} onClick={reset}>
                                     Standaard herstellen
                                 </button>
                             )}
@@ -160,7 +184,9 @@ export default function Componenten({lib, onSave, onRemove, onReset}) {
                                     Verwijder
                                 </button>
                             )}
-                            <span>{dirty ? '● niet opgeslagen' : msg}</span>
+                            {dirty && <span>● niet opgeslagen</span>}
+                            {msg && <span>{msg}</span>}
+                            <small style={{marginLeft: 'auto'}}>{origin(draft)}</small>
                         </div>
                         <div className="tb">
                             {Object.entries(TOOLS).map(([t, l]) => (

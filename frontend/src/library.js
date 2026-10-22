@@ -1,64 +1,98 @@
 // Copyright 2026 Pleysier Jeroen
 // SPDX-License-Identifier: AGPL-3.0-only
-// The component library: the standard components (defaultComponents.js) plus everything the user edited or created,
-// persisted per component in the H2 database through /api/components. Without a backend the defaults still work (in memory only).
+// The symbol library: the standard symbols, the ones the user edited and the ones the user made. The backend owns it (GET /api/symbols):
+// it defines and restores the standard drawings and stores the changes in the database. This hook only loads it and sends changes.
 import {useCallback, useEffect, useState} from 'react'
-import {BUILTIN as DEFAULTS} from './symbols'
 
-const JSON_H = {'Content-Type': 'application/json'}
-export const mergeLibrary = (stored = []) => {
-    const by = new Map(stored.map((c) => [c.k, c])),
-        keys = new Set(DEFAULTS.map((d) => d.k)),
-        extra = stored.filter((c) => !keys.has(c.k)).sort((a, b) => (a.name || '').localeCompare(b.name || ''))
-    return [...DEFAULTS.map((d) => (by.has(d.k) && by.get(d.k).v === d.v ? {...d, ...by.get(d.k)} : d)), ...extra]
+const JSON_H = {'Content-Type': 'application/json'},
+    url = (k) => '/api/symbols/' + encodeURIComponent(k)
+const call = async (u, o) => {
+    try {
+        const r = await fetch(u, o)
+        return r.ok ? r : null
+    } catch {
+        return null
+    }
 }
-const parse = (rows) =>
-    rows.flatMap((r) => {
-        try {
-            return [JSON.parse(r.json)]
-        } catch {
-            return []
-        }
-    })
-export function useLibrary() {
-    const [lib, setLib] = useState(DEFAULTS)
-    useEffect(() => {
-        let gone = false
-        ;(async () => {
+// Components made before the symbols table existed live in /api/components (one JSON document per component). The own ones (custom:...)
+// are copied into the symbols table once and the old rows are removed; the standard ones in there are obsolete.
+const migrateLegacy = async (list) => {
+    try {
+        const r = await call('/api/components')
+        if (!r) return list
+        const rows = await r.json(),
+            have = new Set(list.map((c) => c.k)),
+            out = [...list]
+        for (const row of rows) {
+            let c = null
             try {
-                const r = await fetch('/api/components')
-                if (!r.ok) return
-                const stored = parse(await r.json()),
-                    have = new Set(stored.map((c) => c.k)),
-                    missing = DEFAULTS.filter((d) => !have.has(d.k))
-                if (missing.length)
-                    await fetch('/api/components', {method: 'PUT', headers: JSON_H, body: JSON.stringify(missing.map((c) => ({k: c.k, json: JSON.stringify(c)})))})
-                if (!gone) setLib(mergeLibrary(stored))
+                c = row.k.startsWith('custom:') && !have.has(row.k) ? JSON.parse(row.json) : null
             } catch {
-                // no backend (or an unexpected answer): keep working with the standard components in memory
+                c = null
             }
-        })()
-        return () => {
-            gone = true
+            if (c) {
+                const {name, cat, parents, place, shapes} = c,
+                    s = await call(url(row.k), {method: 'PUT', headers: JSON_H, body: JSON.stringify({k: row.k, name, cat, parents, place, shapes})})
+                if (!s) continue
+                out.push(await s.json())
+            }
+            await call('/api/components/' + encodeURIComponent(row.k), {method: 'DELETE'})
         }
-    }, [])
-    // every action resolves to true when the database accepted it
-    const save = useCallback(async (c) => {
-        setLib((l) => (l.some((x) => x.k === c.k) ? l.map((x) => (x.k === c.k ? c : x)) : [...l, c]))
+        return out
+    } catch {
+        return list
+    }
+}
+const put = (l, s) => (l.some((x) => x.k === s.k) ? l.map((x) => (x.k === s.k ? s : x)) : [...l, s])
+
+export function useLibrary() {
+    const [lib, setLib] = useState([]),
+        [status, setStatus] = useState('loading') // 'loading' | 'ready' | 'error'
+    const load = useCallback(async () => {
+        setStatus('loading')
+        const r = await call('/api/symbols')
+        let list = null
         try {
-            return (await fetch('/api/components/' + encodeURIComponent(c.k), {method: 'PUT', headers: JSON_H, body: JSON.stringify(c)})).ok
+            list = r ? await r.json() : null
         } catch {
-            return false
+            list = null
         }
+        if (!Array.isArray(list)) return setStatus('error')
+        setLib(await migrateLegacy(list))
+        setStatus('ready')
+    }, [])
+    useEffect(() => {
+        load()
+    }, [load])
+    // save, reset and template resolve to the symbol the backend answered with (null when it did not accept it); remove and restoreAll to true/false
+    const save = useCallback(async (c) => {
+        const r = await call(url(c.k), {method: 'PUT', headers: JSON_H, body: JSON.stringify(c)})
+        if (!r) return null
+        const s = await r.json()
+        setLib((l) => put(l, s))
+        return s
     }, [])
     const remove = useCallback(async (k) => {
-        setLib((l) => l.filter((x) => x.k !== k))
-        try {
-            return (await fetch('/api/components/' + encodeURIComponent(k), {method: 'DELETE'})).ok
-        } catch {
-            return false
-        }
+        const r = await call(url(k), {method: 'DELETE'})
+        if (r) setLib((l) => l.filter((x) => x.k !== k))
+        return !!r
     }, [])
-    const reset = useCallback((k) => save(DEFAULTS.find((d) => d.k === k)), [save])
-    return {lib, save, remove, reset}
+    const reset = useCallback(async (k) => {
+        const r = await call(url(k) + '/restore', {method: 'POST'})
+        if (!r) return null
+        const s = await r.json()
+        setLib((l) => put(l, s))
+        return s
+    }, [])
+    const restoreAll = useCallback(async () => {
+        const r = await call('/api/symbols/restore', {method: 'POST'})
+        if (!r) return false
+        setLib(await r.json())
+        return true
+    }, [])
+    const template = useCallback(async () => {
+        const r = await call('/api/symbols/template')
+        return r ? r.json() : null
+    }, [])
+    return {lib, status, reload: load, save, remove, reset, restoreAll, template}
 }

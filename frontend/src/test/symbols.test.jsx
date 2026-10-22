@@ -1,8 +1,12 @@
 // Copyright 2026 Pleysier Jeroen
 // SPDX-License-Identifier: AGPL-3.0-only
 import {render} from '@testing-library/react'
-import {allTypes, arcPath, BUILTIN, BUILTIN_KEYS, setLibrary, sockShapes, stackOf, Sym, SYMV, typeOf} from '../symbols.jsx'
+import {allTypes, arcPath, setLibrary, shapesOf, sockShapes, stackOf, Sym, typeOf} from '../symbols.jsx'
 import {reach} from '../boardModel.js'
+import standard from './fixtures/standard-symbols.json'
+
+// the symbols come from the backend; these tests use its standard catalog (see setup.js)
+const BUILTIN = standard
 
 test('keys unique and parents refer to existing types', () => {
     const ks = BUILTIN.map((t) => t.k)
@@ -16,9 +20,12 @@ test('allTypes adds custom types and handles missing custom', () => {
     const t = allTypes(p).at(-1)
     expect(t).toMatchObject({k: 'custom:1', cat: 'Eigen', place: true, parents: expect.arrayContaining(['kring'])})
 })
-test('typeOf falls back to first builtin', () => {
+test('typeOf falls back to the net connection, and to a placeholder when there is no library', () => {
     expect(typeOf({custom: []}, 'nope').k).toBe('aansluiting')
     expect(typeOf({custom: []}, 'oven').name).toBe('Oven')
+    setLibrary(null)
+    expect(typeOf({custom: []}, 'nope')).toMatchObject({k: '?', parents: []})
+    expect(allTypes({})).toEqual([])
 })
 test('Sym renders every shape kind', () => {
     const {container} = render(
@@ -49,7 +56,7 @@ test('every builtin symbol renders', () =>
         unmount()
     }))
 
-afterEach(() => setLibrary(null))
+afterEach(() => setLibrary(standard))
 test('arcPath draws clockwise on screen and flags large arcs', () => {
     expect(arcPath({cx: 9, cy: 12, r: 6, a1: -90, a2: 90})).toBe('M9 6A6 6 0 0 1 9 18')
     expect(arcPath({cx: 12, cy: 17, r: 7, a1: 180, a2: 360})).toBe('M5 17A7 7 0 0 1 19 17')
@@ -74,15 +81,14 @@ test('Sym renders arcs and text with its own font size', () => {
     expect(ts[0].getAttribute('font-size')).toBe('8')
     expect(ts[1].getAttribute('font-size')).toBe('10')
 })
-test('setLibrary swaps the active component library, empty or missing falls back to the standard components', () => {
+test('setLibrary swaps the active symbol library; without symbols nothing is known', () => {
     const mine = {k: 'mijn', name: 'Mijn', cat: 'X', parents: [], place: true, shapes: []}
     setLibrary([...BUILTIN, mine])
     expect(typeOf({}, 'mijn').name).toBe('Mijn')
     expect(allTypes({})).toHaveLength(BUILTIN.length + 1)
     setLibrary([])
-    expect(allTypes({})).toHaveLength(BUILTIN.length)
-    expect(typeOf({}, 'mijn').k).toBe('aansluiting')
-    expect(BUILTIN_KEYS.has('oven')).toBe(true)
+    expect(allTypes({})).toHaveLength(0)
+    expect(typeOf({}, 'mijn').k).toBe('?')
 })
 test('legacy project components keep working unless the library already has them', () => {
     const p = {custom: [{id: '1', name: 'Oud', shapes: [], cat: 'Mijn cat', parents: ['bord'], place: false}]}
@@ -129,7 +135,7 @@ test('filled shapes are drawn with a fill, all others without', () => {
     const fills = [...container.querySelectorAll('circle, rect')].map((e) => e.getAttribute('fill'))
     expect(fills).toEqual(['#123', null, '#123', null])
 })
-test('every standard component carries the current symbol version', () => BUILTIN.forEach((t) => expect(t.v, t.k).toBe(SYMV)))
+test('every standard symbol is marked as builtin and unmodified', () => BUILTIN.forEach((t) => expect([t.builtin, t.modified], t.k).toEqual([true, false])))
 test('reach follows arcs that cross the centre line', () => {
     expect(reach([{t: 'arc', cx: 9, cy: 12, r: 6, a1: -90, a2: 90}])).toEqual([15, 15])
     expect(reach([{t: 'arc', cx: 9, cy: 12, r: 6, a1: 90, a2: 270}])).toEqual([3, 3])
@@ -145,7 +151,7 @@ test('socket variants: bar for the protective conductor, feet for kinderveilighe
         kid = sockShapes({pe: true, kid: true})
     expect(lines(pe)).toBe(lines(plain) + 1)
     expect(lines(kid)).toBe(lines(pe) + 2)
-    expect(sockShapes({n: 3})).toContainEqual(expect.objectContaining({s: '3'}))
+    expect(sockShapes({n: 3}, false)).toContainEqual(expect.objectContaining({s: '3'}))
     const h = sockShapes({kid: true, n: 3}, true)
     expect(h.filter((s) => s.t === 'arc')).toHaveLength(3)
     expect(h.filter((s) => s.t === 'arc').every((a) => a.cx + a.r <= 24)).toBe(true)
@@ -155,7 +161,7 @@ test('socket variants: bar for the protective conductor, feet for kinderveilighe
 })
 test('stackOf only applies to sockets and multiplies the type count with p.aantal', () => {
     expect(stackOf(typeOf({}, 'lichtpunt'), {aantal: 3})).toBeNull()
-    expect(stackOf(typeOf({}, 'stopcontact'))).toEqual({n: 1, hor: false})
+    expect(stackOf(typeOf({}, 'stopcontact'))).toEqual({n: 1, hor: true})
     expect(stackOf(typeOf({}, 'stopcontact2'), {aantal: 2})).toEqual({n: 4, hor: true})
     expect(stackOf(typeOf({}, 'stopcontact'), {aantal: 2, hor: false})).toEqual({n: 2, hor: false})
 })
@@ -163,4 +169,41 @@ test('symbols are drawn with round joins so lever and flag touch', () => {
     const {container} = render(<svg><Sym shapes={typeOf({}, 'schakelaar').shapes} /></svg>)
     expect(container.querySelector('g').getAttribute('stroke-linejoin')).toBe('round')
     expect(container.querySelector('g').getAttribute('stroke-linecap')).toBe('round')
+})
+
+const sockets = () => BUILTIN.filter((t) => t.sock)
+test('the sockets of the catalog are drawn like the generator draws them (frontend and backend agree)', () => {
+    expect(sockets().length).toBeGreaterThanOrEqual(7)
+    sockets().forEach((t) => expect(sockShapes(t.sock), t.k).toEqual(t.shapes))
+})
+test('sockets lie in the line: the supply enters the apex of an arch that opens away from it, nothing hangs below the line', () => {
+    sockets().forEach((t) => {
+        expect(t.shapes[0], t.k).toEqual({t: 'line', x1: 1, y1: 12, x2: 4, y2: 12})
+        const arcs = t.shapes.filter((h) => h.t === 'arc')
+        expect(arcs.length).toBe(t.sock.n || 1)
+        arcs.forEach((a) => expect([a.cy, a.a1, a.a2], t.k).toEqual([12, 90, 270]))
+        // symmetric around the line y = 12 (apart from the little 'h' of the waterproof socket)
+        const ys = t.shapes.filter((h) => h.t !== 'text').flatMap((h) => (h.t === 'line' ? [h.y1, h.y2] : [h.cy - h.r, h.cy + h.r]))
+        expect(Math.min(...ys) + Math.max(...ys), t.k).toBeCloseTo(24, 5)
+    })
+})
+test('a socket is drawn as stored, stacked when there are more, and vertically (hanging) on request', () => {
+    const sc = typeOf({}, 'stopcontact')
+    expect(shapesOf(sc)).toBe(sc.shapes)
+    expect(shapesOf(sc, {aantal: 1})).toBe(sc.shapes)
+    expect(shapesOf(sc, {aantal: 3}).filter((h) => h.t === 'arc')).toHaveLength(3)
+    expect(shapesOf(typeOf({}, 'stopcontact2'), {aantal: 2}).filter((h) => h.t === 'arc')).toHaveLength(4)
+    expect(shapesOf(sc, {hor: false})).toEqual(sockShapes(sc.sock, false))
+    expect(shapesOf(sc, {hor: false}).some((h) => h.t === 'arc' && h.a1 === 180)).toBe(true)
+    const lp = typeOf({}, 'lichtpunt')
+    expect(shapesOf(lp, {aantal: 3})).toBe(lp.shapes)
+})
+test('switches lean 25 degrees from the vertical like in the PDF, with the supply entering the hinge from the left', () => {
+    for (const k of ['schakelaar', 'schakelaar2', 'schakelaar3', 'verklikker']) {
+        const t = typeOf({}, k),
+            lever = t.shapes.find((h) => h.t === 'line' && h.y1 !== 12 && h.x1 !== h.x2 && Math.abs(h.y2 - h.y1) > 7)
+        const deg = (Math.atan2(lever.x2 - lever.x1, lever.y1 - lever.y2) * 180) / Math.PI
+        expect(deg, k).toBeCloseTo(25, 0)
+        expect(t.shapes[0], k).toMatchObject({t: 'line', x1: 1, y1: 12, y2: 12})
+    }
 })

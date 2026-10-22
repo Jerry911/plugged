@@ -1,9 +1,9 @@
 // Copyright 2026 Pleysier Jeroen
 // SPDX-License-Identifier: AGPL-3.0-only
 import pako from 'pako'
-import {decodeEds, edsToProject, importEds, KNOWN} from '../eds.js'
-import {flat} from '../util.js'
-import {verify} from '../rules.js'
+import {decodeEds, edsToProject, importEds, KNOWN} from '../eds.jsx'
+import {flat} from '../util.jsx'
+import {verify} from '../rules.jsx'
 import {base} from './utils.jsx'
 
 const enc = (j) => 'EDS0040000' + btoa(String.fromCharCode(...pako.deflate(JSON.stringify(j))))

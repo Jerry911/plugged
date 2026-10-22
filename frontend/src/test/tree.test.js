@@ -1,6 +1,6 @@
 // Copyright 2026 Pleysier Jeroen
 // SPDX-License-Identifier: AGPL-3.0-only
-import {find, indent, mv, outdent, upd} from '../Eendraad.jsx'
+import {find, indent, mv, outdent, upd} from '../OneLineSchema.jsx'
 import {node} from './utils.jsx'
 
 const mk = () => [node('A', 'bord', [node('B', 'kring'), node('C', 'kring')]), node('D', 'bord')]

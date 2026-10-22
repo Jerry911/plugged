@@ -14,7 +14,7 @@ import jakarta.persistence.Lob;
 @Entity
 public class ComponentDoc {
     @Id
-    private String k;
+    private String componentKey;
     @Lob
     @Column(length = 1_000_000)
     private String json;
@@ -22,17 +22,17 @@ public class ComponentDoc {
     public ComponentDoc() {
     }
 
-    public ComponentDoc(String k, String json) {
-        this.k = k;
+    public ComponentDoc(String componentKey, String json) {
+        this.componentKey = componentKey;
         this.json = json;
     }
 
-    public String getK() {
-        return k;
+    public String getComponentKey() {
+        return componentKey;
     }
 
-    public void setK(String k) {
-        this.k = k;
+    public void setComponentKey(String componentKey) {
+        this.componentKey = componentKey;
     }
 
     public String getJson() {

@@ -3,9 +3,9 @@
 import {useEffect, useState} from 'react'
 import {allTypes, stackOf, Sym, typeOf} from './symbols'
 import {BoardSheet} from './Board.jsx'
-import {defaultProps, infoOf, nextLetter, sheetPlan} from './boardModel'
-import {flat, nameOf, reid, uid} from './util'
-import {ZOOMS} from './Situatie.jsx'
+import {defaultProps, infoOf, nextLetter, sheetPlan} from './boardModel.jsx'
+import {flat, nameOf, reid, uid} from './util.jsx'
+import {ZOOMS} from './SituationSchema.jsx'
 import ZoomPane from "./ZoomPane.jsx";
 
 export const upd = (ns, id, f) => ns.flatMap((n) => (n.id === id ? f(n) : [{...n, children: upd(n.children, id, f)}]))
@@ -108,7 +108,7 @@ const OTHER = [
     ['aantal', 'Aantal (x)'],
     ['nr', 'Nr'],
 ]
-export default function Eendraad({p, setP, idx, focus, onFooter}) {
+export default function OneLineSchema({p, setP, idx, focus, onFooter}) {
     const pg = p.een[idx],
         tree = pg.tree,
         T = allTypes(p),

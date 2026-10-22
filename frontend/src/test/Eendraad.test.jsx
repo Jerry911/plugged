@@ -1,9 +1,9 @@
 // Copyright 2026 Pleysier Jeroen
 // SPDX-License-Identifier: AGPL-3.0-only
 import {fireEvent, screen} from '@testing-library/react'
-import Eendraad, {rotate} from '../Eendraad.jsx'
+import OneLineSchema, {rotate} from '../OneLineSchema.jsx'
 import {base, mount, node} from './utils.jsx'
-import {defaultTree} from '../boardModel.js'
+import {defaultTree} from '../boardModel.jsx'
 
 const btn = (id) => document.getElementById(id)
 const pal = (n) => screen.getAllByText(n)[0],
@@ -13,7 +13,7 @@ beforeEach(() => {
 })
 const withTree = (tree) => ({...base(), een: [{id: 'e1', name: 'Blad 1', tree}]})
 test('adds root, child; enforces hierarchy; free mode', () => {
-    const {spy} = mount(Eendraad, base(), {idx: 0})
+    const {spy} = mount(OneLineSchema, base(), {idx: 0})
     fireEvent.click(pal('Verdeelbord'))
     expect(window.alert).toHaveBeenCalledWith('Selecteer eerst een element waaronder dit past.')
     fireEvent.click(pal('Aansluiting net'))
@@ -28,13 +28,13 @@ test('adds root, child; enforces hierarchy; free mode', () => {
     expect(spy.p.een[0].tree[0].children[0].children).toHaveLength(1)
 })
 test('free mode without selection adds at root', () => {
-    const {spy} = mount(Eendraad, base(), {idx: 0})
+    const {spy} = mount(OneLineSchema, base(), {idx: 0})
     fireEvent.click(screen.getByLabelText(/Vrije hiërarchie/))
     fireEvent.click(pal('Stopcontact'))
     expect(spy.p.een[0].tree).toHaveLength(1)
 })
 test('search filters palette', () => {
-    const {container} = mount(Eendraad, base(), {idx: 0})
+    const {container} = mount(OneLineSchema, base(), {idx: 0})
     fireEvent.change(screen.getByPlaceholderText('Zoek element…'), {target: {value: 'oven'}})
     expect(container.querySelectorAll('.pal details')).toHaveLength(1)
     fireEvent.change(screen.getByPlaceholderText('Zoek element…'), {target: {value: 'zzzz'}})
@@ -42,7 +42,7 @@ test('search filters palette', () => {
 })
 test('edit properties, move, indent, outdent, duplicate, delete', () => {
     const t = [node('A', 'bord', [node('B', 'kring')]), node('C', 'bord')],
-        {spy} = mount(Eendraad, withTree(t), {idx: 0})
+        {spy} = mount(OneLineSchema, withTree(t), {idx: 0})
     fireEvent.click(row('C'))
     fireEvent.change(screen.getByDisplayValue('C'), {target: {value: 'Cx'}})
     expect(spy.p.een[0].tree[1].label).toBe('Cx')
@@ -61,7 +61,7 @@ test('edit properties, move, indent, outdent, duplicate, delete', () => {
     expect(spy.p.een[0].tree).toHaveLength(2)
 })
 test('toolbar buttons have a tooltip and an accessible name', () => {
-    mount(Eendraad, withTree([node('A', 'bord'), node('C', 'bord')]), {idx: 0})
+    mount(OneLineSchema, withTree([node('A', 'bord'), node('C', 'bord')]), {idx: 0})
     fireEvent.click(row('C'))
     for (const id of ['eds-earlier', 'eds-later', 'eds-outdent', 'eds-indent', 'eds-duplicate', 'eds-rotate-ccw', 'eds-rotate-cw']) {
         expect(btn(id)).toHaveAttribute('title')
@@ -77,7 +77,7 @@ test('rotate helper wraps around in both directions', () => {
 })
 test('rotate buttons turn the selected symbol, full circle, and are disabled for distribution parts', () => {
     const t = [node('A', 'aansluiting', [node('B', 'bord', [node('K', 'kring', [node('S', 'stopcontact')])])])],
-        {spy} = mount(Eendraad, withTree(t), {idx: 0}),
+        {spy} = mount(OneLineSchema, withTree(t), {idx: 0}),
         S = () => spy.p.een[0].tree[0].children[0].children[0].children[0]
     // select through the tree list: the drawing also contains a (non-clickable) text 'S' for the label
     const treeRow = (l) => [...document.querySelectorAll('.tree div')].find((d) => d.textContent.startsWith(l))
@@ -98,11 +98,11 @@ test('rotate buttons turn the selected symbol, full circle, and are disabled for
 test('a turned symbol is drawn turned in the schema', () => {
     const t = defaultTree()
     t[0].children[0].children = [node('K', 'kring', [node('S', 'stopcontact', [], {r: 90})])]
-    const {container} = mount(Eendraad, {...base(), een: [{id: 'e1', name: 'x', tree: t}]}, {idx: 0})
+    const {container} = mount(OneLineSchema, {...base(), een: [{id: 'e1', name: 'x', tree: t}]}, {idx: 0})
     expect(container.querySelector('svg.sheet g[transform^="rotate(90 "]')).toBeInTheDocument()
 })
 test('Eigenschappen sits above Opbouw and can be closed with the cross', () => {
-    mount(Eendraad, withTree([node('Aa', 'bord'), node('Cc', 'bord')]), {idx: 0})
+    mount(OneLineSchema, withTree([node('Aa', 'bord'), node('Cc', 'bord')]), {idx: 0})
     expect(btn('eds-close')).toBeNull()
     fireEvent.click(row('Cc'))
     const eig = screen.getByText('Eigenschappen'),
@@ -113,7 +113,7 @@ test('Eigenschappen sits above Opbouw and can be closed with the cross', () => {
     expect(selected()).toBeNull()
 })
 test('trash button in the toolbar deletes the selected element with its children', () => {
-    const {spy} = mount(Eendraad, withTree([node('Aa', 'bord', [node('Bb', 'kring')]), node('Cc', 'bord')]), {idx: 0})
+    const {spy} = mount(OneLineSchema, withTree([node('Aa', 'bord', [node('Bb', 'kring')]), node('Cc', 'bord')]), {idx: 0})
     fireEvent.click(row('Aa'))
     expect(btn('eds-delete')).toHaveAttribute('title')
     fireEvent.click(btn('eds-delete'))
@@ -123,7 +123,7 @@ test('trash button in the toolbar deletes the selected element with its children
 test('a trash can appears on the selected symbol in the drawing and deletes it', () => {
     const t = defaultTree()
     t[0].children[0].children = [node('K', 'kring', [node('S', 'stopcontact'), node('T', 'stopcontact')])]
-    const {spy} = mount(Eendraad, {...base(), een: [{id: 'e1', name: 'x', tree: t}]}, {idx: 0}),
+    const {spy} = mount(OneLineSchema, {...base(), een: [{id: 'e1', name: 'x', tree: t}]}, {idx: 0}),
         treeRow = (l) => [...document.querySelectorAll('.tree div')].find((d) => d.textContent.startsWith(l)),
         kids = () => spy.p.een[0].tree[0].children[0].children[0].children
     expect(btn('eds-drawing-delete')).toBeNull()
@@ -135,7 +135,7 @@ test('a trash can appears on the selected symbol in the drawing and deletes it',
 })
 test('main levels can be folded and unfolded with the arrow in the Opbouw list', () => {
     const t = [node('Aa', 'aansluiting', [node('Bb', 'bord', [node('Kk', 'kring', [node('Ss', 'stopcontact'), node('Tt', 'stopcontact')])])])],
-        {spy} = mount(Eendraad, withTree(t), {idx: 0}),
+        {spy} = mount(OneLineSchema, withTree(t), {idx: 0}),
         names = () => [...document.querySelectorAll('.tree div')].map((d) => d.textContent)
     expect(names()).toHaveLength(5)
     expect(btn('eds-toggle-Ss')).toBeNull()
@@ -154,7 +154,7 @@ test('main levels can be folded and unfolded with the arrow in the Opbouw list',
 })
 test('selecting a hidden element in the drawing unfolds its levels', () => {
     const t = [node('Aa', 'aansluiting', [node('Bb', 'bord', [node('Kk', 'kring', [node('Ss', 'stopcontact')])])])],
-        {container} = mount(Eendraad, withTree(t), {idx: 0})
+        {container} = mount(OneLineSchema, withTree(t), {idx: 0})
     fireEvent.click(btn('eds-toggle-Kk'))
     expect(document.querySelectorAll('.tree div')).toHaveLength(3)
     fireEvent.click(container.querySelector('svg.sheet g[style*="pointer"]'))
@@ -162,7 +162,7 @@ test('selecting a hidden element in the drawing unfolds its levels', () => {
     expect(selected()).toHaveTextContent(/^Ss/)
 })
 test('adding an element to a folded circuit unfolds it', () => {
-    const {spy} = mount(Eendraad, DEF(), {idx: 0})
+    const {spy} = mount(OneLineSchema, DEF(), {idx: 0})
     fireEvent.click(pal('Kring (automaat)'))
     fireEvent.click(pal('Stopcontact'))
     const k = document.querySelectorAll('.tree div')[2] // Aansluiting net > Verdeelbord > circuit A
@@ -175,11 +175,11 @@ test('adding an element to a folded circuit unfolds it', () => {
 })
 test('custom components appear in palette', () => {
     const p = {...base(), custom: [{id: '9', name: 'Mijn ding', shapes: []}]}
-    mount(Eendraad, p, {idx: 0})
+    mount(OneLineSchema, p, {idx: 0})
     expect(pal('Mijn ding')).toBeInTheDocument()
 })
 test('Delete/Backspace remove the selected node; ignored in inputs and without selection', () => {
-    const {spy} = mount(Eendraad, withTree([node('Aa', 'bord'), node('Bb', 'bord')]), {idx: 0}),
+    const {spy} = mount(OneLineSchema, withTree([node('Aa', 'bord'), node('Bb', 'bord')]), {idx: 0}),
         b = document.body
     fireEvent.keyDown(b, {key: 'Delete'})
     expect(spy.p.een[0].tree).toHaveLength(2)
@@ -196,14 +196,14 @@ test('Delete/Backspace remove the selected node; ignored in inputs and without s
     expect(spy.p.een[0].tree).toHaveLength(0)
 })
 test('Delete key removes node with its children', () => {
-    const {spy} = mount(Eendraad, withTree([node('Aa', 'bord', [node('K', 'kring')])]), {idx: 0})
+    const {spy} = mount(OneLineSchema, withTree([node('Aa', 'bord', [node('K', 'kring')])]), {idx: 0})
     fireEvent.click(row('Aa'))
     fireEvent.keyDown(document.body, {key: 'Delete'})
     expect(spy.p.een[0].tree).toEqual([])
 })
 test('footer cells in the diagram call onFooter', () => {
     const fn = vi.fn(),
-        {container} = mount(Eendraad, base(), {idx: 0, onFooter: fn})
+        {container} = mount(OneLineSchema, base(), {idx: 0, onFooter: fn})
     fireEvent.click(container.querySelector('.fcell'))
     expect(fn).toHaveBeenCalledWith('titel')
 })
@@ -212,7 +212,7 @@ const DEF = () => ({...base(), een: [{id: 'e1', name: 'Blad 1', tree: defaultTre
 const selected = () => document.querySelector('.tree .sel')
 const board1 = (spy) => spy.p.een[0].tree[0].children[0]
 test('circuits are appended to the board from left to right with defaults and free letters', () => {
-    const {spy} = mount(Eendraad, DEF(), {idx: 0})
+    const {spy} = mount(OneLineSchema, DEF(), {idx: 0})
     for (let i = 0; i < 3; i++) fireEvent.click(pal('Kring (automaat)'))
     const b = board1(spy)
     expect(b.children.map((k) => k.label)).toEqual(['A', 'B', 'C'])
@@ -223,7 +223,7 @@ test('circuits are appended to the board from left to right with defaults and fr
     })
 })
 test('elements go into the selected circuit; the circuit stays selected; a new circuit becomes selected', () => {
-    const {spy} = mount(Eendraad, DEF(), {idx: 0})
+    const {spy} = mount(OneLineSchema, DEF(), {idx: 0})
     fireEvent.click(pal('Kring (automaat)'))
     fireEvent.click(pal('Stopcontact'))
     fireEvent.click(pal('Stopcontact'))
@@ -237,13 +237,13 @@ test('elements go into the selected circuit; the circuit stays selected; a new c
 test('without selection an element is added to the last circuit', () => {
     const t = defaultTree()
     t[0].children[0].children = [node('K1', 'kring'), node('K2', 'kring')]
-    const {spy} = mount(Eendraad, {...base(), een: [{id: 'e1', name: 'x', tree: t}]}, {idx: 0})
+    const {spy} = mount(OneLineSchema, {...base(), een: [{id: 'e1', name: 'x', tree: t}]}, {idx: 0})
     fireEvent.click(pal('Motor'))
     expect(board1(spy).children[1].children.map((c) => c.type)).toEqual(['motor'])
     expect(board1(spy).children[0].children).toHaveLength(0)
 })
 test('kring fields update props and the derived spec string', () => {
-    const {spy} = mount(Eendraad, DEF(), {idx: 0})
+    const {spy} = mount(OneLineSchema, DEF(), {idx: 0})
     fireEvent.click(pal('Kring (automaat)'))
     const k = () => board1(spy).children[0],
         f = (l) => screen.getByLabelText(l)
@@ -260,7 +260,7 @@ test('kring fields update props and the derived spec string', () => {
     expect(screen.queryByPlaceholderText(/Specs/)).toBeNull()
 })
 test('aansluiting, bord and element fields', () => {
-    const {spy, container} = mount(Eendraad, DEF(), {idx: 0})
+    const {spy, container} = mount(OneLineSchema, DEF(), {idx: 0})
     fireEvent.click(row('Aansluiting net'))
     fireEvent.change(screen.getByLabelText('Differentieel (mA)'), {target: {value: '30'}})
     expect(spy.p.een[0].tree[0].p.delta).toBe('30')
@@ -285,7 +285,7 @@ test('clicking a circuit letter or a symbol in the drawing selects it', () => {
             ]),
         ]),
     ]
-    const {container} = mount(Eendraad, withTree(t), {idx: 0})
+    const {container} = mount(OneLineSchema, withTree(t), {idx: 0})
     fireEvent.click([...container.querySelectorAll('svg.sheet text')].find((x) => x.textContent === 'K'))
     expect(selected()).toHaveTextContent(/^K/)
     screen.getByText('Eigenschappen')
@@ -297,11 +297,11 @@ test('wide boards are shown on several sheets', () => {
     t[0].children[0].children = Array.from({length: 40}, (_, i) =>
         node('K' + i, 'kring', [node('s' + i, 'stopcontact')], {p: {polen: 2, amp: 16, curve: 'B', kabel: 'x', kortsl: 3}}),
     )
-    const {container} = mount(Eendraad, {...base(), een: [{id: 'e1', name: 'x', tree: t}]}, {idx: 0})
+    const {container} = mount(OneLineSchema, {...base(), een: [{id: 'e1', name: 'x', tree: t}]}, {idx: 0})
     expect(container.querySelectorAll('svg.sheet').length).toBeGreaterThan(2)
 })
 test('zoom buttons scale the schema and stay inside the sheet corner', () => {
-    const {container} = mount(Eendraad, base(), {idx: 0})
+    const {container} = mount(OneLineSchema, base(), {idx: 0})
     const wrap = () => container.querySelector('.zoomscroll > div')
     expect(wrap().style.width).toBe('100%')
     fireEvent.click(screen.getByTitle('Inzoomen'))

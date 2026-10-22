@@ -1,6 +1,6 @@
 // Copyright 2026 Pleysier Jeroen
 // SPDX-License-Identifier: AGPL-3.0-only
-import {summarize} from './rules'
+import {summarize} from './rules.jsx'
 
 const ICON = {error: '✖', warn: '⚠', info: 'ℹ'}
 export default function Verify({issues, onGo, onClose}) {

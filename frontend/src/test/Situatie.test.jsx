@@ -1,9 +1,9 @@
 // Copyright 2026 Pleysier Jeroen
 // SPDX-License-Identifier: AGPL-3.0-only
 import {fireEvent, render, screen} from '@testing-library/react'
-import Situatie, {SitSheet, ZOOMS} from '../Situatie.jsx'
+import SituationSchema, {SitSheet, ZOOMS} from '../SituationSchema.jsx'
 import {base, mount, node} from './utils.jsx'
-import {marksOf} from '../util'
+import {marksOf} from '../util.jsx'
 
 const P = () => ({...base(), een: [{id: 'e1', name: 'B', tree: [node('n1', 'stopcontact', [], {label: 'Keuken stopcontact'})]}]})
 const sv = (c) => c.querySelector('svg.sheet'),
@@ -12,7 +12,7 @@ const sv = (c) => c.querySelector('svg.sheet'),
 const sit = (spy) => spy.p.sit[0]
 const wall = (id, x1, y1, x2, y2) => ({id, x1, y1, x2, y2})
 test('walls: chain, stop on same point, ignore footer area, right click', () => {
-    const {container, spy} = mount(Situatie, P(), {idx: 0})
+    const {container, spy} = mount(SituationSchema, P(), {idx: 0})
     tool('Muur')
     clk(container, 10, 20)
     clk(container, 50, 20)
@@ -28,7 +28,7 @@ test('walls: chain, stop on same point, ignore footer area, right click', () => 
     expect(sit(spy).walls).toHaveLength(2)
 })
 test('room tool draws four walls, degenerate ignored', () => {
-    const {container, spy} = mount(Situatie, P(), {idx: 0})
+    const {container, spy} = mount(SituationSchema, P(), {idx: 0})
     tool('Kamer')
     clk(container, 10, 10)
     clk(container, 60, 50)
@@ -40,7 +40,7 @@ test('room tool draws four walls, degenerate ignored', () => {
 test('doors and windows snap to walls or float', () => {
     const init = P()
     init.sit[0].walls = [wall('w', 10, 20, 50, 20)]
-    const {container, spy} = mount(Situatie, init, {idx: 0})
+    const {container, spy} = mount(SituationSchema, init, {idx: 0})
     tool('Deur')
     clk(container, 30, 25)
     expect(sit(spy).items[0]).toMatchObject({kind: 'door', x: 30, y: 20, r: 0})
@@ -51,7 +51,7 @@ test('doors and windows snap to walls or float', () => {
     expect(sit(spy).items[2].kind).toBe('window')
 })
 test('symbols and warnings, auto place, text tool', () => {
-    const {container, spy} = mount(Situatie, P(), {idx: 0})
+    const {container, spy} = mount(SituationSchema, P(), {idx: 0})
     screen.getByText(/Nergens geplaatst \(1\)/)
     clk(container, 50, 50)
     tool('Symbool')
@@ -74,14 +74,14 @@ test('symbols and warnings, auto place, text tool', () => {
     expect(sit(spy).items.filter((i) => i.kind === 'text')).toHaveLength(1)
 })
 test('auto place missing components', () => {
-    const {spy} = mount(Situatie, P(), {idx: 0})
+    const {spy} = mount(SituationSchema, P(), {idx: 0})
     fireEvent.click(screen.getByText('Plaats ontbrekende op dit blad'))
     expect(sit(spy).items[0]).toMatchObject({kind: 'sym', node: 'n1'})
 })
 test('select, drag, inspect, keyboard and erase items', () => {
     const init = P()
     init.sit[0].items = [{id: 'i1', kind: 'sym', node: 'n1', x: 100, y: 100, r: 0, s: 7}]
-    const {container, spy} = mount(Situatie, init, {idx: 0})
+    const {container, spy} = mount(SituationSchema, init, {idx: 0})
     const grab = () => container.querySelector('svg.sheet g[style*="move"]')
     fireEvent.pointerMove(sv(container), {clientX: 5, clientY: 5})
     fireEvent.pointerDown(grab(), {clientX: 100, clientY: 100})
@@ -127,7 +127,7 @@ test('door inspector flips and text edit; erase tool; snap', () => {
         {id: 'd', kind: 'door', x: 30, y: 20, r: 0, w: 10},
         {id: 't', kind: 'text', x: 60, y: 60, txt: 'Hal', s: 4, r: 0},
     ]
-    const {container, spy} = mount(Situatie, init, {idx: 0})
+    const {container, spy} = mount(SituationSchema, init, {idx: 0})
     const moves = () => [...container.querySelectorAll('svg.sheet g[style*="move"]')]
     fireEvent.pointerDown(moves()[0], {clientX: 30, clientY: 20})
     fireEvent.click(screen.getByText('⇅ spiegel'))
@@ -149,7 +149,7 @@ test('door inspector flips and text edit; erase tool; snap', () => {
 test('walls: select, move, handles, delete, erase', () => {
     const init = P()
     init.sit[0].walls = [wall('w', 10, 20, 50, 20), wall('v', 10, 60, 50, 60)]
-    const {container, spy} = mount(Situatie, init, {idx: 0})
+    const {container, spy} = mount(SituationSchema, init, {idx: 0})
     const hit = (i) => container.querySelectorAll('line[stroke="transparent"]')[i]
     fireEvent.pointerDown(hit(0), {clientX: 20, clientY: 20})
     expect(screen.getByLabelText(/Lengte/).value).toBe('2,00 m')
@@ -190,7 +190,7 @@ test('SitSheet static: orphan symbol, text, window, no handles', () => {
     screen.getByText(/Situatieschema – X/)
 })
 test('grid dots follow the snap setting; the selector lives in the drawing', () => {
-    const {container} = mount(Situatie, P(), {idx: 0}),
+    const {container} = mount(SituationSchema, P(), {idx: 0}),
         sel = container.querySelector('.gridsel select'),
         w = (id) => container.querySelector('#' + id).getAttribute('width')
     expect(sel).toBeTruthy()
@@ -205,7 +205,7 @@ test('grid dots follow the snap setting; the selector lives in the drawing', () 
 test('canvas delete button only appears once something is selected', () => {
     const init = P()
     init.sit[0].items = [{id: 'i1', kind: 'text', x: 20, y: 20, txt: 'Hal', s: 4, r: 0}]
-    const {container, spy} = mount(Situatie, init, {idx: 0}),
+    const {container, spy} = mount(SituationSchema, init, {idx: 0}),
         btn = () => screen.queryByRole('button', {name: 'Verwijder selectie'})
     expect(btn()).toBeNull()
     fireEvent.pointerDown(container.querySelector('svg.sheet g[style*="move"]'), {clientX: 20, clientY: 20})
@@ -217,7 +217,7 @@ test('canvas delete button only appears once something is selected', () => {
 })
 test('footer cells call onFooter', () => {
     const fn = vi.fn(),
-        {container} = mount(Situatie, P(), {idx: 0, onFooter: fn})
+        {container} = mount(SituationSchema, P(), {idx: 0, onFooter: fn})
     fireEvent.click(container.querySelectorAll('.fcell')[1])
     expect(fn).toHaveBeenCalledWith('straat')
 })
@@ -230,12 +230,12 @@ test('footer page number counts all printed een sheets before the situatieschema
             {id: 'e2', name: 'B', tree: []},
         ],
     }
-    mount(Situatie, p, {idx: 0})
+    mount(SituationSchema, p, {idx: 0})
     screen.getByText('Blad 1/1')
 })
 
 test('drawing snaps to grid points by default; free drawing is an opt-in checkbox', () => {
-    const {container, spy} = mount(Situatie, P(), {idx: 0})
+    const {container, spy} = mount(SituationSchema, P(), {idx: 0})
     const cb = screen.getByLabelText('Vrij tekenen')
     expect(cb).not.toBeChecked()
     tool('Muur')
@@ -258,7 +258,7 @@ test('drawing snaps to grid points by default; free drawing is an opt-in checkbo
     expect(sit(spy).walls[2]).toMatchObject({x1: 15, y1: 20, x2: 25, y2: 20})
 })
 test('Escape cancels the active tool like a right click', () => {
-    const {container, spy} = mount(Situatie, P(), {idx: 0})
+    const {container, spy} = mount(SituationSchema, P(), {idx: 0})
     tool('Muur')
     clk(container, 12, 17)
     fireEvent.keyDown(window, {key: 'Escape'})
@@ -267,7 +267,7 @@ test('Escape cancels the active tool like a right click', () => {
     expect(sit(spy)?.walls ?? []).toHaveLength(0)
 })
 test('a cursor marker shows the snapped grid point; walls and rooms get a preview', () => {
-    const {container} = mount(Situatie, P(), {idx: 0}),
+    const {container} = mount(SituationSchema, P(), {idx: 0}),
         mv = (x, y) => fireEvent.pointerMove(sv(container), {clientX: x, clientY: y}),
         mark = () => container.querySelector('svg.sheet g[stroke="#0a6cff"] circle')
     mv(12, 17)
@@ -306,7 +306,7 @@ test('dragging snaps items and walls onto grid points (not when free)', () => {
     const init = P()
     init.sit[0].items = [{id: 't', kind: 'text', x: 101, y: 98, txt: 'Hal', s: 4, r: 0}]
     init.sit[0].walls = [wall('w', 11, 22, 51, 22)]
-    const {container, spy} = mount(Situatie, init, {idx: 0}),
+    const {container, spy} = mount(SituationSchema, init, {idx: 0}),
         it = () => container.querySelector('svg.sheet g[style*="move"]'),
         hit = () => container.querySelector('line[stroke="transparent"]')
     fireEvent.pointerDown(it(), {clientX: 101, clientY: 98})
@@ -323,7 +323,7 @@ test('dragging snaps items and walls onto grid points (not when free)', () => {
     expect(sit(spy).items[0]).toMatchObject({x: 103.3, y: 101.3})
 })
 test('zoom buttons in the top right of the drawing', () => {
-    const {container} = mount(Situatie, P(), {idx: 0}),
+    const {container} = mount(SituationSchema, P(), {idx: 0}),
         pct = () => screen.getByTitle('Zoom terugzetten (100%)'),
         inner = () => container.querySelector('.zoomscroll > div'),
         zin = () => screen.getByTitle('Inzoomen'),
@@ -349,7 +349,7 @@ test('zoom buttons in the top right of the drawing', () => {
     expect(pct().textContent).toBe('75%')
 })
 test('drawing still works while zoomed', () => {
-    const {container, spy} = mount(Situatie, P(), {idx: 0})
+    const {container, spy} = mount(SituationSchema, P(), {idx: 0})
     fireEvent.click(screen.getByTitle('Inzoomen'))
     tool('Muur')
     clk(container, 12, 17)
@@ -374,7 +374,7 @@ const MULTI = () => {
     return init
 }
 test('right click cancels drawing, hides the dimension input and switches to select', () => {
-    const {container} = mount(Situatie, P(), {idx: 0})
+    const {container} = mount(SituationSchema, P(), {idx: 0})
     tool('Muur')
     clk(container, 10, 20)
     mv(container, 50, 20)
@@ -387,7 +387,7 @@ test('right click cancels drawing, hides the dimension input and switches to sel
     expect(container.querySelector('line[stroke-dasharray]')).toBeNull()
 })
 test('dragging on an empty spot draws a box and selects everything it touches', () => {
-    const {container, spy} = mount(Situatie, MULTI(), {idx: 0})
+    const {container, spy} = mount(SituationSchema, MULTI(), {idx: 0})
     dn(container, 5, 10)
     mv(container, 70, 50)
     expect(boxRect(container)).toBeTruthy()
@@ -404,7 +404,7 @@ test('dragging on an empty spot draws a box and selects everything it touches', 
     expect(sit(spy).walls).toHaveLength(2)
 })
 test('Shift + box adds to the selection; tiny boxes, other tools, the footer and right button do not box-select', () => {
-    const {container} = mount(Situatie, MULTI(), {idx: 0})
+    const {container} = mount(SituationSchema, MULTI(), {idx: 0})
     dn(container, 5, 10)
     mv(container, 70, 50)
     up(container)
@@ -430,7 +430,7 @@ test('Shift + box adds to the selection; tiny boxes, other tools, the footer and
     expect(boxRect(container)).toBeNull()
 })
 test('leaving the drawing cancels a box', () => {
-    const {container} = mount(Situatie, MULTI(), {idx: 0})
+    const {container} = mount(SituationSchema, MULTI(), {idx: 0})
     dn(container, 5, 10)
     mv(container, 70, 50)
     expect(boxRect(container)).toBeTruthy()
@@ -442,7 +442,7 @@ test('leaving the drawing cancels a box', () => {
 test('a box can select a diagonal wall only when the wall crosses it', () => {
     const init = P()
     init.sit[0].walls = [wall('d', 10, 10, 100, 100)]
-    const {container} = mount(Situatie, init, {idx: 0})
+    const {container} = mount(SituationSchema, init, {idx: 0})
     dn(container, 70, 20)
     mv(container, 90, 40)
     up(container)
@@ -453,7 +453,7 @@ test('a box can select a diagonal wall only when the wall crosses it', () => {
     expect(container.querySelector('[aria-label="Verwijder selectie"]')).toBeTruthy()
 })
 test('a group moves, rotates, duplicates and is deleted together', () => {
-    const {container, spy} = mount(Situatie, MULTI(), {idx: 0})
+    const {container, spy} = mount(SituationSchema, MULTI(), {idx: 0})
     dn(container, 5, 10)
     mv(container, 70, 50)
     up(container)
@@ -489,7 +489,7 @@ test('a group moves, rotates, duplicates and is deleted together', () => {
     expect(screen.queryByText(/elementen geselecteerd/)).toBeNull()
 })
 test('Shift-click toggles an item in the selection; a plain click replaces it', () => {
-    const {container} = mount(Situatie, MULTI(), {idx: 0})
+    const {container} = mount(SituationSchema, MULTI(), {idx: 0})
     fireEvent.pointerDown(grabs(container)[0], {clientX: 30, clientY: 40})
     fireEvent.pointerDown(grabs(container)[1], {clientX: 60, clientY: 40, shiftKey: true})
     screen.getByText('2 elementen geselecteerd')
@@ -505,7 +505,7 @@ test('moving a single door still snaps it to a wall, a group does not', () => {
     const init = P()
     init.sit[0].walls = [wall('w', 10, 20, 50, 20)]
     init.sit[0].items = [{id: 'd', kind: 'door', x: 30, y: 20, r: 0, w: 10}]
-    const {container, spy} = mount(Situatie, init, {idx: 0})
+    const {container, spy} = mount(SituationSchema, init, {idx: 0})
     fireEvent.pointerDown(grabs(container)[0], {clientX: 30, clientY: 20})
     mv(container, 34, 24)
     expect(sit(spy).items[0]).toMatchObject({x: 35, y: 20})
@@ -522,7 +522,7 @@ test('moving a single door still snaps it to a wall, a group does not', () => {
 test('a trash button appears at the top right of the selection and deletes it', () => {
     const init = P()
     init.sit[0].items = [{id: 'i', kind: 'sym', node: 'n1', x: 100, y: 100, r: 0, s: 7}]
-    const {container, spy} = mount(Situatie, init, {idx: 0}),
+    const {container, spy} = mount(SituationSchema, init, {idx: 0}),
         trash = () => container.querySelector('[aria-label="Verwijder selectie"]')
     expect(trash()).toBeNull()
     fireEvent.pointerDown(grabs(container)[0], {clientX: 100, clientY: 100})
@@ -537,7 +537,7 @@ test('a trash button appears at the top right of the selection and deletes it', 
     expect(trash()).toBeNull()
 })
 test('the trash button covers a whole group, stays inside the sheet and is hidden in other tools', () => {
-    const {container} = mount(Situatie, MULTI(), {idx: 0}),
+    const {container} = mount(SituationSchema, MULTI(), {idx: 0}),
         trash = () => container.querySelector('[aria-label="Verwijder selectie"]')
     dn(container, 5, 10)
     mv(container, 70, 50)
@@ -553,7 +553,7 @@ test('the trash button covers a whole group, stays inside the sheet and is hidde
     fireEvent.pointerLeave(sv(container))
     const init = P()
     init.sit[0].items = [{id: 'i', kind: 'sym', node: 'n1', x: 292, y: 6, r: 0, s: 7}]
-    const r = mount(Situatie, init, {idx: 0})
+    const r = mount(SituationSchema, init, {idx: 0})
     fireEvent.pointerDown(grabs(r.container)[0], {clientX: 292, clientY: 6})
     up(r.container)
     expect(r.container.querySelectorAll('[aria-label="Verwijder selectie"]')[0].getAttribute('transform')).toBe('translate(289,8)')
@@ -561,7 +561,7 @@ test('the trash button covers a whole group, stays inside the sheet and is hidde
 test('items and walls have generous invisible hit areas', () => {
     const init = MULTI()
     init.sit[0].items.push({id: 'e', kind: 'window', x: 150, y: 50, r: 0, w: 10})
-    const {container} = mount(Situatie, init, {idx: 0})
+    const {container} = mount(SituationSchema, init, {idx: 0})
     expect(container.querySelector('line[stroke="transparent"]').getAttribute('stroke-width')).toBe('7')
     const g = grabs(container)
     expect(g).toHaveLength(4)
@@ -574,7 +574,7 @@ const texts = (c) => [...c.querySelectorAll('svg.sheet text')].map((t) => t.text
 test('wall lengths are shown from the footer scale and can be hidden with the Maten button', () => {
     const init = P()
     init.sit[0].walls = [wall('w', 10, 20, 50, 20), wall('t', 5, 5, 6, 5)]
-    const {container, spy} = mount(Situatie, init, {idx: 0}),
+    const {container, spy} = mount(SituationSchema, init, {idx: 0}),
         btn = () => screen.getByTitle('Maten tonen/verbergen')
     expect(texts(container)).toContain('2,00 m')
     expect(texts(container).filter((t) => t.endsWith(' m'))).toHaveLength(1)
@@ -591,7 +591,7 @@ test('the scale of the footer drives the dimensions', () => {
     const p = P()
     p.footer.schaal = '1:100'
     p.sit[0].walls = [wall('w', 10, 20, 50, 20), wall('r', 50, 60, 10, 20)]
-    const {container} = mount(Situatie, p, {idx: 0})
+    const {container} = mount(SituationSchema, p, {idx: 0})
     expect(texts(container).filter((t) => t === '4,00 m')).toHaveLength(1)
     expect(texts(container)).toContain('5,66 m')
     const q = {...p, footer: {...p.footer, schaal: 'groot'}}
@@ -608,7 +608,7 @@ test('static sheets (PDF/print) follow the per-sheet dimension setting', () => {
     expect(b.container.querySelector('[aria-label="Verwijder selectie"]')).toBeNull()
 })
 test('while drawing the length of the preview is shown, even when dimensions are hidden', () => {
-    const {container} = mount(Situatie, P(), {idx: 0}),
+    const {container} = mount(SituationSchema, P(), {idx: 0}),
         live = () =>
             [...container.querySelectorAll('svg.sheet text')].filter((t) => t.getAttribute('fill') === '#0a6cff').map((t) => t.textContent)
     fireEvent.click(screen.getByTitle('Maten tonen/verbergen'))
@@ -627,7 +627,7 @@ test('the wall length and the door width can be typed in the inspector', () => {
     const init = P()
     init.sit[0].walls = [wall('w', 10, 20, 50, 20), wall('v', 10, 20, 10, 60)]
     init.sit[0].items = [{id: 'd', kind: 'door', x: 30, y: 20, r: 0, w: 10}]
-    const {container, spy} = mount(Situatie, init, {idx: 0}),
+    const {container, spy} = mount(SituationSchema, init, {idx: 0}),
         hit = (i) => container.querySelectorAll('line[stroke="transparent"]')[i]
     fireEvent.pointerDown(hit(0), {clientX: 30, clientY: 20})
     up(container)
@@ -665,7 +665,7 @@ test('the wall length and the door width can be typed in the inspector', () => {
     expect(sit(spy).items[0].w).toBe(18)
 })
 test('typing a length while drawing a wall continues the chain in the direction of the cursor', () => {
-    const {container, spy} = mount(Situatie, P(), {idx: 0})
+    const {container, spy} = mount(SituationSchema, P(), {idx: 0})
     tool('Muur')
     expect(container.querySelector('.dimbox')).toBeNull()
     clk(container, 10, 20)
@@ -690,7 +690,7 @@ test('typing a length while drawing a wall continues the chain in the direction 
     expect(sit(spy).walls[3].y2).toBeGreaterThan(90)
 })
 test('a typed length keeps the direction of the cursor after the mouse left the drawing for the input', () => {
-    const {container, spy} = mount(Situatie, P(), {idx: 0})
+    const {container, spy} = mount(SituationSchema, P(), {idx: 0})
     tool('Muur')
     clk(container, 240, 100)
     mv(container, 200, 100)
@@ -701,7 +701,7 @@ test('a typed length keeps the direction of the cursor after the mouse left the 
     expect(sit(spy).walls[0]).toMatchObject({x1: 240, y1: 100, x2: 200, y2: 100})
 })
 test('a length that does not fit offers a larger scale that makes it fit', () => {
-    const {container, spy} = mount(Situatie, P(), {idx: 0})
+    const {container, spy} = mount(SituationSchema, P(), {idx: 0})
     tool('Muur')
     clk(container, 20, 100)
     const input = screen.getByPlaceholderText('bv. 3,5 of 350cm')
@@ -711,7 +711,7 @@ test('a length that does not fit offers a larger scale that makes it fit', () =>
     expect(spy.p.footer.schaal).toBe('1:200')
 })
 test('arrow keys in the length input choose the direction', () => {
-    const {container, spy} = mount(Situatie, P(), {idx: 0})
+    const {container, spy} = mount(SituationSchema, P(), {idx: 0})
     tool('Muur')
     clk(container, 100, 100)
     const input = screen.getByPlaceholderText('bv. 3,5 of 350cm')
@@ -721,7 +721,7 @@ test('arrow keys in the length input choose the direction', () => {
     expect(sit(spy).walls[0]).toMatchObject({x1: 100, y1: 100, x2: 100, y2: 80})
 })
 test('a typed length that would end outside the sheet is flagged instead of silently drawn', () => {
-    const {container, spy} = mount(Situatie, P(), {idx: 0})
+    const {container, spy} = mount(SituationSchema, P(), {idx: 0})
     tool('Muur')
     clk(container, 240, 100)
     const input = screen.getByPlaceholderText('bv. 3,5 of 350cm')
@@ -732,7 +732,7 @@ test('a typed length that would end outside the sheet is flagged instead of sile
     expect(sit(spy).walls).toHaveLength(0)
 })
 test('invalid or oversized typed lengths are rejected; Escape stops drawing', () => {
-    const {container, spy} = mount(Situatie, P(), {idx: 0})
+    const {container, spy} = mount(SituationSchema, P(), {idx: 0})
     tool('Muur')
     clk(container, 10, 20)
     const input = screen.getByPlaceholderText('bv. 3,5 of 350cm')
@@ -751,7 +751,7 @@ test('invalid or oversized typed lengths are rejected; Escape stops drawing', ()
     expect(sit(spy).walls).toHaveLength(0)
 })
 test('typing "width x height" draws a room from the first point towards the cursor', () => {
-    const {container, spy} = mount(Situatie, P(), {idx: 0})
+    const {container, spy} = mount(SituationSchema, P(), {idx: 0})
     tool('Kamer')
     clk(container, 100, 100)
     const input = screen.getByPlaceholderText('bv. 4x3,5 (m)')
@@ -779,7 +779,7 @@ test('typing "width x height" draws a room from the first point towards the curs
 
 // ---- collapsible "nergens geplaatst" panel ----
 test('the "nergens geplaatst" list sits right of the drawing and can be collapsed so the drawing grows', () => {
-    const {container} = mount(Situatie, P(), {idx: 0}),
+    const {container} = mount(SituationSchema, P(), {idx: 0}),
         panel = () => container.querySelector('.rightpanel'),
         wrap = () => container.querySelector('.zoomscroll').parentElement
     expect(container.querySelector('.main').nextElementSibling).toBe(panel())
@@ -803,13 +803,13 @@ test('the "nergens geplaatst" list sits right of the drawing and can be collapse
 test('the panel shows the all-placed message and has no badge when nothing is missing', () => {
     const init = P()
     init.sit[0].items = [{id: 'i', kind: 'sym', node: 'n1', x: 10, y: 10, r: 0, s: 7}]
-    const {container} = mount(Situatie, init, {idx: 0})
+    const {container} = mount(SituationSchema, init, {idx: 0})
     expect(container.querySelector('.rightpanel').textContent).toContain('✓ Alle componenten geplaatst')
     fireEvent.click(screen.getByRole('button', {name: 'Nergens geplaatst inklappen'}))
     expect(container.querySelector('.badge')).toBeNull()
 })
 test('"Plaats ontbrekende" works from the right panel', () => {
-    const {spy} = mount(Situatie, P(), {idx: 0})
+    const {spy} = mount(SituationSchema, P(), {idx: 0})
     fireEvent.click(screen.getByText('Plaats ontbrekende op dit blad'))
     expect(sit(spy).items[0]).toMatchObject({kind: 'sym', node: 'n1'})
 })
@@ -833,7 +833,7 @@ test('markings: a point and everything under it share circuit letter + point num
     expect(marksOf(q).get('p1')).toBe('A12')
 })
 test('unplaced list: buttons with the marking right-aligned, clicking places the symbol and removes it from the list', () => {
-    const {container, spy} = mount(Situatie, circ(), {idx: 0})
+    const {container, spy} = mount(SituationSchema, circ(), {idx: 0})
     const btn = () => rightPanel(container).querySelector('#unplaced-p7')
     expect(btn().tagName).toBe('BUTTON')
     expect(btn().querySelector('.nm').textContent).toBe('Schakelaar')
@@ -850,7 +850,7 @@ test('unplaced list: buttons with the marking right-aligned, clicking places the
     expect([...sv(container).querySelectorAll('text')].some((x) => x.textContent === 'A7')).toBe(true)
 })
 test('unplaced list: successive clicks do not stack symbols on one spot', () => {
-    const {container, spy} = mount(Situatie, circ(), {idx: 0})
+    const {container, spy} = mount(SituationSchema, circ(), {idx: 0})
     fireEvent.click(container.querySelector('#unplaced-p1'))
     fireEvent.click(container.querySelector('#unplaced-p2'))
     const [a, b] = sit(spy).items
@@ -859,7 +859,7 @@ test('unplaced list: successive clicks do not stack symbols on one spot', () => 
 test('deleting a placed symbol puts it back in the unplaced list', () => {
     const init = circ()
     init.sit[0].items = [{id: 'i1', kind: 'sym', node: 'p7', x: 100, y: 100, r: 0, s: 7}]
-    const {container, spy} = mount(Situatie, init, {idx: 0})
+    const {container, spy} = mount(SituationSchema, init, {idx: 0})
     expect(rightPanel(container).querySelector('#unplaced-p7')).toBeNull()
     fireEvent.pointerDown(container.querySelector('svg.sheet g[style*="move"]'), {clientX: 100, clientY: 100})
     fireEvent.keyDown(document.body, {key: 'Delete'})
@@ -867,7 +867,7 @@ test('deleting a placed symbol puts it back in the unplaced list', () => {
     expect(rightPanel(container).querySelector('#unplaced-p7 .mark').textContent).toBe('A7')
 })
 test('left list: general library components, filtered by name or category', () => {
-    const {container} = mount(Situatie, circ(), {idx: 0})
+    const {container} = mount(SituationSchema, circ(), {idx: 0})
     const f = container.querySelector('#comp-filter'),
         ids = () => [...container.querySelectorAll('.pallist button')].map((b) => b.id)
     expect(ids()).toContain('comp-stopcontact')
@@ -884,7 +884,7 @@ test('left list: general library components, filtered by name or category', () =
     expect(ids()).toContain('comp-stopcontact')
 })
 test('a placed symbol shows only the symbol; the marking appears only for eendraadschema components', () => {
-    const {container} = mount(Situatie, circ(), {idx: 0})
+    const {container} = mount(SituationSchema, circ(), {idx: 0})
     const texts = () => [...sv(container).querySelectorAll('text')].map((t) => t.textContent)
     const before = texts().length
     fireEvent.click(container.querySelector('#comp-stopcontact'))
@@ -896,7 +896,7 @@ test('a placed symbol shows only the symbol; the marking appears only for eendra
     expect(texts()).not.toContain('Schakelaar')
 })
 test('the text next to a symbol can be edited, cleared and reset to the marking', () => {
-    const {container, spy} = mount(Situatie, circ(), {idx: 0})
+    const {container, spy} = mount(SituationSchema, circ(), {idx: 0})
     const texts = () => [...sv(container).querySelectorAll('text')].map((t) => t.textContent)
     fireEvent.click(container.querySelector('#unplaced-p7')) // placed and selected
     const input = () => container.querySelector('#sym-text')
@@ -922,7 +922,7 @@ test('the text next to a symbol can be edited, cleared and reset to the marking'
     expect(texts()).toContain('WCD')
 })
 test('components can be hidden from the unplaced list and restored; the choice is stored in the project', () => {
-    const {container, spy} = mount(Situatie, circ(), {idx: 0})
+    const {container, spy} = mount(SituationSchema, circ(), {idx: 0})
     expect(container.querySelector('#unplaced-p7')).not.toBeNull()
     expect(container.querySelector('#toggle-hidden')).toBeNull()
     fireEvent.click(container.querySelector('#hide-p7'))
@@ -937,7 +937,7 @@ test('components can be hidden from the unplaced list and restored; the choice i
     expect(container.querySelector('#toggle-hidden')).toBeNull()
 })
 test('hiding several components keeps them all; hiding everything shows the "all placed" message and the restore list', () => {
-    const {container, spy} = mount(Situatie, circ(), {idx: 0})
+    const {container, spy} = mount(SituationSchema, circ(), {idx: 0})
     fireEvent.click(container.querySelector('#hide-p1'))
     fireEvent.click(container.querySelector('#hide-p2'))
     expect([...spy.p.hidden].sort()).toEqual(['p1', 'p2'])
@@ -953,7 +953,7 @@ test('hiding several components keeps them all; hiding everything shows the "all
 test('"Plaats ontbrekende" skips hidden components', () => {
     const p = circ()
     p.hidden = ['p1', 'p2', 'p3', 'p4', 'p5', 'p6', 'p7']
-    const {spy} = mount(Situatie, p, {idx: 0})
+    const {spy} = mount(SituationSchema, p, {idx: 0})
     fireEvent.click(screen.getByText('Plaats ontbrekende op dit blad'))
     expect(sit(spy).items.map((i) => i.node)).toEqual(['l7'])
 })
@@ -961,6 +961,6 @@ test('a hidden component placed on the sheet anyway stays on the sheet', () => {
     const p = circ()
     p.hidden = ['p7']
     p.sit[0].items = [{id: 'i1', kind: 'sym', node: 'p7', x: 100, y: 100, r: 0, s: 7}]
-    const {container} = mount(Situatie, p, {idx: 0})
+    const {container} = mount(SituationSchema, p, {idx: 0})
     expect([...sv(container).querySelectorAll('text')].some((x) => x.textContent === 'A7')).toBe(true)
 })

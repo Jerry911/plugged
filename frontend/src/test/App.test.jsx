@@ -34,7 +34,7 @@ const puts = () => global.fetch.mock.calls.filter((c) => c[1]?.method === 'PUT' 
 // the editor appears once the backend has delivered the symbols
 const mount = async () => {
     const r = render(<App />)
-    await screen.findByText('Componenten')
+    await screen.findByText('Components')
     return r
 }
 beforeEach(() => {
@@ -51,7 +51,7 @@ test('starts with empty project, switches tabs, saves', async () => {
     screen.getByRole('button', {name: /Kaderinfo/})
     fireEvent.click(screen.getByText('Situatieschema'))
     screen.getByText('Selecteer')
-    fireEvent.click(screen.getByText('Componenten'))
+    fireEvent.click(screen.getByText('Components'))
     screen.getByText('＋ Nieuw component')
     fireEvent.click(screen.getByText('Opslaan'))
     await screen.findByText('Opgeslagen ✓')
@@ -263,7 +263,7 @@ const zelf = {k: 'custom:z', name: 'Zelf', cat: 'Eigen', parents: ['kring'], pla
 test('library comes from the backend and the own symbols travel along in the JSON export', async () => {
     setup(null, true, [zelf])
     await mount()
-    fireEvent.click(screen.getByText('Componenten'))
+    fireEvent.click(screen.getByText('Components'))
     await screen.findByText('Zelf')
     expect(global.fetch).toHaveBeenCalledWith('/api/symbols', undefined)
     fireEvent.click(screen.getByText('JSON ↑'))
@@ -281,7 +281,7 @@ test('components stored inside an old project move into the library', async () =
     await waitFor(() => expect(global.fetch).toHaveBeenCalledWith('/api/symbols/custom%3Ac1', expect.objectContaining({method: 'PUT'})))
     // no parents are sent: the backend gives it the default ones
     expect(JSON.parse(global.fetch.mock.calls.find((c) => c[0] === '/api/symbols/custom%3Ac1')[1].body)).not.toHaveProperty('parents')
-    fireEvent.click(screen.getByText('Componenten'))
+    fireEvent.click(screen.getByText('Components'))
     await screen.findByText('Mijn ding')
     fireEvent.click(screen.getByText('Opslaan'))
     await screen.findByText('Opgeslagen ✓')
@@ -292,10 +292,10 @@ test('shows a message with a retry button while the backend has no symbols', asy
     global.fetch = vi.fn(async (url, o) => (up ? symbols()(url, o) ?? {ok: false} : {ok: false}))
     render(<App />)
     await screen.findByText(/symbolen konden niet geladen worden/)
-    expect(screen.queryByText('Componenten')).toBeNull()
+    expect(screen.queryByText('Components')).toBeNull()
     up = true
     fireEvent.click(screen.getByText('Opnieuw proberen'))
-    await screen.findByText('Componenten')
+    await screen.findByText('Components')
 })
 test('shows that the symbols are loading', async () => {
     let done

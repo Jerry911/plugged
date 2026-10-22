@@ -3,8 +3,8 @@
 import {jsPDF} from 'jspdf'
 import {svg2pdf} from 'svg2pdf.js'
 import {BoardSheet} from './Board.jsx'
-import {sheetPlan} from './boardModel'
-import {SitSheet} from './Situatie'
+import {sheetPlan} from './boardModel.jsx'
+import {SitSheet} from './SituationSchema.jsx'
 
 export const AllSheets = ({p}) => (
     <div className="export">

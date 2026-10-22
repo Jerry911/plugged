@@ -1,6 +1,6 @@
 // Copyright 2026 Pleysier Jeroen
 // SPDX-License-Identifier: AGPL-3.0-only
-import {allNodes, flat, hiddenOf, reid, uid, unplacedOf} from '../util.js'
+import {allNodes, flat, hiddenOf, reid, uid, unplacedOf} from '../util.jsx'
 import {base, node} from './utils.jsx'
 
 const tree = [node('a', 'aansluiting', [node('b', 'bord', [node('s', 'stopcontact'), node('l', 'lichtpunt')])])]

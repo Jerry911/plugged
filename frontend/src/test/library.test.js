@@ -1,7 +1,7 @@
 // Copyright 2026 Pleysier Jeroen
 // SPDX-License-Identifier: AGPL-3.0-only
 import {act, renderHook, waitFor} from '@testing-library/react'
-import {useLibrary} from '../library.js'
+import {useLibrary} from '../library.jsx'
 import standard from './fixtures/standard-symbols.json'
 
 const mine = {k: 'custom:b', name: 'Beta', cat: 'Eigen', parents: ['kring'], place: true, shapes: [{t: 'line', x1: 0, y1: 12, x2: 5, y2: 12}], v: 0, builtin: false, modified: false}

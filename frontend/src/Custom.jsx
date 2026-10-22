@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import {useState} from 'react'
 import {Sym} from './symbols'
-import {uid} from './util'
+import {uid} from './util.jsx'
 
 export default function Custom({p, setP}) {
     const [shapes, setShapes] = useState([]), [tool, setTool] = useState('line'), [a, setA] = useState(null), [name, setName] = useState(''), [edit, setEdit] = useState(null)

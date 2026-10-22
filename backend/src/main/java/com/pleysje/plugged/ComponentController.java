@@ -18,31 +18,31 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/components")
 public class ComponentController {
-    private final ComponentRepo repo;
+    private final ComponentRepo componentRepo;
 
-    public ComponentController(ComponentRepo r) {
-        repo = r;
+    public ComponentController(ComponentRepo componentRepo) {
+        this.componentRepo = componentRepo;
     }
 
     @GetMapping
     public List<ComponentDoc> list() {
-        return repo.findAll();
+        return componentRepo.findAll();
     }
 
     @PutMapping
     public ResponseEntity<Void> putAll(@RequestBody List<ComponentDoc> docs) {
-        repo.saveAll(docs);
+        componentRepo.saveAll(docs);
         return ResponseEntity.noContent().build();
     }
 
-    @PutMapping("/{k}")
-    public ResponseEntity<Void> put(@PathVariable String k, @RequestBody String json) {
-        repo.save(new ComponentDoc(k, json));
+    @PutMapping("/{componentKey}")
+    public ResponseEntity<Void> put(@PathVariable String componentKey, @RequestBody String json) {
+        componentRepo.save(new ComponentDoc(componentKey, json));
         return ResponseEntity.noContent().build();
     }
 
-    @DeleteMapping("/{k}")
-    public void del(@PathVariable String k) {
-        repo.deleteById(k);
+    @DeleteMapping("/{componentKey}")
+    public void del(@PathVariable String componentKey) {
+        componentRepo.deleteById(componentKey);
     }
 }

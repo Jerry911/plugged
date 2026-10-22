@@ -1,7 +1,7 @@
 // Copyright 2026 Pleysier Jeroen
 // SPDX-License-Identifier: AGPL-3.0-only
 import {fireEvent, render, screen, waitFor, within} from '@testing-library/react'
-import Componenten from '../Componenten.jsx'
+import Components from '../Components.jsx'
 import standard from './fixtures/standard-symbols.json'
 
 const DEFAULTS = standard
@@ -23,7 +23,7 @@ const mount = (lib = DEFAULTS, ok = true) => {
         makeStandard: vi.fn(async (k) => (ok ? {...DEFAULTS.find((d) => d.k === k), modified: false} : null)),
         template: vi.fn(async () => (ok ? fresh : null)),
     }
-    return {...render(<Componenten lib={lib} onSave={f.save} onRemove={f.remove} onReset={f.reset} onRestoreAll={f.restoreAll} onMakeStandard={f.makeStandard} onTemplate={f.template} />), ...f}
+    return {...render(<Components lib={lib} onSave={f.save} onRemove={f.remove} onReset={f.reset} onRestoreAll={f.restoreAll} onMakeStandard={f.makeStandard} onTemplate={f.template} />), ...f}
 }
 const create = async () => {
     fireEvent.click(screen.getByText('＋ Nieuw component'))

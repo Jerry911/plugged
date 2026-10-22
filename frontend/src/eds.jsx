@@ -3,8 +3,8 @@
 // Import of files exported by https://eendraadschema.goethals-jacobs.be/ (.eds = "EDS004" header + base64(zlib(JSON))).
 // Only the eendraadschema (circuits, elements) and the owner/address footer are imported; the situatieschema (sitplanjson) is ignored.
 import pako from 'pako'
-import {infoOf} from './boardModel'
-import {uid} from './util'
+import {infoOf} from './boardModel.jsx'
+import {uid} from './util.jsx'
 
 const MAP = {
     Aansluiting: 'aansluiting',

@@ -5,8 +5,8 @@ Prod: `npm run build` in frontend (outputs into backend static), then `mvn packa
 Project is saved as one JSON doc (id 1) in a file-based H2 DB under backend/data.
 Multi-page diagrams, drag/edit on the plan, PDF export (jsPDF + svg2pdf.js, vector, A4 landscape, all sheets). The standard symbols are defined in the backend (`StandardSymbols.java`), drawn after AREI Boek 1, tabel 2.23.
 
-## Componenten (symbol library)
-- The **Componenten** tab has a menu with all components on the left and the selected component on the right: name, category, where it may hang, placeable on the situatieschema, and a 24x24 drawing canvas (line, circle, rectangle, half circle, text) with a **Raster** dropdown (0.5 / 1 / 2 / 4) that sets the grid and the snapping. The connection point of a symbol is the red centre line (y = 12).
+## Components (symbol library)
+- The **Components** tab has a menu with all components on the left and the selected component on the right: name, category, where it may hang, placeable on the situatieschema, and a 24x24 drawing canvas (line, circle, rectangle, half circle, text) with a **Raster** dropdown (0.5 / 1 / 2 / 4) that sets the grid and the snapping. The connection point of a symbol is the red centre line (y = 12).
 - The symbols live in the backend. The standard symbols are defined in `backend/.../StandardSymbols.java` and stored in the H2 database (tables `symbols`, `symbol_parents`, `symbol_shapes`; REST `/api/symbols`). They are seeded on first start; when `StandardSymbols.VERSION` goes up, stored standard symbols that were not edited are replaced by the new drawing, edited ones are kept. Standard symbols can be edited and restored ("Standaard herstellen" per symbol, "Alle standaard herstellen" for all of them; they cannot be deleted); own symbols can be duplicated and deleted. The library is shared by all projects; own symbols are also written into the exported project JSON (`custom`).
 - Orientation: the eendraadschema chains the symbols along a horizontal line, so every symbol is drawn with its supply entering from the left on `y = 12`. Where the PDF draws a symbol with a vertical supply (sockets) it is drawn rotated: the supply meets the apex of the arch. Switches keep the lever up (25° from the vertical, as in the PDF). Breakers and the earthing symbol are vertical symbols. A socket can still be drawn vertically (hanging) per element with the "Horizontaal" checkbox.
 - Custom components made with an older version (table `component_doc`, `/api/components`) are copied into the symbols table the first time the app is opened and then removed from the old table.
@@ -18,9 +18,9 @@ Multi-page diagrams, drag/edit on the plan, PDF export (jsPDF + svg2pdf.js, vect
 - Backend: `cd backend && mvn verify` (JUnit 5, Spring Boot Test, MockMvc, @DataJpaTest, JaCoCo with a 90% line gate; report in `target/site/jacoco`).
 
 ## Verification ("Controleer" button)
-`frontend/src/rules.js` checks the eendraadschema (all sheets) and returns errors / warnings / info; click an issue to jump to the node.
+`frontend/src/rules.jsx` checks the eendraadschema (all sheets) and returns errors / warnings / info; click an issue to jump to the node.
 Checks: hierarchy, aansluiting/aarding present, kring under a differentieel, differentieel sensitivity (max 30 mA with stopcontacten), empty bord/diff/kring, kring specs and cable-vs-protection table, max stopcontacten/lichtpunten per kring, appliances on their own kring, switches without lamp, duplicate kring names, incomplete footer, components missing on the situatieschema.
-Limits are guideline values in `LIMITS` (rules.js): verify them against the current AREI before relying on them.
+Limits are guideline values in `LIMITS` (rules.jsx): verify them against the current AREI before relying on them.
 
 ## Eendraadschema layout and EDS import
 - The eendraadschema is drawn like the original tool: a horizontal bus with the kWh meter, main differential and earth below it, and circuits placed from left to right (each circuit gets as much width as its elements need; a circuit that is lower than the overhang of the previous circuits slides left underneath it to save width and sheets). When a sheet is full the next circuits continue on the next A4 sheet ("vervolg op blad N").

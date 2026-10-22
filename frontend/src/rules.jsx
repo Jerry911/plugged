@@ -3,7 +3,7 @@
 // Simplified verification of an eendraadschema against common AREI/RGIE requirements.
 // Guideline checks only (limits live in LIMITS so they are easy to adjust); NOT a substitute for an inspection by an accredited body.
 import {typeOf} from './symbols'
-import {allNodes, flat, nameOf} from './util'
+import {allNodes, flat, nameOf} from './util.jsx'
 
 export const LIMITS = {maxStop: 8, maxLicht: 8, maxDiffmA: 30, cable: {1.5: 16, 2.5: 20, 4: 25, 6: 32, 10: 50, 16: 63}} // cable: mm² -> max protective rating (A)
 const S = (a) => new Set(a)

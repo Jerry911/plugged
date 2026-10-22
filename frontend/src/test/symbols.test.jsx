@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import {render} from '@testing-library/react'
 import {allTypes, arcPath, setLibrary, shapesOf, sockShapes, stackOf, Sym, typeOf} from '../symbols.jsx'
-import {reach} from '../boardModel.js'
+import {reach} from '../boardModel.jsx'
 import standard from './fixtures/standard-symbols.json'
 
 // the symbols come from the backend; these tests use its standard catalog (see setup.js)

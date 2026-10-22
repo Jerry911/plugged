@@ -1,8 +1,8 @@
 // Copyright 2026 Pleysier Jeroen
 // SPDX-License-Identifier: AGPL-3.0-only
-import {LIMITS, parseSpecs, summarize, verify} from '../rules.js'
+import {LIMITS, parseSpecs, summarize, verify} from '../rules.jsx'
 import {base, node} from './utils.jsx'
-import {allNodes, flat} from '../util.js'
+import {allNodes, flat} from '../util.jsx'
 
 const ok = () => {
     const p = base()

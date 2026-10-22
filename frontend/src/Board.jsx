@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import {Sym} from './symbols'
 import {Sheet} from './Footer'
-import {BUSX0, U} from './boardModel'
+import {BUSX0, U} from './boardModel.jsx'
 
 const B = '#0a6cff'
 // small trash can in the top right corner of the selected element (only when the sheet is given an onDelete handler)

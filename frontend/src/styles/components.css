@@ -270,7 +270,7 @@
     color: #666
 }
 
-/* Symbol editor (Componenten): scrolling menu, fields, button groups left of the drawing, drawing with grid selector */
+/* Symbol editor (Components): scrolling menu, fields, button groups left of the drawing, drawing with grid selector */
 .complist {
     max-height: 65vh;
     overflow-y: auto;

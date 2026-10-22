@@ -1,7 +1,7 @@
 // Copyright 2026 Pleysier Jeroen
 // SPDX-License-Identifier: AGPL-3.0-only
 // Drawing of symbols and the lookup in the active symbol library. The symbols themselves (standard ones, edited ones and the user's own)
-// live in the backend (GET /api/symbols, see library.js): that is where the standard drawings are defined and where they are restored from.
+// live in the backend (GET /api/symbols, see library.jsx): that is where the standard drawings are defined and where they are restored from.
 // Symbols are drawn on a 24x24 grid; the connection point of a symbol is on the line y = 12 and the supply enters from the left.
 // Shapes: line, circle, rect (both optionally filled with f: 1), text (optional fs = font size) and arc (degrees, clockwise on screen).
 export const rd = (v) => Math.round(v * 100) / 100

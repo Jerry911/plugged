@@ -4,9 +4,9 @@ import {useEffect, useRef, useState} from 'react'
 import {Sym, allTypes, typeOf} from './symbols'
 import {Sheet} from './Footer'
 import ZoomPane from './ZoomPane.jsx'
-import {allNodes, hiddenOf, marksOf, nameOf, uid, unplacedOf} from './util'
-import {numbering} from './boardModel'
-import {dirTo, fmtLen, hitsInBox, itemBox, parseDims, parseLen, r2, rectWalls, scaleOf, suggestScale, toSheet, unionBox, wallBox} from './geometry'
+import {allNodes, hiddenOf, marksOf, nameOf, uid, unplacedOf} from './util.jsx'
+import {numbering} from './boardModel.jsx'
+import {dirTo, fmtLen, hitsInBox, itemBox, parseDims, parseLen, r2, rectWalls, scaleOf, suggestScale, toSheet, unionBox, wallBox} from './geometry.jsx'
 
 const dflt = {sym: 7, text: 4, door: 10, window: 10}
 const BLUE = '#0a6cff'
@@ -305,7 +305,7 @@ export const SitSheet = ({p, pg, no, total, ed, onFooter}) => {
     )
 }
 export const ZOOMS = [0.5, 0.75, 1, 1.5, 2, 3, 4]
-export default function Situatie({p, setP, idx, onFooter}) {
+export default function SituationSchema({p, setP, idx, onFooter}) {
     const pg = p.sit[idx],
         {walls, items} = pg,
         [tool, setTool] = useState('select'),

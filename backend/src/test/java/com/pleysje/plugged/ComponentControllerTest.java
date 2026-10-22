@@ -12,7 +12,8 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import static org.hamcrest.Matchers.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -27,8 +28,8 @@ class ComponentControllerTest {
         repo.deleteAll();
     }
 
-    private void putOne(String k, String json) throws Exception {
-        mvc.perform(put("/api/components/" + k).contentType(MediaType.APPLICATION_JSON).content(json)).andExpect(status().isNoContent());
+    private void putOne(String key, String json) throws Exception {
+        mvc.perform(put("/api/components/" + key).contentType(MediaType.APPLICATION_JSON).content(json)).andExpect(status().isNoContent());
     }
 
     @Test
@@ -38,8 +39,8 @@ class ComponentControllerTest {
 
     @Test
     void putThenListRoundTrips() throws Exception {
-        putOne("oven", "{\"k\":\"oven\",\"name\":\"Oven\"}");
-        mvc.perform(get("/api/components")).andExpect(jsonPath("$", hasSize(1))).andExpect(jsonPath("$[0].k", is("oven")))
+        putOne("oven", "{\"componentKey\":\"oven\",\"name\":\"Oven\"}");
+        mvc.perform(get("/api/components")).andExpect(jsonPath("$", hasSize(1))).andExpect(jsonPath("$[0].componentKey", is("oven")))
                 .andExpect(jsonPath("$[0].json", containsString("\"name\":\"Oven\"")));
     }
 
@@ -54,7 +55,7 @@ class ComponentControllerTest {
     void bulkPutUpsertsMany() throws Exception {
         putOne("a", "{\"v\":0}");
         mvc.perform(put("/api/components").contentType(MediaType.APPLICATION_JSON)
-                .content("[{\"k\":\"a\",\"json\":\"{\\\"v\\\":1}\"},{\"k\":\"b\",\"json\":\"{\\\"v\\\":2}\"}]")).andExpect(status().isNoContent());
+                .content("[{\"componentKey\":\"a\",\"json\":\"{\\\"v\\\":1}\"},{\"componentKey\":\"b\",\"json\":\"{\\\"v\\\":2}\"}]")).andExpect(status().isNoContent());
         mvc.perform(get("/api/components")).andExpect(jsonPath("$", hasSize(2)));
         org.junit.jupiter.api.Assertions.assertEquals("{\"v\":1}", repo.findById("a").orElseThrow().getJson());
     }

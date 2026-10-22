@@ -4,12 +4,12 @@
 // The symbols come from the backend: standard ones (can be edited and restored to the standard drawing) and the user's own ones.
 import {useEffect, useState} from 'react'
 import {Sym} from './symbols'
-import {uid} from './util'
+import {uid} from './util.jsx'
 
 const TOOLS = {line: 'Lijn', circle: 'Cirkel (midden, rand)', rect: 'Rechthoek', arc: 'Halve cirkel (midden, rand)', text: 'Tekst'}
 // where a symbol comes from, for the label above the drawing
 const origin = (c) => (c.builtin ? (c.modified ? 'Standaardsymbool, aangepast' : 'Standaardsymbool') : 'Eigen symbool')
-export default function Componenten({lib, onSave, onRemove, onReset, onRestoreAll, onMakeStandard, onTemplate}) {
+export default function Components({lib, onSave, onRemove, onReset, onRestoreAll, onMakeStandard, onTemplate}) {
     const [draft, setDraft] = useState(null),
         [orig, setOrig] = useState(null),
         [q, setQ] = useState(''),

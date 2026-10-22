@@ -1,18 +1,18 @@
 // Copyright 2026 Pleysier Jeroen
 // SPDX-License-Identifier: AGPL-3.0-only
 import {useEffect, useMemo, useRef, useState} from 'react'
-import Eendraad from './Eendraad'
-import Situatie from './Situatie'
-import Componenten from './Componenten'
-import {useLibrary} from './library'
+import OneLineSchema from './OneLineSchema.jsx'
+import SituationSchema from './SituationSchema.jsx'
+import Components from './Components.jsx'
+import {useLibrary} from './library.jsx'
 import {FooterDialog} from './Footer'
-import {useHistory} from './history'
-import {defaultTree} from './boardModel'
-import {importEds} from './eds'
+import {useHistory} from './history.jsx'
+import {defaultTree} from './boardModel.jsx'
+import {importEds} from './eds.jsx'
 import Verify from './Verify'
-import {verify} from './rules'
+import {verify} from './rules.jsx'
 import {AllSheets, makePdf} from './Export'
-import {reid, uid, unplacedOf} from './util'
+import {reid, uid, unplacedOf} from './util.jsx'
 import {setLibrary} from './symbols'
 
 const init = {
@@ -223,7 +223,7 @@ function Editor({library}) {
         a.download = (p.footer.titel || 'schema') + '.json'
         a.click()
     }
-    const tabs = ['Eendraadschema', 'Situatieschema', 'Componenten'],
+    const tabs = ['Eendraadschema', 'Situatieschema', 'Components'],
         un = unplacedOf(p).length,
         e = Math.min(ei, p.een.length - 1),
         s = Math.min(si, p.sit.length - 1)
@@ -296,16 +296,16 @@ function Editor({library}) {
                 {tab === 0 && (
                     <>
                         <PageBar p={p} setP={setP} k="een" idx={e} setIdx={setEi} />
-                        <Eendraad key={p.een[e].id} p={p} setP={setP} idx={e} focus={focus} onFooter={openFooter} />
+                        <OneLineSchema key={p.een[e].id} p={p} setP={setP} idx={e} focus={focus} onFooter={openFooter} />
                     </>
                 )}
                 {tab === 1 && (
                     <>
                         <PageBar p={p} setP={setP} k="sit" idx={s} setIdx={setSi} />
-                        <Situatie key={p.sit[s].id} p={p} setP={setP} idx={s} onFooter={openFooter} />
+                        <SituationSchema key={p.sit[s].id} p={p} setP={setP} idx={s} onFooter={openFooter} />
                     </>
                 )}
-                {tab === 2 && <Componenten lib={lib} onSave={saveComp} onRemove={removeComp} onReset={resetComp} onMakeStandard={makeStandard} onRestoreAll={restoreAll} onTemplate={template} />}
+                {tab === 2 && <Components lib={lib} onSave={saveComp} onRemove={removeComp} onReset={resetComp} onMakeStandard={makeStandard} onRestoreAll={restoreAll} onTemplate={template} />}
             </div>
             {job && (
                 <div ref={ref}>

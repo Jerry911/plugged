@@ -16,7 +16,7 @@ import {
     toSheet,
     unionBox,
     wallBox,
-} from '../geometry.js'
+} from '../geometry.jsx'
 
 test('scaleOf reads the footer scale and falls back to 50', () => {
     expect(scaleOf({schaal: '1:100'})).toBe(100)
@@ -116,7 +116,7 @@ test('hitsInBox returns walls and items that touch the rectangle', () => {
     ])
     expect(hitsInBox({x0: 200, y0: 200, x1: 210, y1: 210}, walls, items)).toEqual([])
 })
-import {suggestScale as _sug} from '../geometry'
+import {suggestScale as _sug} from '../geometry.jsx'
 test('suggestScale picks the smallest larger standard scale that fits', () => {
     expect(_sug(4, 50)).toBeNull()
     expect(_sug(50, 50)).toBe(200)

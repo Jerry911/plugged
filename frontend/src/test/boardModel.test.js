@@ -15,7 +15,7 @@ import {
     SP,
     SYM,
     BUSX0,
-} from '../boardModel.js'
+} from '../boardModel.jsx'
 import {base, node} from './utils.jsx'
 
 const kring = (id, kids = [], p = {}, extra = {}) =>

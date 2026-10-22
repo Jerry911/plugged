@@ -28,10 +28,10 @@ class ComponentRepoTest {
     @Test
     void settersAndKeysWithColon() {
         ComponentDoc d = new ComponentDoc();
-        d.setK("custom:abc");
+        d.setComponentKey("custom:abc");
         d.setJson("{}");
         repo.saveAndFlush(d);
-        assertEquals("custom:abc", repo.findById("custom:abc").orElseThrow().getK());
+        assertEquals("custom:abc", repo.findById("custom:abc").orElseThrow().getComponentKey());
     }
 
     @Test

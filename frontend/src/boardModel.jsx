@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Busbar-style layout of an eendraadschema: a horizontal bus with circuits placed left to right (units ~ px, see U for mm).
 import {shapesOf, stackOf, typeOf} from './symbols'
-import {flat, uid} from './util'
+import {flat, uid} from './util.jsx'
 
 export const U = 0.16,
     MAXW = 1700,

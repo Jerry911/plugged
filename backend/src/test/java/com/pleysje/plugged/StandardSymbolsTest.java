@@ -86,7 +86,12 @@ class StandardSymbolsTest {
         Path p = Path.of(StandardSymbolsJson.FIXTURE);
         assumeTrue(Files.isDirectory(p.getParent().getParent()), "no frontend next to the backend");
         assertTrue(Files.exists(p), "missing " + p + ": run StandardSymbolsJson");
-        assertEquals(StandardSymbolsJson.json(StandardSymbols.all()), Files.readString(p, StandardCharsets.UTF_8),
+        // compare the content, not the file's line endings (git autocrlf on Windows) or a missing final newline (editors)
+        assertEquals(normalized(StandardSymbolsJson.json(StandardSymbols.all())), normalized(Files.readString(p, StandardCharsets.UTF_8)),
                 p + " is out of date: run StandardSymbolsJson");
+    }
+
+    private static String normalized(String s) {
+        return s.replace("\r\n", "\n").stripTrailing();
     }
 }

@@ -102,7 +102,7 @@ const Head = ({h}) => (
                     kWh
                 </text>
                 <line x1="85" y1="96" x2={h.main ? 197 : 130} y2="96" />
-                {h.main && <line x1="197" y1="0" x2="197" y2="96" />}
+                {h.main && <line x1="197" y1="96" x2="197" y2="66" />}
                 {h.q?.kabel && (
                     <text x="110" y="114" fontSize="13" fill="#000" stroke="none">
                         {h.q.kabel}
@@ -112,8 +112,11 @@ const Head = ({h}) => (
         )}
         {h.main && (
             <>
-                <line x1="197" y1="30" x2="188" y2="52" />
-                <rect x="183" y="52" width="7" height="9" fill="#000" />
+                {/* the supply comes from the meter below: the line stops at the lower contact (y 66), the lever swings up and to the
+                    left (towards the busbar) and ends in a filled block, the line carries on above the lever up to the busbar */}
+                <line x1="197" y1="66" x2="188" y2="44" />
+                <line x1="188" y1="44" x2="184.2" y2="34.7" strokeWidth="8" />
+                <line x1="197" y1="0" x2="197" y2="44" />
                 {[
                     [h.main === 'differentieel' ? `Δ${h.q.delta || 300}mA` : null, 0],
                     [`${h.q.polen || 2}P - ${h.q.amp || 40}A`, 1],
@@ -121,7 +124,7 @@ const Head = ({h}) => (
                 ]
                     .filter((a) => a[0])
                     .map(([s, i]) => (
-                        <text key={i} transform={`translate(${210 + 13 * i},62) rotate(-90)`} fontSize="13" fill="#000" stroke="none">
+                        <text key={i} transform={`translate(${210 + 13 * i},66) rotate(-90)`} fontSize="13" fill="#000" stroke="none">
                             {s}
                         </text>
                     ))}

@@ -86,18 +86,20 @@ const Mark = ({kind}) => (
     </svg>
 )
 const DIST = ['aansluiting', 'teller', 'hoofdschakelaar', 'bord', 'diff', 'kring', 'domotica', 'subbord']
+// optional 3rd entry = max number of characters of a short field: it is drawn on one line with its label, as wide as its content,
+// and consecutive short fields are stacked in one block with aligned inputs (Polen is one digit, Curve one letter, Beveiliging at most 9999 A)
 const FIELDS = {
     kring: [
         ['tekst', 'Naam (tekst)'],
-        ['polen', 'Polen'],
-        ['amp', 'Beveiliging (A)'],
-        ['curve', 'Curve'],
+        ['polen', 'Polen', 1],
+        ['amp', 'Beveiliging (A)', 4],
+        ['curve', 'Curve', 1],
         ['kabel', 'Kabel'],
         ['kortsl', 'Kortsluitvermogen (kA)'],
     ],
     aansluiting: [
-        ['polen', 'Polen'],
-        ['amp', 'Beveiliging (A)'],
+        ['polen', 'Polen', 1],
+        ['amp', 'Beveiliging (A)', 4],
         ['delta', 'Differentieel (mA)'],
         ['diffType', 'Type'],
         ['kabel', 'Kabel na teller'],
@@ -108,7 +110,7 @@ const OTHER = [
     ['aantal', 'Aantal (x)'],
     ['nr', 'Nr'],
 ]
-export default function OneLineSchema({p, setP, idx, focus, onFooter}) {
+export default function OneWireDiagram({p, setP, idx, focus, onFooter}) {
     const pg = p.een[idx],
         tree = pg.tree,
         T = allTypes(p),
@@ -265,7 +267,13 @@ export default function OneLineSchema({p, setP, idx, focus, onFooter}) {
         })
     const ob = (f) => () => set(f(tree, s.id)),
         fields = s && (FIELDS[s.type] || (['bord'].includes(s.type) ? [] : OTHER)),
-        plan = sheetPlan(p, true).filter((e) => e.kind === 'een' && e.pg === pg)
+        plan = sheetPlan(p, true).filter((e) => e.kind === 'een' && e.pg === pg),
+        fieldRows = (fields || []).reduce((a, f) => {
+            const last = a[a.length - 1]
+            if (f[2] && last?.short) last.fs.push(f)
+            else a.push({short: !!f[2], fs: [f]})
+            return a
+        }, [])
     return (
         <div className="row">
             <div className="side ui pal sticky-side">
@@ -353,16 +361,34 @@ export default function OneLineSchema({p, setP, idx, focus, onFooter}) {
                                 Geaard
                             </label>
                         )}
-                        {fields.map(([k, l]) => (
-                            <label key={k}>
-                                {l}
-                                <input
-                                    value={s.p?.[k] ?? ''}
-                                    onChange={(e) => setProp(k, e.target.value)}
-                                    style={{width: '100%', boxSizing: 'border-box'}}
-                                />
-                            </label>
-                        ))}
+                        {fieldRows.map((r) =>
+                            r.short ? (
+                                <div key={r.fs[0][0]} id={'eds-short-' + r.fs[0][0]} style={{display: 'flex', flexDirection: 'column', gap: 4, marginTop: 4}}>
+                                    {r.fs.map(([k, l, w]) => (
+                                        <label key={k} style={{display: 'flex', alignItems: 'center', gap: 8}}>
+                                            <span style={{minWidth: '8.5em'}}>{l}</span>
+                                            <input
+                                                value={s.p?.[k] ?? ''}
+                                                maxLength={w}
+                                                onChange={(e) => setProp(k, e.target.value)}
+                                                style={{width: w + 2 + 'ch', boxSizing: 'border-box', textAlign: 'center'}}
+                                            />
+                                        </label>
+                                    ))}
+                                </div>
+                            ) : (
+                                r.fs.map(([k, l]) => (
+                                    <label key={k}>
+                                        {l}
+                                        <input
+                                            value={s.p?.[k] ?? ''}
+                                            onChange={(e) => setProp(k, e.target.value)}
+                                            style={{width: '100%', boxSizing: 'border-box'}}
+                                        />
+                                    </label>
+                                ))
+                            ),
+                        )}
                         {stackOf(typeOf(p, s.type), s.p) && (
                             <label>
                                 <input

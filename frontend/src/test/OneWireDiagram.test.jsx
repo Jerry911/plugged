@@ -1,7 +1,7 @@
 // Copyright 2026 Pleysier Jeroen
 // SPDX-License-Identifier: AGPL-3.0-only
 import {fireEvent, screen} from '@testing-library/react'
-import OneLineSchema, {rotate} from '../OneLineSchema.jsx'
+import OneLineSchema, {rotate} from '../OneWireDiagram.jsx'
 import {base, mount, node} from './utils.jsx'
 import {defaultTree} from '../boardModel.jsx'
 
@@ -9,7 +9,8 @@ const btn = (id) => document.getElementById(id)
 const pal = (n) => screen.getAllByText(n)[0],
     row = (n) => screen.getAllByText(n).at(-1)
 beforeEach(() => {
-    vi.spyOn(window, 'alert').mockImplementation(() => {})
+    vi.spyOn(window, 'alert').mockImplementation(() => {
+    })
 })
 const withTree = (tree) => ({...base(), een: [{id: 'e1', name: 'Blad 1', tree}]})
 test('adds root, child; enforces hierarchy; free mode', () => {
@@ -281,7 +282,15 @@ test('clicking a circuit letter or a symbol in the drawing selects it', () => {
     const t = [
         node('A', 'aansluiting', [
             node('B', 'bord', [
-                node('K', 'kring', [node('S', 'stopcontact')], {p: {polen: 2, amp: 16, curve: 'B', kabel: 'x', kortsl: 3}}),
+                node('K', 'kring', [node('S', 'stopcontact')], {
+                    p: {
+                        polen: 2,
+                        amp: 16,
+                        curve: 'B',
+                        kabel: 'x',
+                        kortsl: 3
+                    }
+                }),
             ]),
         ]),
     ]
@@ -295,7 +304,15 @@ test('clicking a circuit letter or a symbol in the drawing selects it', () => {
 test('wide boards are shown on several sheets', () => {
     const t = defaultTree()
     t[0].children[0].children = Array.from({length: 40}, (_, i) =>
-        node('K' + i, 'kring', [node('s' + i, 'stopcontact')], {p: {polen: 2, amp: 16, curve: 'B', kabel: 'x', kortsl: 3}}),
+        node('K' + i, 'kring', [node('s' + i, 'stopcontact')], {
+            p: {
+                polen: 2,
+                amp: 16,
+                curve: 'B',
+                kabel: 'x',
+                kortsl: 3
+            }
+        }),
     )
     const {container} = mount(OneLineSchema, {...base(), een: [{id: 'e1', name: 'x', tree: t}]}, {idx: 0})
     expect(container.querySelectorAll('svg.sheet').length).toBeGreaterThan(2)
@@ -312,3 +329,27 @@ test('zoom buttons scale the schema and stay inside the sheet corner', () => {
     expect(container.querySelector('.zoomctl').parentElement.style.width).toBe('75%')
     expect(container.querySelector('.zoomctl.inset')).toBeInTheDocument()
 })
+test('Polen, Beveiliging and Curve are short inputs on one line with their label, grouped in one block', () => {
+    const {container} = mount(OneLineSchema, DEF(), {idx: 0})
+    fireEvent.click(pal('Kring (automaat)'))
+    const polen = screen.getByLabelText('Polen'),
+        amp = screen.getByLabelText('Beveiliging (A)'),
+        curve = screen.getByLabelText('Curve')
+    expect(polen.maxLength).toBe(1)
+    expect(amp.maxLength).toBe(4)
+    expect(curve.maxLength).toBe(1)
+    // the three belong to the same row container, the longer fields (Kabel) keep the full-width layout below it
+    const shortRow = container.querySelector('#eds-short-polen')
+    expect(shortRow).not.toBeNull()
+    expect([...shortRow.querySelectorAll('input')]).toEqual([polen, amp, curve])
+    expect(shortRow.contains(screen.getByLabelText('Kabel'))).toBe(false)
+    expect(screen.getByLabelText('Kabel').style.width).toBe('100%')
+})
+test('aansluiting: Polen and Beveiliging are grouped, Differentieel stays full width', () => {
+    const {container} = mount(OneLineSchema, DEF(), {idx: 0})
+    fireEvent.click(row('Aansluiting net'))
+    const r = container.querySelector('#eds-short-polen')
+    expect([...r.querySelectorAll('input')]).toEqual([screen.getByLabelText('Polen'), screen.getByLabelText('Beveiliging (A)')])
+    expect(r.contains(screen.getByLabelText('Differentieel (mA)'))).toBe(false)
+})
+

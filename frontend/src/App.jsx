@@ -1,7 +1,7 @@
 // Copyright 2026 Pleysier Jeroen
 // SPDX-License-Identifier: AGPL-3.0-only
 import {useEffect, useMemo, useRef, useState} from 'react'
-import OneLineSchema from './OneLineSchema.jsx'
+import OneWireDiagram from './OneWireDiagram.jsx'
 import SituationSchema from './SituationSchema.jsx'
 import Components from './Components.jsx'
 import {useLibrary} from './library.jsx'
@@ -296,7 +296,7 @@ function Editor({library}) {
                 {tab === 0 && (
                     <>
                         <PageBar p={p} setP={setP} k="een" idx={e} setIdx={setEi} />
-                        <OneLineSchema key={p.een[e].id} p={p} setP={setP} idx={e} focus={focus} onFooter={openFooter} />
+                        <OneWireDiagram key={p.een[e].id} p={p} setP={setP} idx={e} focus={focus} onFooter={openFooter} />
                     </>
                 )}
                 {tab === 1 && (

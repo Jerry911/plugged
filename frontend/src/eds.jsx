@@ -35,6 +35,18 @@ const MAP = {
     Verbruiker: 'vrij',
 }
 export const KNOWN = Object.keys(MAP)
+// A Contactdoos is one EDS type but several symbols in the library: the symbol follows its options (is_geaard, is_kinderveilig,
+// is_halfwaterdicht). The number of sockets is NOT part of the symbol key (stopcontact2/3 would multiply it): it stays in p.aantal.
+// Missing options default like the eendraadschema does: earthed, no child protection.
+// There is no symbol for 'waterproof + child protection' (nor for waterproof without earth): there the earth/child options win.
+export const socketKey = (q = {}) => {
+    const pe = q.is_geaard !== false,
+        kid = q.is_kinderveilig === true
+    if (q.is_halfwaterdicht === true && pe && !kid) return 'stopcontact_h'
+    if (pe && kid) return 'stopcontact_pekid'
+    if (kid) return 'stopcontact_kid'
+    return pe ? 'stopcontact' : 'stopcontact_alg'
+}
 const num = (v) => {
     const n = parseFloat(String(v ?? '').replace(',', '.'))
     return Number.isFinite(n) ? n : undefined
@@ -56,7 +68,7 @@ export function decodeEds(text) {
 }
 function conv(r) {
     const q = r.props,
-        type = MAP[q.type] || 'vrij',
+        type = q.type === 'Contactdoos' ? socketKey(q) : MAP[q.type] || 'vrij',
         n = {id: 'e' + r.id, type, label: '', info: '', children: []}
     if (type === 'kring') {
         n.label = q.naam || ''

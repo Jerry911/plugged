@@ -1,7 +1,7 @@
 // Copyright 2026 Pleysier Jeroen
 // SPDX-License-Identifier: AGPL-3.0-only
 import pako from 'pako'
-import {decodeEds, edsToProject, importEds, KNOWN} from '../eds.jsx'
+import {decodeEds, edsToProject, importEds, KNOWN, socketKey} from '../eds.jsx'
 import {flat} from '../util.jsx'
 import {verify} from '../rules.jsx'
 import {base} from './utils.jsx'
@@ -132,4 +132,52 @@ test('importEds decodes and converts; imported schema verifies without errors', 
             .filter((i) => i.level === 'error')
             .map((i) => i.msg),
     ).toEqual([])
+})
+test('socket symbol follows is_geaard / is_kinderveilig / is_halfwaterdicht', () => {
+    const k = (o) => socketKey({type: 'Contactdoos', ...o})
+    expect(k({is_geaard: true, is_kinderveilig: true})).toBe('stopcontact_pekid')
+    expect(k({is_geaard: true, is_kinderveilig: false})).toBe('stopcontact')
+    expect(k({is_geaard: false, is_kinderveilig: true})).toBe('stopcontact_kid')
+    expect(k({is_geaard: false, is_kinderveilig: false})).toBe('stopcontact_alg')
+    expect(k({is_geaard: true, is_halfwaterdicht: true})).toBe('stopcontact_h')
+    // no symbol for waterproof + child protection: earth + child protection wins
+    expect(k({is_geaard: true, is_kinderveilig: true, is_halfwaterdicht: true})).toBe('stopcontact_pekid')
+    // options missing: earthed, no child protection (like the eendraadschema)
+    expect(k({})).toBe('stopcontact')
+})
+test('imported earthed + child-safe sockets use the matching symbol and keep their count', () => {
+    const sock = (id, o) => row(id, 5, 'Contactdoos', {is_geaard: true, is_kinderveilig: true, is_halfwaterdicht: false, ...o})
+    const j = {
+        data: [
+            row(1, 0, 'Aansluiting'),
+            row(2, 1, 'Bord', {is_geaard: true}),
+            row(5, 2, 'Kring', {naam: 'A'}),
+            sock(20, {aantal: '1'}),
+            sock(21, {aantal: '2'}),
+            sock(22, {aantal: '3'}),
+            sock(23, {is_kinderveilig: false, aantal: '2'}),
+            sock(24, {is_geaard: false, is_kinderveilig: false}),
+        ],
+    }
+    const r = edsToProject(j)
+    expect(get(r, 'e20')).toMatchObject({type: 'stopcontact_pekid', p: {aantal: 1}})
+    expect(get(r, 'e21')).toMatchObject({type: 'stopcontact_pekid', p: {aantal: 2}})
+    expect(get(r, 'e22')).toMatchObject({type: 'stopcontact_pekid', p: {aantal: 3}})
+    expect(get(r, 'e23')).toMatchObject({type: 'stopcontact', p: {aantal: 2}})
+    expect(get(r, 'e24')).toMatchObject({type: 'stopcontact_alg'})
+    expect(r.stats.unknown).toEqual([])
+})
+test('the three socket variants of a real export (earth + child, child only, none) import as three different symbols', () => {
+    const o = {aantal: '1', is_halfwaterdicht: false, is_meerfasig: false, heeft_ingebouwde_schakelaar: false, in_verdeelbord: false}
+    const r = edsToProject({
+        data: [
+            row(1, 0, 'Aansluiting'),
+            row(2, 1, 'Bord', {is_geaard: true}),
+            row(3, 2, 'Kring', {naam: 'A'}),
+            row(6, 3, 'Contactdoos', {...o, is_geaard: true, is_kinderveilig: true}),
+            row(7, 3, 'Contactdoos', {...o, is_geaard: false, is_kinderveilig: true}),
+            row(8, 3, 'Contactdoos', {...o, is_geaard: false, is_kinderveilig: false}),
+        ],
+    })
+    expect(['e6', 'e7', 'e8'].map((id) => get(r, id).type)).toEqual(['stopcontact_pekid', 'stopcontact_kid', 'stopcontact_alg'])
 })

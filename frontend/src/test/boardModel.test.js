@@ -15,6 +15,8 @@ import {
     SP,
     SYM,
     BUSX0,
+    detailLines,
+    DET_LINE,
 } from '../boardModel.jsx'
 import {base, node} from './utils.jsx'
 
@@ -257,4 +259,31 @@ test('sockets stack horizontally from two on, unless p.hor says otherwise', () =
     expect(arcs({hor: true})).toBe(1)
     const txt = texts(circuit(base(), kring('K', [node('s', 'stopcontact', [], {p: {aantal: 2}})])).items).map((x) => x.s)
     expect(txt).not.toContain('x2')
+})
+test('detailLines splits on new lines and on |, trims and drops empty entries', () => {
+    expect(detailLines('Merk: A |Type: B\r\nS/N: 1\n\n | Pmax: 2 kW ')).toEqual(['Merk: A', 'Type: B', 'S/N: 1', 'Pmax: 2 kW'])
+    expect(detailLines(undefined)).toEqual([])
+    expect(detailLines('')).toEqual([])
+})
+
+test('details are drawn line by line under the symbol and give the element more room', () => {
+    const lines = ['Merk: Huawei', 'Type: SUN2000L-6KTL-M1', 'S/N: HV1234'],
+        withDet = (extra = {}) => circuit(proj([]), kring('K', [node('i', 'omvormer', [], {label: '', p: {aantal: 1, details: lines.join('\n'), ...extra}})])),
+        plain = circuit(proj([]), kring('K', [node('i', 'omvormer', [], {label: '', p: {aantal: 1}})]))
+    const texts = withDet().items.filter((it) => it.k === 'text' && lines.includes(it.s))
+    expect(texts.map((t) => t.s)).toEqual(lines)
+    expect(texts.every((t) => t.id === 'i' && t.anchor === 'middle')).toBe(true)
+    expect(texts[1].y - texts[0].y).toBe(DET_LINE)
+    // the node gets as wide as its longest line, and the details are also found when they are separated with |
+    expect(withDet().w).toBeGreaterThan(plain.w)
+    expect(withDet({details: lines.join('|')}).items.filter((it) => it.k === 'text' && lines.includes(it.s))).toHaveLength(3)
+    // a count and a name come first, the details hang below them
+    const both = circuit(proj([]), kring('K', [node('i', 'omvormer', [], {label: 'Huawei', p: {aantal: 3, details: 'Pmax: 6 kW'}})])).items,
+        y = (s) => both.find((it) => it.k === 'text' && it.s === s).y
+    expect(y('x3')).toBeLessThan(y('Huawei'))
+    expect(y('Huawei')).toBeLessThan(y('Pmax: 6 kW'))
+    // two elements with details in one circuit do not overlap vertically
+    const two = circuit(proj([]), kring('K', ['a', 'b'].map((id) => node(id, 'batterij', [], {label: '', p: {aantal: 1, details: lines.join('\n')}})))).items
+    const ys = two.filter((it) => it.k === 'sym').map((it) => it.y)
+    expect(Math.abs(ys[0] - ys[1])).toBeGreaterThanOrEqual(66 + 3 * DET_LINE)
 })

@@ -4,7 +4,7 @@
 // Lights (type_lamp, is_wandlamp, type_noodverlichting) and switches (type_schakelaar, heeft_verklikkerlampje) choose their symbol from their options.
 // Only the eendraadschema (circuits, elements) and the owner/address footer are imported; the situatieschema (sitplanjson) is ignored.
 import pako from 'pako'
-import {infoOf} from './boardModel.jsx'
+import {detailLines, infoOf} from './boardModel.jsx'
 import {uid} from './util.jsx'
 
 const MAP = {
@@ -30,7 +30,7 @@ const MAP = {
     Kookfornuis: 'kookplaat',
     'EV lader': 'laadpaal',
     Vaatwasmachine: 'vaatwas',
-    Droogkast: 'wasmachine',
+    Droogkast: 'droogkast',
     Wasmachine: 'wasmachine',
     Ventilator: 'ventilatie',
     Verbruiker: 'vrij',
@@ -156,7 +156,15 @@ function conv(r) {
         n.p = {geaard: !!q.is_geaard, nr: q.nr || ''}
     } else {
         n.label = q.tekst || q.adres || (type === 'vrij' ? q.type : '')
-        n.p = {aantal: num(q.aantal ?? q.aantal_schakelaars) || 1, nr: q.nr || '', details: q.details || ''}
+        // Brand, type, serial number, Pmax, Umax, ... (inverter, solar panels, battery): the eendraadschema separates the entries with '|',
+        // here they become one line each (shown under the symbol and editable as lines in the properties).
+        // An element without such details but with a '|' or new line in its text (an EV charger: 'EVW C8R W | SN: 6220020754') keeps that as details.
+        let det = detailLines(q.details)
+        if (!det.length && /[|\n]/.test(n.label)) {
+            det = detailLines(n.label)
+            n.label = ''
+        }
+        n.p = {aantal: num(q.aantal ?? q.aantal_schakelaars) || 1, nr: q.nr || '', details: det.join('\n')}
     }
     // A Lichtcircuit is a switch with its lights in one element (aantal_lichtpunten): with a known switch type it becomes that switch
     // with the lights as a child, so the switch has its own symbol and still operates its lights.

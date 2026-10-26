@@ -256,3 +256,35 @@ test('a Lichtcircuit with a motion switch becomes that switch with its lights as
     expect(get(r, 'e5')).toMatchObject({type: 'lichtcircuit', children: []})
     expect(r.stats.nodes).toBe(6)
 })
+
+test('details of inverter, solar panels and battery become one line each; Droogkast has its own symbol', () => {
+    const r = edsToProject({
+        data: [
+            row(1, 0, 'Aansluiting'),
+            row(2, 1, 'Bord'),
+            row(3, 2, 'Kring', {naam: 'PV'}),
+            row(4, 3, 'Omvormer', {details: 'Merk: Huawei |Type: SUN2000|S/N: HV1|Pmax: 6.6 kW '}),
+            row(5, 4, 'Zonnepaneel', {aantal: '15', details: 'Merk: Viessman\nPmax: 400 Wp'}),
+            row(6, 4, 'Batterij', {details: ''}),
+            row(7, 3, 'Droogkast'),
+        ],
+    })
+    expect(get(r, 'e4').p.details).toBe('Merk: Huawei\nType: SUN2000\nS/N: HV1\nPmax: 6.6 kW')
+    expect(get(r, 'e5')).toMatchObject({type: 'zonnepanelen', p: {aantal: 15, details: 'Merk: Viessman\nPmax: 400 Wp'}})
+    expect(get(r, 'e6').p.details).toBe('')
+    expect(get(r, 'e7').type).toBe('droogkast')
+})
+
+test('an EV charger whose text holds a | keeps it as details, a plain address stays the name', () => {
+    const r = edsToProject({
+        data: [
+            row(1, 0, 'Aansluiting'),
+            row(2, 1, 'Bord'),
+            row(3, 2, 'Kring', {naam: 'L'}),
+            row(4, 3, 'EV lader', {adres: 'EVW C8R W | SN: 6220020754'}),
+            row(5, 3, 'Motor', {adres: 'Garagepoort'}),
+        ],
+    })
+    expect(get(r, 'e4')).toMatchObject({type: 'laadpaal', label: '', p: {details: 'EVW C8R W\nSN: 6220020754'}})
+    expect(get(r, 'e5')).toMatchObject({label: 'Garagepoort', p: {details: ''}})
+})

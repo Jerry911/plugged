@@ -353,3 +353,16 @@ test('aansluiting: Polen and Beveiliging are grouped, Differentieel stays full w
     expect(r.contains(screen.getByLabelText('Differentieel (mA)'))).toBe(false)
 })
 
+
+test('details are edited in a text area (Enter = new line) and only for elements, not for distribution parts', () => {
+    const t = [node('A', 'bord', [node('K', 'kring', [node('I', 'omvormer', [], {label: 'PV-omvormer', p: {aantal: 1, details: 'Merk: X|Type: Y'}})])])],
+        {spy} = mount(OneLineSchema, withTree(t), {idx: 0})
+    fireEvent.click(row('K'))
+    expect(btn('eds-details')).toBeNull()
+    fireEvent.click(screen.getAllByText('PV-omvormer')[0]) // the row of the structure list, not the drawing
+    const ta = screen.getByLabelText('Details')
+    expect(ta.tagName).toBe('TEXTAREA')
+    expect(ta.value).toBe('Merk: X|Type: Y')
+    fireEvent.change(ta, {target: {value: 'Merk: X\nType: Y\nS/N: 1\n'}})
+    expect(spy.p.een[0].tree[0].children[0].children[0].p.details).toBe('Merk: X\nType: Y\nS/N: 1\n')
+})

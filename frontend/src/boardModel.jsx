@@ -15,6 +15,16 @@ export const U = 0.16,
     BOXUP = 120
 export const BOXT = new Set(['domotica', 'subbord'])
 const tw = (s) => String(s || '').length * 6.6
+// Details of an element (brand, type, serial number, Pmax, Umax, ...): one line per entry. Lines are separated by Enter (a real new line)
+// or by '|' (how the eendraadschema stores them), so both a typed text area and an imported file give the same lines.
+export const DET_SIZE = 11,
+    DET_LINE = 13
+export const detailLines = (s) =>
+    String(s ?? '')
+        .split(/\r?\n|\|/)
+        .map((x) => x.trim())
+        .filter(Boolean)
+const dw = (s) => String(s || '').length * DET_SIZE * 0.56
 export const letter = (i) =>
     i < 26 ? String.fromCharCode(65 + i) : String.fromCharCode(64 + Math.floor(i / 26)) + String.fromCharCode(65 + (i % 26))
 export const infoOf = (q = {}) => [(q.curve || '') + (q.amp || ''), q.polen ? q.polen + 'P' : '', q.kabel || ''].filter(Boolean).join(' ')
@@ -71,7 +81,8 @@ export const reach = (shapes) => {
     })
     return l <= r ? [l, r] : null
 }
-const own = (n) => (n.label ? 100 : Number(n.p?.aantal) > 1 ? 80 : 66)
+// vertical room of an element in a stack: the symbol, its count (x3), its label and one line per detail
+const own = (n) => (n.label ? 100 : Number(n.p?.aantal) > 1 ? 80 : 66) + detailLines(n.p?.details).length * DET_LINE
 const ext = (n) =>
     BOXT.has(n.type)
         ? n.children.length
@@ -132,7 +143,8 @@ function node(p, n, x, y, out) {
     const stacked = stackOf(t, pr)?.hor,
         shapes = shapesOf(t, pr),
         cnt = Number(pr.aantal) > 1 && !stacked ? 'x' + pr.aantal : '',
-        w = Math.max(SYM + 6, tw(lab) + 8, tw(cnt) + 8)
+        det = detailLines(pr.details),
+        w = Math.max(SYM + 6, tw(lab) + 8, tw(cnt) + 8, ...det.map((d) => dw(d) + 8))
     out.push({k: 'sym', shapes, x: x + w / 2, y, s: SYM, id: n.id, ...(n.r ? {r: n.r} : {})})
     const rc = reach(shapes),
         mid = x + w / 2
@@ -144,9 +156,12 @@ function node(p, n, x, y, out) {
     }
     if (cnt) out.push(text(x + w / 2, y + 38, cnt, {anchor: 'middle'}))
     if (lab) out.push(text(x + w / 2, y + (cnt ? 54 : 40), lab, {anchor: 'middle', italic: 1}))
+    // the details hang below the count and the name, one line each, clickable like the symbol itself
+    const below = lab ? (cnt ? 54 : 40) : cnt ? 38 : 26
+    det.forEach((d, i) => out.push(text(x + w / 2, y + below + DET_LINE * (i + 1) + 2, d, {anchor: 'middle', size: DET_SIZE, id: n.id})))
     let r = x + w,
         top = y - 28,
-        bot = y + (lab ? (cnt ? 62 : 48) : cnt ? 46 : 30)
+        bot = y + Math.max(lab ? (cnt ? 62 : 48) : cnt ? 46 : 30, det.length ? below + DET_LINE * det.length + 6 : 0)
     if (n.children.length) {
         const sx = r + GAP / 2
         out.push(line(r, y, sx, y))

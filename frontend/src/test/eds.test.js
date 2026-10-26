@@ -1,7 +1,7 @@
 // Copyright 2026 Pleysier Jeroen
 // SPDX-License-Identifier: AGPL-3.0-only
 import pako from 'pako'
-import {decodeEds, edsToProject, importEds, KNOWN, socketKey} from '../eds.jsx'
+import {decodeEds, edsToProject, importEds, KNOWN, lampKey, socketKey, switchKey} from '../eds.jsx'
 import {flat} from '../util.jsx'
 import {verify} from '../rules.jsx'
 import {base} from './utils.jsx'
@@ -180,4 +180,57 @@ test('the three socket variants of a real export (earth + child, child only, non
         ],
     })
     expect(['e6', 'e7', 'e8'].map((id) => get(r, id).type)).toEqual(['stopcontact_pekid', 'stopcontact_kid', 'stopcontact_alg'])
+})
+test('lamp symbol follows type_lamp, emergency light and wall lamp', () => {
+    const k = (o) => lampKey({type: 'Lichtpunt', ...o})
+    expect(k({type_lamp: 'standaard'})).toBe('lichtpunt')
+    expect(k({})).toBe('lichtpunt')
+    expect(k({type_lamp: 'TL', aantal_buizen_indien_TL: '2'})).toBe('tl')
+    expect(k({type_lamp: 'spot'})).toBe('spot')
+    expect(k({type_lamp: 'led'})).toBe('led')
+    expect(k({type_lamp: 'standaard', is_wandlamp: true})).toBe('wandlamp')
+    expect(k({type_lamp: 'standaard', type_noodverlichting: 'Centraal'})).toBe('noodlicht')
+    expect(k({type_lamp: 'standaard', type_noodverlichting: 'Decentraal', is_wandlamp: true})).toBe('noodlicht')
+    expect(k({type_lamp: 'standaard', type_noodverlichting: 'Geen'})).toBe('lichtpunt')
+    // no symbol for a wall-mounted spot: the shape of the fitting wins
+    expect(k({type_lamp: 'spot', is_wandlamp: true})).toBe('spot')
+})
+test('switch symbol follows type_schakelaar', () => {
+    const k = (t, o) => switchKey({type: 'Schakelaars', type_schakelaar: t, ...o})
+    expect(k('enkelpolig')).toBe('schakelaar')
+    expect(k('')).toBe('schakelaar')
+    expect(k('dubbelpolig')).toBe('schakelaar2')
+    expect(k('driepolig')).toBe('schakelaar3')
+    expect(k('wissel_enkel')).toBe('wissel')
+    expect(k('wissel_dubbel')).toBe('wissel2')
+    expect(k('dubbelaansteking')).toBe('omschakelaar')
+    expect(k('kruis_enkel')).toBe('kruis')
+    expect(k('dimschakelaar')).toBe('dimmer')
+    expect(k('rolluikschakelaar')).toBe('rolluik')
+    expect(k('bewegingsschakelaar')).toBe('beweging')
+    expect(k('dubbelpolig', {heeft_verklikkerlampje: true})).toBe('verklikker')
+    expect(k('wissel_enkel', {heeft_verklikkerlampje: true})).toBe('wissel')
+    expect(k('schemerschakelaar')).toBeNull()
+})
+test('a switch variant without a symbol imports as a simple switch and is reported', () => {
+    const r = edsToProject({data: [row(1, 0, 'Aansluiting'), row(2, 1, 'Bord'), row(3, 2, 'Kring', {naam: 'A'}), row(4, 3, 'Schakelaars', {type_schakelaar: 'schemerschakelaar'})]})
+    expect(get(r, 'e4').type).toBe('schakelaar')
+    expect(r.stats.unknown).toEqual(['Schakelaars: schemerschakelaar'])
+})
+test('imported lights and switches use their own symbols', () => {
+    const r = edsToProject({
+        data: [
+            row(1, 0, 'Aansluiting'),
+            row(2, 1, 'Bord'),
+            row(3, 2, 'Kring', {naam: 'A'}),
+            row(4, 3, 'Schakelaars', {type_schakelaar: 'wissel_enkel'}),
+            row(5, 4, 'Lichtpunt', {type_lamp: 'TL'}),
+            row(6, 3, 'Schakelaars', {type_schakelaar: 'rolluikschakelaar'}),
+            row(7, 3, 'Lichtpunt', {type_lamp: 'led'}),
+            row(8, 3, 'Lichtpunt', {type_lamp: 'spot', aantal: '4'}),
+            row(9, 3, 'Lichtpunt', {type_lamp: 'standaard', is_wandlamp: true}),
+        ],
+    })
+    expect(['e4', 'e5', 'e6', 'e7', 'e8', 'e9'].map((id) => get(r, id).type)).toEqual(['wissel', 'tl', 'rolluik', 'led', 'spot', 'wandlamp'])
+    expect(get(r, 'e8').p.aantal).toBe(4)
 })

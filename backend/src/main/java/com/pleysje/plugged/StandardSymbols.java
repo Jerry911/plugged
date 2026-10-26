@@ -32,7 +32,7 @@ import java.util.Map;
  * are then replaced by the new standard when the application starts (see {@link SymbolService#seed()}).
  */
 public final class StandardSymbols {
-    public static final int VERSION = 6;
+    public static final int VERSION = 7;
 
     private static final String V = "Verdeling", S = "Stopcontacten", O = "Verlichting & bediening", A = "Toestellen", E = "Energie", G = "Overig";
 
@@ -43,7 +43,7 @@ public final class StandardSymbols {
             "stopcontact3", "stopcontact_h", "trafo", "modulaire", "motor", "bel", "zoemer", "sirene", "klok", "data", "tv", "vrij",
             "lichtcircuit", "microgolf", "zonnepanelen", "omvormer", "batterij", "oven", "kookplaat", "wasmachine", "droogkast", "vaatwas",
             "koelkast", "diepvries", "airco", "ventilatie", "laadpaal", "boiler", "verwarming", "thermostaat", "rookmelder", "aftakdoos",
-            "wandlamp", "tl", "noodlicht");
+            "wandlamp", "tl", "noodlicht", "spot", "led", "wissel2", "rolluik", "beweging");
 
     private static final List<String> EL = ELEMENT_KEYS;
 
@@ -146,6 +146,8 @@ public final class StandardSymbols {
         x("lichtpunt", "Lichtpunt", O, EL, UpstreamSymbols.lichtpunt(), true);
         x("wandlamp", "Wandlamp", O, EL, UpstreamSymbols.wandlamp(), true);
         x("tl", "TL-armatuur", O, EL, UpstreamSymbols.tl(), true);
+        x("spot", "Spot", O, EL, UpstreamSymbols.spot(), true);
+        x("led", "Led-verlichting", O, EL, UpstreamSymbols.led(), true);
         x("noodlicht", "Noodverlichting", O, EL, UpstreamSymbols.noodlicht(), true);
         x("schakelaar", "Enkelpolige schakelaar", O, EL, UpstreamSymbols.schakelaar(), true);
         x("schakelaar2", "Tweepolige schakelaar", O, EL, UpstreamSymbols.schakelaar2(), true);
@@ -155,7 +157,10 @@ public final class StandardSymbols {
         x("wissel", "Wisselschakelaar", O, EL, UpstreamSymbols.wissel(), true);
         // omschakelaar: two levers in a V above the hinge circle, the flags point outwards
         x("omschakelaar", "Omschakelaar", O, EL, UpstreamSymbols.omschakelaar(), true);
+        x("wissel2", "Dubbele wisselschakelaar", O, EL, UpstreamSymbols.wissel2(), true);
         x("kruis", "Kruisschakelaar", O, EL, UpstreamSymbols.kruis(), true);
+        x("rolluik", "Rolluikschakelaar", O, EL, UpstreamSymbols.rolluik(), true);
+        x("beweging", "Bewegingsschakelaar", O, EL, UpstreamSymbols.bewegingsschakelaar(), true);
         x("dimmer", "Dimmer", O, EL, UpstreamSymbols.dimmer(), true);
         x("drukknop", "Drukknop", O, EL, UpstreamSymbols.drukknop(), true);
         x("bel", "Bel", O, EL, UpstreamSymbols.bel(), true);

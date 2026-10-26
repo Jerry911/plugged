@@ -8,9 +8,10 @@ import {allNodes, flat, nameOf} from './util.jsx'
 export const LIMITS = {maxStop: 8, maxLicht: 8, maxDiffmA: 30, cable: {1.5: 16, 2.5: 20, 4: 25, 6: 32, 10: 50, 16: 63}} // cable: mm² -> max protective rating (A)
 const S = (a) => new Set(a)
 const STOP = S(['stopcontact', 'stopcontact_alg', 'stopcontact_kid', 'stopcontact_pekid', 'stopcontact2', 'stopcontact3', 'stopcontact_h']),
-    LIGHT = S(['lichtpunt', 'wandlamp', 'tl', 'noodlicht', 'lichtcircuit']),
-    SWITCH = S(['schakelaar', 'schakelaar2', 'schakelaar3', 'verklikker', 'wissel', 'omschakelaar', 'kruis', 'dimmer'])
-const CONTROL = S(['schakelaar', 'schakelaar2', 'schakelaar3', 'verklikker', 'wissel', 'omschakelaar', 'kruis', 'dimmer', 'drukknop', 'aftakdoos'])
+    LIGHT = S(['lichtpunt', 'wandlamp', 'tl', 'spot', 'led', 'noodlicht', 'lichtcircuit']),
+    SWITCH = S(['schakelaar', 'schakelaar2', 'schakelaar3', 'verklikker', 'wissel', 'wissel2', 'omschakelaar', 'kruis', 'dimmer', 'beweging'])
+// a rolluik switch controls a motor, not a light: it is a control element but not a SWITCH (no 'operates no light' warning)
+const CONTROL = S(['schakelaar', 'schakelaar2', 'schakelaar3', 'verklikker', 'wissel', 'wissel2', 'omschakelaar', 'kruis', 'dimmer', 'beweging', 'rolluik', 'drukknop', 'aftakdoos'])
 const DEDICATED = S(['kookplaat', 'oven', 'wasmachine', 'droogkast', 'vaatwas', 'boiler', 'airco', 'laadpaal'])
 const REQUIRED = {titel: 'titel', gemeente: 'gemeente', eigenaar: 'eigenaar', tekenaar: 'getekend door', datum: 'datum'}
 const ORDER = {error: 0, warn: 1, info: 2}

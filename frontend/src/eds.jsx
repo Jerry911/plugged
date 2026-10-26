@@ -1,6 +1,7 @@
 // Copyright 2026 Pleysier Jeroen
 // SPDX-License-Identifier: AGPL-3.0-only
 // Import of files exported by https://eendraadschema.goethals-jacobs.be/ (.eds = "EDS004" header + base64(zlib(JSON))).
+// Lights (type_lamp, is_wandlamp, type_noodverlichting) and switches (type_schakelaar, heeft_verklikkerlampje) choose their symbol from their options.
 // Only the eendraadschema (circuits, elements) and the owner/address footer are imported; the situatieschema (sitplanjson) is ignored.
 import pako from 'pako'
 import {infoOf} from './boardModel.jsx'
@@ -47,6 +48,40 @@ export const socketKey = (q = {}) => {
     if (kid) return 'stopcontact_kid'
     return pe ? 'stopcontact' : 'stopcontact_alg'
 }
+// A Lichtpunt is one EDS type but several symbols: the symbol follows type_lamp (TL / spot / led / standaard), then the emergency option and the
+// wall-lamp option (is_wandlamp). The shape of the fitting (TL, spot, led) wins over the extras, because there is no symbol for e.g. 'wall-mounted led'.
+// The number of tubes of a TL (aantal_buizen_indien_TL) is not part of the symbol.
+export const lampKey = (q = {}) => {
+    const t = String(q.type_lamp || '').toLowerCase()
+    if (t === 'tl') return 'tl'
+    if (t === 'spot') return 'spot'
+    if (t === 'led') return 'led'
+    if (['centraal', 'decentraal'].includes(String(q.type_noodverlichting || '').toLowerCase())) return 'noodlicht'
+    return q.is_wandlamp === true ? 'wandlamp' : 'lichtpunt'
+}
+// A Schakelaars element is one EDS type but many symbols: the symbol follows type_schakelaar. Returns null for a variant without a symbol
+// (the caller falls back on the simple switch and reports it). The names are matched loosely, so 'wissel_enkel' and 'wissel' are the same.
+const SWITCHES = [
+    [/rolluik/, 'rolluik'],
+    [/beweging|detect/, 'beweging'],
+    [/dubbelaansteking|dubbele_aansteking|omschakel/, 'omschakelaar'],
+    [/kruis/, 'kruis'],
+    [/wissel.*dubbel|dubbel.*wissel/, 'wissel2'],
+    [/wissel.*dim|dim.*wissel|schemer|minuterie|tijd|relais|teleruptor|trek/, null],
+    [/wissel/, 'wissel'],
+    [/dim/, 'dimmer'],
+    [/drie|trippel|3/, 'schakelaar3'],
+    [/dubbelpolig|tweepolig|dubbel/, 'schakelaar2'],
+    [/enkel|^$/, 'schakelaar'],
+]
+export const switchKey = (q = {}) => {
+    const t = String(q.type_schakelaar || '').toLowerCase(),
+        hit = SWITCHES.find(([re]) => re.test(t))
+    const k = hit ? hit[1] : null
+    // one symbol has the signal lamp: it replaces the plain single/double pole switch
+    if ((k === 'schakelaar' || k === 'schakelaar2') && (q.heeft_verklikkerlampje === true || q.heeft_signalisatielampje === true)) return 'verklikker'
+    return k
+}
 const num = (v) => {
     const n = parseFloat(String(v ?? '').replace(',', '.'))
     return Number.isFinite(n) ? n : undefined
@@ -68,7 +103,14 @@ export function decodeEds(text) {
 }
 function conv(r) {
     const q = r.props,
-        type = q.type === 'Contactdoos' ? socketKey(q) : MAP[q.type] || 'vrij',
+        type =
+            q.type === 'Contactdoos'
+                ? socketKey(q)
+                : q.type === 'Lichtpunt'
+                  ? lampKey(q)
+                  : q.type === 'Schakelaars'
+                    ? switchKey(q) || 'schakelaar'
+                    : MAP[q.type] || 'vrij',
         n = {id: 'e' + r.id, type, label: '', info: '', children: []}
     if (type === 'kring') {
         n.label = q.naam || ''
@@ -140,7 +182,9 @@ export function edsToProject(j) {
         footer.gemeente = c[2]
     }
     if (pr.info) footer.stelsel = pr.info
-    const unknown = [...new Set(rows.map((r) => r.props.type).filter((t) => !MAP[t]))]
+    // switches whose variant has no symbol (yet) are imported as a simple switch: say so
+    const approx = rows.filter((r) => r.props.type === 'Schakelaars' && !switchKey(r.props)).map((r) => `Schakelaars: ${r.props.type_schakelaar}`),
+        unknown = [...new Set([...rows.map((r) => r.props.type).filter((t) => !MAP[t]), ...approx])]
     return {
         een: [{id: uid(), name: 'Blad 1', tree}],
         footer,

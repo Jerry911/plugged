@@ -366,6 +366,66 @@ final class UpstreamSymbols {
                 line(7.65, 17.25, 14.65, 17.25));
     }
 
+    /** spot (SVGSymbols 'spot'): a lamp circle with a cross and two quarter arcs towards the supply; origin at upstream x = 30 like the lamp */
+    static List<Map<String, Object>> spot() {
+        return of(line(1, 12, ux(30), 12),
+                path("M" + ux(30) + " " + uy(0) + " A3.5 3.5 0 0 1 " + ux(40) + " " + uy(-10)),
+                path("M" + ux(30) + " " + uy(0) + " A3.5 3.5 0 0 0 " + ux(40) + " " + uy(10)),
+                circle(ux(40), 12, 2.1),
+                line(ux(35.76), uy(-4.24), ux(44.24), uy(4.24)),
+                line(ux(35.76), uy(4.24), ux(44.24), uy(-4.24)));
+    }
+
+    /** led (SVGSymbols 'led'): a diode (triangle against a bar) with two small arrows of light */
+    static List<Map<String, Object>> led() {
+        return of(line(1, 12, ux(30), 12),
+                weight(line(ux(30), uy(-7), ux(30), uy(7)), W2),
+                weight(line(ux(30), uy(-7), ux(42), 12), W2),
+                weight(line(ux(30), uy(7), ux(42), 12), W2),
+                weight(line(ux(42), uy(-7), ux(42), uy(7)), W2),
+                line(ux(36), uy(-6), ux(37), uy(-11)),
+                line(ux(37), uy(-11), ux(38.11), uy(-9.34)),
+                line(ux(37), uy(-11), ux(35.34), uy(-9.9)),
+                line(ux(39), uy(-6), ux(40), uy(-11)),
+                line(ux(40), uy(-11), ux(41.11), uy(-9.34)),
+                line(ux(40), uy(-11), ux(38.34), uy(-9.9)));
+    }
+
+    /** dubbele wisselschakelaar (SVGSymbols 'schakelaar_wissel_dubbel'): wissel with two flags on each lever */
+    static List<Map<String, Object>> wissel2() {
+        return of(line(1, 12, 11.5, 12),
+                line(11.5, 12, 15, 5),
+                line(15, 5, 16.75, 5.88),
+                line(14.3, 6.4, 16.05, 7.28),
+                line(11.5, 12, 8, 19),
+                line(8, 19, 6.25, 18.12),
+                line(8.7, 17.6, 6.95, 16.72),
+                paper(circle(11.5, 12, 1.75)));
+    }
+
+    /** rolluikschakelaar (SVGSymbols 'schakelaar_rolluik'): two levers up, flags outwards, a square with an S on the hinge */
+    static List<Map<String, Object>> rolluik() {
+        return of(line(1, 12, 11.5, 12),
+                line(11.5, 12, 15, 5),
+                line(15, 5, 16.75, 5.88),
+                line(11.5, 12, 8, 5),
+                line(8, 5, 6.25, 5.88),
+                paper(rect(8.7, 9.2, 5.6, 5.6)),
+                bold(text(11.5, 14.1, "S", 5.6)));
+    }
+
+    /** bewegingsschakelaar (SVGSymbols 'bewegingsschakelaar'): detector box with a diagonal, a pulse symbol and PIR */
+    static List<Map<String, Object>> bewegingsschakelaar() {
+        return of(line(1, 12, 8, 12),
+                rect(8, 7.45, 3.5, 9.1),
+                rect(11.5, 7.45, 10.5, 9.1),
+                line(11.5, 16.55, 22, 7.45),
+                line(13.25, 10.25, 15, 10.25),
+                line(15, 8.5, 15, 10.25),
+                line(15, 8.5, 16.75, 8.5),
+                bold(text(18.5, 15.8, "PIR", 3.5)));
+    }
+
     static List<Map<String, Object>> noodlicht() {
         return of(line(1, 12, 11.15, 12),
                 paper(rect(7.44, 8.29, 7.43, 7.43)),

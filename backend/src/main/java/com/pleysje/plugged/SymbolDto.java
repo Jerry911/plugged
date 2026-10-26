@@ -14,6 +14,7 @@ import java.util.Map;
  *   <li>{@code sock} optional socket parameters (pe, kid, h, n) from which the frontend can draw stacked sockets</li>
  *   <li>{@code v} catalog version of a standard symbol, {@code builtin} is a standard symbol,
  *       {@code modified} a standard symbol that differs from its standard definition (output only, ignored on input)</li>
+ *   <li>{@code details} the element has the extended details input (brand, type, serial number, ...): inverter, solar panels, battery, EV charger</li>
  * </ul>
  */
 public record SymbolDto(
@@ -26,5 +27,6 @@ public record SymbolDto(
         Map<String, Object> sock,
         Integer v,
         Boolean builtin,
-        Boolean modified) {
+        Boolean modified,
+        Boolean details) {
 }

@@ -308,6 +308,10 @@ export default function Components({lib, onSave, onRemove, onReset, onRestoreAll
                                     <input type="checkbox" checked={draft.place} onChange={(e) => set({place: e.target.checked})} /> Plaatsbaar op het
                                     situatieschema
                                 </label>
+                                <label style={{display: 'block', margin: '8px 0'}}>
+                                    <input type="checkbox" checked={!!draft.details} onChange={(e) => set({details: e.target.checked})} /> Uitgebreide details
+                                    (merk, type, serienummer, … onder het symbool)
+                                </label>
                                 <details>
                                     <summary>
                                         <b>Mag hangen onder ({draft.parents.length})</b>

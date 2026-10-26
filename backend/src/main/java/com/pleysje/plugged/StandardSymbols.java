@@ -32,7 +32,7 @@ import java.util.Map;
  * are then replaced by the new standard when the application starts (see {@link SymbolService#seed()}).
  */
 public final class StandardSymbols {
-    public static final int VERSION = 7;
+    public static final int VERSION = 8;
 
     private static final String V = "Verdeling", S = "Stopcontacten", O = "Verlichting & bediening", A = "Toestellen", E = "Energie", G = "Overig";
 
@@ -109,8 +109,11 @@ public final class StandardSymbols {
 
     private static final List<SymbolDto> ALL = new ArrayList<>();
 
+    /** the elements that have the extended details input (brand, type, serial number, ...) */
+    private static final java.util.Set<String> DETAILS = java.util.Set.of("omvormer", "zonnepanelen", "batterij", "laadpaal");
+
     private static void x(String k, String name, String cat, List<String> parents, List<Map<String, Object>> shapes, boolean place, Map<String, Object> sock) {
-        ALL.add(new SymbolDto(k, name, cat, List.copyOf(parents), place, List.copyOf(shapes), sock, VERSION, true, false));
+        ALL.add(new SymbolDto(k, name, cat, List.copyOf(parents), place, List.copyOf(shapes), sock, VERSION, true, false, DETAILS.contains(k)));
     }
 
     private static void x(String k, String name, String cat, List<String> parents, List<Map<String, Object>> shapes, boolean place) {

@@ -274,7 +274,7 @@ test('details are drawn line by line under the symbol and give the element more 
         plain = circuit(proj([]), kring('K', [node('i', 'omvormer', [], {label: '', p: {aantal: 1}})]))
     const texts = withDet().items.filter((it) => it.k === 'text' && lines.includes(it.s))
     expect(texts.map((t) => t.s)).toEqual(lines)
-    expect(texts.every((t) => t.id === 'i' && t.anchor === 'middle')).toBe(true)
+    expect(texts.every((t) => t.id === 'i' && t.anchor === undefined && t.x === texts[0].x)).toBe(true)
     expect(texts[1].y - texts[0].y).toBe(DET_LINE)
     // the node gets as wide as its longest line, and the details are also found when they are separated with |
     expect(withDet().w).toBeGreaterThan(plain.w)

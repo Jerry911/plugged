@@ -216,9 +216,9 @@ function node(p, n, x, y, out) {
     }
     if (cnt) out.push(text(x + w / 2, y + 38, cnt, {anchor: 'middle'}))
     if (lab) out.push(text(x + w / 2, y + (cnt ? 54 : 40), lab, {anchor: 'middle', italic: 1}))
-    // the details hang below the count and the name, one line each, clickable like the symbol itself
+    // the details hang below the count and the name, one line each, aligned left (flush with the left edge of the element), clickable like the symbol itself
     const below = lab ? (cnt ? 54 : 40) : cnt ? 38 : 26
-    det.forEach((d, i) => out.push(text(x + w / 2, y + below + DET_LINE * (i + 1) + 2, d, {anchor: 'middle', size: DET_SIZE, id: n.id})))
+    det.forEach((d, i) => out.push(text(x + 4, y + below + DET_LINE * (i + 1) + 2, d, {size: DET_SIZE, id: n.id})))
     let r = x + w,
         top = y - 28,
         bot = y + Math.max(lab ? (cnt ? 62 : 48) : cnt ? 46 : 30, det.length ? below + DET_LINE * det.length + 6 : 0)

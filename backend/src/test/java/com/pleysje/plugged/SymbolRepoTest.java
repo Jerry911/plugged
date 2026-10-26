@@ -43,10 +43,10 @@ class SymbolRepoTest {
     @Test
     void replacingAShapeListReplacesTheRows() {
         SymbolEntity e = SymbolMapper.toEntity(new SymbolDto("custom:r", "R", null, List.of("kring", "bord"), true,
-                List.of(SymbolShapes.rect(1, 1, 4, 4), SymbolShapes.dot(5, 5, 1), SymbolShapes.text(2, 2, "t", 6)), Map.of("n", 2), 0, false, false));
+                List.of(SymbolShapes.rect(1, 1, 4, 4), SymbolShapes.dot(5, 5, 1), SymbolShapes.text(2, 2, "t", 6)), Map.of("n", 2), 0, false, false, null));
         repo.saveAndFlush(e);
         em.clear();
-        SymbolEntity again = SymbolMapper.toEntity(new SymbolDto("custom:r", "R2", "Eigen", List.of("kring"), false, List.of(SymbolShapes.line(0, 0, 3, 3)), null, 0, false, false));
+        SymbolEntity again = SymbolMapper.toEntity(new SymbolDto("custom:r", "R2", "Eigen", List.of("kring"), false, List.of(SymbolShapes.line(0, 0, 3, 3)), null, 0, false, false, null));
         repo.saveAndFlush(again);
         em.clear();
         SymbolDto back = SymbolMapper.toDto(repo.findById("custom:r").orElseThrow());

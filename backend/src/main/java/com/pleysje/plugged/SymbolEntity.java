@@ -60,6 +60,10 @@ public class SymbolEntity {
     private Boolean sockPe, sockKid, sockH;
     private Integer sockN;
 
+    /** the symbol has the extended details input; null = not stored yet (symbols of before this option), see {@link SymbolMapper#toDto} */
+    @Column(name = "has_details")
+    private Boolean details;
+
     public String getK() { return k; }
     public void setK(String k) { this.k = k; }
     public String getName() { return name; }
@@ -88,6 +92,8 @@ public class SymbolEntity {
     public void setSockKid(Boolean sockKid) { this.sockKid = sockKid; }
     public Boolean getSockH() { return sockH; }
     public void setSockH(Boolean sockH) { this.sockH = sockH; }
+    public Boolean getDetails() { return details; }
+    public void setDetails(Boolean details) { this.details = details; }
     public Integer getSockN() { return sockN; }
     public void setSockN(Integer sockN) { this.sockN = sockN; }
 
@@ -95,6 +101,7 @@ public class SymbolEntity {
     public boolean sameDefinition(SymbolEntity o) {
         return name.equals(o.name) && category.equals(o.category) && place == o.place && parents.equals(o.parents) && shapes.equals(o.shapes)
                 && sockSet == o.sockSet && java.util.Objects.equals(sockPe, o.sockPe) && java.util.Objects.equals(sockKid, o.sockKid)
-                && java.util.Objects.equals(sockH, o.sockH) && java.util.Objects.equals(sockN, o.sockN);
+                && java.util.Objects.equals(sockH, o.sockH) && java.util.Objects.equals(sockN, o.sockN)
+                && Boolean.TRUE.equals(details) == Boolean.TRUE.equals(o.details);
     }
 }

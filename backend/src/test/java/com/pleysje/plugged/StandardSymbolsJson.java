@@ -40,6 +40,7 @@ public final class StandardSymbolsJson {
         m.put("place", s.place());
         m.put("shapes", s.shapes());
         if (s.sock() != null) m.put("sock", s.sock());
+        if (Boolean.TRUE.equals(s.details())) m.put("details", true);
         m.put("v", s.v());
         m.put("builtin", s.builtin());
         m.put("modified", s.modified());

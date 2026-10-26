@@ -58,13 +58,13 @@ public class SymbolService {
     /** A new symbol of the user to start from: a fresh key and the default parents. */
     public SymbolDto template() {
         return new SymbolDto("custom:" + UUID.randomUUID().toString().replace("-", "").substring(0, 12), "", SymbolMapper.DEFAULT_CATEGORY,
-                StandardSymbols.ELEMENT_KEYS, true, List.of(), null, 0, false, false);
+                StandardSymbols.ELEMENT_KEYS, true, List.of(), null, 0, false, false, false);
     }
 
     /** Creates or updates a symbol; for a standard symbol the result tells whether it still is the standard drawing. */
     public SymbolDto save(String k, SymbolDto in) {
         validate(k, in);
-        SymbolEntity e = SymbolMapper.toEntity(new SymbolDto(k, in.name(), in.cat(), in.parents(), in.place(), in.shapes(), in.sock(), 0, false, false));
+        SymbolEntity e = SymbolMapper.toEntity(new SymbolDto(k, in.name(), in.cat(), in.parents(), in.place(), in.shapes(), in.sock(), 0, false, false, in.details()));
         SymbolDto std = standardOf(k);
         SymbolEntity cur = repo.findById(k).orElse(null);
         if (std != null) {
@@ -94,7 +94,7 @@ public class SymbolService {
         SymbolEntity cur = repo.findById(k).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Symbool niet gevonden: " + k));
         if (StandardSymbols.find(k) == null) throw new ResponseStatusException(HttpStatus.CONFLICT, "Alleen een standaardsymbool kan de nieuwe standaard worden: " + k);
         SymbolDto d = SymbolMapper.toDto(cur);
-        SymbolEntity base = SymbolMapper.toEntity(new SymbolDto(BASE + k, d.name(), d.cat(), d.parents(), d.place(), d.shapes(), d.sock(), 0, false, false));
+        SymbolEntity base = SymbolMapper.toEntity(new SymbolDto(BASE + k, d.name(), d.cat(), d.parents(), d.place(), d.shapes(), d.sock(), 0, false, false, d.details()));
         base.setSortOrder(CUSTOM_ORDER);
         repo.save(base);
         cur.setModified(false);
@@ -108,7 +108,7 @@ public class SymbolService {
         return repo.findById(BASE + k)
                 .map(b -> {
                     SymbolDto d = SymbolMapper.toDto(b);
-                    return new SymbolDto(k, d.name(), d.cat(), d.parents(), d.place(), d.shapes(), d.sock(), std.v(), true, false);
+                    return new SymbolDto(k, d.name(), d.cat(), d.parents(), d.place(), d.shapes(), d.sock(), std.v(), true, false, d.details());
                 })
                 .orElse(std);
     }

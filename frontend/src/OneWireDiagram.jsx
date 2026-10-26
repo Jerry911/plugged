@@ -3,7 +3,7 @@
 import {useEffect, useRef, useState} from 'react'
 import {allTypes, stackOf, Sym, typeOf} from './symbols'
 import {BoardSheet} from './Board.jsx'
-import {defaultProps, hasPlacement, infoOf, nextLetter, PLAATSING, sheetPlan} from './boardModel.jsx'
+import {defaultProps, detailLines, hasPlacement, infoOf, nextLetter, PLAATSING, sheetPlan} from './boardModel.jsx'
 import {flat, nameOf, reid, uid} from './util.jsx'
 import {ZOOMS} from './SituationSchema.jsx'
 import ZoomPane from "./ZoomPane.jsx";
@@ -449,15 +449,15 @@ export default function OneWireDiagram({p, setP, idx, focus, onFocused, onFooter
                                             </label>
                                         </div>
                                     ) : (
-                                        <label key={k}>
-                                            {l}
-                                            <input
-                                                value={s.p?.[k] ?? ''}
-                                                onChange={(e) => setProp(k, e.target.value)}
-                                                style={{width: '100%', boxSizing: 'border-box'}}
-                                            />
-                                        </label>
-                                    ))
+                                    <label key={k}>
+                                        {l}
+                                        <input
+                                            value={s.p?.[k] ?? ''}
+                                            onChange={(e) => setProp(k, e.target.value)}
+                                            style={{width: '100%', boxSizing: 'border-box'}}
+                                        />
+                                    </label>
+                                ))
                             ),
                         )}
                         {stackOf(typeOf(p, s.type), s.p) && (
@@ -472,7 +472,9 @@ export default function OneWireDiagram({p, setP, idx, focus, onFocused, onFooter
                                 </div>
                             </label>
                         )}
-                        {!DIST.includes(s.type) && (
+                        {/* only for the symbols that have the extended details input (inverter, solar panels, battery, EV charger, or
+                            the ones where it is switched on in Componenten); existing details of another element stay visible so they can be edited */}
+                        {!DIST.includes(s.type) && (typeOf(p, s.type).details || detailLines(s.p?.details).length > 0) && (
                             <label>
                                 Details (onder het symbool)
                                 <textarea

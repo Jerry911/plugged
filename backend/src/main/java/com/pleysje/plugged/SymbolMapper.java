@@ -22,6 +22,7 @@ public final class SymbolMapper {
         e.setName(d.name().trim());
         e.setCategory(d.cat() == null || d.cat().isBlank() ? DEFAULT_CATEGORY : d.cat().trim());
         e.setPlace(d.place() == null || d.place());
+        e.setDetails(Boolean.TRUE.equals(d.details()));
         e.setParents(new ArrayList<>(new LinkedHashSet<>(d.parents() == null ? StandardSymbols.ELEMENT_KEYS : d.parents())));
         List<ShapeRow> rows = new ArrayList<>();
         for (Map<String, Object> m : d.shapes()) rows.add(ShapeRow.of(m));
@@ -48,7 +49,10 @@ public final class SymbolMapper {
             if (e.getSockH() != null) sock.put("h", e.getSockH());
             if (e.getSockN() != null) sock.put("n", e.getSockN());
         }
+        // a standard symbol edited before this option existed has no stored value: it keeps the one of the catalog
+        Boolean details = e.getDetails();
+        if (details == null) details = e.isBuiltin() && StandardSymbols.find(e.getK()) != null && Boolean.TRUE.equals(StandardSymbols.find(e.getK()).details());
         return new SymbolDto(e.getK(), e.getName(), e.getCategory(), new ArrayList<>(e.getParents()), e.isPlace(), shapes, sock,
-                e.getStdVersion(), e.isBuiltin(), e.isModified());
+                e.getStdVersion(), e.isBuiltin(), e.isModified(), details);
     }
 }

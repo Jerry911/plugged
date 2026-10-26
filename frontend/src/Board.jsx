@@ -31,7 +31,7 @@ const LINE_W = 2
 const Item = ({it, sel, onSel, onDelete}) => {
     const on = sel && it.id === sel,
         c = on ? B : '#000',
-        h = it.id && onSel ? {onClick: () => onSel(it.id), style: {cursor: 'pointer'}} : {}
+        h = {...(it.id ? {'data-nid': it.id} : {}), ...(it.id && onSel ? {onClick: () => onSel(it.id), style: {cursor: 'pointer'}} : {})}
     if (it.k === 'line') return <line x1={it.x1} y1={it.y1} x2={it.x2} y2={it.y2} stroke="#000" strokeWidth={it.w || LINE_W} />
     if (it.k === 'sym')
         return (

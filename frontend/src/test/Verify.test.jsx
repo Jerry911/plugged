@@ -24,3 +24,15 @@ test('shows success state only for info/no issues', () => {
     render(<Verify issues={[iss[2]]} onGo={() => {}} onClose={() => {}} />)
     screen.getByText('✓ Geen fouten of waarschuwingen gevonden')
 })
+
+test('a click that ends a text selection does not jump to the element, so a message can be copied', () => {
+    const go = vi.fn(),
+        sel = vi.spyOn(window, 'getSelection').mockReturnValue({toString: () => 'Let op'})
+    render(<Verify issues={iss} onGo={go} onClose={() => {}} />)
+    fireEvent.click(screen.getByText('Let op', {exact: false}))
+    expect(go).not.toHaveBeenCalled()
+    sel.mockReturnValue({toString: () => ''})
+    fireEvent.click(screen.getByText('Let op', {exact: false}))
+    expect(go).toHaveBeenCalledTimes(1)
+    sel.mockRestore()
+})

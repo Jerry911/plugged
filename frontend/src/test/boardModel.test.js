@@ -267,7 +267,7 @@ test('detailLines splits on new lines and on |, trims and drops empty entries', 
 })
 
 test('details are drawn line by line under the symbol and give the element more room', () => {
-    const lines = ['Merk: Huawei', 'Type: SUN2000L-6KTL-M1', 'S/N: HV1234'],
+    const lines = ['Merk: Huawei', 'Type: SUN2000L-6KTL-M1', 'S/N: HV2290060767'],
         withDet = (extra = {}) => circuit(proj([]), kring('K', [node('i', 'omvormer', [], {label: '', p: {aantal: 1, details: lines.join('\n'), ...extra}})])),
         plain = circuit(proj([]), kring('K', [node('i', 'omvormer', [], {label: '', p: {aantal: 1}})]))
     const texts = withDet().items.filter((it) => it.k === 'text' && lines.includes(it.s))

@@ -366,3 +366,20 @@ test('details are edited in a text area (Enter = new line) and only for elements
     fireEvent.change(ta, {target: {value: 'Merk: X\nType: Y\nS/N: 1\n'}})
     expect(spy.p.een[0].tree[0].children[0].children[0].p.details).toBe('Merk: X\nType: Y\nS/N: 1\n')
 })
+
+test('a focus (message of the check) selects the element, scrolls the drawing to it and is consumed', () => {
+    const scroll = vi.fn()
+    Element.prototype.scrollIntoView = scroll
+    const done = vi.fn(),
+        t = [node('A', 'bord', [node('K', 'kring', [node('I', 'omvormer', [], {label: 'PV-omvormer', p: {aantal: 1}})])])]
+    mount(OneLineSchema, withTree(t), {idx: 0, focus: {id: 'I', n: 1}, onFocused: done})
+    expect(scroll).toHaveBeenCalledTimes(1)
+    expect(scroll.mock.contexts[0].getAttribute('data-nid')).toBe('I')
+    expect(scroll.mock.calls[0][0]).toMatchObject({block: 'center', inline: 'center'})
+    expect(done).toHaveBeenCalledTimes(1)
+    expect(screen.getByLabelText('Details')).toBeInTheDocument() // the element is selected: its properties are shown
+    // an element that is not drawn on this sheet is still selected, without scrolling
+    mount(OneLineSchema, withTree(t), {idx: 0, focus: {id: 'nope', n: 2}})
+    expect(scroll).toHaveBeenCalledTimes(1)
+    delete Element.prototype.scrollIntoView
+})

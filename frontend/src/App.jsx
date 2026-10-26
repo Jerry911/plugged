@@ -56,11 +56,7 @@ const PageBar = ({p, setP, k, idx, setIdx}) => {
             c =
                 k === 'een'
                     ? {...g, tree: reid(g.tree)}
-                    : {
-                        ...g,
-                        walls: g.walls.map((w) => ({...w, id: uid()})),
-                        items: g.items.map((i) => ({...i, id: uid()}))
-                    }
+                    : {...g, walls: g.walls.map((w) => ({...w, id: uid()})), items: g.items.map((i) => ({...i, id: uid()}))}
         set([...L.slice(0, idx + 1), {...c, id: uid(), name: g.name + ' (kopie)'}, ...L.slice(idx + 1)])
         setIdx(idx + 1)
     }
@@ -117,9 +113,8 @@ export default function App() {
                 <button onClick={library.reload}>Opnieuw proberen</button>
             </div>
         )
-    return <Editor library={library}/>
+    return <Editor library={library} />
 }
-
 function Editor({library}) {
     const {p, setP, reset, undo, redo, canUndo, canRedo} = useHistory(init),
         [footer, setFooter] = useState(null),
@@ -151,14 +146,7 @@ function Editor({library}) {
         p.custom.forEach((c) => {
             const k = 'custom:' + c.id
             if (!lib.some((x) => x.k === k))
-                saveComp({
-                    k,
-                    name: c.name,
-                    cat: c.cat || 'Eigen',
-                    parents: c.parents,
-                    place: c.place !== false,
-                    shapes: c.shapes
-                })
+                saveComp({k, name: c.name, cat: c.cat || 'Eigen', parents: c.parents, place: c.place !== false, shapes: c.shapes})
         })
         setP((cur) => ({...cur, custom: []}))
     }, [p.custom])
@@ -172,8 +160,7 @@ function Editor({library}) {
                     setSi(0)
                 }
             })
-            .catch(() => {
-            })
+            .catch(() => {})
     }, [pid])
     useEffect(() => {
         if (!job) return
@@ -216,12 +203,7 @@ function Editor({library}) {
         try {
             const r = importEds(t)
             // the situatieschema is not imported: keep the pages and walls, but drop symbols that pointed to the replaced nodes
-            setP((cur) => ({
-                ...cur,
-                een: r.een,
-                sit: cur.sit.map((g) => ({...g, items: []})),
-                footer: {...cur.footer, ...r.footer}
-            }))
+            setP((cur) => ({...cur, een: r.een, sit: cur.sit.map((g) => ({...g, items: []})), footer: {...cur.footer, ...r.footer}}))
             setEi(0)
             setSi(0)
             setMsg(
@@ -236,14 +218,7 @@ function Editor({library}) {
         // own components travel along with the project file (as `custom`) so it opens on another installation
         const custom = lib
             .filter((c) => !c.builtin)
-            .map((c) => ({
-                id: c.k.replace(/^custom:/, ''),
-                name: c.name,
-                cat: c.cat,
-                parents: c.parents,
-                place: c.place,
-                shapes: c.shapes
-            }))
+            .map((c) => ({id: c.k.replace(/^custom:/, ''), name: c.name, cat: c.cat, parents: c.parents, place: c.place, shapes: c.shapes}))
         a.href = URL.createObjectURL(new Blob([JSON.stringify({...p, custom})], {type: 'application/json'}))
         a.download = (p.footer.titel || 'schema') + '.json'
         a.click()
@@ -270,6 +245,7 @@ function Editor({library}) {
                         )}
                     </button>
                 ))}
+                {un > 0 && <span title="Niet geplaatst op situatieschema">⚠ {un}</span>}
                 <button title="Ongedaan maken (Ctrl+Z)" disabled={!canUndo} onClick={undo}>
                     ↶ Ongedaan
                 </button>
@@ -325,30 +301,26 @@ function Editor({library}) {
                 <button onClick={() => setJob('pdf')}>PDF</button>
                 <button onClick={() => setJob('print')}>Afdrukken</button>
             </div>
-            {showV && <Verify issues={issues} onGo={go} onClose={() => setShowV(false)}/>}
-            {footer &&
-                <FooterDialog key={footer.n} p={p} setP={setP} focus={footer.k} onClose={() => setFooter(null)}/>}
+            {showV && <Verify issues={issues} onGo={go} onClose={() => setShowV(false)} />}
+            {footer && <FooterDialog key={footer.n} p={p} setP={setP} focus={footer.k} onClose={() => setFooter(null)} />}
             <div className="ui">
                 {tab === 0 && (
                     <>
-                        <PageBar p={p} setP={setP} k="een" idx={e} setIdx={setEi}/>
-                        <OneWireDiagram key={p.een[e].id} p={p} setP={setP} idx={e} focus={focus}
-                                        onFooter={openFooter}/>
+                        <PageBar p={p} setP={setP} k="een" idx={e} setIdx={setEi} />
+                        <OneWireDiagram key={p.een[e].id} p={p} setP={setP} idx={e} focus={focus} onFocused={() => setFocus(null)} onFooter={openFooter} />
                     </>
                 )}
                 {tab === 1 && (
                     <>
-                        <PageBar p={p} setP={setP} k="sit" idx={s} setIdx={setSi}/>
-                        <SituationSchema key={p.sit[s].id} p={p} setP={setP} idx={s} onFooter={openFooter}/>
+                        <PageBar p={p} setP={setP} k="sit" idx={s} setIdx={setSi} />
+                        <SituationSchema key={p.sit[s].id} p={p} setP={setP} idx={s} onFooter={openFooter} />
                     </>
                 )}
-                {tab === 2 && <Components lib={lib} onSave={saveComp} onRemove={removeComp} onReset={resetComp}
-                                          onMakeStandard={makeStandard} onRestoreAll={restoreAll}
-                                          onTemplate={template}/>}
+                {tab === 2 && <Components lib={lib} onSave={saveComp} onRemove={removeComp} onReset={resetComp} onMakeStandard={makeStandard} onRestoreAll={restoreAll} onTemplate={template} />}
             </div>
             {job && (
                 <div ref={ref}>
-                    <AllSheets p={p}/>
+                    <AllSheets p={p} />
                 </div>
             )}
         </>

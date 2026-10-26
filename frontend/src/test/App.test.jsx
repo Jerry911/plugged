@@ -73,7 +73,7 @@ test('migrates old format on load', async () => {
     expect(b.een[0].tree[0].label).toBe('Oud sc')
     expect(b.sit[0].items[0].r).toBe(30)
     expect(b.footer.titel).toBe('Oud')
-    screen.getByTitle('Niet geplaatst op situatieschema')
+    screen.getAllByTitle('Niet geplaatst op situatieschema')
 })
 test('loads new format and other project numbers', async () => {
     setup({een: [{id: 'a', name: 'Eigen blad', tree: []}], sit: [{id: 'b', name: 'P', walls: [], items: []}], custom: [], footer: {}})

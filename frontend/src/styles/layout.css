@@ -75,6 +75,13 @@
 }
 
 .verify {
+    /* stays in view while the drawing scrolls to the element of a clicked message; long lists scroll inside */
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    max-height: 35vh;
+    overflow-y: auto;
+    user-select: text;
     margin: 8px 10px;
     padding: 8px;
     border: 1px solid #888;

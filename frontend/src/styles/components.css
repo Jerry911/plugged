@@ -112,6 +112,7 @@
 
 .iss {
     cursor: pointer;
+    user-select: text;
     list-style: none;
     padding: 3px
 }

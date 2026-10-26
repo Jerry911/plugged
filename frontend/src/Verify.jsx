@@ -3,6 +3,8 @@
 import {summarize} from './rules.jsx'
 
 const ICON = {error: '✖', warn: '⚠', info: 'ℹ'}
+// a click that ends a text selection (dragging over a message to copy it) must not jump to the element
+const selecting = () => !!window.getSelection?.()?.toString()
 export default function Verify({issues, onGo, onClose}) {
     const c = summarize(issues)
     return <div className="ui verify" role="region" aria-label="Controle">
@@ -11,7 +13,7 @@ export default function Verify({issues, onGo, onClose}) {
         </div>
         {!c.error && !c.warn && <div className="ok">✓ Geen fouten of waarschuwingen gevonden</div>}
         <p>{c.error} fouten · {c.warn} waarschuwingen · {c.info} opmerkingen</p>
-        <ul style={{padding: 0}}>{issues.map(i => <li key={i.id} className={'iss ' + i.level} onClick={() => onGo(i)}>
+        <ul style={{padding: 0}}>{issues.map(i => <li key={i.id} className={'iss ' + i.level} onClick={() => selecting() || onGo(i)}>
             <span>{ICON[i.level]}</span> {i.msg}{i.pageName && <small> — {i.pageName}</small>}</li>)}</ul>
         <small>Hulpmiddel op basis van richtwaarden; vervangt de keuring door een erkend organisme niet.</small></div>
 }

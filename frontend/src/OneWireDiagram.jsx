@@ -1,6 +1,6 @@
 // Copyright 2026 Pleysier Jeroen
 // SPDX-License-Identifier: AGPL-3.0-only
-import {useEffect, useState} from 'react'
+import {useEffect, useRef, useState} from 'react'
 import {allTypes, stackOf, Sym, typeOf} from './symbols'
 import {BoardSheet} from './Board.jsx'
 import {defaultProps, infoOf, nextLetter, sheetPlan} from './boardModel.jsx'
@@ -48,50 +48,21 @@ export const rotate = (ns, id, deg) =>
     upd(ns, id, (x) => [{...x, r: (((x.r || 0) + deg) % 360 + 360) % 360}])
 // small line icons for the toolbar buttons (stroke follows the text colour)
 const Ico = ({children}) => (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-         strokeLinecap="round"
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"
          strokeLinejoin="round" aria-hidden="true">
         {children}
     </svg>
 )
 const ICONS = {
     // move to an earlier / later position among the elements of the same group
-    earlier: <Ico>
-        <path d="M12 19V5"/>
-        <path d="M5 12l7-7 7 7"/>
-    </Ico>,
-    later: <Ico>
-        <path d="M12 5v14"/>
-        <path d="M19 12l-7 7-7-7"/>
-    </Ico>,
+    earlier: <Ico><path d="M12 19V5"/><path d="M5 12l7-7 7 7"/></Ico>,
+    later: <Ico><path d="M12 5v14"/><path d="M19 12l-7 7-7-7"/></Ico>,
     // one level up (out of its group) / one level down (into the previous element)
-    outdent: <Ico>
-        <path d="M21 6H11"/>
-        <path d="M21 12h-6"/>
-        <path d="M21 18H11"/>
-        <path d="M7 8l-4 4 4 4"/>
-    </Ico>,
-    indent: <Ico>
-        <path d="M21 6H11"/>
-        <path d="M21 12h-6"/>
-        <path d="M21 18H11"/>
-        <path d="M3 8l4 4-4 4"/>
-    </Ico>,
-    ccw: <Ico>
-        <path d="M3 12a9 9 0 1 0 3-6.7"/>
-        <path d="M3 4v5h5"/>
-    </Ico>,
-    trash: <Ico>
-        <path d="M3 6h18"/>
-        <path d="M8 6V4h8v2"/>
-        <path d="M19 6l-1 14H6L5 6"/>
-        <path d="M10 11v6"/>
-        <path d="M14 11v6"/>
-    </Ico>,
-    cw: <Ico>
-        <path d="M21 12a9 9 0 1 1-3-6.7"/>
-        <path d="M21 4v5h-5"/>
-    </Ico>,
+    outdent: <Ico><path d="M21 6H11"/><path d="M21 12h-6"/><path d="M21 18H11"/><path d="M7 8l-4 4 4 4"/></Ico>,
+    indent: <Ico><path d="M21 6H11"/><path d="M21 12h-6"/><path d="M21 18H11"/><path d="M3 8l4 4-4 4"/></Ico>,
+    ccw: <Ico><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></Ico>,
+    trash: <Ico><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></Ico>,
+    cw: <Ico><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 4v5h-5"/></Ico>,
 }
 // ids of the ancestors of a node (to unfold them when the node gets selected)
 const ancestorsOf = (ns, id, acc = []) => {
@@ -139,7 +110,7 @@ const OTHER = [
     ['aantal', 'Aantal (x)'],
     ['nr', 'Nr'],
 ]
-export default function OneWireDiagram({p, setP, idx, focus, onFooter}) {
+export default function OneWireDiagram({p, setP, idx, focus, onFocused, onFooter}) {
     const pg = p.een[idx],
         tree = pg.tree,
         T = allTypes(p),
@@ -147,9 +118,15 @@ export default function OneWireDiagram({p, setP, idx, focus, onFooter}) {
         [free, setFree] = useState(false),
         [q, setQ] = useState(''),
         [zoom, setZoom] = useState(1),
-        [folded, setFolded] = useState(() => new Set())
+        [folded, setFolded] = useState(() => new Set()),
+        mainRef = useRef(null)
+    // a message of the check (or any other jump): select the element and scroll the drawing to it, also on another sheet
     useEffect(() => {
-        focus && setSel(focus.id)
+        if (!focus) return
+        setSel(focus.id)
+        const el = [...(mainRef.current?.querySelectorAll('[data-nid]') || [])].find((e) => e.getAttribute('data-nid') === String(focus.id))
+        el?.scrollIntoView?.({block: 'center', inline: 'center', behavior: 'smooth'})
+        onFocused?.()
     }, [focus])
     const unfold = (ids) => setFolded((f) => (ids.some((i) => f.has(i)) ? new Set([...f].filter((i) => !ids.includes(i))) : f))
     // a selected element (e.g. clicked in the drawing) is never hidden inside a folded level
@@ -392,8 +369,7 @@ export default function OneWireDiagram({p, setP, idx, focus, onFooter}) {
                         )}
                         {fieldRows.map((r) =>
                             r.short ? (
-                                <div key={r.fs[0][0]} id={'eds-short-' + r.fs[0][0]}
-                                     style={{display: 'flex', flexDirection: 'column', gap: 4, marginTop: 4}}>
+                                <div key={r.fs[0][0]} id={'eds-short-' + r.fs[0][0]} style={{display: 'flex', flexDirection: 'column', gap: 4, marginTop: 4}}>
                                     {r.fs.map(([k, l, w]) => (
                                         <label key={k} style={{display: 'flex', alignItems: 'center', gap: 8}}>
                                             <span style={{minWidth: '8.5em'}}>{l}</span>
@@ -401,11 +377,7 @@ export default function OneWireDiagram({p, setP, idx, focus, onFooter}) {
                                                 value={s.p?.[k] ?? ''}
                                                 maxLength={w}
                                                 onChange={(e) => setProp(k, e.target.value)}
-                                                style={{
-                                                    width: w + 2 + 'ch',
-                                                    boxSizing: 'border-box',
-                                                    textAlign: 'center'
-                                                }}
+                                                style={{width: w + 2 + 'ch', boxSizing: 'border-box', textAlign: 'center'}}
                                             />
                                         </label>
                                     ))}
@@ -425,14 +397,12 @@ export default function OneWireDiagram({p, setP, idx, focus, onFooter}) {
                         )}
                         {stackOf(typeOf(p, s.type), s.p) && (
                             <label>
-                                <div>
-                                    <input
-                                        type="checkbox"
-                                        checked={stackOf(typeOf(p, s.type), s.p).hor}
-                                        onChange={(e) => setProp('hor', e.target.checked)}
-                                    />{' '}
-                                    Horizontaal
-                                </div>
+                                <input
+                                    type="checkbox"
+                                    checked={stackOf(typeOf(p, s.type), s.p).hor}
+                                    onChange={(e) => setProp('hor', e.target.checked)}
+                                />{' '}
+                                Horizontaal (gestapeld bij meerdere)
                             </label>
                         )}
                         {!DIST.includes(s.type) && (
@@ -442,15 +412,10 @@ export default function OneWireDiagram({p, setP, idx, focus, onFooter}) {
                                     id="eds-details"
                                     aria-label="Details"
                                     rows={4}
-                                    placeholder={'Eén regel per gegeven, bv.\nMerk: Huawei\nType: SUN2000-6KTL\nS/N: HV1234\nPmax: 6 kW'}
+                                    placeholder={'Eén regel per gegeven, bv.\nMerk: Huawei\nType: SUN2000-6KTL\nS/N: HV2290060767\nPmax: 6 kW'}
                                     value={s.p?.details ?? ''}
                                     onChange={(e) => setProp('details', e.target.value)}
-                                    style={{
-                                        width: '100%',
-                                        boxSizing: 'border-box',
-                                        resize: 'vertical',
-                                        fontFamily: 'inherit'
-                                    }}
+                                    style={{width: '100%', boxSizing: 'border-box', resize: 'vertical', fontFamily: 'inherit'}}
                                 />
                                 <small style={{color: '#666'}}>Enter = nieuwe regel (ook | scheidt regels)</small>
                             </label>
@@ -538,7 +503,7 @@ export default function OneWireDiagram({p, setP, idx, focus, onFooter}) {
                 <b>Opbouw</b>
                 <div className="tree">{rows(tree)}</div>
             </div>
-            <div className="main">
+            <div className="main" ref={mainRef}>
                 {plan.map((e) => (
                     <div
                         key={e.no}

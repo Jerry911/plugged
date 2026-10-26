@@ -1,7 +1,7 @@
 // Copyright 2026 Pleysier Jeroen
 // SPDX-License-Identifier: AGPL-3.0-only
 import pako from 'pako'
-import {decodeEds, edsToProject, importEds, KNOWN, lampKey, socketKey, switchKey} from '../eds.jsx'
+import {decodeEds, edsToProject, importEds, KNOWN, lampKey, moduleKey, socketKey, switchKey} from '../eds.jsx'
 import {flat} from '../util.jsx'
 import {verify} from '../rules.jsx'
 import {base} from './utils.jsx'
@@ -233,4 +233,11 @@ test('imported lights and switches use their own symbols', () => {
     })
     expect(['e4', 'e5', 'e6', 'e7', 'e8', 'e9'].map((id) => get(r, id).type)).toEqual(['wissel', 'tl', 'rolluik', 'led', 'spot', 'wandlamp'])
     expect(get(r, 'e8').p.aantal).toBe(4)
+})
+
+test('modulaire schakelaar symbol follows module_type', () => {
+    const k = (t) => moduleKey({type: 'Modulaire schakelaar', module_type: t})
+    expect(['teleruptor', 'dimmer', 'relais', 'minuterie', 'tijdschakelaar', 'iets', undefined].map(k)).toEqual([
+        'teleruptor', 'dimmermodule', 'relais', 'minuterie', 'klok', 'modulaire', 'modulaire',
+    ])
 })

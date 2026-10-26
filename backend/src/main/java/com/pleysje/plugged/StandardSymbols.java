@@ -43,7 +43,7 @@ public final class StandardSymbols {
             "stopcontact3", "stopcontact_h", "trafo", "modulaire", "motor", "bel", "zoemer", "sirene", "klok", "data", "tv", "vrij",
             "lichtcircuit", "microgolf", "zonnepanelen", "omvormer", "batterij", "oven", "kookplaat", "wasmachine", "droogkast", "vaatwas",
             "koelkast", "diepvries", "airco", "ventilatie", "laadpaal", "boiler", "verwarming", "thermostaat", "rookmelder", "aftakdoos",
-            "wandlamp", "tl", "noodlicht", "spot", "led", "wissel2", "rolluik", "beweging");
+            "wandlamp", "tl", "noodlicht", "spot", "led", "wissel2", "rolluik", "beweging", "teleruptor", "dimmermodule", "relais", "minuterie");
 
     private static final List<String> EL = ELEMENT_KEYS;
 
@@ -192,6 +192,10 @@ public final class StandardSymbols {
         x("subbord", "Onderbord", G, plus(EL, "bord"), of(rect(2, 5, 20, 14), line(2, 12, 22, 12)), true);
         x("trafo", "Transformator", G, EL, UpstreamSymbols.trafo(), true);
         x("modulaire", "Modulaire schakelaar", O, EL, of(rect(5, 2, 14, 19), line(5, 18.5, 19, 18.5), circle(10, 14.5, 1.6), line(11.1, 13.4, 15, 8), line(15, 8, 16.9, 10.3)), true);
+        x("teleruptor", "Teleruptor", O, EL, UpstreamSymbols.teleruptor(), true);
+        x("dimmermodule", "Dimmer (modulair)", O, EL, UpstreamSymbols.dimmerModule(), true);
+        x("relais", "Relais", O, EL, UpstreamSymbols.relais(), true);
+        x("minuterie", "Minuterie (trappenlichtautomaat)", O, EL, UpstreamSymbols.minuterie(), true);
         x("lichtcircuit", "Lichtcircuit", O, EL, all(lamp(12, 12, 7), of(circle(12, 12, 10))), true);
         x("aftakdoos", "Aftakdoos", G, EL, UpstreamSymbols.aftakdoos(), true);
         x("aarding", "Aardingspunt", G, List.of("bord", "aansluiting"), of(line(12, 3, 12, 12), line(5, 12, 19, 12), line(8, 15, 16, 15), line(10, 18, 14, 18)), false);

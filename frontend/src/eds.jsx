@@ -82,6 +82,16 @@ export const switchKey = (q = {}) => {
     if ((k === 'schakelaar' || k === 'schakelaar2') && (q.heeft_verklikkerlampje === true || q.heeft_signalisatielampje === true)) return 'verklikker'
     return k
 }
+// A Modulaire schakelaar follows module_type; the time switch is the existing 'klok' symbol. Unknown module types stay the generic 'modulaire'.
+export const moduleKey = (q = {}) => {
+    const t = String(q.module_type || '').toLowerCase()
+    if (/telerupt/.test(t)) return 'teleruptor'
+    if (/dim/.test(t)) return 'dimmermodule'
+    if (/relais/.test(t)) return 'relais'
+    if (/minuterie|trap/.test(t)) return 'minuterie'
+    if (/tijd|klok/.test(t)) return 'klok'
+    return 'modulaire'
+}
 const num = (v) => {
     const n = parseFloat(String(v ?? '').replace(',', '.'))
     return Number.isFinite(n) ? n : undefined
@@ -110,6 +120,8 @@ function conv(r) {
                   ? lampKey(q)
                   : q.type === 'Schakelaars'
                     ? switchKey(q) || 'schakelaar'
+                    : q.type === 'Modulaire schakelaar'
+                      ? moduleKey(q)
                     : MAP[q.type] || 'vrij',
         n = {id: 'e' + r.id, type, label: '', info: '', children: []}
     if (type === 'kring') {

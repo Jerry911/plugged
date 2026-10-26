@@ -426,6 +426,36 @@ final class UpstreamSymbols {
                 bold(text(18.5, 15.8, "PIR", 3.5)));
     }
 
+    /** modulaire schakelaars (SVGSymbols 'teleruptor', 'dimmer', 'relais', 'minuterie'): a 40 x 26 box like the thermostat; the time switch is klok() */
+    static List<Map<String, Object>> teleruptor() {
+        return of(line(1, 12, 8, 12),
+                rect(8, 7.45, 14, 9.1),
+                line(10.8, 14.1, 13.6, 14.1),
+                line(16.4, 14.1, 19.2, 14.1),
+                line(13.6, 9.9, 13.6, 14.1),
+                line(16.4, 9.9, 16.4, 14.1));
+    }
+
+    static List<Map<String, Object>> dimmerModule() {
+        return of(line(1, 12, 8, 12),
+                rect(8, 7.45, 14, 9.1),
+                line(11.5, 13.75, 18.5, 13.75),
+                line(11.5, 13.75, 11.5, 10.25),
+                line(11.5, 10.25, 18.5, 13.75));
+    }
+
+    static List<Map<String, Object>> relais() {
+        return of(line(1, 12, 8, 12),
+                rect(8, 7.45, 14, 9.1),
+                line(11.5, 7.45, 18.5, 16.55));
+    }
+
+    static List<Map<String, Object>> minuterie() {
+        return of(line(1, 12, 8, 12),
+                rect(8, 7.45, 14, 9.1),
+                text(15, 14.1, "t", 5.6));
+    }
+
     static List<Map<String, Object>> noodlicht() {
         return of(line(1, 12, 11.15, 12),
                 paper(rect(7.44, 8.29, 7.43, 7.43)),

@@ -80,6 +80,25 @@ class StandardSymbolsTest {
         assertEquals(Map.of("pe", true, "n", 3), StandardSymbols.find("stopcontact3").sock());
     }
 
+    /** The symbols that have a counterpart in the online eendraadschema are drawn like it (see UpstreamSymbols). */
+    @Test
+    void symbolsOfTheEendraadschemaAreDrawnLikeIt() {
+        assertNotSame(UpstreamSymbols.lichtpunt(), UpstreamSymbols.lichtpunt()); // every call hands out a fresh list
+        assertEquals(UpstreamSymbols.lichtpunt(), StandardSymbols.find("lichtpunt").shapes());
+        assertEquals(UpstreamSymbols.motor(), StandardSymbols.find("motor").shapes());
+        // thick strokes, fills and the sine wave of the original come back as weights, paper fill and paths
+        List<Map<String, Object>> motor = StandardSymbols.find("motor").shapes();
+        assertTrue(motor.stream().anyMatch(s -> "text".equals(s.get("t")) && Integer.valueOf(1).equals(s.get("b"))));
+        assertTrue(StandardSymbols.find("schakelaar").shapes().stream().anyMatch(s -> "circle".equals(s.get("t")) && Integer.valueOf(2).equals(s.get("f"))));
+        assertTrue(StandardSymbols.find("omvormer").shapes().stream().anyMatch(s -> "path".equals(s.get("t"))));
+        assertTrue(StandardSymbols.find("dimmer").shapes().stream().anyMatch(s -> "path".equals(s.get("t")) && Integer.valueOf(1).equals(s.get("f"))));
+        // the arch of a socket is as heavy as in the original, and no socket sticks out of the grid however many are stacked
+        assertEquals(UpstreamSymbols.W2, StandardSymbols.socket(true, false, false, 1).stream().filter(s -> "arc".equals(s.get("t"))).findFirst().orElseThrow().get("sw"));
+        for (int n = 1; n <= 6; n++)
+            for (Map<String, Object> s : StandardSymbols.socket(true, true, false, n))
+                if ("arc".equals(s.get("t"))) assertTrue((Double) s.get("cx") <= 23.4, n + " sockets");
+    }
+
     /** The frontend tests use the standard symbols as their library; keep that file in step with the catalog. */
     @Test
     void frontendFixtureMatchesTheCatalog() throws IOException {

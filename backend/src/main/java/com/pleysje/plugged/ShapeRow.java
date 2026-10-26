@@ -19,6 +19,16 @@ public class ShapeRow {
     @Column(name = "content", length = 60)
     private String content;
     private Boolean filled;
+    /** filled in the colour of the paper (f = 2) */
+    private Boolean paper;
+    /** line weight relative to the weight of the drawing (sw), empty is 1 */
+    @Column(name = "stroke_weight")
+    private Double strokeWeight;
+    /** bold text (b) */
+    private Boolean bold;
+    /** SVG path data of a path */
+    @Column(name = "path_data", length = SymbolShapes.PATH_MAX)
+    private String pathData;
 
     public ShapeRow() {
     }
@@ -38,14 +48,14 @@ public class ShapeRow {
                 s.cx = num(m, "cx");
                 s.cy = num(m, "cy");
                 s.radius = num(m, "r");
-                s.filled = flag(m.get("f"));
+                s.fill(m.get("f"));
             }
             case "rect" -> {
                 s.x = num(m, "x");
                 s.y = num(m, "y");
                 s.width = num(m, "w");
                 s.height = num(m, "h");
-                s.filled = flag(m.get("f"));
+                s.fill(m.get("f"));
             }
             case "arc" -> {
                 s.cx = num(m, "cx");
@@ -54,14 +64,32 @@ public class ShapeRow {
                 s.a1 = num(m, "a1");
                 s.a2 = num(m, "a2");
             }
+            case "path" -> {
+                s.pathData = (String) m.get("d");
+                s.fill(m.get("f"));
+            }
             default -> {
                 s.x = num(m, "x");
                 s.y = num(m, "y");
                 s.content = (String) m.get("s");
                 s.fontSize = m.get("fs") instanceof Number ? num(m, "fs") : null;
+                s.bold = flag(m.get("b"));
             }
         }
+        s.strokeWeight = m.get("sw") instanceof Number ? num(m, "sw") : null;
         return s;
+    }
+
+    /** f: 1 (or true) is filled in the colour of the drawing, 2 in the colour of the paper */
+    private void fill(Object f) {
+        boolean paperFill = f instanceof Number n && n.doubleValue() == 2;
+        filled = paperFill ? null : flag(f);
+        paper = paperFill ? Boolean.TRUE : null;
+    }
+
+    private void putFill(Map<String, Object> m) {
+        if (filled != null) m.put("f", 1);
+        else if (paper != null) m.put("f", 2);
     }
 
     private static Double num(Map<String, Object> m, String f) {
@@ -88,14 +116,14 @@ public class ShapeRow {
                 m.put("cx", cx);
                 m.put("cy", cy);
                 m.put("r", radius);
-                if (filled != null) m.put("f", 1);
+                putFill(m);
             }
             case "rect" -> {
                 m.put("x", x);
                 m.put("y", y);
                 m.put("w", width);
                 m.put("h", height);
-                if (filled != null) m.put("f", 1);
+                putFill(m);
             }
             case "arc" -> {
                 m.put("cx", cx);
@@ -104,13 +132,19 @@ public class ShapeRow {
                 m.put("a1", a1);
                 m.put("a2", a2);
             }
+            case "path" -> {
+                m.put("d", pathData);
+                putFill(m);
+            }
             default -> {
                 m.put("x", x);
                 m.put("y", y);
                 m.put("s", content);
                 if (fontSize != null) m.put("fs", fontSize);
+                if (bold != null) m.put("b", 1);
             }
         }
+        if (strokeWeight != null) m.put("sw", strokeWeight);
         return m;
     }
 

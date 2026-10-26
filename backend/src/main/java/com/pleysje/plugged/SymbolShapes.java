@@ -8,11 +8,17 @@ import java.util.Map;
 
 /**
  * Builders and checks for the drawing primitives of a symbol: line, circle, rect (both optionally filled), arc
- * (degrees, clockwise on screen) and text. A shape is a map in the JSON format of the frontend.
+ * (degrees, clockwise on screen), path (SVG path data, optionally filled) and text. A shape is a map in the JSON format of the frontend.
+ * Every shape may carry {@code sw} (line weight, relative to the weight of the drawing, default 1); {@code f} is 1 for filled in the
+ * colour of the drawing and 2 for filled in the colour of the paper (it hides what lies behind it); text may be {@code b} (bold).
  */
 public final class SymbolShapes {
-    public static final List<String> KINDS = List.of("line", "circle", "rect", "arc", "text");
+    public static final List<String> KINDS = List.of("line", "circle", "rect", "arc", "text", "path");
     public static final double LIMIT = 1000;
+    /** the longest path data of one shape, and the only characters it may contain: commands, numbers and separators */
+    public static final int PATH_MAX = 1200;
+    public static final java.util.regex.Pattern PATH_DATA = java.util.regex.Pattern.compile("[MmLlHhVvCcSsQqTtAaZz0-9eE.,+\\s-]+");
+    public static final double WEIGHT_MAX = 10;
 
     private SymbolShapes() {
     }
@@ -61,6 +67,34 @@ public final class SymbolShapes {
         return shape("arc", "cx", cx, "cy", cy, "r", r, "a1", a1, "a2", a2);
     }
 
+    /** @param d SVG path data (M L H V C S Q T A Z, absolute or relative) */
+    public static Map<String, Object> path(String d) {
+        return shape("path", "d", d);
+    }
+
+    /** the shape filled in the colour of the drawing (a path is not filled unless it says so) */
+    public static Map<String, Object> filled(Map<String, Object> m) {
+        m.put("f", 1);
+        return m;
+    }
+
+    /** the shape filled in the colour of the paper: it hides the lines behind it */
+    public static Map<String, Object> paper(Map<String, Object> m) {
+        m.put("f", 2);
+        return m;
+    }
+
+    /** the shape drawn with a line weight relative to the one of the drawing */
+    public static Map<String, Object> weight(Map<String, Object> m, double w) {
+        m.put("sw", w);
+        return m;
+    }
+
+    public static Map<String, Object> bold(Map<String, Object> m) {
+        m.put("b", 1);
+        return m;
+    }
+
     /** The required numeric fields per kind of shape. */
     public static List<String> numbers(String kind) {
         return switch (kind) {
@@ -69,6 +103,7 @@ public final class SymbolShapes {
             case "rect" -> List.of("x", "y", "w", "h");
             case "arc" -> List.of("cx", "cy", "r", "a1", "a2");
             case "text" -> List.of("x", "y");
+            case "path" -> List.of();
             default -> List.of();
         };
     }
@@ -85,6 +120,10 @@ public final class SymbolShapes {
         }
         if ((kind.equals("circle") || kind.equals("arc")) && ((Number) m.get("r")).doubleValue() <= 0) return kind + ": straal moet groter zijn dan 0";
         if (kind.equals("rect") && (((Number) m.get("w")).doubleValue() < 0 || ((Number) m.get("h")).doubleValue() < 0)) return "rect: breedte en hoogte mogen niet negatief zijn";
+        if (kind.equals("path")) {
+            if (!(m.get("d") instanceof String d) || d.isBlank() || d.length() > PATH_MAX || !PATH_DATA.matcher(d).matches()) return "path: ongeldige padgegevens";
+        }
+        if (m.get("sw") != null && (!(m.get("sw") instanceof Number w) || !(w.doubleValue() > 0) || w.doubleValue() > WEIGHT_MAX)) return kind + ": ongeldige lijndikte";
         if (kind.equals("text")) {
             if (!(m.get("s") instanceof String s) || s.isEmpty() || s.length() > 60) return "text: tekst ontbreekt of is te lang";
             if (m.get("fs") != null && (!(m.get("fs") instanceof Number fs) || fs.doubleValue() <= 0 || fs.doubleValue() > LIMIT)) return "text: ongeldige lettergrootte";

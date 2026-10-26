@@ -53,7 +53,7 @@ class SymbolControllerTest {
                 .andExpect(jsonPath("$.sock.n").value(3))
                 .andExpect(jsonPath("$.sock.pe").value(true))
                 .andExpect(jsonPath("$.shapes[0].t").value("line"))
-                .andExpect(jsonPath("$.shapes[1].t").value("arc"));
+                .andExpect(jsonPath("$.shapes[?(@.t=='arc')]", hasSize(3)));
         mvc.perform(get("/api/symbols/lichtpunt")).andExpect(jsonPath("$.sock").doesNotExist());
         mvc.perform(get("/api/symbols/nope")).andExpect(status().isNotFound());
     }

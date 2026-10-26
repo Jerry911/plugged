@@ -100,22 +100,24 @@ test('legacy project components keep working unless the library already has them
 test('placeable symbols have a connection point on the centre line', () => {
     BUILTIN.filter((t) => t.place).forEach((t) => expect(reach(t.shapes), t.k).not.toBeNull())
 })
-test('switch lines touch: supply line ends on the hinge circle, lever starts on it', () => {
-    const [wire, hinge, lever, ...flags] = typeOf({}, 'schakelaar').shapes
-    expect(wire.x2).toBe(hinge.cx - hinge.r)
-    expect(Math.hypot(lever.x1 - hinge.cx, lever.y1 - hinge.cy)).toBeCloseTo(hinge.r, 1)
+test('switch lines touch: the supply line and the lever meet in the centre of the hinge circle, which hides their ends; a flag sits on the end of the lever', () => {
+    const [wire, lever, ...rest] = typeOf({}, 'schakelaar').shapes,
+        hinge = rest.pop(),
+        flags = rest
+    expect(hinge).toMatchObject({t: 'circle', f: 2, cy: 12}) // filled with the paper: the circle hides the ends of the wire and the lever
+    expect([wire.x2, wire.y2]).toEqual([hinge.cx, hinge.cy])
+    expect([lever.x1, lever.y1]).toEqual([hinge.cx, hinge.cy])
     flags.forEach((f) => {
-        const t = ((f.x1 - lever.x1) * (lever.x2 - lever.x1) + (f.y1 - lever.y1) * (lever.y2 - lever.y1)) / Math.hypot(lever.x2 - lever.x1, lever.y2 - lever.y1) ** 2
-        const px = lever.x1 + t * (lever.x2 - lever.x1),
-            py = lever.y1 + t * (lever.y2 - lever.y1)
-        expect(Math.hypot(f.x1 - px, f.y1 - py)).toBeLessThan(0.05)
+        expect([f.x1, f.y1]).toEqual([lever.x2, lever.y2])
+        // perpendicular to the lever
+        expect(Math.abs((f.x2 - f.x1) * (lever.x2 - lever.x1) + (f.y2 - f.y1) * (lever.y2 - lever.y1))).toBeLessThan(0.1) // (coordinates are rounded to 0.01)
     })
     expect(flags).toHaveLength(1)
     expect(typeOf({}, 'schakelaar2').shapes).toHaveLength(typeOf({}, 'schakelaar').shapes.length + 1)
     expect(typeOf({}, 'schakelaar3').shapes).toHaveLength(typeOf({}, 'schakelaar').shapes.length + 2)
 })
 test('multi-way switches have a lever with a flag on both sides of the hinge circle', () => {
-    const levers = (k) => typeOf({}, k).shapes.filter((h) => h.t === 'line' && h.y1 !== 12 && h.x1 !== h.x2 && Math.abs(h.y2 - h.y1) > 4)
+    const levers = (k) => typeOf({}, k).shapes.filter((h) => h.t === 'line' && h.x1 !== h.x2 && Math.abs(h.y2 - h.y1) > 4)
     expect(levers('wissel')).toHaveLength(2)
     expect(levers('omschakelaar')).toHaveLength(2)
     expect(levers('kruis')).toHaveLength(4)
@@ -154,7 +156,13 @@ test('socket variants: bar for the protective conductor, feet for kinderveilighe
     expect(sockShapes({n: 3}, false)).toContainEqual(expect.objectContaining({s: '3'}))
     const h = sockShapes({kid: true, n: 3}, true)
     expect(h.filter((s) => s.t === 'arc')).toHaveLength(3)
-    expect(h.filter((s) => s.t === 'arc').every((a) => a.cx + a.r <= 24)).toBe(true)
+    // an arch is the left half of its circle: it ends at cx, and all of them fit the grid
+    expect(h.filter((s) => s.t === 'arc').every((a) => a.cx <= 24)).toBe(true)
+    for (const n of [1, 2, 3, 4, 6]) expect(Math.max(...sockShapes({n}, true).filter((s) => s.t === 'arc').map((a) => a.cx))).toBeLessThanOrEqual(23.4)
+    // two sockets are chained at the distance of the eendraadschema (20 units of 0.35), more of them are pressed together to fit
+    const apex = (n) => sockShapes({pe: true, n}, true).filter((s) => s.t === 'line' && s.x1 === s.x2 && s.y1 !== 12).map((s) => s.x1)
+    expect(apex(2)[1] - apex(2)[0]).toBeCloseTo(7, 5)
+    expect(apex(4)[1] - apex(4)[0]).toBeLessThan(7)
     expect(sockShapes({h: true}, true)).toContainEqual(expect.objectContaining({s: 'h'}))
     expect(sockShapes({h: true})).toContainEqual(expect.objectContaining({s: 'h'}))
     expect(reach(sockShapes({n: 4}, true))).not.toBeNull()
@@ -178,10 +186,12 @@ test('the sockets of the catalog are drawn like the generator draws them (fronte
 })
 test('sockets lie in the line: the supply enters the apex of an arch that opens away from it, nothing hangs below the line', () => {
     sockets().forEach((t) => {
-        expect(t.shapes[0], t.k).toEqual({t: 'line', x1: 1, y1: 12, x2: 4, y2: 12})
         const arcs = t.shapes.filter((h) => h.t === 'arc')
         expect(arcs.length).toBe(t.sock.n || 1)
         arcs.forEach((a) => expect([a.cy, a.a1, a.a2], t.k).toEqual([12, 90, 270]))
+        // the supply line runs from the left to the apex of the last arch (the apex of an arch is r to the left of its centre)
+        expect(t.shapes[0], t.k).toMatchObject({t: 'line', x1: 1, y1: 12, y2: 12})
+        expect(t.shapes[0].x2, t.k).toBeCloseTo(arcs[arcs.length - 1].cx - arcs[0].r, 5)
         // symmetric around the line y = 12 (apart from the little 'h' of the waterproof socket)
         const ys = t.shapes.filter((h) => h.t !== 'text').flatMap((h) => (h.t === 'line' ? [h.y1, h.y2] : [h.cy - h.r, h.cy + h.r]))
         expect(Math.min(...ys) + Math.max(...ys), t.k).toBeCloseTo(24, 5)
@@ -198,12 +208,55 @@ test('a socket is drawn as stored, stacked when there are more, and vertically (
     const lp = typeOf({}, 'lichtpunt')
     expect(shapesOf(lp, {aantal: 3})).toBe(lp.shapes)
 })
-test('switches lean 25 degrees from the vertical like in the PDF, with the supply entering the hinge from the left', () => {
+test('switches lean like in the eendraadschema (10 to the side for 20 up), with the supply entering the hinge from the left', () => {
     for (const k of ['schakelaar', 'schakelaar2', 'schakelaar3', 'verklikker']) {
         const t = typeOf({}, k),
-            lever = t.shapes.find((h) => h.t === 'line' && h.y1 !== 12 && h.x1 !== h.x2 && Math.abs(h.y2 - h.y1) > 7)
+            lever = t.shapes.find((h) => h.t === 'line' && h.x1 !== h.x2 && Math.abs(h.y2 - h.y1) > 6)
         const deg = (Math.atan2(lever.x2 - lever.x1, lever.y1 - lever.y2) * 180) / Math.PI
-        expect(deg, k).toBeCloseTo(25, 0)
+        expect(deg, k).toBeCloseTo(26.57, 1)
         expect(t.shapes[0], k).toMatchObject({t: 'line', x1: 1, y1: 12, y2: 12})
     }
+})
+test('Sym draws paths, line weights relative to the drawing, shapes filled with the paper and bold text', () => {
+    const {container} = render(
+        <svg>
+            <Sym
+                shapes={[
+                    {t: 'path', d: 'M1 1 L5 1 L5 5 Z', f: 1, sw: 2},
+                    {t: 'path', d: 'M1 1 L5 5'},
+                    {t: 'path', d: 'M2 2 L9 9 Z', f: 2},
+                    {t: 'line', x1: 0, y1: 0, x2: 4, y2: 4, sw: 1.5},
+                    {t: 'arc', cx: 9, cy: 12, r: 3, a1: 90, a2: 270, sw: 1.5},
+                    {t: 'circle', cx: 1, cy: 1, r: 1, f: 2},
+                    {t: 'rect', x: 0, y: 0, w: 2, h: 2, f: 2},
+                    {t: 'text', x: 5, y: 5, s: 'M', fs: 4, b: 1},
+                    {t: 'text', x: 5, y: 5, s: 'x'},
+                ]}
+                stroke="#123"
+                w={1}
+            />
+        </svg>,
+    )
+    const paths = container.querySelectorAll('path')
+    expect([paths[0].getAttribute('d'), paths[0].getAttribute('fill'), paths[0].getAttribute('stroke-width')]).toEqual(['M1 1 L5 1 L5 5 Z', '#123', '2'])
+    expect([paths[1].getAttribute('fill'), paths[1].getAttribute('stroke-width')]).toEqual([null, null])
+    expect(paths[2].getAttribute('fill')).toBe('#fff')
+    expect(container.querySelector('line').getAttribute('stroke-width')).toBe('1.5')
+    expect(paths[3].getAttribute('stroke-width')).toBe('1.5')
+    expect(container.querySelector('circle').getAttribute('fill')).toBe('#fff')
+    expect(container.querySelector('rect').getAttribute('fill')).toBe('#fff')
+    const [bold, plain] = container.querySelectorAll('text')
+    expect([bold.getAttribute('font-weight'), plain.getAttribute('font-weight')]).toEqual(['bold', null])
+})
+test('standard symbols are drawn like the eendraadschema: the same weights, fills and shapes come back from the catalog', () => {
+    const kinds = new Set(BUILTIN.flatMap((t) => t.shapes.map((h) => h.t)))
+    expect([...kinds].sort()).toEqual(['arc', 'circle', 'line', 'path', 'rect', 'text'])
+    const find = (k, f) => typeOf({}, k).shapes.filter(f)
+    expect(find('motor', (h) => h.t === 'text')[0]).toMatchObject({s: 'M', b: 1})
+    expect(find('dimmer', (h) => h.t === 'path')[0]).toMatchObject({f: 1}) // the filled triangle of the dimmer
+    expect(find('omvormer', (h) => h.t === 'path')).toHaveLength(1) // the sine wave
+    expect(find('stopcontact', (h) => h.t === 'arc')[0].sw).toBe(1.5)
+    expect(find('kring', (h) => h.t === 'path')[0]).toMatchObject({f: 1}) // the block on the lever
+    // paths never hide the connection point: reach only follows the line, circle, rect and arc that cross the centre line
+    expect(reach([{t: 'path', d: 'M0 12 L24 12'}])).toBeNull()
 })

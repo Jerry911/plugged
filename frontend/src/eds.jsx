@@ -120,6 +120,8 @@ function conv(r) {
                   ? lampKey(q)
                   : q.type === 'Schakelaars'
                     ? switchKey(q) || 'schakelaar'
+                    : q.type === 'Lichtcircuit'
+                      ? (q.type_schakelaar && switchKey(q)) || 'lichtcircuit'
                     : q.type === 'Modulaire schakelaar'
                       ? moduleKey(q)
                     : MAP[q.type] || 'vrij',
@@ -156,6 +158,10 @@ function conv(r) {
         n.label = q.tekst || q.adres || (type === 'vrij' ? q.type : '')
         n.p = {aantal: num(q.aantal ?? q.aantal_schakelaars) || 1, nr: q.nr || '', details: q.details || ''}
     }
+    // A Lichtcircuit is a switch with its lights in one element (aantal_lichtpunten): with a known switch type it becomes that switch
+    // with the lights as a child, so the switch has its own symbol and still operates its lights.
+    if (q.type === 'Lichtcircuit' && type !== 'lichtcircuit')
+        n.children.push({id: n.id + 'l', type: 'lichtpunt', label: '', info: '', children: [], p: {aantal: num(q.aantal_lichtpunten) || 1, nr: '', details: ''}})
     return n
 }
 const count = (ns) => ns.reduce((a, n) => a + 1 + count(n.children), 0)

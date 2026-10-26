@@ -241,3 +241,18 @@ test('modulaire schakelaar symbol follows module_type', () => {
         'teleruptor', 'dimmermodule', 'relais', 'minuterie', 'klok', 'modulaire', 'modulaire',
     ])
 })
+
+test('a Lichtcircuit with a motion switch becomes that switch with its lights as child', () => {
+    const r = edsToProject({
+        data: [
+            row(1, 0, 'Aansluiting'),
+            row(2, 1, 'Bord'),
+            row(3, 2, 'Kring', {naam: 'E'}),
+            row(4, 3, 'Lichtcircuit', {type_schakelaar: 'bewegingsschakelaar', aantal_lichtpunten: '2', nr: '4'}),
+            row(5, 3, 'Lichtcircuit', {}),
+        ],
+    })
+    expect(get(r, 'e4')).toMatchObject({type: 'beweging', p: {nr: '4'}, children: [{id: 'e4l', type: 'lichtpunt', p: {aantal: 2}}]})
+    expect(get(r, 'e5')).toMatchObject({type: 'lichtcircuit', children: []})
+    expect(r.stats.nodes).toBe(6)
+})

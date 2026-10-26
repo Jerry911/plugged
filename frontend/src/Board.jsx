@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import {Sym} from './symbols'
 import {Sheet} from './Footer'
-import {BUSX0, U} from './boardModel.jsx'
+import {breakerLever, BUSX0, U} from './boardModel.jsx'
 
 const B = '#0a6cff'
 // small trash can in the top right corner of the selected element (only when the sheet is given an onDelete handler)
@@ -31,8 +31,9 @@ const LINE_W = 2
 const Item = ({it, sel, onSel, onDelete}) => {
     const on = sel && it.id === sel,
         c = on ? B : '#000',
-        h = {...(it.id ? {'data-nid': it.id} : {}), ...(it.id && onSel ? {onClick: () => onSel(it.id), style: {cursor: 'pointer'}} : {})}
+        h = it.id && onSel ? {onClick: () => onSel(it.id), style: {cursor: 'pointer'}} : {}
     if (it.k === 'line') return <line x1={it.x1} y1={it.y1} x2={it.x2} y2={it.y2} stroke="#000" strokeWidth={it.w || LINE_W} />
+    if (it.k === 'poly') return <polygon points={it.pts.map((q) => q.join(',')).join(' ')} fill="#000" stroke="#000" strokeWidth="1" strokeLinejoin="round" />
     if (it.k === 'sym')
         return (
             <>
@@ -81,57 +82,60 @@ const Item = ({it, sel, onSel, onDelete}) => {
         </text>
     )
 }
-const Head = ({h}) => (
-    <g stroke="#000" strokeWidth="2" fill="none">
-        {h.ground && (
-            <>
-                <line x1="122" y1="0" x2="122" y2="50" />
-                <line x1="110" y1="20" x2="134" y2="20" />
-                <line x1="110" y1="28" x2="134" y2="28" />
-                <line x1="110" y1="50" x2="134" y2="50" />
-                <line x1="114" y1="56" x2="130" y2="56" />
-                <line x1="118" y1="62" x2="126" y2="62" />
-            </>
-        )}
-        {h.kwh && (
-            <>
-                <line x1="10" y1="96" x2="35" y2="96" />
-                <rect x="35" y="70" width="50" height="50" strokeWidth="3" />
-                <line x1="35" y1="82" x2="85" y2="82" />
-                <text x="60" y="108" fontSize="15" fontWeight="700" textAnchor="middle" fill="#000" stroke="none">
-                    kWh
-                </text>
-                <line x1="85" y1="96" x2={h.main ? 197 : 130} y2="96" />
-                {h.main && <line x1="197" y1="96" x2="197" y2="66" />}
-                {h.q?.kabel && (
-                    <text x="110" y="114" fontSize="13" fill="#000" stroke="none">
-                        {h.q.kabel}
+const Head = ({h}) => {
+    const br = breakerLever(197, 66)
+    return (
+        <g stroke="#000" strokeWidth="2" fill="none">
+            {h.ground && (
+                <>
+                    <line x1="122" y1="0" x2="122" y2="50" />
+                    <line x1="110" y1="20" x2="134" y2="20" />
+                    <line x1="110" y1="28" x2="134" y2="28" />
+                    <line x1="110" y1="50" x2="134" y2="50" />
+                    <line x1="114" y1="56" x2="130" y2="56" />
+                    <line x1="118" y1="62" x2="126" y2="62" />
+                </>
+            )}
+            {h.kwh && (
+                <>
+                    <line x1="10" y1="96" x2="35" y2="96" />
+                    <rect x="35" y="70" width="50" height="50" strokeWidth="3" />
+                    <line x1="35" y1="82" x2="85" y2="82" />
+                    <text x="60" y="108" fontSize="15" fontWeight="700" textAnchor="middle" fill="#000" stroke="none">
+                        kWh
                     </text>
-                )}
-            </>
-        )}
-        {h.main && (
-            <>
-                {/* the supply comes from the meter below: the line stops at the lower contact (y 66), the lever swings up and to the
-                    left (towards the busbar) and ends in a filled block, the line carries on above the lever up to the busbar */}
-                <line x1="197" y1="66" x2="188" y2="44" />
-                <line x1="188" y1="44" x2="184.2" y2="34.7" strokeWidth="8" />
-                <line x1="197" y1="0" x2="197" y2="44" />
-                {[
-                    [h.main === 'differentieel' ? `Δ${h.q.delta || 300}mA` : null, 0],
-                    [`${h.q.polen || 2}P - ${h.q.amp || 40}A`, 1],
-                    [h.q.diffType ? `Type ${h.q.diffType}` : null, 2],
-                ]
-                    .filter((a) => a[0])
-                    .map(([s, i]) => (
-                        <text key={i} transform={`translate(${210 + 13 * i},66) rotate(-90)`} fontSize="13" fill="#000" stroke="none">
-                            {s}
+                    <line x1="85" y1="96" x2={h.main ? 197 : 130} y2="96" />
+                    {h.main && <line x1="197" y1="96" x2="197" y2="66" />}
+                    {h.q?.kabel && (
+                        <text x="110" y="114" fontSize="13" fill="#000" stroke="none">
+                            {h.q.kabel}
                         </text>
-                    ))}
-            </>
-        )}
-    </g>
-)
+                    )}
+                </>
+            )}
+            {h.main && (
+                <>
+                    {/* the supply comes from the meter below: the line stops at the lower contact (y 66), the lever swings up and to the
+                    left (towards the busbar) and ends in a filled block, the line carries on above the lever up to the busbar */}
+                    <line x1="197" y1="66" x2={br.lever.x2} y2={br.lever.y2} />
+                    <polygon points={br.block.pts.map((q) => q.join(',')).join(' ')} fill="#000" strokeLinejoin="round" />
+                    <line x1="197" y1="0" x2="197" y2={br.tipY} />
+                    {[
+                        [h.main === 'differentieel' ? `Δ${h.q.delta || 300}mA` : null, 0],
+                        [`${h.q.polen || 2}P - ${h.q.amp || 40}A`, 1],
+                        [h.q.diffType ? `Type ${h.q.diffType}` : null, 2],
+                    ]
+                        .filter((a) => a[0])
+                        .map(([s, i]) => (
+                            <text key={i} transform={`translate(${210 + 13 * i},66) rotate(-90)`} fontSize="13" fill="#000" stroke="none">
+                                {s}
+                            </text>
+                        ))}
+                </>
+            )}
+        </g>
+    )
+}
 // Width of the head (kWh meter, earth, main differential) in drawing units; it is repeated at the left of every sheet.
 const HEADW = 262
 export const BoardSheet = ({p, pg, b, sl, no, total, sel, onSel, onFooter, onDelete}) => {

@@ -64,10 +64,10 @@ test('circuit draws stem, breaker, letter, specs and cable', () => {
     const t = texts(c.items).map((x) => x.s)
     expect(t).toEqual(expect.arrayContaining(['K1', 'Keuken', '2P - 16A', 'Curve B', '3000', 'XVB Cca 3G2,5', '1']))
     // the breaker: the stem stops at the lower contact (no line through it), a lever and a filled block along the lever, the line carries on above
-    expect(c.items.some((i) => i.k === 'line' && i.fill)).toBe(true)
+    expect(c.items.some((i) => i.k === 'poly')).toBe(true)
     expect(c.items.some((i) => i.k === 'line' && i.x1 === 30 && i.y1 === 0 && i.y2 === -30)).toBe(true)
-    expect(c.items.some((i) => i.k === 'line' && i.x1 === 30 && i.x2 === 30 && i.y1 === -52)).toBe(true)
-    expect(c.items.some((i) => i.k === 'line' && i.x1 === 30 && i.x2 === 30 && i.y1 === 0 && i.y2 < -52)).toBe(false)
+    expect(c.items.some((i) => i.k === 'line' && i.x1 === 30 && i.x2 === 30 && Math.abs(i.y1 + 58.19) < 0.01)).toBe(true)
+    expect(c.items.some((i) => i.k === 'line' && i.x1 === 30 && i.x2 === 30 && i.y1 === 0 && i.y2 < -58.19)).toBe(false)
     expect(c.items.some((i) => i.k === 'line' && i.x1 === 30 && i.y1 === 0)).toBe(true)
     expect(syms(c.items)).toHaveLength(1)
     expect(c.minY).toBeLessThan(-215)
@@ -267,7 +267,7 @@ test('detailLines splits on new lines and on |, trims and drops empty entries', 
 })
 
 test('details are drawn line by line under the symbol and give the element more room', () => {
-    const lines = ['Merk: Huawei', 'Type: SUN2000L-6KTL-M1', 'S/N: HV2290060767'],
+    const lines = ['Merk: Huawei', 'Type: SUN2000L-6KTL-M1', 'S/N: HV1234'],
         withDet = (extra = {}) => circuit(proj([]), kring('K', [node('i', 'omvormer', [], {label: '', p: {aantal: 1, details: lines.join('\n'), ...extra}})])),
         plain = circuit(proj([]), kring('K', [node('i', 'omvormer', [], {label: '', p: {aantal: 1}})]))
     const texts = withDet().items.filter((it) => it.k === 'text' && lines.includes(it.s))

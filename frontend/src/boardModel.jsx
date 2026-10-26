@@ -54,6 +54,20 @@ export const defaultTree = () => [
         children: [{id: uid(), type: 'bord', label: 'Verdeelbord', info: '', p: defaultProps('bord'), children: []}],
     },
 ]
+// Lever of an automatic breaker, drawn like the eendraadschema (zekering_automatisch): a lever of 30 units tilted 20 degrees to the left
+// of the vertical, pivoting on (x, y); the filled block (4 wide, the outer third of the lever) sits to the LEFT of the lever, not on its axis.
+// Returns the lever, the block (a polygon) and the y of the lever tip, where the line above carries on.
+const rd2 = (v) => Math.round(v * 100) / 100
+export const breakerLever = (x, y) => {
+    const c = Math.cos((20 * Math.PI) / 180),
+        s = Math.sin((20 * Math.PI) / 180),
+        pt = (u, v) => [rd2(x + u * c + v * s), rd2(y - u * s + v * c)]
+    return {
+        tipY: rd2(y - 30 * c),
+        lever: {k: 'line', x1: x, y1: y, x2: pt(0, -30)[0], y2: pt(0, -30)[1]},
+        block: {k: 'poly', pts: [pt(-4, -30), pt(0, -30), pt(0, -20), pt(-4, -20)]},
+    }
+}
 const line = (x1, y1, x2, y2) => ({k: 'line', x1, y1, x2, y2}),
     text = (x, y, s, o = {}) => ({k: 'text', x, y, s, ...o})
 export const reach = (shapes) => {
@@ -175,6 +189,7 @@ function node(p, n, x, y, out) {
 // Bounding box [x1, y1, x2, y2] of a drawn item (text sizes are estimated), used to pack circuits tighter.
 const box = (it) => {
     if (it.k === 'line') return [Math.min(it.x1, it.x2) - 2, Math.min(it.y1, it.y2) - 2, Math.max(it.x1, it.x2) + 2, Math.max(it.y1, it.y2) + 2]
+    if (it.k === 'poly') return [Math.min(...it.pts.map((q) => q[0])) - 2, Math.min(...it.pts.map((q) => q[1])) - 2, Math.max(...it.pts.map((q) => q[0])) + 2, Math.max(...it.pts.map((q) => q[1])) + 2]
     if (it.k === 'rect') return [it.x - 2, it.y - 2, it.x + it.w + 2, it.y + it.h + 2]
     if (it.k === 'sym') {
         // a turned symbol needs more room: half the width of its turned bounding square
@@ -205,14 +220,10 @@ export function circuit(p, n) {
     const st = stack(p, n.children, xs, y0, out, STUB, true)
     if (none) out.push(line(xs, 0, xs, y0))
     else {
-        // the line does not run through the breaker: it stops at the lower contact, the lever swings up and to the left
-        // and ends in a filled block (drawn along the lever), the line carries on above the lever
-        out.push(
-            line(xs, 0, xs, -30),
-            line(xs, -30, xs - 9, -52),
-            {...line(xs - 9, -52, xs - 12.8, -61.3), w: 8, fill: 1},
-            line(xs, -52, xs, y0),
-        )
+        // the line does not run through the breaker: it stops at the lower contact, the lever swings up and to the left,
+        // the filled block sits beside the lever (to its left), the line carries on above the lever
+        const br = breakerLever(xs, -30)
+        out.push(line(xs, 0, xs, -30), br.lever, br.block, line(xs, br.tipY, xs, y0))
     }
     const long = (n.label || '').length > 3
     out.push(

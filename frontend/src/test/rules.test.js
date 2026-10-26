@@ -299,3 +299,17 @@ test('components hidden from the situatieschema are not reported as missing', ()
     p.hidden = ['S1']
     expect(rule(p, 'plan.unplaced')).toHaveLength(0)
 })
+test('an issue about an element carries its circuit and point (as drawn), other issues carry none', () => {
+    const p = ok()
+    get(p, 'K1').label = 'F'
+    get(p, 'K2').label = 'G'
+    p.sit[0].items = p.sit[0].items.filter((i) => i.node !== 'S2' && i.node !== 'L1')
+    const un = verify(p).filter((i) => i.rule === 'plan.unplaced')
+    // S2 is the 2nd element under circuit F, the lamp hangs under the switch that is point 1 of circuit G
+    expect(un.map((i) => i.mark).sort()).toEqual(['F2', 'G1'])
+    expect(rule(p, 'footer')).toEqual([])
+    expect(verify({...p, footer: {}}).find((i) => i.rule === 'footer').mark).toBeUndefined()
+    // a circuit itself is named in its message, no extra mark
+    get(p, 'K1').children = []
+    expect(rule(p, 'kring.empty')[0].mark).toBeUndefined()
+})

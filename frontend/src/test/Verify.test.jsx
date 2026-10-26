@@ -36,3 +36,9 @@ test('a click that ends a text selection does not jump to the element, so a mess
     expect(go).toHaveBeenCalledTimes(1)
     sel.mockRestore()
 })
+
+test('shows the circuit and point of an issue in front of the message', () => {
+    render(<Verify issues={[{id: '9', level: 'warn', rule: 'x', msg: 'Niet geplaatst', mark: 'F6'}, iss[0]]} onGo={() => {}} onClose={() => {}} />)
+    expect(screen.getByText('F6').tagName).toBe('B')
+    expect(screen.getByText('Geen aarding', {exact: false}).textContent).not.toMatch(/undefined/)
+})

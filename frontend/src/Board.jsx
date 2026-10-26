@@ -32,6 +32,23 @@ const Item = ({it, sel, onSel, onDelete}) => {
     const on = sel && it.id === sel,
         c = on ? B : '#000',
         h = {...(it.id ? {'data-nid': it.id} : {}), ...(it.id && onSel ? {onClick: () => onSel(it.id), style: {cursor: 'pointer'}} : {})}
+    if (it.k === 'circ') return <circle cx={it.x} cy={it.y} r={it.r} fill="none" stroke="#000" strokeWidth={LINE_W} />
+    // transparent click area of a circuit (only in the editor, never in the export); light blue when the circuit is selected.
+    // It carries no data-nid: that one belongs to the drawn elements (letter, symbols).
+    if (it.k === 'hit')
+        return onSel && it.id ? (
+            <rect
+                className="eds-hit"
+                data-hit={it.id}
+                onClick={() => onSel(it.id)}
+                style={{cursor: 'pointer'}}
+                x={it.x}
+                y={it.y}
+                width={it.w}
+                height={it.h}
+                fill={on ? 'rgba(10,108,255,0.08)' : 'transparent'}
+            />
+        ) : null
     if (it.k === 'line') return <line x1={it.x1} y1={it.y1} x2={it.x2} y2={it.y2} stroke="#000" strokeWidth={it.w || LINE_W} />
     if (it.k === 'poly') return <polygon points={it.pts.map((q) => q.join(',')).join(' ')} fill="#000" stroke="#000" strokeWidth="1" strokeLinejoin="round" />
     if (it.k === 'sym')

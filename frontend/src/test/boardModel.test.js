@@ -17,6 +17,8 @@ import {
     BUSX0,
     detailLines,
     DET_LINE,
+    IND_W,
+    plaatsingOf,
 } from '../boardModel.jsx'
 import {base, node} from './utils.jsx'
 
@@ -66,8 +68,8 @@ test('circuit draws stem, breaker, letter, specs and cable', () => {
     // the breaker: the stem stops at the lower contact (no line through it), a lever and a filled block along the lever, the line carries on above
     expect(c.items.some((i) => i.k === 'poly')).toBe(true)
     expect(c.items.some((i) => i.k === 'line' && i.x1 === 30 && i.y1 === 0 && i.y2 === -30)).toBe(true)
-    expect(c.items.some((i) => i.k === 'line' && i.x1 === 30 && i.x2 === 30 && Math.abs(i.y1 + 58.19) < 0.01)).toBe(true)
-    expect(c.items.some((i) => i.k === 'line' && i.x1 === 30 && i.x2 === 30 && i.y1 === 0 && i.y2 < -58.19)).toBe(false)
+    expect(c.items.some((i) => i.k === 'line' && i.x1 === 30 && i.x2 === 30 && i.y1 === -58.19)).toBe(true)
+    expect(c.items.some((i) => i.k === 'line' && i.x1 === 30 && i.x2 === 30 && i.y1 === 0 && i.y2 < -52)).toBe(false)
     expect(c.items.some((i) => i.k === 'line' && i.x1 === 30 && i.y1 === 0)).toBe(true)
     expect(syms(c.items)).toHaveLength(1)
     expect(c.minY).toBeLessThan(-215)
@@ -286,4 +288,31 @@ test('details are drawn line by line under the symbol and give the element more 
     const two = circuit(proj([]), kring('K', ['a', 'b'].map((id) => node(id, 'batterij', [], {label: '', p: {aantal: 1, details: lines.join('\n')}})))).items
     const ys = two.filter((it) => it.k === 'sym').map((it) => it.y)
     expect(Math.abs(ys[0] - ys[1])).toBeGreaterThanOrEqual(66 + 3 * DET_LINE)
+})
+
+test('plaatsing: symbols left of the stem, name moves left, click area over the stem', () => {
+    const plain = circuit(base(), kring('K', [], {tekst: 'Naam'}, {label: 'K'}))
+    expect(plain.items.some((i) => i.k === 'circ')).toBe(false)
+    expect(plain.items[0]).toMatchObject({k: 'hit', id: 'K'})
+    const xs = 30 + IND_W
+    const g = circuit(base(), kring('K', [], {tekst: 'Naam', plaatsing: 'ondergronds', inbuis: true}, {label: 'K'}))
+    expect(g.items.filter((i) => i.k === 'line' && i.x1 === xs - 16 && i.x2 === xs - 16)).toHaveLength(1)
+    expect(g.items.filter((i) => i.k === 'circ')).toHaveLength(1)
+    expect(texts(g.items).find((x) => x.s === 'Naam').x).toBe(xs - 14 - IND_W)
+    // op wand: two E's with the teeth to the left; in wand: the mirror image, teeth towards the stem
+    const teeth = (pl, x1, x2) => circuit(base(), kring('K', [], {plaatsing: pl}, {label: 'K'})).items.filter((i) => i.k === 'line' && i.x1 === x1 && i.x2 === x2)
+    expect(teeth('opwand', xs - 6, xs - 19)).toHaveLength(6)
+    expect(teeth('inwand', xs - 19, xs - 6)).toHaveLength(6)
+    // luchtleiding: a circle on the stem, never in buis, no shift
+    const l = circuit(base(), kring('K', [], {plaatsing: 'luchtleiding', inbuis: true}, {label: 'K'}))
+    expect(l.items.filter((i) => i.k === 'circ')).toEqual([expect.objectContaining({x: 30})])
+    // in buis without a placement draws nothing
+    expect(circuit(base(), kring('K', [], {inbuis: true}, {label: 'K'})).items.some((i) => i.k === 'circ')).toBe(false)
+    expect(circuit(base(), node('K~', 'kring', [], {p: {bescherming: 'geen'}})).items.some((i) => i.k === 'hit')).toBe(false)
+})
+test('plaatsingOf normalises imported values', () => {
+    expect(plaatsingOf('In wand')).toBe('inwand')
+    expect(plaatsingOf('Op_wand')).toBe('opwand')
+    expect(plaatsingOf('N/A')).toBe('')
+    expect(plaatsingOf(undefined)).toBe('')
 })

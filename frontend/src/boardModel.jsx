@@ -70,6 +70,52 @@ export const breakerLever = (x, y) => {
 }
 const line = (x1, y1, x2, y2) => ({k: 'line', x1, y1, x2, y2}),
     text = (x, y, s, o = {}) => ({k: 'text', x, y, s, ...o})
+// Plaatsing of the cable of a circuit (as in the online eendraadschema): the symbols are drawn left of the stem, between the name and the line.
+// p.plaatsing = '' | 'ondergronds' | 'luchtleiding' | 'inwand' | 'opwand', p.inbuis = the cable runs in a conduit (a small circle).
+export const PLAATSING = [
+    ['', 'Niet opgegeven'],
+    ['ondergronds', 'Ondergronds'],
+    ['luchtleiding', 'Luchtleiding'],
+    ['inwand', 'In wand'],
+    ['opwand', 'Op wand'],
+]
+// room the symbols need left of the stem: the name of the circuit moves that far to the left
+export const IND_W = 24
+// 'ondergronds', 'inwand' and 'opwand' are drawn left of the stem (and may be marked 'in buis' with a small circle); the circle of a
+// 'luchtleiding' sits on the stem itself, and a luchtleiding is never 'in buis'
+export const LEFT = ['ondergronds', 'inwand', 'opwand']
+export const hasPlacement = (pr = {}) => LEFT.includes(pr.plaatsing)
+// an imported or typed value ('In wand', 'in_wand', 'N/A', ...) as one of the keys above ('' = not given)
+export const plaatsingOf = (v) => {
+    const k = String(v ?? '')
+        .toLowerCase()
+        .replace(/[^a-z]/g, '')
+    return PLAATSING.some((x) => x[0] && x[0] === k) ? k : ''
+}
+const BAR = 13 // half the length of the symbols along the stem
+// The drawings (xs = x of the stem, yc = centre along the stem), drawn once at the start of the cable.
+const E = (xs, yc, bar, tip) => [
+    line(bar, yc - BAR, bar, yc + BAR),
+    line(bar, yc - BAR, tip, yc - BAR),
+    line(bar, yc, tip, yc),
+    line(bar, yc + BAR, tip, yc + BAR),
+]
+const PLACE = {
+    // earth symbol turned along the stem: three lines getting shorter towards the stem
+    ondergronds: (xs) => [line(xs - 16, -102, xs - 16, -76), line(xs - 12.5, -99.5, xs - 12.5, -78.5), line(xs - 9, -97, xs - 9, -81)],
+    // two E's: bar at the stem, teeth to the left (mirrored E's)
+    opwand: (xs) => [...E(xs, -83, xs - 6, xs - 19), ...E(xs, -152, xs - 6, xs - 19)],
+    // two E's: bar on the outside, teeth to the stem
+    inwand: (xs) => [...E(xs, -83, xs - 19, xs - 6), ...E(xs, -152, xs - 19, xs - 6)],
+    // a circle on the stem itself
+    luchtleiding: (xs) => [{k: 'circ', x: xs, y: -100, r: 5}],
+}
+const CONDUIT_Y = -127
+export const placement = (pr, xs) => [
+    ...(PLACE[pr.plaatsing]?.(xs) || []),
+    // in buis: a small circle between the symbols
+    ...(hasPlacement(pr) && pr.inbuis ? [{k: 'circ', x: xs - 12.5, y: CONDUIT_Y, r: 5}] : []),
+]
 export const reach = (shapes) => {
     let l = Infinity,
         r = -Infinity
@@ -197,6 +243,7 @@ const box = (it) => {
             h = (SYM / 2) * (Math.abs(Math.cos(a)) + Math.abs(Math.sin(a))) + 4
         return [it.x - h, it.y - h, it.x + h, it.y + h]
     }
+    if (it.k === 'circ') return [it.x - it.r - 2, it.y - it.r - 2, it.x + it.r + 2, it.y + it.r + 2]
     if (it.k !== 'text') return null
     const size = it.size || 13,
         w = String(it.s ?? '').length * size * (it.bold ? 0.7 : 0.62),
@@ -213,7 +260,10 @@ const box = (it) => {
 export function circuit(p, n) {
     const out = [],
         pr = n.p || {},
-        xs = 30,
+        ind = hasPlacement(pr),
+        xs = ind ? 30 + IND_W : 30,
+        // the name sits left of the placement symbols
+        tx = xs - 14 - (ind ? IND_W : 0),
         none = pr.bescherming === 'geen',
         cable = pr.kabel || '',
         y0 = -Math.max(215, 150 + tw(cable) + 40)
@@ -228,10 +278,10 @@ export function circuit(p, n) {
     const long = (n.label || '').length > 3
     out.push(
         long
-            ? text(xs - 14, -6, n.label, {bold: 1, size: 14, rot: 1, id: n.id})
+            ? text(tx, -6, n.label, {bold: 1, size: 14, rot: 1, id: n.id})
             : text(xs - 14, -6, n.label || '', {bold: 1, size: 16, anchor: 'middle', id: n.id}),
     )
-    if (pr.tekst) out.push(text(xs - 14, long ? -12 - tw(n.label) - 8 : -72, pr.tekst, {bold: 1, size: 14, rot: 1, id: n.id}))
+    if (pr.tekst) out.push(text(tx, long ? -12 - tw(n.label) - 8 : -72, pr.tekst, {bold: 1, size: 14, rot: 1, id: n.id}))
     if (!none) {
         const sp = pr.amp ? [`${pr.polen || 2}P - ${pr.amp}A`, pr.curve ? `Curve ${pr.curve}` : null] : [n.info || null],
             k = pr.kortsl ? `${pr.kortsl}000` : null
@@ -239,6 +289,13 @@ export function circuit(p, n) {
         if (k) out.push({k: 'rect', x: xs + 33, y: -66 - tw(k) - 4, w: 15, h: tw(k) + 8}, text(xs + 44, -66, k, {rot: 1}))
     }
     if (cable) out.push(text(xs + 13, -150, cable, {rot: 1}))
+    out.push(...placement(pr, xs))
+    // A click anywhere on the stem selects the circuit (not only on its letter): a transparent area over the whole stem, drawn first so the
+    // elements of the circuit and their own clicks stay on top. (The invisible circuit around a sub board has no properties: no area.)
+    if (!String(n.id).endsWith('~')) {
+        const x0 = (pr.tekst || long ? tx : xs) - 14
+        out.unshift({k: 'hit', x: x0, y: y0, w: xs + 52 - x0, h: -y0 + 6, id: n.id})
+    }
     return {n, w: Math.max(st.r + 14, xs + 56), items: out, minY: Math.min(st.top, y0 - 60)}
 }
 export function board(p, pg) {

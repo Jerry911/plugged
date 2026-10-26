@@ -4,7 +4,7 @@
 // Lights (type_lamp, is_wandlamp, type_noodverlichting) and switches (type_schakelaar, heeft_verklikkerlampje) choose their symbol from their options.
 // Only the eendraadschema (circuits, elements) and the owner/address footer are imported; the situatieschema (sitplanjson) is ignored.
 import pako from 'pako'
-import {detailLines, infoOf} from './boardModel.jsx'
+import {detailLines, infoOf, plaatsingOf} from './boardModel.jsx'
 import {uid} from './util.jsx'
 
 const MAP = {
@@ -133,6 +133,9 @@ function conv(r) {
             amp: num(q.amperage),
             curve: q.curve_automaat || '',
             kabel: q.type_kabel || '',
+            // Plaatsing of the cable: ondergronds / luchtleiding / in wand / op wand, optionally in a conduit
+            plaatsing: plaatsingOf(q.kabel_locatie),
+            inbuis: q.kabel_is_in_buis === true || /^(true|1|ja)$/i.test(String(q.kabel_is_in_buis ?? '')),
             kortsl: q.kortsluitvermogen || '',
             tekst: q.tekst || '',
             bescherming: q.bescherming || 'automatisch',

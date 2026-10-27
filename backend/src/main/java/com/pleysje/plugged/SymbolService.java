@@ -14,7 +14,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 /**
  * The symbol catalog: the standard symbols ({@link StandardSymbols}) plus the symbols of the user, stored in the database.
- * A standard symbol can be edited and restored to its standard drawing; a symbol of the user can be edited and deleted.
+ * A standard symbol can be edited, deleted and restored to its standard drawing; a symbol of the user can be edited and deleted.
  */
 @Service
 @Transactional
@@ -23,6 +23,8 @@ public class SymbolService {
     static final List<String> RESERVED = List.of("template", "restore");
     /** prefix of the hidden rows that hold the standard a user chose with {@link #makeStandard}; they never show up in the catalog */
     static final String BASE = "std:";
+    /** prefix of the hidden marker rows that say a standard symbol was deleted by the user: seeding then leaves it out until it is restored */
+    static final String GONE = "del:";
     private static final Pattern KEY = Pattern.compile("[A-Za-z0-9_.:-]{1,100}");
     private static final int MAX_SHAPES = 500, MAX_PARENTS = 500, CUSTOM_ORDER = 100_000;
 
@@ -32,9 +34,13 @@ public class SymbolService {
         this.repo = repo;
     }
 
-    /** Makes sure the standard symbols are in the database: new ones are added, stored standard symbols of an older catalog version that were not edited are replaced. */
+    /**
+     * Makes sure the standard symbols are in the database: new ones are added, stored standard symbols of an older catalog version that were not edited
+     * are replaced. A standard symbol the user deleted stays away until it is restored.
+     */
     public void seed() {
         for (SymbolDto std : StandardSymbols.all()) {
+            if (repo.existsById(GONE + std.k())) continue;
             SymbolEntity cur = repo.findById(std.k()).orElse(null);
             if (cur == null || (cur.isBuiltin() && !cur.isModified() && cur.getStdVersion() < StandardSymbols.VERSION)) repo.save(fresh(standardOf(std.k())));
         }
@@ -43,7 +49,7 @@ public class SymbolService {
     @Transactional(readOnly = true)
     public List<SymbolDto> list() {
         return repo.findAll().stream()
-                .filter(e -> !isBase(e.getK()))
+                .filter(e -> !isHidden(e.getK()))
                 .sorted(Comparator.comparingInt(SymbolEntity::getSortOrder).thenComparing(SymbolEntity::getName, String.CASE_INSENSITIVE_ORDER))
                 .map(SymbolMapper::toDto)
                 .toList();
@@ -51,7 +57,7 @@ public class SymbolService {
 
     @Transactional(readOnly = true)
     public SymbolDto get(String k) {
-        if (isBase(k)) throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Symbool niet gevonden: " + k);
+        if (isHidden(k)) throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Symbool niet gevonden: " + k);
         return SymbolMapper.toDto(repo.findById(k).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Symbool niet gevonden: " + k)));
     }
 
@@ -68,6 +74,7 @@ public class SymbolService {
         SymbolDto std = standardOf(k);
         SymbolEntity cur = repo.findById(k).orElse(null);
         if (std != null) {
+            repo.findById(GONE + k).ifPresent(repo::delete);
             e.setBuiltin(true);
             e.setStdVersion(cur != null ? cur.getStdVersion() : StandardSymbols.VERSION);
             e.setSortOrder(StandardSymbols.orderOf(k));
@@ -78,11 +85,16 @@ public class SymbolService {
         return SymbolMapper.toDto(repo.save(e));
     }
 
+    /** Deletes a symbol. A standard symbol leaves a hidden marker so that it does not come back at the next start; restore brings it back. */
     public void delete(String k) {
-        if (isBase(k)) throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Symbool niet gevonden: " + k);
+        if (isHidden(k)) throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Symbool niet gevonden: " + k);
         SymbolEntity e = repo.findById(k).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Symbool niet gevonden: " + k));
-        if (e.isBuiltin()) throw new ResponseStatusException(HttpStatus.CONFLICT, "Een standaardsymbool kan niet verwijderd worden, wel hersteld");
         repo.delete(e);
+        if (e.isBuiltin()) {
+            SymbolEntity gone = SymbolMapper.toEntity(new SymbolDto(GONE + k, e.getName(), e.getCategory(), List.of(), false, List.of(), null, 0, false, false, false));
+            gone.setSortOrder(CUSTOM_ORDER);
+            repo.save(gone);
+        }
     }
 
     /**
@@ -90,7 +102,7 @@ public class SymbolService {
      * It is kept in a hidden row (key "std:" + k); the symbol itself is no longer marked as modified.
      */
     public SymbolDto makeStandard(String k) {
-        if (isBase(k)) throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Symbool niet gevonden: " + k);
+        if (isHidden(k)) throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Symbool niet gevonden: " + k);
         SymbolEntity cur = repo.findById(k).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Symbool niet gevonden: " + k));
         if (StandardSymbols.find(k) == null) throw new ResponseStatusException(HttpStatus.CONFLICT, "Alleen een standaardsymbool kan de nieuwe standaard worden: " + k);
         SymbolDto d = SymbolMapper.toDto(cur);
@@ -117,20 +129,33 @@ public class SymbolService {
         return k != null && k.startsWith(BASE);
     }
 
-    /** Puts a standard symbol back to its standard drawing (also when the user changed or deleted it in the database). */
+    private static boolean isGone(String k) {
+        return k != null && k.startsWith(GONE);
+    }
+
+    /** the hidden rows (chosen standards and deletion markers) never show up in the catalog */
+    private static boolean isHidden(String k) {
+        return isBase(k) || isGone(k);
+    }
+
+    /** Puts a standard symbol back to its standard drawing (also when the user changed or deleted it). */
     public SymbolDto restore(String k) {
-        if (isBase(k)) throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Symbool niet gevonden: " + k);
+        if (isHidden(k)) throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Symbool niet gevonden: " + k);
         SymbolDto std = standardOf(k);
         if (std == null) {
             if (repo.existsById(k)) throw new ResponseStatusException(HttpStatus.CONFLICT, "Een eigen symbool heeft geen standaardtekening: " + k);
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Symbool niet gevonden: " + k);
         }
+        repo.findById(GONE + k).ifPresent(repo::delete);
         return SymbolMapper.toDto(repo.save(fresh(std)));
     }
 
-    /** Puts all standard symbols back to their standard drawings; the symbols of the user are left alone. */
+    /** Puts all standard symbols back to their standard drawings, also the deleted ones; the symbols of the user are left alone. */
     public List<SymbolDto> restoreAll() {
-        for (SymbolDto std : StandardSymbols.all()) repo.save(fresh(standardOf(std.k())));
+        for (SymbolDto std : StandardSymbols.all()) {
+            repo.findById(GONE + std.k()).ifPresent(repo::delete);
+            repo.save(fresh(standardOf(std.k())));
+        }
         return list();
     }
 
@@ -148,7 +173,7 @@ public class SymbolService {
     }
 
     static boolean validKey(String k) {
-        return k != null && KEY.matcher(k).matches() && !RESERVED.contains(k) && !isBase(k);
+        return k != null && KEY.matcher(k).matches() && !RESERVED.contains(k) && !isHidden(k);
     }
 
     /** @throws ResponseStatusException 400 with the reason when the symbol cannot be stored */

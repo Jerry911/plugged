@@ -156,12 +156,37 @@ class SymbolControllerTest {
     }
 
     @Test
-    void standardSymbolsCannotBeDeletedAndOwnSymbolsCannotBeRestored() throws Exception {
-        mvc.perform(delete("/api/symbols/stopcontact")).andExpect(status().isConflict());
-        mvc.perform(get("/api/symbols/stopcontact")).andExpect(status().isOk());
+    void ownSymbolsCannotBeRestored() throws Exception {
         mvc.perform(put("/api/symbols/custom:z").contentType(MediaType.APPLICATION_JSON).content(symbol("custom:z", "Z", BOX))).andExpect(status().isOk());
         mvc.perform(post("/api/symbols/custom:z/restore")).andExpect(status().isConflict());
         mvc.perform(post("/api/symbols/nope/restore")).andExpect(status().isNotFound());
+    }
+
+    @Test
+    void aDeletedStandardSymbolStaysAwayAfterSeedingUntilItIsRestored() throws Exception {
+        mvc.perform(delete("/api/symbols/aansluiting")).andExpect(status().isNoContent());
+        mvc.perform(get("/api/symbols/aansluiting")).andExpect(status().isNotFound());
+        mvc.perform(get("/api/symbols")).andExpect(jsonPath("$", hasSize(StandardSymbols.all().size() - 1)))
+                .andExpect(jsonPath("$[?(@.k=='aansluiting')]").isEmpty())
+                .andExpect(jsonPath("$[?(@.k=='del:aansluiting')]").isEmpty());
+        // the marker is not a symbol of its own
+        mvc.perform(get("/api/symbols/del:aansluiting")).andExpect(status().isNotFound());
+        mvc.perform(delete("/api/symbols/del:aansluiting")).andExpect(status().isNotFound());
+        mvc.perform(delete("/api/symbols/aansluiting")).andExpect(status().isNotFound());
+        // a restart (seeding) does not bring it back
+        service.seed();
+        mvc.perform(get("/api/symbols/aansluiting")).andExpect(status().isNotFound());
+        // restoring one symbol brings it back, and so does restoring all
+        mvc.perform(post("/api/symbols/aansluiting/restore")).andExpect(status().isOk());
+        mvc.perform(get("/api/symbols/aansluiting")).andExpect(status().isOk());
+        mvc.perform(delete("/api/symbols/stopcontact")).andExpect(status().isNoContent());
+        mvc.perform(delete("/api/symbols/klok")).andExpect(status().isNoContent());
+        mvc.perform(post("/api/symbols/restore")).andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(StandardSymbols.all().size())))
+                .andExpect(jsonPath("$[?(@.k=='stopcontact')]").isNotEmpty())
+                .andExpect(jsonPath("$[?(@.k=='klok')]").isNotEmpty());
+        service.seed();
+        mvc.perform(get("/api/symbols")).andExpect(jsonPath("$", hasSize(StandardSymbols.all().size())));
     }
 
     @Test

@@ -48,7 +48,7 @@ test('opening a standard component shows its editor and saving keeps its key', a
     const {save} = mount()
     pick('Stopcontact')
     expect(name().value).toBe('Stopcontact')
-    expect(screen.queryByText('Verwijder')).toBeNull()
+    expect(screen.getByText('Verwijder')).toBeEnabled()
     expect(screen.getByText('Standaard herstellen')).toBeDisabled()
     screen.getByText('Standaardsymbool')
     fireEvent.change(name(), {target: {value: ' Stopcontact X '}})
@@ -188,6 +188,14 @@ test('own components can be removed after confirmation', async () => {
     expect(remove).not.toHaveBeenCalled()
     fireEvent.click(screen.getByText('Verwijder'))
     await waitFor(() => expect(remove).toHaveBeenCalledWith('custom:1'))
+    screen.getByText(/Kies links een component/)
+})
+test('standard components can be removed too, after confirmation that mentions the way back', async () => {
+    const {remove} = mount()
+    pick('Oven')
+    fireEvent.click(screen.getByText('Verwijder'))
+    expect(window.confirm).toHaveBeenLastCalledWith(expect.stringMatching(/Alle standaard herstellen/))
+    await waitFor(() => expect(remove).toHaveBeenCalledWith('oven'))
     screen.getByText(/Kies links een component/)
 })
 test('duplicate makes an own copy of a standard component', () => {

@@ -1,7 +1,7 @@
 // Copyright 2026 Pleysier Jeroen
 // SPDX-License-Identifier: AGPL-3.0-only
 // Symbol catalog: menu with all symbols on the left, the selected symbol (name, category, allowed parents, drawing) on the right.
-// The symbols come from the backend: standard ones (can be edited and restored to the standard drawing) and the user's own ones.
+// The symbols come from the backend: standard ones (can be edited, deleted and restored to the standard drawing) and the user's own ones.
 import {useEffect, useState} from 'react'
 import {Sym} from './symbols'
 import {uid} from './util.jsx'
@@ -114,7 +114,8 @@ export default function Components({lib, onSave, onRemove, onReset, onRestoreAll
         setMsg('Als nieuwe standaard ingesteld ✓')
     }
     const remove = async () => {
-        if (!window.confirm(`'${draft.name}' verwijderen? Projecten die dit component gebruiken tonen het dan als "Aansluiting net".`)) return
+        const std = draft.builtin ? ` Het is een standaardsymbool: 'Alle standaard herstellen' brengt het terug.` : ''
+        if (!window.confirm(`'${draft.name}' verwijderen? Projecten die dit component gebruiken tonen het dan als onbekend symbool (een vakje met een vraagteken).${std}`)) return
         await onRemove(draft.k)
         setDraft(null)
         setOrig(null)
@@ -127,7 +128,7 @@ export default function Components({lib, onSave, onRemove, onReset, onRestoreAll
         setMsg('Standaard hersteld ✓')
     }
     const restoreAll = async () => {
-        if (!window.confirm('Alle standaardsymbolen terugzetten naar de standaardtekening? Je eigen aanpassingen aan standaardsymbolen gaan verloren; je eigen symbolen blijven.')) return
+        if (!window.confirm('Alle standaardsymbolen terugzetten naar de standaardtekening? Je eigen aanpassingen aan standaardsymbolen gaan verloren en verwijderde standaardsymbolen komen terug; je eigen symbolen blijven.')) return
         if (!(await onRestoreAll())) return setMsg('Niet hersteld: de backend is niet bereikbaar')
         setDraft(null)
         setOrig(null)
@@ -144,7 +145,7 @@ export default function Components({lib, onSave, onRemove, onReset, onRestoreAll
                     style={{width: '100%', boxSizing: 'border-box'}}
                 />
                 <button onClick={create}>＋ Nieuw component</button>
-                <button title="Zet alle standaardsymbolen terug naar de standaardtekening (eigen symbolen blijven)" onClick={restoreAll}>
+                <button title="Zet alle standaardsymbolen terug naar de standaardtekening, ook de verwijderde (eigen symbolen blijven)" onClick={restoreAll}>
                     Alle standaard herstellen
                 </button>
                 <div className="complist">
@@ -237,7 +238,7 @@ export default function Components({lib, onSave, onRemove, onReset, onRestoreAll
                                                 </button>
                                             </>
                                         )}
-                                        {known && !isDef && (
+                                        {known && (
                                             <button className="danger" onClick={remove}>
                                                 Verwijder
                                             </button>

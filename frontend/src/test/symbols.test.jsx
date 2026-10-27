@@ -20,8 +20,8 @@ test('allTypes adds custom types and handles missing custom', () => {
     const t = allTypes(p).at(-1)
     expect(t).toMatchObject({k: 'custom:1', cat: 'Eigen', place: true, parents: expect.arrayContaining(['kring'])})
 })
-test('typeOf falls back to the net connection, and to a placeholder when there is no library', () => {
-    expect(typeOf({custom: []}, 'nope').k).toBe('aansluiting')
+test('typeOf falls back to the placeholder for an unknown (e.g. deleted) symbol, also when there is no library', () => {
+    expect(typeOf({custom: []}, 'nope').name).toBe('Onbekend symbool')
     expect(typeOf({custom: []}, 'oven').name).toBe('Oven')
     setLibrary(null)
     expect(typeOf({custom: []}, 'nope')).toMatchObject({k: '?', parents: []})

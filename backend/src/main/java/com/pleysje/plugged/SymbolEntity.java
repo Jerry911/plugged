@@ -31,7 +31,7 @@ public class SymbolEntity {
     @Column(name = "category", nullable = false, length = 60)
     private String category;
     private boolean place = true;
-    /** a standard symbol: cannot be deleted, can be restored */
+    /** a standard symbol: can be edited, deleted and restored */
     private boolean builtin;
     /** a standard symbol that was changed by the user */
     private boolean modified;

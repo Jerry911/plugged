@@ -127,7 +127,6 @@ public final class StandardSymbols {
     }
 
     static {
-        x("aansluiting", "Aansluiting net", V, List.of(), of(rect(4, 6, 16, 12), line(4, 6, 20, 18), line(4, 18, 20, 6)), false);
         x("teller", "Teller (kWh)", V, List.of("aansluiting"), UpstreamSymbols.teller(), true);
         x("hoofdschakelaar", "Hoofdschakelaar", V, List.of("aansluiting", "teller"), breaker(false), false);
         x("bord", "Verdeelbord", V, List.of("aansluiting", "teller", "hoofdschakelaar", "diff", "bord"), of(rect(2, 8.5, 20, 7)), true);

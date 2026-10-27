@@ -57,7 +57,7 @@ export const shapesOf = (t, pr = {}) => {
     if (!sk.hor) return sockShapes(t.sock, false)
     return sk.n === (t.sock.n || 1) ? t.shapes : sockShapes({...t.sock, n: sk.n}, true)
 }
-// a symbol that is not in the library (anymore): a box with a question mark
+// a symbol that is not in the library (anymore, e.g. deleted): a box with a question mark
 const UNKNOWN = {k: '?', name: 'Onbekend symbool', cat: 'Overig', parents: [], place: false, shapes: [{t: 'rect', x: 2, y: 6, w: 20, h: 12}, T(12, 15, '?')]}
 let LIB = [],
     IDX = new Map()
@@ -72,7 +72,7 @@ const legacy = (p) =>
         .map((c) => ({k: 'custom:' + c.id, name: c.name, cat: c.cat || 'Eigen', parents: c.parents || IDX.get('stopcontact')?.parents || [], place: c.place !== false, shapes: c.shapes}))
         .filter((t) => !IDX.has(t.k))
 export const allTypes = (p) => [...LIB, ...legacy(p)]
-export const typeOf = (p, k) => IDX.get(k) || legacy(p).find((t) => t.k === k) || IDX.get('aansluiting') || UNKNOWN
+export const typeOf = (p, k) => IDX.get(k) || legacy(p).find((t) => t.k === k) || UNKNOWN
 export const arcPath = (h) => {
     const r = Math.PI / 180,
         pt = (a) => `${rd(h.cx + h.r * Math.cos(a * r))} ${rd(h.cy + h.r * Math.sin(a * r))}`

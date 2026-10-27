@@ -1,8 +1,8 @@
 // Copyright 2026 Pleysier Jeroen
 // SPDX-License-Identifier: AGPL-3.0-only
-import {Sym, typeOf} from './symbols'
+import {Sym} from './symbols'
 import {Sheet} from './Footer'
-import {BRK_S, BRK_TIP, BUSX0, U} from './boardModel.jsx'
+import {BUSX0, U} from './boardModel.jsx'
 
 const B = '#0a6cff'
 // small trash can in the top right corner of the selected element (only when the sheet is given an onDelete handler)
@@ -54,7 +54,7 @@ const Item = ({it, sel, onSel, onDelete}) => {
         return (
             <>
                 <g {...h}>
-                    <rect x={it.x - 30} y={it.y - 30} width="60" height="60" fill="transparent" />
+                    {h.onClick && <rect x={it.x - Math.max(30, it.s / 2)} y={it.y - Math.max(30, it.s / 2)} width={Math.max(60, it.s)} height={Math.max(60, it.s)} fill="transparent" />}
                     {it.r ? (
                         <g transform={`rotate(${it.r} ${it.x} ${it.y})`}>
                             <Sym shapes={it.shapes} x={it.x} y={it.y} s={it.s} stroke={c} w={(LINE_W * 24) / it.s} />
@@ -98,57 +98,28 @@ const Item = ({it, sel, onSel, onDelete}) => {
         </text>
     )
 }
-const Head = ({h, p}) => {
-    const k = BRK_S / 24
+// The kWh meter and the main breaker come from the board model as items made of library symbols (h.items); only the earth is drawn here.
+const Head = ({h, sel, onSel}) => {
+    const on = !!sel && sel === h.groundId,
+        c = on ? B : '#000',
+        hd = h.groundId && onSel ? {'data-nid': h.groundId, onClick: () => onSel(h.groundId), style: {cursor: 'pointer'}} : {}
     return (
-        <g stroke="#000" strokeWidth="2" fill="none">
+        <>
             {h.ground && (
-                <>
+                <g {...hd} stroke={c} strokeWidth="2" fill="none">
+                    <rect x="100" y="0" width="44" height="66" fill="transparent" stroke="none" />
                     <line x1="122" y1="0" x2="122" y2="50" />
                     <line x1="110" y1="20" x2="134" y2="20" />
                     <line x1="110" y1="28" x2="134" y2="28" />
                     <line x1="110" y1="50" x2="134" y2="50" />
                     <line x1="114" y1="56" x2="130" y2="56" />
                     <line x1="118" y1="62" x2="126" y2="62" />
-                </>
+                </g>
             )}
-            {h.kwh && (
-                <>
-                    <line x1="10" y1="96" x2="35" y2="96" />
-                    <rect x="35" y="70" width="50" height="50" strokeWidth="3" />
-                    <line x1="35" y1="82" x2="85" y2="82" />
-                    <text x="60" y="108" fontSize="15" fontWeight="700" textAnchor="middle" fill="#000" stroke="none">
-                        kWh
-                    </text>
-                    <line x1="85" y1="96" x2={h.main ? 197 : 130} y2="96" />
-                    {h.main && <line x1="197" y1="96" x2="197" y2="66" />}
-                    {h.q?.kabel && (
-                        <text x="110" y="114" fontSize="13" fill="#000" stroke="none">
-                            {h.q.kabel}
-                        </text>
-                    )}
-                </>
-            )}
-            {h.main && (
-                <>
-                    {/* the supply comes from the meter below: the line stops at the lower contact (y 66), the lever swings up and to the
-                    left (towards the busbar) and (with its filled block, see the kring symbol), the line carries on above the lever up to the busbar */}
-                    <Sym shapes={typeOf(p, 'kring').shapes} x={197 - k} y={66 - 2 * k} s={BRK_S} stroke="#000" w={(2 * 24) / BRK_S} />
-                    <line x1="197" y1="0" x2="197" y2={66 - BRK_TIP} />
-                    {[
-                        [h.main === 'differentieel' ? `Δ${h.q.delta || 300}mA` : null, 0],
-                        [`${h.q.polen || 2}P - ${h.q.amp || 40}A`, 1],
-                        [h.q.diffType ? `Type ${h.q.diffType}` : null, 2],
-                    ]
-                        .filter((a) => a[0])
-                        .map(([s, i]) => (
-                            <text key={i} transform={`translate(${210 + 13 * i},66) rotate(-90)`} fontSize="13" fill="#000" stroke="none">
-                                {s}
-                            </text>
-                        ))}
-                </>
-            )}
-        </g>
+            {h.items.map((it, i) => (
+                <Item key={i} it={it} sel={sel} onSel={onSel} />
+            ))}
+        </>
     )
 }
 // Width of the head (kWh meter, earth, main differential) in drawing units; it is repeated at the left of every sheet.
@@ -166,7 +137,7 @@ export const BoardSheet = ({p, pg, b, sl, no, total, sel, onSel, onFooter, onDel
             <g transform={`translate(10,${y}) scale(${s}) translate(${-sl.x0},0)`} fontFamily="Verdana, DejaVu Sans, sans-serif">
                 <line x1={left} y1="0" x2={right} y2="0" stroke="#000" strokeWidth="5" />
                 <g transform={`translate(${hx},0)`}>
-                    <Head h={b.head} p={p} />
+                    <Head h={b.head} sel={sel} onSel={onSel} />
                 </g>
                 {b.circuits.slice(sl.from, sl.to).map((c) => (
                     <g key={c.n.id} transform={`translate(${c.x},0)`}>

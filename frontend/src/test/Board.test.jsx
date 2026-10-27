@@ -86,12 +86,31 @@ test('selection: clickable items, highlight and callbacks', () => {
             sel: 's',
         })
     expect(container.querySelector('[stroke="#0a6cff"]')).toBeTruthy()
-    fireEvent.click(container.querySelector('g[style*="pointer"]'))
+    fireEvent.click(container.querySelector('g[data-nid="s"]'))
     expect(onSel).toHaveBeenLastCalledWith('s')
     fireEvent.click([...container.querySelectorAll('text')].find((t) => t.textContent === 'K1'))
     expect(onSel).toHaveBeenLastCalledWith('K1')
     fireEvent.click(container.querySelector('rect[stroke-width="3"][fill="#fff"]'))
     expect(onSel).toHaveBeenLastCalledWith('d')
+})
+test('the head is made of library symbols and selects the aansluiting (meter, main breaker) or the board (earth)', () => {
+    const onSel = vi.fn(),
+        [{container}] = sheets(tree([kring('K1')]), {onSel, sel: 'A'})
+    const parts = [...container.querySelectorAll('g[data-nid="A"]')]
+    // kWh meter (teller symbol) and main breaker (diff symbol), both with the text of the library symbol / the connection
+    expect(parts).toHaveLength(2)
+    expect(parts[0].textContent).toContain('kWh')
+    parts.forEach((g) => {
+        fireEvent.click(g)
+        expect(onSel).toHaveBeenLastCalledWith('A')
+    })
+    fireEvent.click([...container.querySelectorAll('text')].find((t) => t.textContent === 'Δ300mA'))
+    expect(onSel).toHaveBeenLastCalledWith('A')
+    fireEvent.click(container.querySelector('g[data-nid="B"]'))
+    expect(onSel).toHaveBeenLastCalledWith('B')
+    // selected: drawn in blue, but no delete button for the whole connection
+    expect(container.querySelector('[stroke="#0a6cff"]')).toBeTruthy()
+    expect(container.querySelector('#eds-drawing-delete')).toBeNull()
 })
 test('static rendering has no handlers or highlight', () => {
     const [{container}] = sheets(tree([kring('K1', [node('s', 'stopcontact')])]))

@@ -54,13 +54,23 @@ export const defaultTree = () => [
         children: [{id: uid(), type: 'bord', label: 'Verdeelbord', info: '', p: defaultProps('bord'), children: []}],
     },
 ]
-// The breaker of a circuit and of the main switch is the 'kring' symbol of the library (so edits to that symbol show up in the diagram).
-// It is drawn so that its lever is 30 units long (as in the eendraadschema). The pivot of the symbol is (13, 14) on its 24 grid and the
-// lever tip lies BRK_TIP units above the pivot: the line above the breaker carries on from there.
+// Breakers and the kWh meter are the symbols of the library (so edits to a symbol show up in the diagram). A breaker is drawn so that its
+// lever is 30 units long (as in the eendraadschema). The pivot of the symbol is (13, 14) on its 24 grid and the lever tip lies BRK_TIP units
+// above the pivot: the line above the breaker carries on from there.
 export const BRK_S = (24 * 30) / Math.hypot(13 - 9.41, 14 - 4.13),
-    BRK_TIP = ((14 - 4.13) * BRK_S) / 24
-// drawing item of a breaker with its pivot on (x, y)
-export const breakerItem = (p, x, y) => ({k: 'sym', shapes: typeOf(p, 'kring').shapes, x: x - BRK_S / 24, y: y - (2 * BRK_S) / 24, s: BRK_S, breaker: 1})
+    BRK_TIP = ((14 - 4.13) * BRK_S) / 24,
+    // the box of the kWh meter symbol is 14 grid units wide: 50 drawing units
+    KWH_S = (24 * 50) / 14
+// drawing item of the breaker symbol `key` with its pivot on (x, y)
+export const breakerItem = (p, key, x, y, extra = {}) => ({
+    k: 'sym',
+    shapes: typeOf(p, key).shapes,
+    x: x - BRK_S / 24,
+    y: y - (2 * BRK_S) / 24,
+    s: BRK_S,
+    breaker: 1,
+    ...extra,
+})
 const line = (x1, y1, x2, y2) => ({k: 'line', x1, y1, x2, y2}),
     text = (x, y, s, o = {}) => ({k: 'text', x, y, s, ...o})
 // Plaatsing of the cable of a circuit (as in the online eendraadschema): the symbols are drawn left of the stem, between the name and the line.
@@ -264,7 +274,7 @@ export function circuit(p, n) {
     else {
         // the line does not run through the breaker: it stops at the lower contact, the lever swings up and to the left
         // (with its filled block, see the kring symbol), the line carries on above the lever
-        out.push(line(xs, 0, xs, -30), breakerItem(p, xs, -30), line(xs, -30 - BRK_TIP, xs, y0))
+        out.push(line(xs, 0, xs, -30), breakerItem(p, 'kring', xs, -30), line(xs, -30 - BRK_TIP, xs, y0))
     }
     const long = (n.label || '').length > 3
     out.push(
@@ -288,6 +298,35 @@ export function circuit(p, n) {
         out.unshift({k: 'hit', x: x0, y: y0, w: xs + 52 - x0, h: -y0 + 6, id: n.id})
     }
     return {n, w: Math.max(st.r + 14, xs + 56), items: out, minY: Math.min(st.top, y0 - 60)}
+}
+// The head of the board (kWh meter and main breaker of the connection, in drawing units left of the bus) made of the symbols of the library.
+// Every part belongs to the aansluiting element: clicking it selects that element, like the elements of a circuit.
+export const headItems = (p, h) => {
+    const out = [],
+        id = h.id,
+        k = KWH_S / 24
+    if (h.kwh) {
+        // the symbol's box runs from x 35 to 85 and its supply line starts at x 10, the line carries on to the main breaker (or the end of the head)
+        out.push({k: 'sym', shapes: typeOf(p, 'teller').shapes, x: 35 + 4 * k, y: 96, s: KWH_S, id})
+        out.push(line(85, 96, h.main ? 197 : 130, 96))
+        if (h.main) out.push(line(197, 96, 197, 66))
+        if (h.q?.kabel) out.push(text(110, 114, h.q.kabel, {size: 13}))
+    }
+    if (h.main) {
+        // the supply comes from the meter below: the line stops at the lower contact (y 66), the lever swings up and to the left towards the busbar,
+        // the line carries on above the lever up to the busbar
+        out.push(breakerItem(p, h.main === 'differentieel' ? 'diff' : 'hoofdschakelaar', 197, 66, {id}), line(197, 0, 197, 66 - BRK_TIP))
+        // the texts stand next to the breaker; the differential symbol has a box on its right (up to 9 grid units from the pivot)
+        const tx = h.main === 'differentieel' ? 197 + (9 * BRK_S) / 24 + 17 : 210
+        ;[
+            [h.main === 'differentieel' ? `Δ${h.q.delta || 300}mA` : null, 0],
+            [`${h.q.polen || 2}P - ${h.q.amp || 40}A`, 1],
+            [h.q.diffType ? `Type ${h.q.diffType}` : null, 2],
+        ]
+            .filter((a) => a[0])
+            .forEach(([s, i]) => out.push(text(tx + 13 * i, 66, s, {rot: 1, id})))
+    }
+    return out
 }
 export function board(p, pg) {
     const tree = pg.tree,
@@ -348,17 +387,16 @@ export function board(p, pg) {
     })
     const end = cs.length ? right + SP : BUSX0,
         q = root?.p
-    return {
-        circuits,
-        end,
-        bus,
-        head: {
-            q,
-            kwh: !!root && (q ? q.teller !== false : flat([root]).some((n) => n.type === 'teller')),
-            main: q?.bescherming === 'differentieel' || q?.bescherming === 'automatisch' ? q.bescherming : null,
-            ground: !!bus && (!!bus.p?.geaard || flat(tree).some((n) => n.type === 'aarding')),
-        },
+    const head = {
+        id: root?.id,
+        q,
+        kwh: !!root && (q ? q.teller !== false : flat([root]).some((n) => n.type === 'teller')),
+        main: q?.bescherming === 'differentieel' || q?.bescherming === 'automatisch' ? q.bescherming : null,
+        ground: !!bus && (!!bus.p?.geaard || flat(tree).some((n) => n.type === 'aarding')),
+        // the earth belongs to the distribution board
+        groundId: bus?.id,
     }
+    return {circuits, end, bus, head: {...head, items: headItems(p, head)}}
 }
 export function slices(b) {
     const out = []

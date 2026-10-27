@@ -35,7 +35,7 @@ const chain = (n) => {
     for (let i = n; i > 0; i--) c = [node('c' + i, 'stopcontact', c)]
     return c
 }
-const syms = (it) => it.filter((i) => i.k === 'sym'),
+const syms = (it) => it.filter((i) => i.k === 'sym' && !i.breaker),
     texts = (it) => it.filter((i) => i.k === 'text')
 test('letter sequence', () => {
     expect([0, 25, 26, 27, 51, 52].map(letter)).toEqual(['A', 'Z', 'AA', 'AB', 'AZ', 'BA'])
@@ -65,11 +65,11 @@ test('circuit draws stem, breaker, letter, specs and cable', () => {
     const c = circuit(base(), kring('K1', [node('s', 'stopcontact')], {tekst: 'Keuken'}, {label: 'K1'}))
     const t = texts(c.items).map((x) => x.s)
     expect(t).toEqual(expect.arrayContaining(['K1', 'Keuken', '2P - 16A', 'Curve B', '3000', 'XVB Cca 3G2,5', '1']))
-    // the breaker: the stem stops at the lower contact (no line through it), a lever and a filled block along the lever, the line carries on above
-    expect(c.items.some((i) => i.k === 'poly')).toBe(true)
+    // the breaker: the stem stops at the lower contact (no line through it), the library symbol kring (lever with its block beside it), the line carries on above
+    expect(c.items.filter((i) => i.breaker)).toHaveLength(1)
     expect(c.items.some((i) => i.k === 'line' && i.x1 === 30 && i.y1 === 0 && i.y2 === -30)).toBe(true)
-    expect(c.items.some((i) => i.k === 'line' && i.x1 === 30 && i.x2 === 30 && i.y1 === -58.19)).toBe(true)
-    expect(c.items.some((i) => i.k === 'line' && i.x1 === 30 && i.x2 === 30 && i.y1 === 0 && i.y2 < -52)).toBe(false)
+    expect(c.items.some((i) => i.k === 'line' && i.x1 === 30 && i.x2 === 30 && Math.abs(i.y1 + 58.19) < 0.01)).toBe(true)
+    expect(c.items.some((i) => i.k === 'line' && i.x1 === 30 && i.x2 === 30 && i.y1 === 0 && i.y2 < -58.19)).toBe(false)
     expect(c.items.some((i) => i.k === 'line' && i.x1 === 30 && i.y1 === 0)).toBe(true)
     expect(syms(c.items)).toHaveLength(1)
     expect(c.minY).toBeLessThan(-215)

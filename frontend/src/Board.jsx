@@ -1,8 +1,8 @@
 // Copyright 2026 Pleysier Jeroen
 // SPDX-License-Identifier: AGPL-3.0-only
-import {Sym} from './symbols'
+import {Sym, typeOf} from './symbols'
 import {Sheet} from './Footer'
-import {breakerLever, BUSX0, U} from './boardModel.jsx'
+import {BRK_S, BRK_TIP, BUSX0, U} from './boardModel.jsx'
 
 const B = '#0a6cff'
 // small trash can in the top right corner of the selected element (only when the sheet is given an onDelete handler)
@@ -50,7 +50,6 @@ const Item = ({it, sel, onSel, onDelete}) => {
             />
         ) : null
     if (it.k === 'line') return <line x1={it.x1} y1={it.y1} x2={it.x2} y2={it.y2} stroke="#000" strokeWidth={it.w || LINE_W} />
-    if (it.k === 'poly') return <polygon points={it.pts.map((q) => q.join(',')).join(' ')} fill="#000" stroke="#000" strokeWidth="1" strokeLinejoin="round" />
     if (it.k === 'sym')
         return (
             <>
@@ -99,8 +98,8 @@ const Item = ({it, sel, onSel, onDelete}) => {
         </text>
     )
 }
-const Head = ({h}) => {
-    const br = breakerLever(197, 66)
+const Head = ({h, p}) => {
+    const k = BRK_S / 24
     return (
         <g stroke="#000" strokeWidth="2" fill="none">
             {h.ground && (
@@ -133,10 +132,9 @@ const Head = ({h}) => {
             {h.main && (
                 <>
                     {/* the supply comes from the meter below: the line stops at the lower contact (y 66), the lever swings up and to the
-                    left (towards the busbar) and ends in a filled block, the line carries on above the lever up to the busbar */}
-                    <line x1="197" y1="66" x2={br.lever.x2} y2={br.lever.y2} />
-                    <polygon points={br.block.pts.map((q) => q.join(',')).join(' ')} fill="#000" strokeLinejoin="round" />
-                    <line x1="197" y1="0" x2="197" y2={br.tipY} />
+                    left (towards the busbar) and (with its filled block, see the kring symbol), the line carries on above the lever up to the busbar */}
+                    <Sym shapes={typeOf(p, 'kring').shapes} x={197 - k} y={66 - 2 * k} s={BRK_S} stroke="#000" w={(2 * 24) / BRK_S} />
+                    <line x1="197" y1="0" x2="197" y2={66 - BRK_TIP} />
                     {[
                         [h.main === 'differentieel' ? `Δ${h.q.delta || 300}mA` : null, 0],
                         [`${h.q.polen || 2}P - ${h.q.amp || 40}A`, 1],
@@ -168,7 +166,7 @@ export const BoardSheet = ({p, pg, b, sl, no, total, sel, onSel, onFooter, onDel
             <g transform={`translate(10,${y}) scale(${s}) translate(${-sl.x0},0)`} fontFamily="Verdana, DejaVu Sans, sans-serif">
                 <line x1={left} y1="0" x2={right} y2="0" stroke="#000" strokeWidth="5" />
                 <g transform={`translate(${hx},0)`}>
-                    <Head h={b.head} />
+                    <Head h={b.head} p={p} />
                 </g>
                 {b.circuits.slice(sl.from, sl.to).map((c) => (
                     <g key={c.n.id} transform={`translate(${c.x},0)`}>

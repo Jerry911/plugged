@@ -316,15 +316,13 @@ export const headItems = (p, h) => {
         // the supply comes from the meter below: the line stops at the lower contact (y 66), the lever swings up and to the left towards the busbar,
         // the line carries on above the lever up to the busbar
         out.push(breakerItem(p, h.main === 'differentieel' ? 'diff' : 'hoofdschakelaar', 197, 66, {id}), line(197, 0, 197, 66 - BRK_TIP))
-        // the texts stand next to the breaker; the differential symbol has a box on its right (up to 9 grid units from the pivot)
-        const tx = h.main === 'differentieel' ? 197 + (9 * BRK_S) / 24 + 17 : 210
         ;[
             [h.main === 'differentieel' ? `Δ${h.q.delta || 300}mA` : null, 0],
             [`${h.q.polen || 2}P - ${h.q.amp || 40}A`, 1],
             [h.q.diffType ? `Type ${h.q.diffType}` : null, 2],
         ]
             .filter((a) => a[0])
-            .forEach(([s, i]) => out.push(text(tx + 13 * i, 66, s, {rot: 1, id})))
+            .forEach(([s, i]) => out.push(text(210 + 13 * i, 66, s, {rot: 1, id})))
     }
     return out
 }

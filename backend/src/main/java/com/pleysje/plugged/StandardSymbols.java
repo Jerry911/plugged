@@ -32,7 +32,7 @@ import java.util.Map;
  * are then replaced by the new standard when the application starts (see {@link SymbolService#seed()}).
  */
 public final class StandardSymbols {
-    public static final int VERSION = 8;
+    public static final int VERSION = 9;
 
     private static final String V = "Verdeling", S = "Stopcontacten", O = "Verlichting & bediening", A = "Toestellen", E = "Energie", G = "Overig";
 
@@ -131,8 +131,8 @@ public final class StandardSymbols {
         x("teller", "Teller (kWh)", V, List.of("aansluiting"), UpstreamSymbols.teller(), true);
         x("hoofdschakelaar", "Hoofdschakelaar", V, List.of("aansluiting", "teller"), breaker(false), false);
         x("bord", "Verdeelbord", V, List.of("aansluiting", "teller", "hoofdschakelaar", "diff", "bord"), of(rect(2, 8.5, 20, 7)), true);
-        x("diff", "Differentieel (aardlek)", V, List.of("bord", "hoofdschakelaar", "aansluiting", "teller"),
-                all(breaker(false), of(line(13, 12, 15, 12), rect(15, 10, 7, 4))), false);
+        // the differential is drawn like a circuit breaker (kring): the lever with its filled block
+        x("diff", "Differentieel (aardlek)", V, List.of("bord", "hoofdschakelaar", "aansluiting", "teller"), breaker(true), false);
         x("overspanning", "Overspanningsbeveiliging", V, List.of("bord"), UpstreamSymbols.overspanning(), false);
         x("kring", "Kring (automaat)", V, List.of("bord", "diff", "domotica", "subbord", "kring"), breaker(true), false);
         x("zekering", "Smeltveiligheid", V, List.of("bord", "diff"), UpstreamSymbols.zekering(), false);

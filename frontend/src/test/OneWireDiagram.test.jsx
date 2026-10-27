@@ -1,7 +1,7 @@
 // Copyright 2026 Pleysier Jeroen
 // SPDX-License-Identifier: AGPL-3.0-only
-import {fireEvent, screen} from '@testing-library/react'
-import OneLineSchema, {rotate} from '../OneWireDiagram.jsx'
+import {createEvent, fireEvent, screen} from '@testing-library/react'
+import OneLineSchema, {find, rotate} from '../OneWireDiagram.jsx'
 import {base, mount, node} from './utils.jsx'
 import {defaultTree} from '../boardModel.jsx'
 
@@ -14,12 +14,11 @@ beforeEach(() => {
 })
 const withTree = (tree) => ({...base(), een: [{id: 'e1', name: 'Blad 1', tree}]})
 test('adds root, child; enforces hierarchy; free mode', () => {
-    const {spy} = mount(OneLineSchema, base(), {idx: 0})
-    fireEvent.click(pal('Verdeelbord'))
+    // the connection (root) is not in the palette: it comes with a new schema
+    const {spy} = mount(OneLineSchema, withTree([node('A', 'aansluiting')]), {idx: 0})
+    fireEvent.click(pal('Stopcontact')) // there is no circuit to hang it under
     expect(window.alert).toHaveBeenCalledWith('Selecteer eerst een element waaronder dit past.')
-    fireEvent.click(pal('Aansluiting net'))
-    expect(spy.p.een[0].tree).toHaveLength(1)
-    fireEvent.click(row('Aansluiting net'))
+    fireEvent.click(screen.getAllByText('A')[0])
     fireEvent.click(pal('Verdeelbord'))
     expect(spy.p.een[0].tree[0].children).toHaveLength(1)
     fireEvent.click(pal('Stopcontact'))
@@ -383,3 +382,94 @@ test('a focus (message of the check) selects the element, scrolls the drawing to
     expect(scroll).toHaveBeenCalledTimes(1)
     delete Element.prototype.scrollIntoView
 })
+
+// ---- insert before / after (buttons) and drag & drop from the palette ----
+const chain = () => withTree([node('A', 'aansluiting', [node('B', 'bord', [node('K', 'kring', [node('S', 'schakelaar', [node('L', 'lichtpunt')])])])])])
+const pick = (c, id) => fireEvent.click(c.querySelector(`[data-nid="${id}"]`))
+const typeSelect = () => document.querySelector('select[aria-label="Type"]')
+const optionNames = () => [...typeSelect().querySelectorAll('option')].map((o) => o.textContent)
+const shapeOf = (ns) => ns.map((n) => n.id + (n.children.length ? `(${shapeOf(n.children)})` : '')).join(',')
+
+test('the "after" button inserts an empty symbol under the selected one; the Type dropdown only lists what may hang there', () => {
+    const {container, spy} = mount(OneLineSchema, chain(), {idx: 0})
+    pick(container, 'S')
+    fireEvent.click(btn('eds-insert-after'))
+    const s = find(spy.p.een[0].tree, 'S')
+    expect(s.children).toHaveLength(2)
+    const e = s.children[1]
+    expect(e.type).toBe('leeg')
+    // the new empty element is selected: its dropdown starts with the placeholder and is filtered by the "can be placed after" list
+    expect(typeSelect().value).toBe('leeg')
+    const names = optionNames()
+    expect(names[0]).toBe('— kies een symbool —')
+    expect(names).toContain('Stopcontact')
+    expect(names).not.toContain('Verdeelbord') // a board may not hang under a switch
+    fireEvent.change(typeSelect(), {target: {value: 'stopcontact'}})
+    const t = find(spy.p.een[0].tree, e.id)
+    expect(t).toMatchObject({id: e.id, type: 'stopcontact', label: 'Stopcontact'})
+})
+test('the "before" button puts an empty symbol between the parent and the selected symbol', () => {
+    const {container, spy} = mount(OneLineSchema, chain(), {idx: 0})
+    pick(container, 'S')
+    fireEvent.click(btn('eds-insert-before'))
+    const k = find(spy.p.een[0].tree, 'K')
+    expect(k.children).toHaveLength(1)
+    expect(k.children[0].type).toBe('leeg')
+    expect(shapeOf(k.children[0].children)).toBe('S(L)') // the switch and its light moved under the new element
+    expect(typeSelect().value).toBe('leeg')
+})
+test('the insert buttons are disabled when nothing fits, and for an empty symbol until it has a type', () => {
+    const {container} = mount(OneLineSchema, chain(), {idx: 0})
+    fireEvent.click(screen.getAllByText('A')[0]) // the row of the top level element in the structure list: nothing can go above it
+    expect(btn('eds-insert-before')).toBeDisabled()
+    fireEvent.click(screen.getByLabelText(/Vrije hiërarchie/))
+    expect(btn('eds-insert-before')).toBeEnabled()
+    fireEvent.click(screen.getByLabelText(/Vrije hiërarchie/))
+    pick(container, 'S')
+    fireEvent.click(btn('eds-insert-after'))
+    expect(btn('eds-insert-after')).toBeDisabled()
+    expect(btn('eds-insert-before')).toBeDisabled()
+    expect(btn('eds-insert-after')).toHaveAttribute('title')
+    expect(btn('eds-insert-before')).toHaveAttribute('aria-label')
+})
+test('dragging a symbol over the drawing previews it in blue; dropping inserts it after (right half) or before (left half)', () => {
+    const {container, spy} = mount(OneLineSchema, chain(), {idx: 0}),
+        at = (id) => container.querySelector(`[data-nid="${id}"]`)
+    fireEvent.dragStart(pal('Wandlamp'))
+    expect(container.querySelector('#eds-drop-preview')).toBeNull()
+    fireEvent.dragOver(at('S'), {clientX: 10}) // jsdom has no DragEvent and no layout: without a clientX the drop counts as the right half (after)
+    const prev = container.querySelector('#eds-drop-preview')
+    expect(prev).not.toBeNull()
+    expect(prev.querySelectorAll('[stroke="#0a6cff"]').length).toBeGreaterThan(0) // the new symbol is drawn in blue
+    expect(find(spy.p.een[0].tree, 'S').children).toHaveLength(1) // nothing is inserted yet
+    fireEvent.drop(at('S'), {clientX: 10})
+    expect(container.querySelector('#eds-drop-preview')).toBeNull()
+    const s = find(spy.p.een[0].tree, 'S')
+    expect(s.children.map((c) => c.type)).toEqual(['lichtpunt', 'wandlamp'])
+    // left half of the light: the new symbol comes between the switch and the light
+    fireEvent.dragStart(pal('Wandlamp'))
+    // jsdom has no DragEvent, so the coordinate is put on the event by hand
+    const left = createEvent.drop(at('L'))
+    Object.defineProperty(left, 'clientX', {value: -10})
+    fireEvent(at('L'), left)
+    const s2 = find(spy.p.een[0].tree, 'S')
+    expect(s2.children.map((c) => c.type)).toEqual(['wandlamp', 'wandlamp'])
+    expect(s2.children[0].children.map((c) => c.id)).toEqual(['L'])
+})
+test('a symbol that does not fit is not previewed and not dropped', () => {
+    const {container, spy} = mount(OneLineSchema, chain(), {idx: 0})
+    fireEvent.dragStart(pal('Verdeelbord'))
+    fireEvent.dragOver(container.querySelector('[data-nid="S"]'), {clientX: 10})
+    expect(container.querySelector('#eds-drop-preview')).toBeNull()
+    fireEvent.drop(container.querySelector('[data-nid="S"]'), {clientX: 10})
+    expect(flatTypes(spy.p.een[0].tree).filter((t) => t === 'bord')).toHaveLength(1)
+})
+test('the preview disappears when the drag ends without a drop', () => {
+    const {container} = mount(OneLineSchema, chain(), {idx: 0})
+    fireEvent.dragStart(pal('Wandlamp'))
+    fireEvent.dragOver(container.querySelector('[data-nid="S"]'), {clientX: 10})
+    expect(container.querySelector('#eds-drop-preview')).not.toBeNull()
+    fireEvent.dragEnd(pal('Wandlamp'))
+    expect(container.querySelector('#eds-drop-preview')).toBeNull()
+})
+const flatTypes = (ns) => ns.flatMap((n) => [n.type, ...flatTypes(n.children)])

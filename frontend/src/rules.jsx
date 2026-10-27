@@ -66,7 +66,8 @@ export function verify(p) {
             const t = typeOf(p, n.type),
                 kids = flat(n.children),
                 L = n.label || t.name
-            if (parent ? !t.parents.includes(parent.type) : t.parents.length)
+            if (n.type === 'leeg') add('warn', 'symbol.empty', `Leeg symbool: kies nog een type voor dit element${parent ? ` (onder '${parent.label}')` : ''}.`, pg, n)
+            else if (parent ? !t.parents.includes(parent.type) : t.parents.length)
                 add(
                     'error',
                     'hierarchy',

@@ -13,7 +13,13 @@ test('keys unique and parents refer to existing types', () => {
     expect(new Set(ks).size).toBe(ks.length)
     BUILTIN.forEach((t) => t.parents.forEach((k) => expect(ks).toContain(k)))
 })
-test('root element has no parents', () => expect(BUILTIN.filter((t) => !t.parents.length).map((t) => t.k)).toEqual(['aansluiting']))
+test('the library has no connection symbol: the built-in connection type is the only root and the meter may hang under it', () => {
+    expect(BUILTIN.some((t) => t.k === 'aansluiting')).toBe(false)
+    expect(typeOf({}, 'aansluiting')).toMatchObject({name: 'Aansluiting net', parents: [], place: false})
+    expect(typeOf({}, 'teller').parents).toContain('aansluiting')
+    expect(typeOf({}, 'bord').parents).toContain('aansluiting')
+    expect(typeOf({}, 'stopcontact').parents).not.toContain('aansluiting')
+})
 test('allTypes adds custom types and handles missing custom', () => {
     expect(allTypes({})).toHaveLength(BUILTIN.length)
     const p = {custom: [{id: '1', name: 'Mijn', shapes: []}]}

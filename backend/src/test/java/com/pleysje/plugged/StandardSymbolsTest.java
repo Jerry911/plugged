@@ -30,7 +30,7 @@ class StandardSymbolsTest {
         assertSame(StandardSymbols.all().get(3), StandardSymbols.find(StandardSymbols.all().get(3).k()));
         assertNull(StandardSymbols.find("custom:x"));
         assertEquals(-1, StandardSymbols.orderOf("custom:x"));
-        assertEquals(0, StandardSymbols.orderOf("aansluiting"));
+        assertEquals(0, StandardSymbols.orderOf("teller"));
     }
 
     @Test

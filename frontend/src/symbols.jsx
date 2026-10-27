@@ -59,11 +59,33 @@ export const shapesOf = (t, pr = {}) => {
 }
 // a symbol that is not in the library (anymore, e.g. deleted): a box with a question mark
 const UNKNOWN = {k: '?', name: 'Onbekend symbool', cat: 'Overig', parents: [], place: false, shapes: [{t: 'rect', x: 2, y: 6, w: 20, h: 12}, T(12, 15, '?')]}
+// the empty element made by the "insert before / after" buttons: a dashed-looking box that is replaced by a real symbol with the Type dropdown.
+// It is not in the library (so it is not in the palette) and is not placed on the situatieschema.
+export const EMPTY_TYPE = {
+    k: 'leeg',
+    name: 'Leeg symbool',
+    cat: 'Overig',
+    parents: [],
+    place: false,
+    shapes: [L(1, 12, 5, 12), {t: 'rect', x: 5, y: 6, w: 14, h: 12, sw: 0.6}, L(19, 12, 23, 12), T(12, 15, '?', 8)],
+}
+// The root of an eendraadschema (the connection to the grid). It has no symbol of its own in the library: on the board it is drawn as the kWh meter and
+// the main breaker/differential. It is still a type of the tree, and the parts that may hang directly under it are listed here, not in the backend.
+export const CONNECTION_TYPE = {
+    k: 'aansluiting',
+    name: 'Aansluiting net',
+    cat: 'Verdeling',
+    parents: [],
+    place: false,
+    shapes: [{t: 'rect', x: 4, y: 6, w: 16, h: 12}, L(4, 6, 20, 18), L(4, 18, 20, 6)],
+}
+export const UNDER_CONNECTION = ['teller', 'hoofdschakelaar', 'bord', 'diff', 'aarding']
 let LIB = [],
     IDX = new Map()
 // the active symbol library (standard symbols + the user's edited and own ones, as delivered by the backend)
 export const setLibrary = (l) => {
-    LIB = l || []
+    // the library does not know the connection: the parts that hang under it get it as an allowed parent here
+    LIB = (l || []).map((t) => (UNDER_CONNECTION.includes(t.k) && !t.parents.includes('aansluiting') ? {...t, parents: [...t.parents, 'aansluiting']} : t))
     IDX = new Map(LIB.map((t) => [t.k, t]))
 }
 // projects saved before the library existed carry their own components in p.custom: they are still understood
@@ -72,7 +94,7 @@ const legacy = (p) =>
         .map((c) => ({k: 'custom:' + c.id, name: c.name, cat: c.cat || 'Eigen', parents: c.parents || IDX.get('stopcontact')?.parents || [], place: c.place !== false, shapes: c.shapes}))
         .filter((t) => !IDX.has(t.k))
 export const allTypes = (p) => [...LIB, ...legacy(p)]
-export const typeOf = (p, k) => IDX.get(k) || legacy(p).find((t) => t.k === k) || UNKNOWN
+export const typeOf = (p, k) => IDX.get(k) || (k === EMPTY_TYPE.k ? EMPTY_TYPE : null) || (k === CONNECTION_TYPE.k ? CONNECTION_TYPE : null) || legacy(p).find((t) => t.k === k) || UNKNOWN
 export const arcPath = (h) => {
     const r = Math.PI / 180,
         pt = (a) => `${rd(h.cx + h.r * Math.cos(a * r))} ${rd(h.cy + h.r * Math.sin(a * r))}`

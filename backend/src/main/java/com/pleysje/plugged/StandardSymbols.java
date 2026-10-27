@@ -127,11 +127,11 @@ public final class StandardSymbols {
     }
 
     static {
-        x("teller", "Teller (kWh)", V, List.of("aansluiting"), UpstreamSymbols.teller(), true);
-        x("hoofdschakelaar", "Hoofdschakelaar", V, List.of("aansluiting", "teller"), breaker(false), false);
-        x("bord", "Verdeelbord", V, List.of("aansluiting", "teller", "hoofdschakelaar", "diff", "bord"), of(rect(2, 8.5, 20, 7)), true);
+        x("teller", "Teller (kWh)", V, List.of(), UpstreamSymbols.teller(), true);
+        x("hoofdschakelaar", "Hoofdschakelaar", V, List.of("teller"), breaker(false), false);
+        x("bord", "Verdeelbord", V, List.of("teller", "hoofdschakelaar", "diff", "bord"), of(rect(2, 8.5, 20, 7)), true);
         // the differential is drawn like a circuit breaker (kring): the lever with its filled block
-        x("diff", "Differentieel (aardlek)", V, List.of("bord", "hoofdschakelaar", "aansluiting", "teller"), breaker(true), false);
+        x("diff", "Differentieel (aardlek)", V, List.of("bord", "hoofdschakelaar", "teller"), breaker(true), false);
         x("overspanning", "Overspanningsbeveiliging", V, List.of("bord"), UpstreamSymbols.overspanning(), false);
         x("kring", "Kring (automaat)", V, List.of("bord", "diff", "domotica", "subbord", "kring"), breaker(true), false);
         x("zekering", "Smeltveiligheid", V, List.of("bord", "diff"), UpstreamSymbols.zekering(), false);
@@ -200,7 +200,7 @@ public final class StandardSymbols {
         x("minuterie", "Minuterie (trappenlichtautomaat)", O, EL, UpstreamSymbols.minuterie(), true);
         x("lichtcircuit", "Lichtcircuit", O, EL, all(lamp(12, 12, 7), of(circle(12, 12, 10))), true);
         x("aftakdoos", "Aftakdoos", G, EL, UpstreamSymbols.aftakdoos(), true);
-        x("aarding", "Aardingspunt", G, List.of("bord", "aansluiting"), of(line(12, 3, 12, 12), line(5, 12, 19, 12), line(8, 15, 16, 15), line(10, 18, 14, 18)), false);
+        x("aarding", "Aardingspunt", G, List.of("bord"), of(line(12, 3, 12, 12), line(5, 12, 19, 12), line(8, 15, 16, 15), line(10, 18, 14, 18)), false);
         x("vrij", "Vrij element", G, plus(EL, "bord"), of(rect(2, 6, 20, 12), text(12, 15, "?")), true);
     }
 

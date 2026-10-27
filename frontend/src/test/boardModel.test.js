@@ -316,3 +316,9 @@ test('plaatsingOf normalises imported values', () => {
     expect(plaatsingOf('N/A')).toBe('')
     expect(plaatsingOf(undefined)).toBe('')
 })
+
+test('circuits under an empty element (made by the insert buttons) are still drawn', () => {
+    const p = base()
+    p.een[0].tree = [node('N', 'aansluiting', [node('B', 'bord', [node('X', 'leeg', [node('K1', 'kring', [node('S', 'stopcontact')])])])])]
+    expect(board(p, p.een[0]).circuits.map((c) => c.n.id)).toEqual(['K1'])
+})

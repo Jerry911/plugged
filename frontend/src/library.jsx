@@ -66,7 +66,7 @@ export function useLibrary() {
     }, [load])
     // save, reset, makeStandard and template resolve to the symbol the backend answered with (null when it did not accept it); remove and restoreAll to true/false
     const save = useCallback(async (c) => {
-        const r = await call(url(c.k), {method: 'PUT', headers: JSON_H, body: JSON.stringify(c)})
+        const r = await call(url(c.k), {method: 'PUT', headers: JSON_H, body: JSON.stringify(c.parents ? {...c, parents: c.parents.filter((k) => k !== 'aansluiting')} : c)}) // 'aansluiting' is added by setLibrary, the backend has no such symbol
         if (!r) return null
         const s = await r.json()
         setLib((l) => put(l, s))

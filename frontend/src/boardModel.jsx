@@ -345,7 +345,7 @@ export function board(p, pg) {
                 ? [c]
                 : c.type === 'subbord'
                     ? [{id: c.id + '~', type: 'kring', label: '', info: '', p: {bescherming: 'geen'}, children: [c]}]
-                    : ['diff', 'zekering', 'hoofdschakelaar'].includes(c.type)
+                    : ['diff', 'zekering', 'hoofdschakelaar', 'leeg'].includes(c.type) // an empty element (insert buttons) keeps the circuits under it visible
                         ? circs(c)
                         : [],
         )

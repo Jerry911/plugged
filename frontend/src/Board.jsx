@@ -28,8 +28,9 @@ const Trash = ({x, y, onDelete}) => (
 )
 // symbols are drawn in a 24-unit box scaled by s/24: compensate so their stroke equals the connection lines
 const LINE_W = 2
-const Item = ({it, sel, onSel, onDelete}) => {
-    const on = sel && it.id === sel,
+const Item = ({it, sel, ghost, onSel, onDelete}) => {
+    const gh = !!ghost && it.id === ghost,
+        on = gh || (sel && it.id === sel),
         c = on ? B : '#000',
         h = {...(it.id ? {'data-nid': it.id} : {}), ...(it.id && onSel ? {onClick: () => onSel(it.id), style: {cursor: 'pointer'}} : {})}
     if (it.k === 'circ') return <circle cx={it.x} cy={it.y} r={it.r} fill="none" stroke="#000" strokeWidth={LINE_W} />
@@ -53,6 +54,7 @@ const Item = ({it, sel, onSel, onDelete}) => {
     if (it.k === 'sym')
         return (
             <>
+                {gh && <circle cx={it.x} cy={it.y} r={it.s * 0.8} fill="rgba(10,108,255,0.12)" stroke={B} strokeWidth="1" strokeDasharray="4 3" />}
                 <g {...h}>
                     {h.onClick && <rect x={it.x - Math.max(30, it.s / 2)} y={it.y - Math.max(30, it.s / 2)} width={Math.max(60, it.s)} height={Math.max(60, it.s)} fill="transparent" />}
                     {it.r ? (
@@ -63,7 +65,7 @@ const Item = ({it, sel, onSel, onDelete}) => {
                         <Sym shapes={it.shapes} x={it.x} y={it.y} s={it.s} stroke={c} w={(LINE_W * 24) / it.s} />
                     )}
                 </g>
-                {on && onDelete && <Trash x={it.x + 30} y={it.y - 30} onDelete={onDelete} />}
+                {on && !gh && onDelete && <Trash x={it.x + 30} y={it.y - 30} onDelete={onDelete} />}
             </>
         )
     if (it.k === 'rect')
@@ -79,7 +81,7 @@ const Item = ({it, sel, onSel, onDelete}) => {
                     stroke={c}
                     strokeWidth={it.id ? 3 : 1.5}
                 />
-                {on && onDelete && <Trash x={it.x + it.w} y={it.y} onDelete={onDelete} />}
+                {on && !gh && onDelete && <Trash x={it.x + it.w} y={it.y} onDelete={onDelete} />}
             </>
         )
     return (
@@ -124,7 +126,7 @@ const Head = ({h, sel, onSel}) => {
 }
 // Width of the head (kWh meter, earth, main differential) in drawing units; it is repeated at the left of every sheet.
 const HEADW = 262
-export const BoardSheet = ({p, pg, b, sl, no, total, sel, onSel, onFooter, onDelete}) => {
+export const BoardSheet = ({p, pg, b, sl, no, total, sel, ghost, onSel, onFooter, onDelete}) => {
     const W = Math.max(1, sl.x1 - sl.x0),
         s = Math.min(U, 277 / W, 135 / Math.max(1, -sl.minY)),
         y = Math.min(147, 12 + -sl.minY * s),
@@ -142,7 +144,7 @@ export const BoardSheet = ({p, pg, b, sl, no, total, sel, onSel, onFooter, onDel
                 {b.circuits.slice(sl.from, sl.to).map((c) => (
                     <g key={c.n.id} transform={`translate(${c.x},0)`}>
                         {c.items.map((it, i) => (
-                            <Item key={i} it={it} sel={sel} onSel={onSel} onDelete={onDelete} />
+                            <Item key={i} it={it} sel={sel} ghost={ghost} onSel={onSel} onDelete={onDelete} />
                         ))}
                     </g>
                 ))}

@@ -313,3 +313,11 @@ test('an issue about an element carries its circuit and point (as drawn), other 
     get(p, 'K1').children = []
     expect(rule(p, 'kring.empty')[0].mark).toBeUndefined()
 })
+
+test('an empty symbol (made by the insert buttons) is a warning, not a hierarchy error', () => {
+    const p = ok()
+    p.een[0].tree[0].children[0].children[0].children[0].children[0].children.push(node('X', 'leeg'))
+    const is = verify(p)
+    expect(is.some((i) => i.rule === 'symbol.empty' && i.nodeId === 'X' && i.level === 'warn')).toBe(true)
+    expect(is.some((i) => i.rule === 'hierarchy')).toBe(false)
+})

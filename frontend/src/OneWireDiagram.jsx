@@ -1,10 +1,11 @@
 // Copyright 2026 Pleysier Jeroen
 // SPDX-License-Identifier: AGPL-3.0-only
 import {useEffect, useRef, useState} from 'react'
-import {allTypes, stackOf, Sym, typeOf} from './symbols'
+import {allTypes, EMPTY_TYPE, stackOf, Sym, typeOf} from './symbols'
 import {BoardSheet} from './Board.jsx'
 import {defaultProps, detailLines, hasPlacement, infoOf, nextLetter, PLAATSING, sheetPlan} from './boardModel.jsx'
 import {flat, nameOf, reid, uid} from './util.jsx'
+import {canInsert, emptyChoices, insertAt, insertTypes, parentOf} from './insertion.js'
 import {ZOOMS} from './SituationSchema.jsx'
 import ZoomPane from "./ZoomPane.jsx";
 
@@ -92,7 +93,20 @@ const ICONS = {
         <path d="M21 12a9 9 0 1 1-3-6.7"/>
         <path d="M21 4v5h-5"/>
     </Ico>,
+    // insert an empty symbol before / after the selected one: a box (the symbol) with a plus at the side where the new one comes
+    before: <Ico>
+        <rect x="13" y="6" width="8" height="12" rx="1"/>
+        <path d="M3 12h7"/>
+        <path d="M6.5 8.5v7"/>
+    </Ico>,
+    after: <Ico>
+        <rect x="3" y="6" width="8" height="12" rx="1"/>
+        <path d="M14 12h7"/>
+        <path d="M17.5 8.5v7"/>
+    </Ico>,
 }
+// id of the element that is drawn (in blue) while a symbol from the palette is dragged over the drawing
+const GHOST = '~ghost~'
 // ids of the ancestors of a node (to unfold them when the node gets selected)
 const ancestorsOf = (ns, id, acc = []) => {
     for (const n of ns) {
@@ -149,6 +163,9 @@ export default function OneWireDiagram({p, setP, idx, focus, onFocused, onFooter
         [q, setQ] = useState(''),
         [zoom, setZoom] = useState(1),
         [folded, setFolded] = useState(() => new Set()),
+        // drag & drop from the palette: the symbol type that is being dragged and where it would land ({id, mode: 'before' | 'after', no: sheet})
+        [dragT, setDragT] = useState(null),
+        [drop, setDrop] = useState(null),
         drawing = useRef(null)
     // a focus (e.g. the message of a check): select the element and scroll the drawing to it (when it is drawn on this sheet), then report it as handled
     useEffect(() => {
@@ -191,26 +208,47 @@ export default function OneWireDiagram({p, setP, idx, focus, onFocused, onFooter
         }
         return null
     }
-    const add = (t) => {
+    const tp = (k) => typeOf(p, k)
+    // a new element of the given symbol type (a circuit gets the next free letter, a distribution part its default properties)
+    const mk = (t) => {
         const n = {id: uid(), type: t.k, label: t.k === 'kring' ? nextLetter(tree) : t.name, info: '', children: []},
             dp = defaultProps(t.k)
         if (dp) {
             n.p = {...dp}
             if (t.k === 'kring') n.info = infoOf(n.p)
         }
+        return n
+    }
+    const add = (t) => {
+        const n = mk(t)
         if (!t.parents.length) return set([...tree, n])
         const par = parentFor(t)
         if (!par) {
             if (free && !s) return set([...tree, n])
             return alert(
                 s
-                    ? `'${t.name}' kan enkel onder: ${t.parents.map((k) => typeOf(p, k).name).join(', ')}. (Of vink "Vrije hiërarchie" aan.)`
+                    ? `'${t.name}' kan enkel onder: ${t.parents.map((k) => typeOf(p, k).name).join(', ')}. (Of vink \"Vrije hiërarchie\" aan.)`
                     : 'Selecteer eerst een element waaronder dit past.',
             )
         }
         set(upd(tree, par.id, (x) => [{...x, children: [...x.children, n]}]))
         unfold([par.id])
         if (DIST.includes(t.k)) setSel(n.id)
+    }
+    // insert a symbol type before / after the element `id` and select it
+    const insertSym = (id, mode, t) => {
+        const n = mk(t)
+        set(insertAt(tree, id, mode, n))
+        unfold([id])
+        setSel(n.id)
+    }
+    // the buttons in Eigenschappen: insert an empty element (type 'leeg') before / after the selected one; its Type dropdown lists what fits there
+    const insertEmpty = (mode) => {
+        if (!s) return
+        const n = {id: uid(), type: EMPTY_TYPE.k, label: '', info: '', children: []}
+        set(insertAt(tree, s.id, mode, n))
+        unfold([s.id])
+        setSel(n.id)
     }
     const setProp = (k, v) =>
         set(
@@ -225,21 +263,70 @@ export default function OneWireDiagram({p, setP, idx, focus, onFocused, onFooter
             upd(tree, s.id, (x) => {
                 const old = typeOf(p, x.type),
                     nu = typeOf(p, k)
+                // an empty element becomes a real one: it gets the name and the default properties of a new element of that type
+                if (x.type === EMPTY_TYPE.k) {
+                    const dp = defaultProps(k)
+                    return [{...x, type: k, label: k === 'kring' ? nextLetter(tree) : nu.name, ...(dp ? {p: {...dp}, info: k === 'kring' ? infoOf(dp) : x.info} : {})}]
+                }
                 return [{...x, type: k, label: !x.label || x.label === old.name ? nu.name : x.label}]
             }),
         )
     // the types the selected element can become: same kind (not a distribution part) that fits under its parent
-    const parentOf = (ns, id, par = null) => {
-        for (const n of ns) {
-            if (n.id === id) return par
-            const r = parentOf(n.children, id, n)
-            if (r !== undefined) return r
-        }
-    }
+    const isEmpty = s?.type === EMPTY_TYPE.k
     const swapTypes = (() => {
-        if (!s || DIST.includes(s.type)) return []
+        if (!s) return []
+        // an empty element: everything that may hang under its parent (the "kan geplaatst worden na" list) and accepts what hangs under it
+        if (isEmpty) return emptyChoices(tp, tree, T, s, free)
+        if (DIST.includes(s.type)) return []
         const par = parentOf(tree, s.id)
         return T.filter((t) => t.place && !DIST.includes(t.k) && (t.k === s.type || free || !par || t.parents.includes(par.type)))
+    })()
+    // can anything be inserted before / after the selected element? (the buttons in Eigenschappen)
+    const canBefore = !!s && insertTypes(tp, tree, T, s, 'before', free).length > 0,
+        canAfter = !!s && insertTypes(tp, tree, T, s, 'after', free).length > 0
+    // drag & drop: the element under the pointer (a symbol, a box or a circuit) and whether the symbol would come before it (left half) or after it (right half)
+    const dropAt = (e) => {
+        const el = e.target?.closest?.('[data-nid],[data-hit]')
+        if (!el || !dragT) return null
+        const id = el.getAttribute('data-nid') || el.getAttribute('data-hit'),
+            tgt = id && find(tree, id)
+        if (!tgt) return null
+        const half = !el.hasAttribute('data-hit') && el.tagName.toLowerCase() !== 'text',
+            r = el.getBoundingClientRect(),
+            first = half && e.clientX < r.left + r.width / 2 ? 'before' : 'after',
+            mode = [first, first === 'before' ? 'after' : 'before'].find((m) => canInsert(tp, tree, tgt, m, dragT, free))
+        return mode ? {id, mode} : null
+    }
+    const stopDrag = () => {
+        setDragT(null)
+        setDrop(null)
+    }
+    const dragOver = (no) => (e) => {
+        if (!dragT) return
+        const h = dropAt(e)
+        if (!h) return drop && setDrop(null)
+        e.preventDefault()
+        if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy'
+        if (!drop || drop.id !== h.id || drop.mode !== h.mode || drop.no !== no) setDrop({...h, no})
+    }
+    const dragLeave = (e) => {
+        if (!e.currentTarget.contains(e.relatedTarget)) setDrop(null)
+    }
+    const dropOn = (e) => {
+        const h = dropAt(e)
+        if (!h) return stopDrag()
+        e.preventDefault()
+        insertSym(h.id, h.mode, dragT)
+        stopDrag()
+    }
+    // what the sheet would look like after the drop: the whole sheet is laid out again with the new element in it (drawn in blue)
+    const preview = (() => {
+        if (!drop || !dragT) return null
+        const n = {...mk(dragT), id: GHOST},
+            pp = {...p, een: p.een.map((g, i) => (i === idx ? {...g, tree: insertAt(tree, drop.id, drop.mode, n)} : g))},
+            pl = sheetPlan(pp, true).filter((e) => e.kind === 'een' && e.pg === pp.een[idx]),
+            k = pl.findIndex((e) => e.b.circuits.slice(e.sl.from, e.sl.to).some((c) => c.items.some((it) => it.id === GHOST)))
+        return {no: drop.no, e: pl[k >= 0 ? k : Math.min(drop.no - 1, pl.length - 1)]}
     })()
     const rows = (ns, d = 0) =>
         ns.flatMap((n) => {
@@ -331,7 +418,20 @@ export default function OneWireDiagram({p, setP, idx, focus, onFocused, onFooter
                                     <b>{c}</b>
                                 </summary>
                                 {Ls.map((t) => (
-                                    <button key={t.k} onClick={() => add(t)}>
+                                    <button
+                                        key={t.k}
+                                        draggable
+                                        title="Klik om toe te voegen, of sleep het naar het schema"
+                                        onClick={() => add(t)}
+                                        onDragStart={(e) => {
+                                            setDragT(t)
+                                            if (e.dataTransfer) {
+                                                e.dataTransfer.effectAllowed = 'copy'
+                                                e.dataTransfer.setData('text/plain', t.k)
+                                            }
+                                        }}
+                                        onDragEnd={stopDrag}
+                                    >
                                         <svg width="20" height="20" viewBox="0 0 20 20">
                                             <Sym shapes={t.shapes} x={10} y={10} s={18}/>
                                         </svg>
@@ -373,6 +473,7 @@ export default function OneWireDiagram({p, setP, idx, focus, onFocused, onFooter
                                 onChange={(e) => changeType(e.target.value)}
                                 style={{width: '100%', boxSizing: 'border-box'}}
                             >
+                                {isEmpty && <option value={EMPTY_TYPE.k}>— kies een symbool —</option>}
                                 {swapTypes.length ? (
                                     [...new Set(swapTypes.map((t) => t.cat))].map((c) => (
                                         <optgroup key={c} label={c}>
@@ -385,7 +486,7 @@ export default function OneWireDiagram({p, setP, idx, focus, onFocused, onFooter
                                                 ))}
                                         </optgroup>
                                     ))
-                                ) : (
+                                ) : isEmpty ? null : (
                                     <option value={s.type}>{typeOf(p, s.type).name}</option>
                                 )}
                             </select>
@@ -502,6 +603,39 @@ export default function OneWireDiagram({p, setP, idx, focus, onFocused, onFooter
                                 style={{width: '100%', boxSizing: 'border-box', marginTop: 4}}
                             />
                         )}
+                        <div className="tb icons" id="eds-insert">
+                            <small style={{display: 'block'}}>Leeg symbool invoegen:</small>
+                            <button
+                                id="eds-insert-before"
+                                title={
+                                    canBefore
+                                        ? 'Leeg symbool invoegen vóór dit element (tussen het vorige element en dit element); kies daarna het type'
+                                        : isEmpty
+                                          ? 'Kies eerst een type voor dit lege symbool'
+                                          : 'Er past geen enkel symbool vóór dit element'
+                                }
+                                aria-label="Symbool invoegen vóór"
+                                disabled={!canBefore}
+                                onClick={() => insertEmpty('before')}
+                            >
+                                {ICONS.before} Vóór
+                            </button>
+                            <button
+                                id="eds-insert-after"
+                                title={
+                                    canAfter
+                                        ? 'Leeg symbool invoegen na dit element; kies daarna het type'
+                                        : isEmpty
+                                          ? 'Kies eerst een type voor dit lege symbool'
+                                          : 'Er past geen enkel symbool na dit element'
+                                }
+                                aria-label="Symbool invoegen na"
+                                disabled={!canAfter}
+                                onClick={() => insertEmpty('after')}
+                            >
+                                Na {ICONS.after}
+                            </button>
+                        </div>
                         <div className="tb icons">
                             <button
                                 id="eds-earlier"
@@ -581,9 +715,13 @@ export default function OneWireDiagram({p, setP, idx, focus, onFocused, onFooter
                 {plan.map((e) => (
                     <div
                         key={e.no}
-                        style={{position: 'relative', width: zoom < 1 ? `${zoom * 100}%` : '100%', marginBottom: 10}}>
+                        id={`eds-sheet-${e.no}`}
+                        style={{position: 'relative', width: zoom < 1 ? `${zoom * 100}%` : '100%', marginBottom: 10}}
+                        onDragOver={dragOver(e.no)}
+                        onDragLeave={dragLeave}
+                        onDrop={dropOn}>
                         <ZoomPane zoom={zoom} always>
-                            <div style={{width: `${Math.max(zoom, 1) * 100}%`}}>
+                            <div style={{width: `${Math.max(zoom, 1) * 100}%`, position: 'relative'}}>
                                 <BoardSheet
                                     p={p}
                                     pg={pg}
@@ -596,6 +734,21 @@ export default function OneWireDiagram({p, setP, idx, focus, onFocused, onFooter
                                     onFooter={onFooter}
                                     onDelete={remove}
                                 />
+                                {/* drop preview: the sheet as it would look after the drop, laid over the real one (which keeps receiving the drag events) */}
+                                {preview && preview.no === e.no && preview.e && (
+                                    <div id="eds-drop-preview" style={{position: 'absolute', inset: 0, background: '#fff', pointerEvents: 'none', zIndex: 2}}>
+                                        <BoardSheet
+                                            p={p}
+                                            pg={pg}
+                                            b={preview.e.b}
+                                            sl={preview.e.sl}
+                                            no={e.no}
+                                            total={e.total}
+                                            ghost={GHOST}
+                                            onFooter={onFooter}
+                                        />
+                                    </div>
+                                )}
                             </div>
                         </ZoomPane>
                         <div className="ui zoomctl inset">

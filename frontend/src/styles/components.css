@@ -23,6 +23,10 @@
     text-align: left
 }
 
+.pal button[draggable="true"] {
+    cursor: grab
+}
+
 .pal .tb.icons button {
     display: inline-flex;
     justify-content: center;

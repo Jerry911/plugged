@@ -163,6 +163,28 @@ const OTHER = [
     ['aantal', 'Aantal (x)'],
     ['nr', 'Nr'],
 ]
+// Centers an element in the part of the screen that is really visible: scrolls its own scroll containers (zoomed drawing),
+// then the page, leaving out the sticky check popup (.verify) that covers the top of the screen.
+function centerInView(el) {
+    if (!el) return
+    for (let a = el.parentElement; a && a !== document.body; a = a.parentElement) {
+        const o = getComputedStyle(a)
+        if (/(auto|scroll)/.test(o.overflowY + o.overflowX) && (a.scrollHeight > a.clientHeight || a.scrollWidth > a.clientWidth)) {
+            const r = el.getBoundingClientRect(),
+                c = a.getBoundingClientRect()
+            a.scrollTo({
+                left: a.scrollLeft + (r.left + r.width / 2) - (c.left + c.width / 2),
+                top: a.scrollTop + (r.top + r.height / 2) - (c.top + c.height / 2),
+                behavior: 'instant',
+            })
+        }
+    }
+    const pop = document.querySelector('.verify'),
+        top = pop ? Math.max(0, pop.getBoundingClientRect().bottom) : 0,
+        r = el.getBoundingClientRect(),
+        mid = top + (innerHeight - top) / 2
+    scrollBy({top: r.top + r.height / 2 - mid, behavior: 'smooth'})
+}
 export default function OneWireDiagram({p, setP, idx, focus, onFocused, onFooter}) {
     const pg = p.een[idx],
         tree = pg.tree,
@@ -180,8 +202,12 @@ export default function OneWireDiagram({p, setP, idx, focus, onFocused, onFooter
     useEffect(() => {
         if (!focus) return
         setSel(focus.id)
-        const el = drawing.current?.querySelector(`[data-nid="${String(focus.id).replace(/["\\]/g, '\\$&')}"]`)
-        el?.scrollIntoView?.({block: 'center', inline: 'center', behavior: 'smooth'})
+        const find = () => drawing.current?.querySelector(`[data-nid="${String(focus.id).replace(/["\\]/g, '\\$&')}"]`)
+        if (find()) {
+            // wait until the selection has changed the layout, otherwise the scroll target moves while scrolling
+            // (no cleanup: onFocused() resets the focus at once, which would cancel this timer)
+            setTimeout(() => centerInView(find()), 50)
+        }
         onFocused?.()
     }, [focus])
     const unfold = (ids) => setFolded((f) => (ids.some((i) => f.has(i)) ? new Set([...f].filter((i) => !ids.includes(i))) : f))
@@ -563,15 +589,15 @@ export default function OneWireDiagram({p, setP, idx, focus, onFocused, onFooter
                                             </label>
                                         </div>
                                     ) : (
-                                    <label key={k}>
-                                        {l}
-                                        <input
-                                            value={s.p?.[k] ?? ''}
-                                            onChange={(e) => setProp(k, e.target.value)}
-                                            style={{width: '100%', boxSizing: 'border-box'}}
-                                        />
-                                    </label>
-                                ))
+                                        <label key={k}>
+                                            {l}
+                                            <input
+                                                value={s.p?.[k] ?? ''}
+                                                onChange={(e) => setProp(k, e.target.value)}
+                                                style={{width: '100%', boxSizing: 'border-box'}}
+                                            />
+                                        </label>
+                                    ))
                             ),
                         )}
                         {stackOf(typeOf(p, s.type), s.p) && (
@@ -632,8 +658,8 @@ export default function OneWireDiagram({p, setP, idx, focus, onFocused, onFooter
                                     canBefore
                                         ? 'Leeg symbool invoegen vóór dit element (tussen het vorige element en dit element); kies daarna het type'
                                         : isEmpty
-                                          ? 'Kies eerst een type voor dit lege symbool'
-                                          : 'Er past geen enkel symbool vóór dit element'
+                                            ? 'Kies eerst een type voor dit lege symbool'
+                                            : 'Er past geen enkel symbool vóór dit element'
                                 }
                                 aria-label="Symbool invoegen vóór"
                                 disabled={!canBefore}
@@ -647,8 +673,8 @@ export default function OneWireDiagram({p, setP, idx, focus, onFocused, onFooter
                                     canAfter
                                         ? 'Leeg symbool invoegen na dit element; kies daarna het type'
                                         : isEmpty
-                                          ? 'Kies eerst een type voor dit lege symbool'
-                                          : 'Er past geen enkel symbool na dit element'
+                                            ? 'Kies eerst een type voor dit lege symbool'
+                                            : 'Er past geen enkel symbool na dit element'
                                 }
                                 aria-label="Symbool invoegen na"
                                 disabled={!canAfter}
@@ -662,8 +688,8 @@ export default function OneWireDiagram({p, setP, idx, focus, onFocused, onFooter
                                     canBranch
                                         ? 'Nieuwe tak invoegen: een leeg symbool naast dit element, onder hetzelfde bovenliggende element (bv. na B1 komt B2, erboven getekend); kies daarna het type'
                                         : isEmpty
-                                          ? 'Kies eerst een type voor dit lege symbool'
-                                          : 'Er past geen enkel symbool als volgende tak van dit element'
+                                            ? 'Kies eerst een type voor dit lege symbool'
+                                            : 'Er past geen enkel symbool als volgende tak van dit element'
                                 }
                                 aria-label="Nieuwe tak invoegen"
                                 disabled={!canBranch}

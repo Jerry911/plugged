@@ -366,21 +366,34 @@ test('details are edited in a text area (Enter = new line) and only for elements
     expect(spy.p.een[0].tree[0].children[0].children[0].p.details).toBe('Merk: X\nType: Y\nS/N: 1\n')
 })
 
-test('a focus (message of the check) selects the element, scrolls the drawing to it and is consumed', () => {
-    const scroll = vi.fn()
-    Element.prototype.scrollIntoView = scroll
+test('a focus (message of the check) selects the element, centers it below the check popup and is consumed', () => {
+    vi.useFakeTimers()
+    const pop = document.createElement('div')
+    pop.className = 'verify'
+    pop.getBoundingClientRect = () => ({top: 0, bottom: 200, left: 0, right: 0, width: 0, height: 200})
+    document.body.appendChild(pop)
+    const scroll = vi.spyOn(window, 'scrollBy').mockImplementation(() => {})
+    const rect = vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function () {
+        return this === pop ? {top: 0, bottom: 200, height: 200, left: 0, width: 0} : {top: 700, bottom: 740, height: 40, left: 0, width: 40}
+    })
     const done = vi.fn(),
         t = [node('A', 'bord', [node('K', 'kring', [node('I', 'omvormer', [], {label: 'PV-omvormer', p: {aantal: 1}})])])]
     mount(OneLineSchema, withTree(t), {idx: 0, focus: {id: 'I', n: 1}, onFocused: done})
+    vi.advanceTimersByTime(100)
+    // visible area = below the popup (200) to the bottom of the window: its middle is where the element's middle must end up
+    const mid = 200 + (innerHeight - 200) / 2
     expect(scroll).toHaveBeenCalledTimes(1)
-    expect(scroll.mock.contexts[0].getAttribute('data-nid')).toBe('I')
-    expect(scroll.mock.calls[0][0]).toMatchObject({block: 'center', inline: 'center'})
+    expect(scroll.mock.calls[0][0].top).toBe(720 - mid)
     expect(done).toHaveBeenCalledTimes(1)
     expect(screen.getByLabelText('Details')).toBeInTheDocument() // the element is selected: its properties are shown
     // an element that is not drawn on this sheet is still selected, without scrolling
     mount(OneLineSchema, withTree(t), {idx: 0, focus: {id: 'nope', n: 2}})
+    vi.advanceTimersByTime(100)
     expect(scroll).toHaveBeenCalledTimes(1)
-    delete Element.prototype.scrollIntoView
+    rect.mockRestore()
+    scroll.mockRestore()
+    pop.remove()
+    vi.useRealTimers()
 })
 
 // ---- insert before / after (buttons) and drag & drop from the palette ----

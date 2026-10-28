@@ -1010,3 +1010,80 @@ test('waterproof: a general socket from the library has its own h; other symbols
     fireEvent.click(container.querySelector('#unplaced-p7')) // a switch
     expect(container.querySelector('#sym-waterproof')).toBeNull()
 })
+
+test('a socket with p.aantal 2 is drawn as a double socket on the situatieschema, like on the eendraadschema', () => {
+    const arcs = (p, items) => {
+        const {container} = render(<SitSheet p={p} pg={{id: 's', name: 'X', walls: [], items}} no={2} total={3} />)
+        return container.querySelectorAll('path').length
+    }
+    const mk = (extra) => ({...base(), een: [{id: 'e1', name: 'B', tree: [node('n1', 'stopcontact', [], extra)]}]})
+    const item = [{id: '1', kind: 'sym', node: 'n1', x: 50, y: 50, r: 0, s: 7}]
+    const single = arcs(mk({p: {aantal: 1}}), item),
+        double = arcs(mk({p: {aantal: 2}}), item)
+    expect(double).toBeGreaterThan(single)
+})
+
+// helper: a project with one component and a sheet that has it placed
+const withNode = (type, props) => ({...base(), een: [{id: 'e1', name: 'B', tree: [node('n1', type, [], props)]}]})
+const placedN1 = [{id: '1', kind: 'sym', node: 'n1', x: 50, y: 50, r: 0, s: 7}]
+const sheet = (p, items = placedN1) =>
+    render(<SitSheet p={p} pg={{id: 's', name: 'X', walls: [], items}} no={2} total={3} />).container
+const paths = (c) => c.querySelectorAll('path').length
+
+test('a placed socket has one arc per socket: aantal 1, 2 and 3', () => {
+    const n = (a) => paths(sheet(withNode('stopcontact', {p: {aantal: a}})))
+    expect(n(2)).toBeGreaterThan(n(1))
+    expect(n(3)).toBeGreaterThan(n(2))
+})
+
+test('a socket without p.aantal is still drawn as one socket', () => {
+    expect(paths(sheet(withNode('stopcontact', {})))).toBe(paths(sheet(withNode('stopcontact', {p: {aantal: 1}}))))
+})
+
+test('aantal does not change the drawing of a non-socket', () => {
+    const n = (a) => paths(sheet(withNode('lichtpunt', {p: {aantal: a}})))
+    expect(n(3)).toBe(n(1))
+})
+
+test('a waterproof double socket keeps its small h', () => {
+    const c = sheet(withNode('stopcontact', {p: {aantal: 2, h: true}}))
+    const hs = [...c.querySelectorAll('text')].filter((t) => t.textContent === 'h')
+    expect(hs).toHaveLength(1)
+})
+
+test('p.hor changes how a double socket is stacked', () => {
+    const a = sheet(withNode('stopcontact', {p: {aantal: 2, hor: true}})).innerHTML,
+        b = sheet(withNode('stopcontact', {p: {aantal: 2, hor: false}})).innerHTML
+    expect(a).not.toBe(b)
+})
+
+test('the unplaced button shows the same number of sockets as the component', () => {
+    const icon = (a) => {
+        const {container} = mount(SituationSchema, withNode('stopcontact', {p: {aantal: a}}), {idx: 0})
+        return container.querySelectorAll('#unplaced-n1 path').length
+    }
+    expect(icon(2)).toBeGreaterThan(icon(1))
+})
+
+test('placing a component links it by node and does not copy aantal onto the item', () => {
+    const {container, spy} = mount(SituationSchema, withNode('stopcontact', {p: {aantal: 2}}), {idx: 0})
+    fireEvent.click(container.querySelector('#unplaced-n1'))
+    const it = sit(spy).items[0]
+    expect(it).toMatchObject({kind: 'sym', node: 'n1'})
+    expect(it.aantal).toBeUndefined()
+})
+
+test('the drawing follows a later change of aantal', () => {
+    const {container, rerender} = render(<SitSheet p={withNode('stopcontact', {p: {aantal: 1}})} pg={{id: 's', name: 'X', walls: [], items: placedN1}} no={2} total={3} />)
+    const before = paths(container)
+    rerender(<SitSheet p={withNode('stopcontact', {p: {aantal: 2}})} pg={{id: 's', name: 'X', walls: [], items: placedN1}} no={2} total={3} />)
+    expect(paths(container)).toBeGreaterThan(before)
+})
+
+test('a general socket from the left list is a single socket', () => {
+    const {container, spy} = mount(SituationSchema, P(), {idx: 0})
+    fireEvent.click(container.querySelector('#comp-stopcontact'))
+    clk(container, 50, 50)
+    expect(sit(spy).items[0].node).toBeUndefined()
+    expect(sit(spy).items[0].aantal).toBeUndefined()
+})

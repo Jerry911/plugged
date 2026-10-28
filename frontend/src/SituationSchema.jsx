@@ -41,7 +41,7 @@ const Dim = ({a, b, sc, color = '#555', off = 3}) => {
 const CompBtn = ({p, n, mark, id, on, flag, title, onClick}) => (
     <button id={id} type="button" className="compbtn" title={title} style={on ? {background: '#cfe3ff'} : undefined} onClick={onClick}>
         <svg width="20" height="20" viewBox="0 0 20 20" style={{flex: 'none'}}>
-            <Sym shapes={shapesOf(typeOf(p, n.type), {h: n.p?.h})} x={10} y={10} s={18} />
+            <Sym shapes={shapesOf(typeOf(p, n.type), n.p)} x={10} y={10} s={18} />
         </svg>
         {flag && <span className="flag">{flag}</span>}
         <span className="nm">{nameOf(p, n)}</span>
@@ -121,7 +121,7 @@ export const SitSheet = ({p, pg, no, total, ed, onFooter}) => {
                     const n = i.node ? nodes.find((n) => n.id === i.node) : null,
                         gen = !i.node && i.type ? allTypes(p).find((t) => t.k === i.type) : null,
                         // a socket is drawn with the 'h' when it is waterproof: the property of the component of the eendraadschema (so it follows there), else of the loose symbol
-                        shapes = n ? shapesOf(typeOf(p, n.type), {h: n.p?.h}) : gen && shapesOf(gen, {h: i.h}),
+                        shapes = n ? shapesOf(typeOf(p, n.type), n.p) : gen && shapesOf(gen, {h: i.h}),
                         // text next to the symbol: the marking of the eendraadschema component (A5), unless the user typed their own
                         txt = i.mark ?? (n ? marks.get(n.id) || '' : '')
                     return (

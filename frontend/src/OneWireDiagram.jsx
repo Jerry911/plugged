@@ -392,7 +392,7 @@ export default function OneWireDiagram({p, setP, idx, focus, onFocused, onFooter
                         )}
                     </span>
                     <svg width="20" height="20" viewBox="0 0 22 22">
-                        <Sym shapes={shapesOf(typeOf(p, n.type), {h: n.p?.h})} x={11} y={11} s={20}/>
+                        <Sym shapes={shapesOf(typeOf(p, n.type), n.p)} x={11} y={11} s={20}/>
                     </svg>
                     <span style={main ? {fontWeight: 600} : undefined}>{nameOf(p, n)}</span>
                     <small style={{color: '#666'}}>{n.info}</small>

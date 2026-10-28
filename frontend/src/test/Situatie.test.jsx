@@ -1042,3 +1042,21 @@ test('the h of a waterproof socket stays upright when the symbol is rotated', ()
     expect(h(90).getAttribute('transform')).toMatch(/^rotate\(-90 /)
     expect(h(-30).getAttribute('transform')).toMatch(/^rotate\(30 /)
 })
+
+test('selected-item panel: close button on top, text first, size slider next, buttons last', () => {
+    const init = P()
+    init.sit[0].items = [{id: 'i1', kind: 'sym', node: 'n1', x: 100, y: 100, r: 0, s: 7}]
+    const {container} = mount(SituationSchema, init, {idx: 0})
+    fireEvent.pointerMove(sv(container), {clientX: 5, clientY: 5})
+    fireEvent.pointerDown(container.querySelector('svg.sheet g[style*="move"]'), {clientX: 100, clientY: 100})
+    const panel = container.querySelector('#sit-props'),
+        before = (a, b) => !!(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING)
+    expect(panel.firstElementChild.contains(container.querySelector('#sit-close'))).toBe(true)
+    const text = panel.querySelector('#sym-text'), slider = panel.querySelector('input[type=range]'), buttons = panel.querySelector('.tb')
+    expect(before(text, slider)).toBe(true)
+    expect(before(slider, buttons)).toBe(true)
+    expect(buttons.lastElementChild.textContent).toBe('⧉')
+    fireEvent.click(container.querySelector('#sit-close'))
+    expect(container.querySelector('#sit-props')).toBeNull()
+    expect(screen.queryByText(/Geselecteerd/)).toBeNull()
+})

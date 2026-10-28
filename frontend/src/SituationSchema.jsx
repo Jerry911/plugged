@@ -710,15 +710,44 @@ export default function SituationSchema({p, setP, idx, onFooter}) {
                     Selecteer: sleep een kader (Shift = toevoegen), pijltjes, Del, R. Raster, vrij tekenen, maten en zoom: in de tekening.
                 </p>
                 {it && (
-                    <div className="warn">
-                        <b>Geselecteerd: {it.kind}</b>
-                        <div className="tb">
-                            <button onClick={() => upI({r: (it.r || 0) - 15})}>⟲15°</button>
-                            <button onClick={() => upI({r: (it.r || 0) + 15})}>⟳15°</button>
-                            <button onClick={() => upI({r: (it.r || 0) + 90})}>⟳90°</button>
+                    <div className="warn" id="sit-props">
+                        <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+                            <b>Geselecteerd: {it.kind}</b>
+                            <button
+                                id="sit-close"
+                                title="Selectie sluiten"
+                                aria-label="Selectie sluiten"
+                                style={{display: 'inline-flex', width: 'auto', padding: '2px 7px'}}
+                                onClick={() => setSel([])}
+                            >
+                                ✕
+                            </button>
                         </div>
-                        <label>
-                            Grootte{' '}
+                        {it.kind === 'sym' && (
+                            <label style={{display: 'flex', alignItems: 'center', gap: 6}}>
+                                Tekst
+                                <input
+                                    id="sym-text"
+                                    value={it.mark ?? (it.node ? marks.get(it.node) || '' : '')}
+                                    placeholder="bv. A5"
+                                    onChange={(e) => upI({mark: e.target.value})}
+                                    style={{flex: 1, minWidth: 0}}
+                                />
+                                {it.node && it.mark !== undefined && (
+                                    <button type="button" id="sym-text-reset" title="Terug naar het nummer uit het eendraadschema" onClick={() => upI({mark: undefined})}>
+                                        ↺
+                                    </button>
+                                )}
+                            </label>
+                        )}
+                        {it.kind === 'text' && (
+                            <label style={{display: 'flex', alignItems: 'center', gap: 6}}>
+                                Tekst
+                                <input id="text-txt" value={it.txt} onChange={(e) => upI({txt: e.target.value})} style={{flex: 1, minWidth: 0}} />
+                            </label>
+                        )}
+                        <label style={{display: 'flex', alignItems: 'center', gap: 6}}>
+                            Grootte
                             <input
                                 type="range"
                                 min={mn}
@@ -726,41 +755,19 @@ export default function SituationSchema({p, setP, idx, onFooter}) {
                                 step=".5"
                                 value={it[sk] || dflt[it.kind]}
                                 onChange={(e) => upI({[sk]: +e.target.value})}
+                                style={{flex: 1, minWidth: 0}}
                             />
                         </label>
                         {(it.kind === 'door' || it.kind === 'window') && (
-                            <>
-                                <div className="tb">
-                                    <button onClick={() => upI({f: !it.f})}>⇅ spiegel</button>
-                                    <button onClick={() => upI({m: !it.m})}>⇄ spiegel</button>
-                                </div>
-                                <label>
-                                    Breedte{' '}
-                                    <input
-                                        key={`${it.id}:${it.w}`}
-                                        defaultValue={fmtLen(it.w || 10, sc)}
-                                        onKeyDown={(e) => e.key === 'Enter' && setWidth(e.target.value)}
-                                        onBlur={(e) => setWidth(e.target.value)}
-                                        style={{width: 80}}
-                                    />
-                                </label>
-                            </>
-                        )}
-                        {it.kind === 'sym' && (
                             <label>
-                                Tekst{' '}
+                                Breedte{' '}
                                 <input
-                                    id="sym-text"
-                                    value={it.mark ?? (it.node ? marks.get(it.node) || '' : '')}
-                                    placeholder="bv. A5"
-                                    onChange={(e) => upI({mark: e.target.value})}
+                                    key={`${it.id}:${it.w}`}
+                                    defaultValue={fmtLen(it.w || 10, sc)}
+                                    onKeyDown={(e) => e.key === 'Enter' && setWidth(e.target.value)}
+                                    onBlur={(e) => setWidth(e.target.value)}
                                     style={{width: 80}}
                                 />
-                                {it.node && it.mark !== undefined && (
-                                    <button type="button" id="sym-text-reset" title="Terug naar het nummer uit het eendraadschema" onClick={() => upI({mark: undefined})}>
-                                        ↺
-                                    </button>
-                                )}
                             </label>
                         )}
                         {it.kind === 'sym' && symType?.sock && (
@@ -774,8 +781,16 @@ export default function SituationSchema({p, setP, idx, onFooter}) {
                                 Waterdicht
                             </label>
                         )}
-                        {it.kind === 'text' && <input value={it.txt} onChange={(e) => upI({txt: e.target.value})} />}
                         <div className="tb">
+                            <button onClick={() => upI({r: (it.r || 0) - 15})}>⟲15°</button>
+                            <button onClick={() => upI({r: (it.r || 0) + 15})}>⟳15°</button>
+                            <button onClick={() => upI({r: (it.r || 0) + 90})}>⟳90°</button>
+                            {(it.kind === 'door' || it.kind === 'window') && (
+                                <>
+                                    <button onClick={() => upI({f: !it.f})}>⇅ spiegel</button>
+                                    <button onClick={() => upI({m: !it.m})}>⇄ spiegel</button>
+                                </>
+                            )}
                             <button onClick={duplicateSel}>⧉</button>
                         </div>
                     </div>

@@ -7,3 +7,5 @@ data/
 *.log
 /frontend/node/
 /backend/src/main/resources/static/
+/frontend/.env.local
+/backend/config/

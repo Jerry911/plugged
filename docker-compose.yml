@@ -3,7 +3,8 @@ services:
     build: .
     image: plugged:latest
     ports:
-      - "8080:8080"
+      # host port: set PLUGGED_PORT in the shell or in a .env file next to this file (default 8080)
+      - "${PLUGGED_PORT:-8080}:8080"
     volumes:
       - plugged-data:/data
     restart: unless-stopped

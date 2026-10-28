@@ -1,10 +1,10 @@
 // Copyright 2026 Pleysier Jeroen
 // SPDX-License-Identifier: AGPL-3.0-only
 import {useEffect, useRef, useState} from 'react'
-import {Sym, allTypes, typeOf} from './symbols'
+import {Sym, allTypes, shapesOf, typeOf} from './symbols'
 import {Sheet} from './Footer'
 import ZoomPane from './ZoomPane.jsx'
-import {allNodes, hiddenOf, marksOf, nameOf, uid, unplacedOf} from './util.jsx'
+import {allNodes, hiddenOf, marksOf, nameOf, setNodeProps, uid, unplacedOf} from './util.jsx'
 import {numbering} from './boardModel.jsx'
 import {dirTo, fmtLen, hitsInBox, itemBox, parseDims, parseLen, r2, rectWalls, scaleOf, suggestScale, toSheet, unionBox, wallBox} from './geometry.jsx'
 
@@ -41,7 +41,7 @@ const Dim = ({a, b, sc, color = '#555', off = 3}) => {
 const CompBtn = ({p, n, mark, id, on, flag, title, onClick}) => (
     <button id={id} type="button" className="compbtn" title={title} style={on ? {background: '#cfe3ff'} : undefined} onClick={onClick}>
         <svg width="20" height="20" viewBox="0 0 20 20" style={{flex: 'none'}}>
-            <Sym shapes={typeOf(p, n.type).shapes} x={10} y={10} s={18} />
+            <Sym shapes={shapesOf(typeOf(p, n.type), {h: n.p?.h})} x={10} y={10} s={18} />
         </svg>
         {flag && <span className="flag">{flag}</span>}
         <span className="nm">{nameOf(p, n)}</span>
@@ -120,7 +120,8 @@ export const SitSheet = ({p, pg, no, total, ed, onFooter}) => {
                     // linked to a component of the eendraadschema (name + marking), or a general library component (`type`, no marking)
                     const n = i.node ? nodes.find((n) => n.id === i.node) : null,
                         gen = !i.node && i.type ? allTypes(p).find((t) => t.k === i.type) : null,
-                        shapes = n ? typeOf(p, n.type).shapes : gen?.shapes,
+                        // a socket is drawn with the 'h' when it is waterproof: the property of the component of the eendraadschema (so it follows there), else of the loose symbol
+                        shapes = n ? shapesOf(typeOf(p, n.type), {h: n.p?.h}) : gen && shapesOf(gen, {h: i.h}),
                         // text next to the symbol: the marking of the eendraadschema component (A5), unless the user typed their own
                         txt = i.mark ?? (n ? marks.get(n.id) || '' : '')
                     return (
@@ -558,6 +559,9 @@ export default function SituationSchema({p, setP, idx, onFooter}) {
         it = one?.k === 'item' && items.find((i) => i.id === one.id),
         wl = one?.k === 'wall' && walls.find((w) => w.id === one.id)
     const upI = (patch) => setPg({items: items.map((i) => (i.id === it.id ? {...i, ...patch} : i))})
+    // the selected symbol: linked to a component of the eendraadschema (its properties are those of that component, also the waterproof one) or a loose one
+    const itNode = it?.kind === 'sym' && it.node ? allNodes(p).find((n) => n.id === it.node) : null,
+        symType = it?.kind === 'sym' ? (itNode ? typeOf(p, itNode.type) : allTypes(p).find((t) => t.k === it.type)) : null
     const setWallLen = (text) => {
         const m = parseLen(text),
             len = m != null ? toSheet(m, sc) : null
@@ -755,6 +759,17 @@ export default function SituationSchema({p, setP, idx, onFooter}) {
                                         ↺
                                     </button>
                                 )}
+                            </label>
+                        )}
+                        {it.kind === 'sym' && symType?.sock && (
+                            <label>
+                                <input
+                                    id="sym-waterproof"
+                                    type="checkbox"
+                                    checked={!!(itNode ? itNode.p?.h : it.h)}
+                                    onChange={(e) => (itNode ? setP(setNodeProps(p, itNode.id, {h: e.target.checked})) : upI({h: e.target.checked}))}
+                                />{' '}
+                                Waterdicht
                             </label>
                         )}
                         {it.kind === 'text' && <input value={it.txt} onChange={(e) => upI({txt: e.target.value})} />}

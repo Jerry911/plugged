@@ -964,3 +964,49 @@ test('a hidden component placed on the sheet anyway stays on the sheet', () => {
     const {container} = mount(SituationSchema, p, {idx: 0})
     expect([...sv(container).querySelectorAll('text')].some((x) => x.textContent === 'A7')).toBe(true)
 })
+
+// ---- waterproof (h) is a property of a socket, shared with the eendraadschema ----
+const hs = (c) => [...sv(c).querySelectorAll('text')].filter((t) => t.textContent === 'h').length
+test('waterproof: a placed socket follows the component of the eendraadschema, and the checkbox changes that component (both ways)', () => {
+    const {container, spy} = mount(SituationSchema, circ(), {idx: 0})
+    fireEvent.click(container.querySelector('#unplaced-p1')) // placed and selected
+    expect(hs(container)).toBe(0)
+    const cb = () => container.querySelector('#sym-waterproof')
+    expect(cb().checked).toBe(false)
+    fireEvent.click(cb())
+    // the property lives on the component of the eendraadschema, not on the loose symbol
+    expect(spy.p.een[0].tree[0].children[0].p.h).toBe(true)
+    expect(sit(spy).items[0].h).toBeUndefined()
+    expect(hs(container)).toBe(1)
+    expect(cb().checked).toBe(true)
+    fireEvent.click(cb())
+    expect(spy.p.een[0].tree[0].children[0].p.h).toBe(false)
+    expect(hs(container)).toBe(0)
+})
+test('waterproof: set on the eendraadschema it shows on the situatieschema (symbol and component list), no checkbox for other symbols', () => {
+    const P2 = circ()
+    P2.een[0].tree[0].children[0].p = {h: true}
+    P2.sit[0].items = [{id: 'i1', kind: 'sym', node: 'p1', x: 50, y: 50, r: 0, s: 7}, {id: 'i2', kind: 'sym', node: 'p2', x: 80, y: 50, r: 0, s: 7}]
+    const {container} = mount(SituationSchema, P2, {idx: 0})
+    expect(hs(container)).toBe(1) // only p1
+    const hit = () => [...sv(container).querySelectorAll('circle[fill="transparent"]')]
+    fireEvent.pointerDown(hit()[0], {clientX: 50, clientY: 50})
+    expect(container.querySelector('#sym-waterproof').checked).toBe(true)
+    fireEvent.pointerDown(hit()[1], {clientX: 80, clientY: 50})
+    expect(container.querySelector('#sym-waterproof').checked).toBe(false)
+})
+test('waterproof: a general socket from the library has its own h; other symbols have no checkbox', () => {
+    const {container, spy} = mount(SituationSchema, circ(), {idx: 0})
+    fireEvent.click(container.querySelector('#comp-stopcontact'))
+    clk(container, 50, 50)
+    expect(sit(spy).items).toHaveLength(1)
+    expect(hs(container)).toBe(0)
+    fireEvent.contextMenu(sv(container)) // back to selecting
+    fireEvent.pointerDown(sv(container).querySelector('circle[fill="transparent"]'), {clientX: 50, clientY: 50})
+    fireEvent.click(container.querySelector('#sym-waterproof'))
+    expect(sit(spy).items[0].h).toBe(true)
+    expect(spy.p.een[0].tree[0].children[0].p?.h).toBeUndefined() // not linked to any component
+    expect(hs(container)).toBe(1)
+    fireEvent.click(container.querySelector('#unplaced-p7')) // a switch
+    expect(container.querySelector('#sym-waterproof')).toBeNull()
+})

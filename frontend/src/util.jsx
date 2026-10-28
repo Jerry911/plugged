@@ -36,3 +36,20 @@ export const marksOf = (p) => {
     p.een.forEach((g) => walk(g.tree, null))
     return out
 }
+
+// The waterproof socket used to be a symbol of its own (stopcontact_h). It is a normal socket with the property h now (p.h on the eendraadschema,
+// h on a loose symbol of the situatieschema): projects made with the old symbol are converted when they are opened.
+const OLD_WATERPROOF = 'stopcontact_h'
+const fixNode = (n) => ({
+    ...n,
+    ...(n.type === OLD_WATERPROOF ? {type: 'stopcontact', p: {...n.p, h: true}} : {}),
+    children: (n.children || []).map(fixNode),
+})
+export const migrateWaterproof = (d) => ({
+    ...d,
+    ...(d.een ? {een: d.een.map((g) => ({...g, tree: (g.tree || []).map(fixNode)}))} : {}),
+    ...(d.sit ? {sit: d.sit.map((g) => ({...g, items: (g.items || []).map((i) => (i.type === OLD_WATERPROOF ? {...i, type: 'stopcontact', h: true} : i))}))} : {}),
+})
+// change the properties p of one component (node) of the eendraadschema, wherever it is in the project
+const patchNode = (ns, id, patch) => ns.map((n) => (n.id === id ? {...n, p: {...n.p, ...patch}} : {...n, children: patchNode(n.children || [], id, patch)}))
+export const setNodeProps = (p, id, patch) => ({...p, een: p.een.map((g) => ({...g, tree: patchNode(g.tree, id, patch)}))})

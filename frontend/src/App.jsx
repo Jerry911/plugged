@@ -12,7 +12,7 @@ import {importEds} from './eds.jsx'
 import Verify from './Verify'
 import {verify} from './rules.jsx'
 import {AllSheets, makePdf} from './Export'
-import {reid, uid, unplacedOf} from './util.jsx'
+import {migrateWaterproof, reid, uid, unplacedOf} from './util.jsx'
 import {setLibrary} from './symbols'
 
 const init = {
@@ -21,7 +21,8 @@ const init = {
     sit: [{id: 's1', name: 'Plattegrond 1', walls: [], items: []}],
     custom: [],
 }
-const norm = (d) =>
+const norm = (d) => migrateWaterproof(normRaw(d))
+const normRaw = (d) =>
     d.een
         ? {...init, ...d}
         : {

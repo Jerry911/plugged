@@ -7,7 +7,7 @@ import {allNodes, flat, marksOf, nameOf} from './util.jsx'
 
 export const LIMITS = {maxStop: 8, maxLicht: 8, maxDiffmA: 30, cable: {1.5: 16, 2.5: 20, 4: 25, 6: 32, 10: 50, 16: 63}} // cable: mm² -> max protective rating (A)
 const S = (a) => new Set(a)
-const STOP = S(['stopcontact', 'stopcontact_alg', 'stopcontact_kid', 'stopcontact_pekid', 'stopcontact2', 'stopcontact3', 'stopcontact_h']),
+const STOP = S(['stopcontact', 'stopcontact_alg', 'stopcontact_kid', 'stopcontact_pekid', 'stopcontact2', 'stopcontact3']),
     LIGHT = S(['lichtpunt', 'wandlamp', 'tl', 'spot', 'led', 'noodlicht', 'lichtcircuit']),
     SWITCH = S(['schakelaar', 'schakelaar2', 'schakelaar3', 'verklikker', 'wissel', 'wissel2', 'omschakelaar', 'kruis', 'dimmer', 'beweging'])
 // a rolluik switch controls a motor, not a light: it is a control element but not a SWITCH (no 'operates no light' warning)

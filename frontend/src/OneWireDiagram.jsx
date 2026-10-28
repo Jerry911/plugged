@@ -1,7 +1,7 @@
 // Copyright 2026 Pleysier Jeroen
 // SPDX-License-Identifier: AGPL-3.0-only
 import {useEffect, useRef, useState} from 'react'
-import {allTypes, EMPTY_TYPE, stackOf, Sym, typeOf} from './symbols'
+import {allTypes, EMPTY_TYPE, shapesOf, stackOf, Sym, typeOf} from './symbols'
 import {BoardSheet} from './Board.jsx'
 import {defaultProps, detailLines, hasPlacement, infoOf, nextLetter, PLAATSING, sheetPlan} from './boardModel.jsx'
 import {flat, nameOf, reid, uid} from './util.jsx'
@@ -392,7 +392,7 @@ export default function OneWireDiagram({p, setP, idx, focus, onFocused, onFooter
                         )}
                     </span>
                     <svg width="20" height="20" viewBox="0 0 22 22">
-                        <Sym shapes={typeOf(p, n.type).shapes} x={11} y={11} s={20}/>
+                        <Sym shapes={shapesOf(typeOf(p, n.type), {h: n.p?.h})} x={11} y={11} s={20}/>
                     </svg>
                     <span style={main ? {fontWeight: 600} : undefined}>{nameOf(p, n)}</span>
                     <small style={{color: '#666'}}>{n.info}</small>
@@ -583,6 +583,14 @@ export default function OneWireDiagram({p, setP, idx, focus, onFocused, onFooter
                                         onChange={(e) => setProp('hor', e.target.checked)}
                                     />{' '}
                                     Horizontaal
+                                </div>
+                            </label>
+                        )}
+                        {/* waterproof is a property of a socket (the small 'h'), not a symbol of its own; it also follows on the situatieschema */}
+                        {typeOf(p, s.type).sock && (
+                            <label>
+                                <div>
+                                    <input id="eds-waterproof" type="checkbox" checked={!!s.p?.h} onChange={(e) => setProp('h', e.target.checked)} /> Waterdicht
                                 </div>
                             </label>
                         )}

@@ -36,7 +36,7 @@ public class SymbolService {
 
     /**
      * Makes sure the standard symbols are in the database: new ones are added, stored standard symbols of an older catalog version that were not edited
-     * are replaced. A standard symbol the user deleted stays away until it is restored.
+     * are replaced, and unedited ones that are no longer in the catalog are removed. A standard symbol the user deleted stays away until it is restored.
      */
     public void seed() {
         for (SymbolDto std : StandardSymbols.all()) {
@@ -44,6 +44,9 @@ public class SymbolService {
             SymbolEntity cur = repo.findById(std.k()).orElse(null);
             if (cur == null || (cur.isBuiltin() && !cur.isModified() && cur.getStdVersion() < StandardSymbols.VERSION)) repo.save(fresh(standardOf(std.k())));
         }
+        // a standard symbol that left the catalog (e.g. the waterproof socket, now a property of the socket) disappears too, unless the user changed it
+        for (SymbolEntity e : repo.findAll())
+            if (!isHidden(e.getK()) && e.isBuiltin() && !e.isModified() && StandardSymbols.find(e.getK()) == null) repo.delete(e);
     }
 
     @Transactional(readOnly = true)

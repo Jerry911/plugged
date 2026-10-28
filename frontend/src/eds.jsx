@@ -37,13 +37,12 @@ const MAP = {
 }
 export const KNOWN = Object.keys(MAP)
 // A Contactdoos is one EDS type but several symbols in the library: the symbol follows its options (is_geaard, is_kinderveilig,
-// is_halfwaterdicht). The number of sockets is NOT part of the symbol key (stopcontact2/3 would multiply it): it stays in p.aantal.
+// is_halfwaterdicht, as p.h). The number of sockets is NOT part of the symbol key (stopcontact2/3 would multiply it): it stays in p.aantal.
 // Missing options default like the eendraadschema does: earthed, no child protection.
-// There is no symbol for 'waterproof + child protection' (nor for waterproof without earth): there the earth/child options win.
+// Waterproof (is_halfwaterdicht) is not part of the symbol key: it becomes the property p.h of the socket, which draws the small 'h' next to any socket.
 export const socketKey = (q = {}) => {
     const pe = q.is_geaard !== false,
         kid = q.is_kinderveilig === true
-    if (q.is_halfwaterdicht === true && pe && !kid) return 'stopcontact_h'
     if (pe && kid) return 'stopcontact_pekid'
     if (kid) return 'stopcontact_kid'
     return pe ? 'stopcontact' : 'stopcontact_alg'
@@ -168,6 +167,7 @@ function conv(r) {
             n.label = ''
         }
         n.p = {aantal: num(q.aantal ?? q.aantal_schakelaars) || 1, nr: q.nr || '', details: det.join('\n')}
+        if (q.type === 'Contactdoos' && q.is_halfwaterdicht === true) n.p.h = true
     }
     // A Lichtcircuit is a switch with its lights in one element (aantal_lichtpunten): with a known switch type it becomes that switch
     // with the lights as a child, so the switch has its own symbol and still operates its lights.

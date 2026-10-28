@@ -187,7 +187,7 @@ test('symbols are drawn with round joins so lever and flag touch', () => {
 
 const sockets = () => BUILTIN.filter((t) => t.sock)
 test('the sockets of the catalog are drawn like the generator draws them (frontend and backend agree)', () => {
-    expect(sockets().length).toBeGreaterThanOrEqual(7)
+    expect(sockets().length).toBeGreaterThanOrEqual(6)
     sockets().forEach((t) => expect(sockShapes(t.sock), t.k).toEqual(t.shapes))
 })
 test('sockets lie in the line: the supply enters the apex of an arch that opens away from it, nothing hangs below the line', () => {
@@ -265,4 +265,20 @@ test('standard symbols are drawn like the eendraadschema: the same weights, fill
     expect(find('kring', (h) => h.t === 'path')[0]).toMatchObject({f: 1}) // the block on the lever
     // paths never hide the connection point: reach only follows the line, circle, rect and arc that cross the centre line
     expect(reach([{t: 'path', d: 'M0 12 L24 12'}])).toBeNull()
+})
+test('there is no waterproof socket symbol: waterproof is a property that draws the little h next to any socket', () => {
+    expect(typeOf({}, 'stopcontact_h').k).toBe('?')
+    const h = (t, pr) => shapesOf(t, pr).filter((s) => s.t === 'text' && s.s === 'h').length
+    for (const k of ['stopcontact', 'stopcontact_pekid', 'stopcontact2', 'stopcontact3']) {
+        const t = typeOf({}, k)
+        expect(h(t, {}), k).toBe(0)
+        expect(h(t, {h: true}), k).toBe(1)
+        expect(h(t, {h: true, hor: false}), k).toBe(1)
+    }
+    const sc = typeOf({}, 'stopcontact')
+    expect(shapesOf(sc, {h: false})).toBe(sc.shapes)
+    // only the 'h' is added, nothing else changes
+    expect(shapesOf(sc, {h: true}).filter((s) => s.t !== 'text')).toEqual(sc.shapes)
+    const lp = typeOf({}, 'lichtpunt')
+    expect(shapesOf(lp, {h: true})).toBe(lp.shapes) // not a socket: no 'h'
 })

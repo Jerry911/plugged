@@ -139,8 +139,8 @@ test('socket symbol follows is_geaard / is_kinderveilig / is_halfwaterdicht', ()
     expect(k({is_geaard: true, is_kinderveilig: false})).toBe('stopcontact')
     expect(k({is_geaard: false, is_kinderveilig: true})).toBe('stopcontact_kid')
     expect(k({is_geaard: false, is_kinderveilig: false})).toBe('stopcontact_alg')
-    expect(k({is_geaard: true, is_halfwaterdicht: true})).toBe('stopcontact_h')
-    // no symbol for waterproof + child protection: earth + child protection wins
+    // waterproof is not part of the symbol: it is the property p.h of the socket (see below)
+    expect(k({is_geaard: true, is_halfwaterdicht: true})).toBe('stopcontact')
     expect(k({is_geaard: true, is_kinderveilig: true, is_halfwaterdicht: true})).toBe('stopcontact_pekid')
     // options missing: earthed, no child protection (like the eendraadschema)
     expect(k({})).toBe('stopcontact')
@@ -287,4 +287,21 @@ test('an EV charger whose text holds a | keeps it as details, a plain address st
     })
     expect(get(r, 'e4')).toMatchObject({type: 'laadpaal', label: '', p: {details: 'EVW C8R W\nSN: 6220020754'}})
     expect(get(r, 'e5')).toMatchObject({label: 'Garagepoort', p: {details: ''}})
+})
+test('a waterproof socket of the eendraadschema becomes a normal socket with the property h', () => {
+    const sock = (id, o) => row(id, 5, 'Contactdoos', {is_geaard: true, is_kinderveilig: false, aantal: '1', ...o})
+    const r = edsToProject({
+        data: [
+            row(1, 0, 'Aansluiting'),
+            row(2, 1, 'Bord', {is_geaard: true}),
+            row(5, 2, 'Kring', {naam: 'A'}),
+            sock(30, {is_halfwaterdicht: true}),
+            sock(31, {is_halfwaterdicht: false}),
+            sock(32, {is_halfwaterdicht: true, is_kinderveilig: true}),
+        ],
+    })
+    expect(get(r, 'e30')).toMatchObject({type: 'stopcontact', p: {h: true}})
+    expect(get(r, 'e31').p.h).toBeUndefined()
+    expect(get(r, 'e32')).toMatchObject({type: 'stopcontact_pekid', p: {h: true}}) // the 'h' is no longer lost next to child protection
+    expect(r.stats.unknown).toEqual([])
 })

@@ -1,6 +1,6 @@
 // Copyright 2026 Pleysier Jeroen
 // SPDX-License-Identifier: AGPL-3.0-only
-import {allNodes, flat, hiddenOf, reid, uid, unplacedOf} from '../util.jsx'
+import {allNodes, flat, hiddenOf, migrateWaterproof, reid, setNodeProps, uid, unplacedOf} from '../util.jsx'
 import {base, node} from './utils.jsx'
 
 const tree = [node('a', 'aansluiting', [node('b', 'bord', [node('s', 'stopcontact'), node('l', 'lichtpunt')])])]
@@ -43,4 +43,27 @@ test('hidden nodes leave unplacedOf and show up in hiddenOf; unknown ids are ign
     expect(hiddenOf(p).map((n) => n.id)).toEqual(['b'])
     expect(hiddenOf({...p, hidden: undefined})).toEqual([])
     expect(unplacedOf({...p, hidden: undefined}).map((n) => n.id)).toEqual(['b', 's', 'l'])
+})
+test('projects with the old waterproof socket symbol are converted to a socket with h (eendraadschema and situatieschema)', () => {
+    const old = {
+        ...base(),
+        een: [{id: 'e1', name: 'B', tree: [node('a', 'aansluiting', [node('k', 'kring', [node('w', 'stopcontact_h', [], {p: {aantal: 2}}), node('s', 'stopcontact')])])]}],
+        sit: [{id: 's1', name: 'P', walls: [], items: [{id: 'i1', kind: 'sym', type: 'stopcontact_h', x: 1, y: 1}, {id: 'i2', kind: 'sym', node: 'w', x: 2, y: 2}, {id: 'i3', kind: 'sym', type: 'tv', x: 3, y: 3}]}],
+    }
+    const r = migrateWaterproof(old),
+        ns = flat(r.een[0].tree)
+    expect(ns.find((n) => n.id === 'w')).toMatchObject({type: 'stopcontact', p: {aantal: 2, h: true}})
+    expect(ns.find((n) => n.id === 's')).toMatchObject({type: 'stopcontact'})
+    expect(ns.find((n) => n.id === 's').p?.h).toBeUndefined()
+    expect(r.sit[0].items[0]).toMatchObject({type: 'stopcontact', h: true})
+    expect(r.sit[0].items[1]).toEqual(old.sit[0].items[1]) // linked to a component: follows that component
+    expect(r.sit[0].items[2]).toEqual(old.sit[0].items[2])
+    expect(JSON.stringify(r)).not.toContain('stopcontact_h')
+    expect(migrateWaterproof({custom: []})).toEqual({custom: []}) // other shapes of the project stay as they are
+})
+test('setNodeProps changes the properties of one component, wherever it hangs', () => {
+    const p = {...base(), een: [{id: 'e1', name: 'B', tree: [node('a', 'aansluiting', [node('k', 'kring', [node('s', 'stopcontact', [], {p: {aantal: 2}})])])]}]},
+        r = setNodeProps(p, 's', {h: true})
+    expect(flat(r.een[0].tree).find((n) => n.id === 's').p).toEqual({aantal: 2, h: true})
+    expect(flat(r.een[0].tree).find((n) => n.id === 'k').p).toBeUndefined()
 })

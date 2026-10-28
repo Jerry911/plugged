@@ -41,6 +41,30 @@ class SymbolRepoTest {
     }
 
     @Test
+    void seedingRemovesAStandardSymbolThatLeftTheCatalogUnlessTheUserChangedIt() {
+        // the waterproof socket was a standard symbol of an older catalog: it is a property of the socket now
+        SymbolEntity old = SymbolMapper.toEntity(new SymbolDto("stopcontact_h", "Waterdicht stopcontact", "Stopcontacten", List.of("kring"), true,
+                List.of(SymbolShapes.line(1, 12, 5, 12)), null, 0, false, false, null));
+        old.setBuiltin(true);
+        SymbolEntity edited = SymbolMapper.toEntity(new SymbolDto("stopcontact_x", "Mijn stopcontact", "Stopcontacten", List.of("kring"), true,
+                List.of(SymbolShapes.line(1, 12, 5, 12)), null, 0, false, false, null));
+        edited.setBuiltin(true);
+        edited.setModified(true);
+        SymbolEntity mine = SymbolMapper.toEntity(new SymbolDto("custom:m", "Eigen", "Eigen", List.of("kring"), true,
+                List.of(SymbolShapes.line(1, 12, 5, 12)), null, 0, false, false, null));
+        repo.saveAll(List.of(old, edited, mine));
+        em.flush();
+        em.clear();
+        new SymbolService(repo).seed();
+        em.flush();
+        em.clear();
+        assertFalse(repo.existsById("stopcontact_h"));
+        assertTrue(repo.existsById("stopcontact_x")); // changed by the user: stays
+        assertTrue(repo.existsById("custom:m")); // a symbol of the user: stays
+        assertTrue(repo.existsById("stopcontact")); // the catalog itself is seeded
+    }
+
+    @Test
     void replacingAShapeListReplacesTheRows() {
         SymbolEntity e = SymbolMapper.toEntity(new SymbolDto("custom:r", "R", null, List.of("kring", "bord"), true,
                 List.of(SymbolShapes.rect(1, 1, 4, 4), SymbolShapes.dot(5, 5, 1), SymbolShapes.text(2, 2, "t", 6)), Map.of("n", 2), 0, false, false, null));

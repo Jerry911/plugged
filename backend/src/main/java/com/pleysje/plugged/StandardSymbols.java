@@ -40,7 +40,7 @@ public final class StandardSymbols {
     public static final List<String> ELEMENT_KEYS = List.of(
             "kring", "domotica", "subbord", "schakelaar", "schakelaar2", "schakelaar3", "verklikker", "wissel", "omschakelaar", "kruis",
             "dimmer", "drukknop", "lichtpunt", "stopcontact", "stopcontact_alg", "stopcontact_kid", "stopcontact_pekid", "stopcontact2",
-            "stopcontact3", "stopcontact_h", "trafo", "modulaire", "motor", "bel", "zoemer", "sirene", "klok", "data", "tv", "vrij",
+            "stopcontact3", "trafo", "modulaire", "motor", "bel", "zoemer", "sirene", "klok", "data", "tv", "vrij",
             "lichtcircuit", "microgolf", "zonnepanelen", "omvormer", "batterij", "oven", "kookplaat", "wasmachine", "droogkast", "vaatwas",
             "koelkast", "diepvries", "airco", "ventilatie", "laadpaal", "boiler", "verwarming", "thermostaat", "rookmelder", "aftakdoos",
             "wandlamp", "tl", "noodlicht", "spot", "led", "wissel2", "rolluik", "beweging", "teleruptor", "dimmermodule", "relais", "minuterie");
@@ -73,7 +73,7 @@ public final class StandardSymbols {
     /**
      * socket (contactdoos) as in the eendraadschema: a line to the apex of a half circle that opens to the right, with an optional bar for the
      * protective conductor (pe) on the apex and little feet (kid) on the ends of the arch. n sockets are chained every 20 upstream units
-     * (closer together when that does not fit the grid); h = waterproof. The frontend draws the same ({@code sockShapes} of symbols.jsx): keep them equal.
+     * (closer together when that does not fit the grid); h = waterproof (a property of a placed socket: p.h, there is no separate symbol for it). The frontend draws the same ({@code sockShapes} of symbols.jsx): keep them equal.
      */
     public static List<Map<String, Object>> socket(boolean pe, boolean kid, boolean h, int n) {
         double r = rd(15 * UpstreamSymbols.U), pitch = n > 1 ? Math.min(20, STACK / (n - 1)) : 20;
@@ -87,7 +87,7 @@ public final class StandardSymbols {
                 out.add(weight(line(cx, UpstreamSymbols.uy(20), cx, UpstreamSymbols.uy(14.1)), UpstreamSymbols.W2));
             }
         }
-        if (h && n == 1) out.add(text(UpstreamSymbols.ux(21), rd(12 - r - 1.8), "h", 4.5));
+        if (h) out.add(text(UpstreamSymbols.ux(21), rd(12 - r - 1.8), "h", 4.5));
         return out;
     }
 
@@ -142,7 +142,6 @@ public final class StandardSymbols {
         x("stopcontact_pekid", "Stopcontact (aarding + kinderveiligheid)", S, EL, socket(true, true, false, 1), true, sock(true, true, false, 1));
         x("stopcontact2", "Dubbel stopcontact", S, EL, socket(true, false, false, 2), true, sock(true, false, false, 2));
         x("stopcontact3", "Drievoudig stopcontact", S, EL, socket(true, false, false, 3), true, sock(true, false, false, 3));
-        x("stopcontact_h", "Waterdicht stopcontact", S, EL, socket(true, false, true, 1), true, sock(true, false, true, 1));
         x("data", "Data (RJ45)", S, EL, of(line(1, 12, 9, 12), line(9, 5, 9, 19), line(9, 5, 16, 5), line(9, 19, 16, 19)), true);
         x("tv", "TV-aansluiting", S, EL, of(rect(5, 5, 14, 14), text(12, 15, "TV")), true);
         x("lichtpunt", "Lichtpunt", O, EL, UpstreamSymbols.lichtpunt(), true);

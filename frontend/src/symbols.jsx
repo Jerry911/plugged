@@ -42,9 +42,10 @@ export const sockShapes = ({pe = true, kid = false, h = false, n = 1} = {}, hor 
         out.push(WT(AR(cx, 12, r, 90, 270), W2))
         if (kid) out.push(WT(L(cx, uy(-20), cx, uy(-14.1)), W2), WT(L(cx, uy(20), cx, uy(14.1)), W2))
     }
-    if (h && n === 1) out.push(T(ux(21), rd(12 - r - 1.8), 'h', 4.5))
+    if (h) out.push(T(ux(21), rd(12 - r - 1.8), 'h', 4.5))
     return out
 }
+// waterproof (h) is not a symbol of its own but a property of a placed socket (p.h; on the situatieschema also of a loose symbol): the small 'h' next to it
 // number of sockets of a placed symbol (p.aantal multiplies the sockets of the symbol) and whether they are drawn horizontally (p.hor, default yes)
 export const stackOf = (t, pr = {}) => {
     const n = (t.sock?.n || 1) * (Number(pr.aantal) > 1 ? Number(pr.aantal) : 1)
@@ -54,8 +55,9 @@ export const stackOf = (t, pr = {}) => {
 export const shapesOf = (t, pr = {}) => {
     const sk = stackOf(t, pr)
     if (!sk) return t.shapes
-    if (!sk.hor) return sockShapes(t.sock, false)
-    return sk.n === (t.sock.n || 1) ? t.shapes : sockShapes({...t.sock, n: sk.n}, true)
+    const h = !!(t.sock.h || pr.h)
+    if (!sk.hor) return sockShapes({...t.sock, h}, false)
+    return sk.n === (t.sock.n || 1) && h === !!t.sock.h ? t.shapes : sockShapes({...t.sock, n: sk.n, h}, true)
 }
 // a symbol that is not in the library (anymore, e.g. deleted): a box with a question mark
 const UNKNOWN = {k: '?', name: 'Onbekend symbool', cat: 'Overig', parents: [], place: false, shapes: [{t: 'rect', x: 2, y: 6, w: 20, h: 12}, T(12, 15, '?')]}

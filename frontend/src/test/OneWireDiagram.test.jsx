@@ -518,3 +518,31 @@ test('in the latch zone a symbol that cannot be a branch still goes before the c
     fireEvent.drop(container.querySelector('[data-nid="S"]'), {clientX: 10})
     expect(find(spy.p.een[0].tree, 'S').children.map((c) => c.type)).toEqual(['wandlamp'])
 })
+
+// ---- waterproof (h) is a checkbox of a socket, not a symbol of its own ----
+test('Waterdicht checkbox: only for sockets, sets p.h and draws the little h in the diagram', () => {
+    const {container, spy} = mount(OneLineSchema, withTree([node('A', 'aansluiting', [node('B', 'bord', [node('K', 'kring', [node('P', 'stopcontact'), node('S', 'schakelaar')])])])]), {idx: 0})
+    const hs = () => [...container.querySelector('#eds-sheet-1').querySelectorAll('text')].filter((t) => t.textContent === 'h').length,
+        cb = () => document.getElementById('eds-waterproof'),
+        p = () => find(spy.p.een[0].tree, 'P').p
+    pick(container, 'S')
+    expect(cb()).toBeNull()
+    pick(container, 'P')
+    expect(cb().checked).toBe(false)
+    expect(hs()).toBe(0)
+    fireEvent.click(cb())
+    expect(p().h).toBe(true)
+    expect(find(spy.p.een[0].tree, 'P').type).toBe('stopcontact') // still the normal socket
+    expect(hs()).toBe(1)
+    expect(cb().checked).toBe(true)
+    // it works for the other socket types too
+    fireEvent.change(typeSelect(), {target: {value: 'stopcontact2'}})
+    expect(cb().checked).toBe(true)
+    fireEvent.click(cb())
+    expect(p().h).toBe(false)
+    expect(hs()).toBe(0)
+})
+test('there is no waterproof socket in the palette', () => {
+    mount(OneLineSchema, circ(), {idx: 0})
+    expect(screen.queryByText('Waterdicht stopcontact')).toBeNull()
+})

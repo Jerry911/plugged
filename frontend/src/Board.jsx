@@ -50,7 +50,14 @@ const Item = ({it, sel, ghost, onSel, onDelete}) => {
                 fill={on ? 'rgba(10,108,255,0.08)' : 'transparent'}
             />
         ) : null
-    if (it.k === 'line') return <line x1={it.x1} y1={it.y1} x2={it.x2} y2={it.y2} stroke="#000" strokeWidth={it.w || LINE_W} />
+    // latch zone along the stem of a circuit (editor only, active while a symbol is dragged, see .eds-dragging): a symbol dragged into it becomes the next branch of that circuit
+    if (it.k === 'stem')
+        return onSel && it.id ? (
+            <rect className="eds-stem" data-stem={it.id} x={it.x} y={it.y} width={it.w} height={it.h} fill="transparent" />
+        ) : null
+    // in the editor the plain lines and the texts without an id do not take the pointer: the click area and the latch zone below them do
+    const through = onSel ? {style: {pointerEvents: 'none'}} : {}
+    if (it.k === 'line') return <line x1={it.x1} y1={it.y1} x2={it.x2} y2={it.y2} stroke="#000" strokeWidth={it.w || LINE_W} {...through} />
     if (it.k === 'sym')
         return (
             <>
@@ -87,6 +94,7 @@ const Item = ({it, sel, ghost, onSel, onDelete}) => {
     return (
         <text
             {...h}
+            {...(it.id ? {} : through)}
             transform={it.rot ? `translate(${it.x},${it.y}) rotate(-90)` : undefined}
             x={it.rot ? 0 : it.x}
             y={it.rot ? 0 : it.y}

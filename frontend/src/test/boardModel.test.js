@@ -322,3 +322,15 @@ test('circuits under an empty element (made by the insert buttons) are still dra
     p.een[0].tree = [node('N', 'aansluiting', [node('B', 'bord', [node('X', 'leeg', [node('K1', 'kring', [node('S', 'stopcontact')])])])])]
     expect(board(p, p.een[0]).circuits.map((c) => c.n.id)).toEqual(['K1'])
 })
+
+test('a circuit has a latch zone along its stem, above the click area, reaching above the top branch', () => {
+    const c = circuit(base(), kring('K', [node('a', 'batterij'), node('b', 'batterij')], {}, {label: 'K'})),
+        z = c.items.find((i) => i.k === 'stem'),
+        top = Math.min(...c.items.filter((i) => i.k === 'sym' && i.id).map((i) => i.y))
+    expect(c.items[0]).toMatchObject({k: 'hit', id: 'K'})
+    expect(c.items[1]).toBe(z)
+    expect(z.y).toBeLessThan(top - 100) // room for the next branch
+    expect(z.y + z.h).toBeLessThan(0) // stays above the breaker
+    expect(z.x + z.w / 2).toBe(30) // centred on the stem
+    expect(circuit(base(), node('K~', 'kring', [], {p: {bescherming: 'geen'}})).items.some((i) => i.k === 'stem')).toBe(false)
+})

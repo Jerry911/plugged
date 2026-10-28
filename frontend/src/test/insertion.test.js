@@ -1,6 +1,6 @@
 // Copyright 2026 Pleysier Jeroen
 // SPDX-License-Identifier: AGPL-3.0-only
-import {addAfter, addBefore, canInsert, emptyChoices, insertAt, insertTypes, okUnder, parentOf} from '../insertion.js'
+import {addAfter, addBefore, addSibling, canSibling, siblingTypes, canInsert, emptyChoices, insertAt, insertTypes, okUnder, parentOf} from '../insertion.js'
 
 const T = [
     {k: 'bord', parents: []},
@@ -62,4 +62,19 @@ test('choices of an empty element: fit under the parent and accept the children'
     const t2 = insertAt(tree(), 'S', 'after', n('Y', 'leeg')),
         y = S(t2).children[1]
     expect(keys(emptyChoices(typeOf, t2, T, y))).toEqual(['schakelaar', 'lichtpunt']) // under a switch: no oven
+})
+test('addSibling: the next branch comes directly after the element, under the same parent', () => {
+    const t = [n('B', 'bord', [n('K', 'kring', [n('S1', 'schakelaar'), n('S2', 'schakelaar')])])],
+        r = addSibling(t, 'S1', n('X', 'leeg'))
+    expect(r[0].children[0].children.map((c) => c.id)).toEqual(['S1', 'X', 'S2'])
+    expect(addSibling(t, 'S2', n('X', 'leeg'))[0].children[0].children.map((c) => c.id)).toEqual(['S1', 'S2', 'X'])
+    expect(addSibling(t, 'B', n('X', 'leeg')).map((c) => c.id)).toEqual(['B', 'X'])
+})
+test('canSibling / siblingTypes: the type must fit under the parent of the element', () => {
+    const t = tree()
+    expect(keys(siblingTypes(t, T, S(t)))).toEqual(['schakelaar', 'lichtpunt', 'oven']) // next to the switch, under the circuit
+    expect(keys(siblingTypes(t, T, t[0].children[0]))).toEqual(['diff', 'kring']) // next to the circuit, under the board
+    expect(canSibling(t, t[0], typeOf('kring'))).toBe(false) // a top level element has no parent to hang under
+    expect(canSibling(t, t[0], typeOf('kring'), true)).toBe(true)
+    expect(canSibling(t, n('nope', 'x'), typeOf('oven'))).toBe(false)
 })

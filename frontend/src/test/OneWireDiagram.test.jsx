@@ -473,3 +473,48 @@ test('the preview disappears when the drag ends without a drop', () => {
     expect(container.querySelector('#eds-drop-preview')).toBeNull()
 })
 const flatTypes = (ns) => ns.flatMap((n) => [n.type, ...flatTypes(n.children)])
+
+// ---- the next branch (B1 -> B2): button and latching onto the stem ----
+const circ = () => withTree([node('A', 'aansluiting', [node('B', 'bord', [node('K', 'kring', [node('S', 'schakelaar')])])])])
+const kids = (spy) => find(spy.p.een[0].tree, 'K').children
+test('the branch button puts an empty symbol next to the selected one, under the same circuit (B1 -> B2)', () => {
+    const {container, spy} = mount(OneLineSchema, circ(), {idx: 0})
+    pick(container, 'S')
+    fireEvent.click(btn('eds-insert-branch'))
+    expect(kids(spy).map((c) => c.type)).toEqual(['schakelaar', 'leeg'])
+    expect(kids(spy)[0].children).toHaveLength(0) // not in series under the switch
+    expect(typeSelect().value).toBe('leeg')
+    fireEvent.change(typeSelect(), {target: {value: 'stopcontact'}})
+    expect(kids(spy).map((c) => c.type)).toEqual(['schakelaar', 'stopcontact'])
+    // a top level element has no branch
+    fireEvent.click(screen.getAllByText('A')[0])
+    expect(btn('eds-insert-branch')).toBeDisabled()
+})
+test('the stem of a circuit is a latch zone: dragging into it previews and drops the next branch', () => {
+    const {container, spy} = mount(OneLineSchema, circ(), {idx: 0}),
+        zone = () => container.querySelector('[data-stem="K"]')
+    expect(container.querySelector('.main')).not.toHaveClass('eds-dragging')
+    fireEvent.dragStart(pal('Wandlamp'))
+    expect(container.querySelector('.main')).toHaveClass('eds-dragging')
+    fireEvent.dragOver(zone(), {clientX: 10})
+    const prev = container.querySelector('#eds-drop-preview')
+    expect(prev).not.toBeNull()
+    expect(prev.querySelectorAll('[stroke="#0a6cff"]').length).toBeGreaterThan(0)
+    expect(kids(spy)).toHaveLength(1) // nothing inserted yet
+    // moving away detaches
+    fireEvent.dragLeave(container.querySelector('#eds-sheet-1'), {relatedTarget: document.body})
+    expect(container.querySelector('#eds-drop-preview')).toBeNull()
+    fireEvent.dragOver(zone(), {clientX: 10})
+    fireEvent.drop(zone(), {clientX: 10})
+    expect(kids(spy).map((c) => c.type)).toEqual(['schakelaar', 'wandlamp'])
+    expect(find(spy.p.een[0].tree, 'S').children).toHaveLength(0)
+})
+test('in the latch zone a symbol that cannot be a branch still goes before the circuit; over a symbol it keeps inserting before / after it', () => {
+    const {container, spy} = mount(OneLineSchema, circ(), {idx: 0})
+    fireEvent.dragStart(pal('Differentieel (aardlek)'))
+    fireEvent.drop(container.querySelector('[data-stem="K"]'), {clientX: 10})
+    expect(find(spy.p.een[0].tree, 'B').children[0].type).toBe('diff')
+    fireEvent.dragStart(pal('Wandlamp'))
+    fireEvent.drop(container.querySelector('[data-nid="S"]'), {clientX: 10})
+    expect(find(spy.p.een[0].tree, 'S').children.map((c) => c.type)).toEqual(['wandlamp'])
+})

@@ -26,6 +26,12 @@ const upd = (ns, id, f) => ns.flatMap((n) => (n.id === id ? f(n) : [{...n, child
 export const addAfter = (tree, id, n) => upd(tree, id, (x) => [{...x, children: [...x.children, n]}])
 export const addBefore = (tree, id, n) => upd(tree, id, (x) => [{...n, children: [x]}])
 export const insertAt = (tree, id, mode, n) => (mode === 'before' ? addBefore(tree, id, n) : addAfter(tree, id, n))
+// A sibling = the next branch: the new element hangs under the same parent as `id`, directly after it (in the drawing the next branch above it,
+// e.g. B1 -> B2; the numbers of the branches that follow shift up by one).
+export const addSibling = (tree, id, n) => {
+    const i = tree.findIndex((x) => x.id === id)
+    return i >= 0 ? [...tree.slice(0, i + 1), n, ...tree.slice(i + 1)] : tree.map((x) => ({...x, children: addSibling(x.children, id, n)}))
+}
 
 // Can a symbol type be inserted before / after the element `s`? `typeOf(k)` gives the type object of a type key.
 export const canInsert = (typeOf, tree, s, mode, t, free = false) => {
@@ -37,6 +43,14 @@ export const canInsert = (typeOf, tree, s, mode, t, free = false) => {
 }
 // the types that can be inserted before / after `s`
 export const insertTypes = (typeOf, tree, T, s, mode, free = false) => T.filter((t) => canInsert(typeOf, tree, s, mode, t, free))
+
+// Can a symbol type become the next branch (sibling) of the element `s`? It must fit under the parent of `s`, like `s` itself does.
+export const canSibling = (tree, s, t, free = false) => {
+    const par = parentOf(tree, s.id)
+    if (par === undefined) return false
+    return par ? okUnder(t, par.type, free) : free || !(t.parents || []).length
+}
+export const siblingTypes = (tree, T, s, free = false) => T.filter((t) => canSibling(tree, s, t, free))
 
 // The types an EMPTY element can become: it must fit under its parent and everything that hangs under it must fit under the new type
 export const emptyChoices = (typeOf, tree, T, n, free = false) => {

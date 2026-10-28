@@ -408,3 +408,12 @@
 .eds-hit:hover {
     fill: rgba(10, 108, 255, 0.06);
 }
+
+/* latch zone along the stem of a circuit: only takes the pointer while a symbol is dragged over the drawing */
+.eds-stem {
+    pointer-events: none;
+}
+
+.eds-dragging .eds-stem {
+    pointer-events: all;
+}

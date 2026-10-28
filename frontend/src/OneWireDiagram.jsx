@@ -5,7 +5,7 @@ import {allTypes, EMPTY_TYPE, stackOf, Sym, typeOf} from './symbols'
 import {BoardSheet} from './Board.jsx'
 import {defaultProps, detailLines, hasPlacement, infoOf, nextLetter, PLAATSING, sheetPlan} from './boardModel.jsx'
 import {flat, nameOf, reid, uid} from './util.jsx'
-import {canInsert, emptyChoices, insertAt, insertTypes, parentOf} from './insertion.js'
+import {addSibling, canInsert, emptyChoices, insertAt, insertTypes, parentOf, siblingTypes} from './insertion.js'
 import {ZOOMS} from './SituationSchema.jsx'
 import ZoomPane from "./ZoomPane.jsx";
 
@@ -103,6 +103,15 @@ const ICONS = {
         <rect x="3" y="6" width="8" height="12" rx="1"/>
         <path d="M14 12h7"/>
         <path d="M17.5 8.5v7"/>
+    </Ico>,
+    // the next branch: a stem with the existing branch (a box) below and a plus on the new branch above it
+    branch: <Ico>
+        <path d="M5 3v18"/>
+        <path d="M5 18h5"/>
+        <rect x="10" y="15" width="9" height="6" rx="1"/>
+        <path d="M5 7h5"/>
+        <path d="M14.5 4v6"/>
+        <path d="M11.5 7h6"/>
     </Ico>,
 }
 // id of the element that is drawn (in blue) while a symbol from the palette is dragged over the drawing
@@ -243,10 +252,11 @@ export default function OneWireDiagram({p, setP, idx, focus, onFocused, onFooter
         setSel(n.id)
     }
     // the buttons in Eigenschappen: insert an empty element (type 'leeg') before / after the selected one; its Type dropdown lists what fits there
+    // mode 'branch' = the next branch: a new element next to the selected one under the same parent (B1 -> B2), drawn above it
     const insertEmpty = (mode) => {
         if (!s) return
         const n = {id: uid(), type: EMPTY_TYPE.k, label: '', info: '', children: []}
-        set(insertAt(tree, s.id, mode, n))
+        set(mode === 'branch' ? addSibling(tree, s.id, n) : insertAt(tree, s.id, mode, n))
         unfold([s.id])
         setSel(n.id)
     }
@@ -283,15 +293,18 @@ export default function OneWireDiagram({p, setP, idx, focus, onFocused, onFooter
     })()
     // can anything be inserted before / after the selected element? (the buttons in Eigenschappen)
     const canBefore = !!s && insertTypes(tp, tree, T, s, 'before', free).length > 0,
-        canAfter = !!s && insertTypes(tp, tree, T, s, 'after', free).length > 0
-    // drag & drop: the element under the pointer (a symbol, a box or a circuit) and whether the symbol would come before it (left half) or after it (right half)
+        canAfter = !!s && insertTypes(tp, tree, T, s, 'after', free).length > 0,
+        canBranch = !!s && siblingTypes(tree, T, s, free).length > 0
+    // drag & drop: the element under the pointer (a symbol, a box or a circuit) and whether the symbol would come before it (left half) or after it (right half).
+    // Near the stem of a circuit (its latch zone) the symbol latches onto the circuit: it becomes the next branch (B1 -> B2), also in the empty space
+    // above the last branch. Moving out of the zone detaches it again; over a symbol it keeps inserting before / after that symbol.
     const dropAt = (e) => {
-        const el = e.target?.closest?.('[data-nid],[data-hit]')
+        const el = e.target?.closest?.('[data-nid],[data-hit],[data-stem]')
         if (!el || !dragT) return null
-        const id = el.getAttribute('data-nid') || el.getAttribute('data-hit'),
+        const id = el.getAttribute('data-nid') || el.getAttribute('data-hit') || el.getAttribute('data-stem'),
             tgt = id && find(tree, id)
         if (!tgt) return null
-        const half = !el.hasAttribute('data-hit') && el.tagName.toLowerCase() !== 'text',
+        const half = !el.hasAttribute('data-hit') && !el.hasAttribute('data-stem') && el.tagName.toLowerCase() !== 'text',
             r = el.getBoundingClientRect(),
             first = half && e.clientX < r.left + r.width / 2 ? 'before' : 'after',
             mode = [first, first === 'before' ? 'after' : 'before'].find((m) => canInsert(tp, tree, tgt, m, dragT, free))
@@ -635,6 +648,21 @@ export default function OneWireDiagram({p, setP, idx, focus, onFocused, onFooter
                             >
                                 Na {ICONS.after}
                             </button>
+                            <button
+                                id="eds-insert-branch"
+                                title={
+                                    canBranch
+                                        ? 'Nieuwe tak invoegen: een leeg symbool naast dit element, onder hetzelfde bovenliggende element (bv. na B1 komt B2, erboven getekend); kies daarna het type'
+                                        : isEmpty
+                                          ? 'Kies eerst een type voor dit lege symbool'
+                                          : 'Er past geen enkel symbool als volgende tak van dit element'
+                                }
+                                aria-label="Nieuwe tak invoegen"
+                                disabled={!canBranch}
+                                onClick={() => insertEmpty('branch')}
+                            >
+                                {ICONS.branch} Tak
+                            </button>
                         </div>
                         <div className="tb icons">
                             <button
@@ -711,7 +739,7 @@ export default function OneWireDiagram({p, setP, idx, focus, onFocused, onFooter
                 <b>Opbouw</b>
                 <div className="tree">{rows(tree)}</div>
             </div>
-            <div className="main" ref={drawing}>
+            <div className={dragT ? 'main eds-dragging' : 'main'} ref={drawing}>
                 {plan.map((e) => (
                     <div
                         key={e.no}

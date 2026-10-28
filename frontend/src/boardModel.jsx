@@ -12,7 +12,10 @@ export const U = 0.16,
     SYM = 46,
     GAP = 20,
     ROWH = 100,
-    BOXUP = 120
+    BOXUP = 120,
+    // drag & drop latch zone along the stem of a circuit: half its width, and how far it reaches above the top branch (room for the next one)
+    STEMW = 16,
+    STEMUP = 150
 export const BOXT = new Set(['domotica', 'subbord'])
 const tw = (s) => String(s || '').length * 6.6
 // Details of an element (brand, type, serial number, Pmax, Umax, ...): one line per entry. Lines are separated by Enter (a real new line)
@@ -294,7 +297,11 @@ export function circuit(p, n) {
     // A click anywhere on the stem selects the circuit (not only on its letter): a transparent area over the whole stem, drawn first so the
     // elements of the circuit and their own clicks stay on top. (The invisible circuit around a sub board has no properties: no area.)
     if (!String(n.id).endsWith('~')) {
-        const x0 = (pr.tekst || long ? tx : xs) - 14
+        const x0 = (pr.tekst || long ? tx : xs) - 14,
+            // The latch zone: a narrow strip along the whole stem, from above the breaker to well above the top branch. A symbol that is dragged into it
+            // latches onto the circuit and becomes its next branch, also in the empty space above the last branch where nothing is drawn yet.
+            zy = Math.min(st.top, y0) - STEMUP
+        out.unshift({k: 'stem', x: xs - STEMW, y: zy, w: 2 * STEMW, h: -60 - zy, id: n.id})
         out.unshift({k: 'hit', x: x0, y: y0, w: xs + 52 - x0, h: -y0 + 6, id: n.id})
     }
     return {n, w: Math.max(st.r + 14, xs + 56), items: out, minY: Math.min(st.top, y0 - 60)}

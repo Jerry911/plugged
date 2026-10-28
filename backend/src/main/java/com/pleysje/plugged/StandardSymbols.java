@@ -32,7 +32,7 @@ import java.util.Map;
  * are then replaced by the new standard when the application starts (see {@link SymbolService#seed()}).
  */
 public final class StandardSymbols {
-    public static final int VERSION = 9;
+    public static final int VERSION = 10;
 
     private static final String V = "Verdeling", S = "Stopcontacten", O = "Verlichting & bediening", A = "Toestellen", E = "Energie", G = "Overig";
 
@@ -67,27 +67,31 @@ public final class StandardSymbols {
         return of(circle(cx, cy, r), line(rd(cx - d), rd(cy - d), rd(cx + d), rd(cy + d)), line(rd(cx + d), rd(cy - d), rd(cx - d), rd(cy + d)));
     }
 
-    /** the right edge a stacked socket may reach, in upstream units: the last arch of n sockets ends there (see {@link UpstreamSymbols}) */
+    /** the span (in upstream units, after the first apex) that stacked sockets may use at the full size: the last arch of n sockets ends at the right edge of the grid, see {@link UpstreamSymbols} */
     private static final double STACK = 29;
+
+    /** distance between chained sockets in upstream units (20 in the eendraadschema, a bit more so that the arches do not seem glued together); keep equal to PITCH in symbols.jsx */
+    private static final double PITCH = 24;
 
     /**
      * socket (contactdoos) as in the eendraadschema: a line to the apex of a half circle that opens to the right, with an optional bar for the
-     * protective conductor (pe) on the apex and little feet (kid) on the ends of the arch. n sockets are chained every 20 upstream units
-     * (closer together when that does not fit the grid); h = waterproof (a property of a placed socket: p.h, there is no separate symbol for it). The frontend draws the same ({@code sockShapes} of symbols.jsx): keep them equal.
+     * protective conductor (pe) on the apex and little feet (kid) on the ends of the arch. n sockets are chained every PITCH upstream units
+     * (the whole stack is scaled down when that does not fit the grid); h = waterproof (a property of a placed socket: p.h, there is no separate symbol for it). The frontend draws the same ({@code sockShapes} of symbols.jsx): keep them equal.
      */
     public static List<Map<String, Object>> socket(boolean pe, boolean kid, boolean h, int n) {
-        double r = rd(15 * UpstreamSymbols.U), pitch = n > 1 ? Math.min(20, STACK / (n - 1)) : 20;
-        List<Map<String, Object>> out = of(line(1, 12, UpstreamSymbols.ux(21 + (n - 1) * pitch), 12));
+        // n sockets do not fit the grid at the full size: the whole stack is scaled down about its supply point (f = 1 up to a double socket); same as sockShapes
+        double f = n > 1 ? Math.min(1, (35 + STACK) / (35 + (n - 1) * PITCH)) : 1, s = UpstreamSymbols.U * f, r = rd(15 * s);
+        List<Map<String, Object>> out = of(line(1, 12, rd(1 - s + s * (21 + (n - 1) * PITCH)), 12));
         for (int k = 0; k < n; k++) {
-            double apex = UpstreamSymbols.ux(21 + k * pitch), cx = UpstreamSymbols.ux(36 + k * pitch);
+            double apex = rd(1 - s + s * (21 + k * PITCH)), cx = rd(1 - s + s * (36 + k * PITCH));
             if (pe) out.add(weight(line(apex, rd(12 - r), apex, rd(12 + r)), UpstreamSymbols.W2));
             out.add(weight(arc(cx, 12, r, 90, 270), UpstreamSymbols.W2));
             if (kid) {
-                out.add(weight(line(cx, UpstreamSymbols.uy(-20), cx, UpstreamSymbols.uy(-14.1)), UpstreamSymbols.W2));
-                out.add(weight(line(cx, UpstreamSymbols.uy(20), cx, UpstreamSymbols.uy(14.1)), UpstreamSymbols.W2));
+                out.add(weight(line(cx, rd(12 + s * -20), cx, rd(12 + s * -14.1)), UpstreamSymbols.W2));
+                out.add(weight(line(cx, rd(12 + s * 20), cx, rd(12 + s * 14.1)), UpstreamSymbols.W2));
             }
         }
-        if (h) out.add(text(UpstreamSymbols.ux(21), rd(12 - r - 1.8), "h", 4.5));
+        if (h) out.add(text(rd(1 - s + s * 21), rd(12 - r - 1.8), "h", 4.5));
         return out;
     }
 

@@ -165,10 +165,24 @@ test('socket variants: bar for the protective conductor, feet for kinderveilighe
     // an arch is the left half of its circle: it ends at cx, and all of them fit the grid
     expect(h.filter((s) => s.t === 'arc').every((a) => a.cx <= 24)).toBe(true)
     for (const n of [1, 2, 3, 4, 6]) expect(Math.max(...sockShapes({n}, true).filter((s) => s.t === 'arc').map((a) => a.cx))).toBeLessThanOrEqual(23.4)
-    // two sockets are chained at the distance of the eendraadschema (20 units of 0.35), more of them are pressed together to fit
+    // two sockets are chained a bit further apart than in the eendraadschema (24 units of 0.35, so the arches are not glued together), more of them are pressed together to fit
     const apex = (n) => sockShapes({pe: true, n}, true).filter((s) => s.t === 'line' && s.x1 === s.x2 && s.y1 !== 12).map((s) => s.x1)
-    expect(apex(2)[1] - apex(2)[0]).toBeCloseTo(7, 5)
+    expect(apex(2)[1] - apex(2)[0]).toBeCloseTo(8.4, 5)
+    // the second socket starts clearly behind the end of the first arch (arch width 5.25): a visible gap of about 3 units
+    expect(apex(2)[1] - apex(2)[0] - 5.25).toBeGreaterThan(3)
     expect(apex(4)[1] - apex(4)[0]).toBeLessThan(7)
+    // double, triple, quadruple, ...: every stack keeps the same proportion between the gap and the width of an arch, and stays inside the grid
+    for (const n of [2, 3, 4, 6]) {
+        const sh = sockShapes({pe: true, n}, true),
+            ap = apex(n),
+            arcs = sh.filter((h) => h.t === 'arc'),
+            width = arcs[0].r,
+            gap = ap[1] - arcs[0].cx
+        expect(gap / width, 'gap ' + n).toBeGreaterThan(0.55)
+        expect(gap / width, 'gap ' + n).toBeLessThan(0.65)
+        arcs.forEach((a, k) => k && expect(ap[k] - arcs[k - 1].cx, 'even ' + n).toBeCloseTo(gap, 1))
+        expect(Math.max(...arcs.map((a) => a.cx))).toBeLessThanOrEqual(23.4)
+    }
     expect(sockShapes({h: true}, true)).toContainEqual(expect.objectContaining({s: 'h'}))
     expect(sockShapes({h: true})).toContainEqual(expect.objectContaining({s: 'h'}))
     expect(reach(sockShapes({n: 4}, true))).not.toBeNull()

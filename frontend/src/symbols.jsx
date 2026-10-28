@@ -15,11 +15,12 @@ const L = (x1, y1, x2, y2) => ({t: 'line', x1, y1, x2, y2}),
 const U = 0.35,
     W2 = 1.5,
     STACK = 29,
+    PITCH = 24, // distance between chained sockets (20 in the eendraadschema, a bit more so that the arches do not seem glued together)
     ux = (x) => rd(1 - U + U * x),
     uy = (y) => rd(12 + U * y)
 // Socket (contactdoos) as in the eendraadschema: pe = bar for the protective conductor, kid = little feet on the arch (kinderveiligheid),
 // h = waterproof, n = number of sockets. Horizontal (default, how the eendraadschema chains them): the supply line meets the apex of arcs
-// that open to the right, n arcs chained every 20 units of the eendraadschema (closer together when that does not fit the grid). Vertical
+// that open to the right, n arcs chained every PITCH (24) units of the eendraadschema grid (the whole stack is scaled down when that does not fit the grid). Vertical
 // (hor = false): the supply line drops onto an arch, with n > 1 the number is written next to it. For the horizontal drawing the standard
 // symbols of the backend (StandardSymbols.socket) are the same: keep them equal.
 export const sockShapes = ({pe = true, kid = false, h = false, n = 1} = {}, hor = true) => {
@@ -32,17 +33,22 @@ export const sockShapes = ({pe = true, kid = false, h = false, n = 1} = {}, hor 
             ...(kid ? [L(8.2, 20, 9.5, 20), L(18.5, 20, 19.8, 20)] : []),
             ...(h ? [T(20, 10, 'h', 8)] : n > 1 ? [T(20, 10, String(n), 7)] : []),
         ]
-    const r = rd(15 * U),
-        pitch = n > 1 ? Math.min(20, STACK / (n - 1)) : 20,
-        out = [L(1, 12, ux(21 + (n - 1) * pitch), 12)]
+    // n sockets do not fit the grid at the full size: the whole stack (arches, bars, feet) is scaled down about its supply point, so the gap between
+    // the arches stays in proportion for double, triple, quadruple, ... sockets (f = 1 up to a double socket)
+    const f = n > 1 ? Math.min(1, (35 + STACK) / (35 + (n - 1) * PITCH)) : 1,
+        s = U * f,
+        X = (x) => rd(1 - s + s * x),
+        Y = (y) => rd(12 + s * y),
+        r = rd(15 * s),
+        out = [L(1, 12, X(21 + (n - 1) * PITCH), 12)]
     for (let k = 0; k < n; k++) {
-        const apex = ux(21 + k * pitch),
-            cx = ux(36 + k * pitch)
+        const apex = X(21 + k * PITCH),
+            cx = X(36 + k * PITCH)
         if (pe) out.push(WT(L(apex, rd(12 - r), apex, rd(12 + r)), W2))
         out.push(WT(AR(cx, 12, r, 90, 270), W2))
-        if (kid) out.push(WT(L(cx, uy(-20), cx, uy(-14.1)), W2), WT(L(cx, uy(20), cx, uy(14.1)), W2))
+        if (kid) out.push(WT(L(cx, Y(-20), cx, Y(-14.1)), W2), WT(L(cx, Y(20), cx, Y(14.1)), W2))
     }
-    if (h) out.push(T(ux(21), rd(12 - r - 1.8), 'h', 4.5))
+    if (h) out.push(T(X(21), rd(12 - r - 1.8), 'h', 4.5))
     return out
 }
 // waterproof (h) is not a symbol of its own but a property of a placed socket (p.h; on the situatieschema also of a loose symbol): the small 'h' next to it

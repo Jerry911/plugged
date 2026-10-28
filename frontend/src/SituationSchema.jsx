@@ -37,6 +37,8 @@ const Dim = ({a, b, sc, color = '#555', off = 3}) => {
     )
 }
 
+// line weight of the symbols on the drawing (in the 24 grid of a symbol: it scales with the size of the symbol, the default of Sym is 1.5)
+const SYM_STROKE = 1
 // one component as a button: symbol, name on the left, marking (e.g. A7) aligned right
 const CompBtn = ({p, n, mark, id, on, flag, title, onClick}) => (
     <button id={id} type="button" className="compbtn" title={title} style={on ? {background: '#cfe3ff'} : undefined} onClick={onClick}>
@@ -130,7 +132,7 @@ export const SitSheet = ({p, pg, no, total, ed, onFooter}) => {
                                 {ed && <circle r={Math.max(sz / 2 + 1.5, 4.5)} fill="transparent" />}
                                 {hi}
                                 <g transform={`rotate(${i.r || 0})`}>
-                                    {shapes ? <Sym shapes={shapes} s={sz} /> : <circle r="3" fill="none" stroke="red" />}
+                                    {shapes ? <Sym shapes={shapes} s={sz} w={SYM_STROKE} rot={i.r || 0} /> : <circle r="3" fill="none" stroke="red" />}
                                 </g>
                             </g>
                             {!shapes && (

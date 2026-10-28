@@ -1022,3 +1022,23 @@ test('a socket with p.aantal 2 is drawn as a double socket on the situatieschema
         double = arcs(mk({p: {aantal: 2}}), item)
     expect(double).toBeGreaterThan(single)
 })
+
+test('symbols on the drawing are drawn with a thinner line than the default', () => {
+    const p = {...base(), een: [{id: 'e1', name: 'B', tree: [node('n1', 'stopcontact', [])]}]}
+    const items = [{id: '1', kind: 'sym', node: 'n1', x: 50, y: 50, r: 0, s: 7}]
+    const {container} = render(<SitSheet p={p} pg={{id: 's', name: 'X', walls: [], items}} no={2} total={3} />)
+    const g = container.querySelector('g[stroke-linecap="round"]')
+    expect(Number(g.getAttribute('stroke-width'))).toBeLessThan(1.5)
+})
+
+test('the h of a waterproof socket stays upright when the symbol is rotated', () => {
+    const p = {...base(), een: [{id: 'e1', name: 'B', tree: [node('n1', 'stopcontact', [], {p: {h: true}})]}]}
+    const h = (r) => {
+        const items = [{id: '1', kind: 'sym', node: 'n1', x: 50, y: 50, r, s: 7}]
+        const {container} = render(<SitSheet p={p} pg={{id: 's', name: 'X', walls: [], items}} no={2} total={3} />)
+        return [...container.querySelectorAll('text')].find((t) => t.textContent === 'h')
+    }
+    expect(h(0).getAttribute('transform')).toBeNull()
+    expect(h(90).getAttribute('transform')).toMatch(/^rotate\(-90 /)
+    expect(h(-30).getAttribute('transform')).toMatch(/^rotate\(30 /)
+})

@@ -108,7 +108,8 @@ export const arcPath = (h) => {
         pt = (a) => `${rd(h.cx + h.r * Math.cos(a * r))} ${rd(h.cy + h.r * Math.sin(a * r))}`
     return `M${pt(h.a1)}A${h.r} ${h.r} 0 ${(((h.a2 - h.a1) % 360) + 360) % 360 > 180 ? 1 : 0} 1 ${pt(h.a2)}`
 }
-export const Sym = ({shapes, x = 0, y = 0, s = 8, stroke = '#000', w = 1.5}) => {
+// rot: the rotation (degrees) the parent applies to the symbol; texts in the symbol (the h of a waterproof socket) are turned back so that they stay upright and readable
+export const Sym = ({shapes, x = 0, y = 0, s = 8, stroke = '#000', w = 1.5, rot = 0}) => {
     // the colour a shape is filled with: f 1 = the colour of the drawing, f 2 = the paper (it hides what lies behind it)
     const fill = (h) => (h.f === 2 ? {fill: '#fff'} : h.f ? {fill: stroke} : {}),
         // the line weight of a shape is relative to the one of the drawing
@@ -127,7 +128,17 @@ export const Sym = ({shapes, x = 0, y = 0, s = 8, stroke = '#000', w = 1.5}) => 
                 ) : h.t === 'path' ? (
                     <path key={i} d={h.d} {...fill(h)} {...sw(h)} />
                 ) : (
-                    <text key={i} x={h.x} y={h.y} fontSize={h.fs || 10} fontWeight={h.b ? 'bold' : undefined} textAnchor="middle" fill={stroke} stroke="none">
+                    <text
+                        key={i}
+                        x={h.x}
+                        y={h.y}
+                        fontSize={h.fs || 10}
+                        fontWeight={h.b ? 'bold' : undefined}
+                        textAnchor="middle"
+                        fill={stroke}
+                        stroke="none"
+                        transform={rot % 360 ? `rotate(${-rot} ${h.x} ${rd(h.y - (h.fs || 10) * 0.35)})` : undefined}
+                    >
                         {h.s}
                     </text>
                 ),

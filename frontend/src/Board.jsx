@@ -66,7 +66,7 @@ const Item = ({it, sel, ghost, onSel, onDelete}) => {
                     {h.onClick && <rect x={it.x - Math.max(30, it.s / 2)} y={it.y - Math.max(30, it.s / 2)} width={Math.max(60, it.s)} height={Math.max(60, it.s)} fill="transparent" />}
                     {it.r ? (
                         <g transform={`rotate(${it.r} ${it.x} ${it.y})`}>
-                            <Sym shapes={it.shapes} x={it.x} y={it.y} s={it.s} stroke={c} w={(LINE_W * 24) / it.s} />
+                            <Sym shapes={it.shapes} x={it.x} y={it.y} s={it.s} stroke={c} w={(LINE_W * 24) / it.s} rot={it.r} />
                         </g>
                     ) : (
                         <Sym shapes={it.shapes} x={it.x} y={it.y} s={it.s} stroke={c} w={(LINE_W * 24) / it.s} />

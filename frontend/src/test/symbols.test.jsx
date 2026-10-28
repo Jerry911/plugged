@@ -296,3 +296,11 @@ test('there is no waterproof socket symbol: waterproof is a property that draws 
     const lp = typeOf({}, 'lichtpunt')
     expect(shapesOf(lp, {h: true})).toBe(lp.shapes) // not a socket: no 'h'
 })
+
+test('Sym keeps texts upright when the symbol is rotated', () => {
+    const shapes = sockShapes({h: true}, true)
+    const text = (rot) => render(<Sym shapes={shapes} rot={rot} />).container.querySelector('text')
+    expect(text(0).getAttribute('transform')).toBeNull()
+    expect(text(360).getAttribute('transform')).toBeNull()
+    for (const r of [90, 180, 270, -90, 45]) expect(text(r).getAttribute('transform')).toMatch(new RegExp('^rotate\\(' + -r + ' '))
+})

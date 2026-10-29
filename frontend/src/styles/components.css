@@ -417,3 +417,12 @@
 .eds-dragging .eds-stem {
     pointer-events: all;
 }
+
+/* drop zone along the bus: a circuit dropped on the bus becomes the last circuit */
+.eds-bus {
+    pointer-events: none;
+}
+
+.eds-dragging .eds-bus {
+    pointer-events: all;
+}

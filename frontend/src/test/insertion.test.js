@@ -1,6 +1,6 @@
 // Copyright 2026 Pleysier Jeroen
 // SPDX-License-Identifier: AGPL-3.0-only
-import {addAfter, addBefore, addSibling, canSibling, siblingTypes, canInsert, emptyChoices, insertAt, insertTypes, okUnder, parentOf} from '../insertion.js'
+import {addAfter, addBefore, addSibling, addSiblingBefore, circuitOf, canSibling, siblingTypes, canInsert, emptyChoices, insertAt, insertTypes, okUnder, parentOf} from '../insertion.js'
 
 const T = [
     {k: 'bord', parents: []},
@@ -77,4 +77,16 @@ test('canSibling / siblingTypes: the type must fit under the parent of the eleme
     expect(canSibling(t, t[0], typeOf('kring'))).toBe(false) // a top level element has no parent to hang under
     expect(canSibling(t, t[0], typeOf('kring'), true)).toBe(true)
     expect(canSibling(t, n('nope', 'x'), typeOf('oven'))).toBe(false)
+})
+test('addSiblingBefore / insertAt left+right: a new circuit next to a circuit, under the same parent; circuitOf finds the enclosing circuit', () => {
+    const tree = [n('b', 'bord', [n('k1', 'kring', [n('s', 'schakelaar')]), n('k2', 'kring')])],
+        x = n('x', 'kring')
+    expect(addSiblingBefore(tree, 'k2', x)[0].children.map((c) => c.id)).toEqual(['k1', 'x', 'k2'])
+    expect(insertAt(tree, 'k1', 'left', x)[0].children.map((c) => c.id)).toEqual(['x', 'k1', 'k2'])
+    expect(insertAt(tree, 'k1', 'right', x)[0].children.map((c) => c.id)).toEqual(['k1', 'x', 'k2'])
+    expect(insertAt(tree, null, 'root', x).map((c) => c.id)).toEqual(['b', 'x'])
+    expect(circuitOf(tree, 's').id).toBe('k1')
+    expect(circuitOf(tree, 'k2').id).toBe('k2')
+    expect(circuitOf(tree, 'b')).toBeNull()
+    expect(circuitOf(tree, 'nope')).toBeNull()
 })

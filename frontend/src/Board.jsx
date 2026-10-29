@@ -28,12 +28,13 @@ const Trash = ({x, y, onDelete}) => (
 )
 // symbols are drawn in a 24-unit box scaled by s/24: compensate so their stroke equals the connection lines
 const LINE_W = 2
-const Item = ({it, sel, ghost, onSel, onDelete}) => {
+// `blue` draws the whole item in blue: the elements of a circuit that is previewed while it is dragged onto the drawing
+const Item = ({it, sel, ghost, blue, onSel, onDelete}) => {
     const gh = !!ghost && it.id === ghost,
-        on = gh || (sel && it.id === sel),
+        on = gh || blue || (sel && it.id === sel),
         c = on ? B : '#000',
         h = {...(it.id ? {'data-nid': it.id} : {}), ...(it.id && onSel ? {onClick: () => onSel(it.id), style: {cursor: 'pointer'}} : {})}
-    if (it.k === 'circ') return <circle cx={it.x} cy={it.y} r={it.r} fill="none" stroke="#000" strokeWidth={LINE_W} />
+    if (it.k === 'circ') return <circle cx={it.x} cy={it.y} r={it.r} fill="none" stroke={blue ? B : '#000'} strokeWidth={LINE_W} />
     // transparent click area of a circuit (only in the editor, never in the export); light blue when the circuit is selected.
     // It carries no data-nid: that one belongs to the drawn elements (letter, symbols).
     if (it.k === 'hit')
@@ -57,7 +58,7 @@ const Item = ({it, sel, ghost, onSel, onDelete}) => {
         ) : null
     // in the editor the plain lines and the texts without an id do not take the pointer: the click area and the latch zone below them do
     const through = onSel ? {style: {pointerEvents: 'none'}} : {}
-    if (it.k === 'line') return <line x1={it.x1} y1={it.y1} x2={it.x2} y2={it.y2} stroke="#000" strokeWidth={it.w || LINE_W} {...through} />
+    if (it.k === 'line') return <line x1={it.x1} y1={it.y1} x2={it.x2} y2={it.y2} stroke={blue ? B : '#000'} strokeWidth={it.w || LINE_W} {...through} />
     if (it.k === 'sym')
         return (
             <>
@@ -134,7 +135,7 @@ const Head = ({h, sel, onSel}) => {
 }
 // Width of the head (kWh meter, earth, main differential) in drawing units; it is repeated at the left of every sheet.
 const HEADW = 262
-export const BoardSheet = ({p, pg, b, sl, no, total, sel, ghost, onSel, onFooter, onDelete}) => {
+export const BoardSheet = ({p, pg, b, sl, no, total, sel, ghost, busMark, onSel, onFooter, onDelete}) => {
     const W = Math.max(1, sl.x1 - sl.x0),
         s = Math.min(U, 277 / W, 135 / Math.max(1, -sl.minY)),
         y = Math.min(147, 12 + -sl.minY * s),
@@ -145,14 +146,16 @@ export const BoardSheet = ({p, pg, b, sl, no, total, sel, ghost, onSel, onFooter
     return (
         <Sheet p={p} page={no} total={total} onFooter={onFooter} name={'Eendraadschema – ' + pg.name}>
             <g transform={`translate(10,${y}) scale(${s}) translate(${-sl.x0},0)`} fontFamily="Verdana, DejaVu Sans, sans-serif">
-                <line x1={left} y1="0" x2={right} y2="0" stroke="#000" strokeWidth="5" />
+                <line x1={left} y1="0" x2={right} y2="0" stroke={busMark ? B : '#000'} strokeWidth="5" />
+                {/* drop zone along the bus: a circuit that is dropped here becomes the last circuit (only takes the pointer while a symbol is dragged) */}
+                {onSel && b.bus && <line className="eds-bus" data-bus={b.bus.id} x1={left} y1="0" x2={right} y2="0" stroke="transparent" strokeWidth="70" />}
                 <g transform={`translate(${hx},0)`}>
                     <Head h={b.head} sel={sel} onSel={onSel} />
                 </g>
                 {b.circuits.slice(sl.from, sl.to).map((c) => (
                     <g key={c.n.id} transform={`translate(${c.x},0)`}>
                         {c.items.map((it, i) => (
-                            <Item key={i} it={it} sel={sel} ghost={ghost} onSel={onSel} onDelete={onDelete} />
+                            <Item key={i} it={it} sel={sel} ghost={ghost} blue={!!ghost && c.n.id === ghost} onSel={onSel} onDelete={onDelete} />
                         ))}
                     </g>
                 ))}

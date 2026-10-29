@@ -5,7 +5,7 @@ import {allTypes, EMPTY_TYPE, shapesOf, stackOf, Sym, typeOf} from './symbols'
 import {BoardSheet} from './Board.jsx'
 import {defaultProps, detailLines, hasPlacement, infoOf, nextLetter, PLAATSING, sheetPlan} from './boardModel.jsx'
 import {flat, nameOf, reid, uid} from './util.jsx'
-import {addSibling, canInsert, emptyChoices, insertAt, insertTypes, parentOf, siblingTypes} from './insertion.js'
+import {addSibling, circuitOf, emptyChoices, insertAt, insertTypes, parentOf, siblingTypes} from './insertion.js'
 import {ZOOMS} from './SituationSchema.jsx'
 import ZoomPane from "./ZoomPane.jsx";
 
@@ -244,9 +244,9 @@ export default function OneWireDiagram({p, setP, idx, focus, onFocused, onFooter
         return null
     }
     const tp = (k) => typeOf(p, k)
-    // a new element of the given symbol type (a circuit gets the next free letter, a distribution part its default properties)
+    // a new element of the given symbol type (a circuit gets the next free letter, a distribution part its default properties; the text of any other element starts empty)
     const mk = (t) => {
-        const n = {id: uid(), type: t.k, label: t.k === 'kring' ? nextLetter(tree) : t.name, info: '', children: []},
+        const n = {id: uid(), type: t.k, label: t.k === 'kring' ? nextLetter(tree) : '', info: '', children: []},
             dp = defaultProps(t.k)
         if (dp) {
             n.p = {...dp}
@@ -299,12 +299,12 @@ export default function OneWireDiagram({p, setP, idx, focus, onFocused, onFooter
             upd(tree, s.id, (x) => {
                 const old = typeOf(p, x.type),
                     nu = typeOf(p, k)
-                // an empty element becomes a real one: it gets the name and the default properties of a new element of that type
+                // an empty element becomes a real one: it gets the default properties of a new element of that type (and, like a new element, an empty text)
                 if (x.type === EMPTY_TYPE.k) {
                     const dp = defaultProps(k)
-                    return [{...x, type: k, label: k === 'kring' ? nextLetter(tree) : nu.name, ...(dp ? {p: {...dp}, info: k === 'kring' ? infoOf(dp) : x.info} : {})}]
+                    return [{...x, type: k, label: k === 'kring' ? nextLetter(tree) : '', ...(dp ? {p: {...dp}, info: k === 'kring' ? infoOf(dp) : x.info} : {})}]
                 }
-                return [{...x, type: k, label: !x.label || x.label === old.name ? nu.name : x.label}]
+                return [{...x, type: k, label: x.label === old.name || (!x.label && k === 'kring') ? nu.name : x.label}]
             }),
         )
     // the types the selected element can become: same kind (not a distribution part) that fits under its parent
@@ -321,20 +321,54 @@ export default function OneWireDiagram({p, setP, idx, focus, onFocused, onFooter
     const canBefore = !!s && insertTypes(tp, tree, T, s, 'before', free).length > 0,
         canAfter = !!s && insertTypes(tp, tree, T, s, 'after', free).length > 0,
         canBranch = !!s && siblingTypes(tree, T, s, free).length > 0
-    // drag & drop: the element under the pointer (a symbol, a box or a circuit) and whether the symbol would come before it (left half) or after it (right half).
-    // Near the stem of a circuit (its latch zone) the symbol latches onto the circuit: it becomes the next branch (B1 -> B2), also in the empty space
-    // above the last branch. Moving out of the zone detaches it again; over a symbol it keeps inserting before / after that symbol.
+    // drag & drop: any symbol can be dropped anywhere. It does not check whether the symbol "fits" there, it just does it and the user corrects a mistake.
+    // Where it lands depends on what the pointer is over:
+    // - a symbol inside a circuit: before it (left half) or after it (right half)
+    // - the free area or the stem of a circuit: a circuit comes next to it (left / right half), a part of the main line (differentieel, verdeelbord, ...) in front of it,
+    //   anything else becomes its last branch
+    // - the bus, the head (kWh meter, earth) or the space below the bus: a circuit becomes the last circuit, a part of the main line comes in front of the board, anything else hangs under the board
+    // - anywhere else on the sheet (above the bus): the nearest circuit counts
+    const MAIN = ['aansluiting', 'teller', 'hoofdschakelaar', 'diff', 'zekering', 'bord']
     const dropAt = (e) => {
-        const el = e.target?.closest?.('[data-nid],[data-hit],[data-stem]')
-        if (!el || !dragT) return null
-        const id = el.getAttribute('data-nid') || el.getAttribute('data-hit') || el.getAttribute('data-stem'),
+        if (!dragT) return null
+        const k = dragT.k,
+            root = e.currentTarget,
+            busId = plan[0]?.b.bus?.id,
+            onBus = () =>
+                busId
+                    ? {id: busId, mode: k !== 'kring' && MAIN.includes(k) ? 'before' : 'after', zone: 'bus'}
+                    : tree.length
+                        ? {id: tree.at(-1).id, mode: 'after', zone: 'bus'}
+                        : {id: null, mode: 'root', zone: 'bus'},
+            onCircuit = (c, hit) => {
+                if (k !== 'kring') return {id: c.id, mode: MAIN.includes(k) ? 'before' : 'after', zone: 'circuit'}
+                const box = (hit || root?.querySelector?.(`[data-hit="${c.id}"]`))?.getBoundingClientRect()
+                return {id: c.id, mode: box && e.clientX < box.left + box.width / 2 ? 'left' : 'right', zone: 'circuit'}
+            }
+        const el = e.target?.closest?.('[data-nid],[data-hit],[data-stem],[data-bus]'),
+            id = el && (el.getAttribute('data-bus') || el.getAttribute('data-nid') || el.getAttribute('data-hit') || el.getAttribute('data-stem')),
             tgt = id && find(tree, id)
-        if (!tgt) return null
-        const half = !el.hasAttribute('data-hit') && !el.hasAttribute('data-stem') && el.tagName.toLowerCase() !== 'text',
-            r = el.getBoundingClientRect(),
-            first = half && e.clientX < r.left + r.width / 2 ? 'before' : 'after',
-            mode = [first, first === 'before' ? 'after' : 'before'].find((m) => canInsert(tp, tree, tgt, m, dragT, free))
-        return mode ? {id, mode} : null
+        if (el?.hasAttribute('data-bus')) return onBus()
+        if (!tgt) {
+            // empty space: below the bus the bus counts, above it the circuit that is nearest sideways
+            const busEl = root?.querySelector?.('[data-bus]')
+            if (busEl && e.clientY > busEl.getBoundingClientRect().bottom) return onBus()
+            let best = null
+            root?.querySelectorAll?.('[data-hit]').forEach((h) => {
+                const r = h.getBoundingClientRect(),
+                    d = e.clientX < r.left ? r.left - e.clientX : e.clientX > r.right ? e.clientX - r.right : 0,
+                    c = find(tree, h.getAttribute('data-hit'))
+                if (c && (!best || d < best.d)) best = {d, c, h}
+            })
+            return best ? onCircuit(best.c, best.h) : onBus()
+        }
+        const c = circuitOf(tree, tgt.id)
+        if (!c) return onBus() // the head: the main line
+        if (tgt.id === c.id) return onCircuit(c, el.hasAttribute('data-hit') ? el : null) // the circuit itself: its area, stem or letter
+        if (k === 'kring') return onCircuit(c)
+        const half = el.tagName.toLowerCase() !== 'text',
+            r = el.getBoundingClientRect()
+        return {id: tgt.id, mode: half && e.clientX < r.left + r.width / 2 ? 'before' : 'after', zone: 'element'}
     }
     const stopDrag = () => {
         setDragT(null)
@@ -365,7 +399,8 @@ export default function OneWireDiagram({p, setP, idx, focus, onFocused, onFooter
             pp = {...p, een: p.een.map((g, i) => (i === idx ? {...g, tree: insertAt(tree, drop.id, drop.mode, n)} : g))},
             pl = sheetPlan(pp, true).filter((e) => e.kind === 'een' && e.pg === pp.een[idx]),
             k = pl.findIndex((e) => e.b.circuits.slice(e.sl.from, e.sl.to).some((c) => c.items.some((it) => it.id === GHOST)))
-        return {no: drop.no, e: pl[k >= 0 ? k : Math.min(drop.no - 1, pl.length - 1)]}
+        // drawn: the new element is part of the sheet (and drawn in blue); not drawn (e.g. a differentieel): the place where it goes is marked in blue instead
+        return {no: drop.no, drawn: k >= 0, e: pl[k >= 0 ? k : Math.min(drop.no - 1, pl.length - 1)]}
     })()
     const rows = (ns, d = 0) =>
         ns.flatMap((n) => {
@@ -807,6 +842,8 @@ export default function OneWireDiagram({p, setP, idx, focus, onFocused, onFooter
                                             no={e.no}
                                             total={e.total}
                                             ghost={GHOST}
+                                            sel={!preview.drawn && drop.zone !== 'bus' ? drop.id : null}
+                                            busMark={!preview.drawn && drop.zone === 'bus'}
                                             onFooter={onFooter}
                                         />
                                     </div>

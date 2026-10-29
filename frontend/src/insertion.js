@@ -25,12 +25,33 @@ const upd = (ns, id, f) => ns.flatMap((n) => (n.id === id ? f(n) : [{...n, child
 
 export const addAfter = (tree, id, n) => upd(tree, id, (x) => [{...x, children: [...x.children, n]}])
 export const addBefore = (tree, id, n) => upd(tree, id, (x) => [{...n, children: [x]}])
-export const insertAt = (tree, id, mode, n) => (mode === 'before' ? addBefore(tree, id, n) : addAfter(tree, id, n))
+// 'root' = a new top level element (an empty drawing); 'left' / 'right' = a new circuit next to the circuit `id` (same parent, before / after it in the tree = left / right in the drawing)
+export const insertAt = (tree, id, mode, n) =>
+    mode === 'root' ? [...tree, n] : mode === 'before' ? addBefore(tree, id, n) : mode === 'left' ? addSiblingBefore(tree, id, n) : mode === 'right' ? addSibling(tree, id, n) : addAfter(tree, id, n)
 // A sibling = the next branch: the new element hangs under the same parent as `id`, directly after it (in the drawing the next branch above it,
 // e.g. B1 -> B2; the numbers of the branches that follow shift up by one).
 export const addSibling = (tree, id, n) => {
     const i = tree.findIndex((x) => x.id === id)
     return i >= 0 ? [...tree.slice(0, i + 1), n, ...tree.slice(i + 1)] : tree.map((x) => ({...x, children: addSibling(x.children, id, n)}))
+}
+
+// the new element hangs under the same parent as `id`, directly before it
+export const addSiblingBefore = (tree, id, n) => {
+    const i = tree.findIndex((x) => x.id === id)
+    return i >= 0 ? [...tree.slice(0, i), n, ...tree.slice(i)] : tree.map((x) => ({...x, children: addSiblingBefore(x.children, id, n)}))
+}
+// the circuit (type 'kring') that holds `id`: the element itself or its nearest ancestor that is one; null when it is not inside a circuit
+export const circuitOf = (tree, id) => {
+    for (let n = findIn(tree, id); n; n = parentOf(tree, n.id)) if (n.type === 'kring') return n
+    return null
+}
+const findIn = (ns, id) => {
+    for (const n of ns) {
+        if (n.id === id) return n
+        const r = findIn(n.children, id)
+        if (r) return r
+    }
+    return null
 }
 
 // Can a symbol type be inserted before / after the element `s`? `typeOf(k)` gives the type object of a type key.

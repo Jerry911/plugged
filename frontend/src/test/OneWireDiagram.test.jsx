@@ -419,7 +419,7 @@ test('the "after" button inserts an empty symbol under the selected one; the Typ
     expect(names).not.toContain('Verdeelbord') // a board may not hang under a switch
     fireEvent.change(typeSelect(), {target: {value: 'stopcontact'}})
     const t = find(spy.p.een[0].tree, e.id)
-    expect(t).toMatchObject({id: e.id, type: 'stopcontact', label: 'Stopcontact'})
+    expect(t).toMatchObject({id: e.id, type: 'stopcontact', label: ''})
 })
 test('the "before" button puts an empty symbol between the parent and the selected symbol', () => {
     const {container, spy} = mount(OneLineSchema, chain(), {idx: 0})
@@ -469,13 +469,14 @@ test('dragging a symbol over the drawing previews it in blue; dropping inserts i
     expect(s2.children.map((c) => c.type)).toEqual(['wandlamp', 'wandlamp'])
     expect(s2.children[0].children.map((c) => c.id)).toEqual(['L'])
 })
-test('a symbol that does not fit is not previewed and not dropped', () => {
+test('drag & drop does not check whether a symbol fits: a verdeelbord over a symbol is previewed and dropped', () => {
     const {container, spy} = mount(OneLineSchema, chain(), {idx: 0})
     fireEvent.dragStart(pal('Verdeelbord'))
     fireEvent.dragOver(container.querySelector('[data-nid="S"]'), {clientX: 10})
-    expect(container.querySelector('#eds-drop-preview')).toBeNull()
+    expect(container.querySelector('#eds-drop-preview')).not.toBeNull()
     fireEvent.drop(container.querySelector('[data-nid="S"]'), {clientX: 10})
-    expect(flatTypes(spy.p.een[0].tree).filter((t) => t === 'bord')).toHaveLength(1)
+    expect(flatTypes(spy.p.een[0].tree).filter((t) => t === 'bord')).toHaveLength(2)
+    expect(find(spy.p.een[0].tree, 'S').children.map((c) => c.type)).toContain('bord')
 })
 test('the preview disappears when the drag ends without a drop', () => {
     const {container} = mount(OneLineSchema, chain(), {idx: 0})
@@ -558,4 +559,76 @@ test('Waterdicht checkbox: only for sockets, sets p.h and draws the little h in 
 test('there is no waterproof socket in the palette', () => {
     mount(OneLineSchema, circ(), {idx: 0})
     expect(screen.queryByText('Waterdicht stopcontact')).toBeNull()
+})
+test('a new element from the palette starts with an empty text; a circuit still gets its letter', () => {
+    const {spy} = mount(OneLineSchema, withTree([node('A', 'aansluiting')]), {idx: 0})
+    fireEvent.click(screen.getAllByText('A')[0])
+    fireEvent.click(pal('Verdeelbord'))
+    expect(spy.p.een[0].tree[0].children[0].label).toBe('')
+    fireEvent.click(screen.getByLabelText(/Vrije hiërarchie/))
+    fireEvent.click(pal('Stopcontact'))
+    expect(spy.p.een[0].tree[0].children[0].children[0].label).toBe('')
+})
+
+test('dragging a circuit onto a circuit (or one of its symbols) puts the new circuit left (left half) or right (right half) of it', () => {
+    const {container, spy} = mount(OneLineSchema, circ(), {idx: 0}),
+        bord = () => find(spy.p.een[0].tree, 'B').children
+    fireEvent.dragStart(pal('Kring (automaat)'))
+    fireEvent.dragOver(container.querySelector('[data-nid="S"]'), {clientX: 10})
+    expect(container.querySelector('#eds-drop-preview')).not.toBeNull()
+    expect(bord()).toHaveLength(1) // nothing inserted yet
+    fireEvent.drop(container.querySelector('[data-nid="S"]'), {clientX: 10}) // jsdom has no layout: clientX 10 = right half
+    expect(bord().map((c) => c.type)).toEqual(['kring', 'kring'])
+    expect(bord()[0].id).toBe('K')
+    // left half of the stem zone: the new circuit comes before K
+    fireEvent.dragStart(pal('Kring (automaat)'))
+    const left = createEvent.drop(container.querySelector('[data-stem="K"]'))
+    Object.defineProperty(left, 'clientX', {value: -10})
+    fireEvent(container.querySelector('[data-stem="K"]'), left)
+    expect(bord()).toHaveLength(3)
+    expect(bord()[1].id).toBe('K')
+    expect(bord()[0].type).toBe('kring')
+})
+test('on the bus: a circuit becomes the last circuit, a differentieel / verdeelbord goes in front of the board, anything else hangs under the board', () => {
+    const {container, spy} = mount(OneLineSchema, circ(), {idx: 0}),
+        bus = () => container.querySelector('[data-bus="B"]'),
+        bord = () => find(spy.p.een[0].tree, 'B')
+    expect(bus()).not.toBeNull()
+    fireEvent.dragStart(pal('Wandlamp'))
+    fireEvent.drop(bus(), {clientX: 10})
+    expect(bord().children.map((c) => c.type)).toEqual(['kring', 'wandlamp'])
+    fireEvent.dragStart(pal('Kring (automaat)'))
+    fireEvent.dragOver(bus(), {clientX: 10})
+    expect(container.querySelector('#eds-drop-preview [stroke="#0a6cff"]')).not.toBeNull() // the new circuit is drawn in blue
+    fireEvent.drop(bus(), {clientX: 10})
+    expect(bord().children.map((c) => c.type)).toEqual(['kring', 'wandlamp', 'kring'])
+    // a differentieel attaches to the main line: between the connection and the board
+    fireEvent.dragStart(pal('Differentieel (aardlek)'))
+    fireEvent.dragOver(bus(), {clientX: 10})
+    expect(container.querySelector('#eds-drop-preview line[stroke="#0a6cff"]')).not.toBeNull() // it is not drawn itself: the bus is marked in blue
+    fireEvent.drop(bus(), {clientX: 10})
+    const top = find(spy.p.een[0].tree, 'A')
+    expect(top.children.map((c) => c.type)).toEqual(['diff'])
+    expect(top.children[0].children.map((c) => c.id)).toEqual(['B'])
+})
+test('anywhere on the sheet works: above the bus the nearest circuit counts, below it the bus', () => {
+    const {container, spy} = mount(OneLineSchema, circ(), {idx: 0}),
+        sheet = () => container.querySelector('svg.sheet'),
+        bord = () => find(spy.p.een[0].tree, 'B')
+    fireEvent.dragStart(pal('Kring (automaat)'))
+    fireEvent.drop(sheet(), {clientX: 10}) // jsdom has no layout: the right half of the nearest circuit
+    expect(bord().children.map((c) => c.id)[0]).toBe('K')
+    expect(bord().children).toHaveLength(2)
+    fireEvent.dragStart(pal('Differentieel (aardlek)'))
+    fireEvent.dragOver(sheet(), {clientX: 10})
+    expect(container.querySelector('#eds-drop-preview')).not.toBeNull() // previewed: the circuit it protects is marked in blue
+    fireEvent.drop(sheet(), {clientX: 10})
+    expect(bord().children.map((c) => c.type)).toEqual(['diff', 'kring'])
+    expect(bord().children[0].children.map((c) => c.id)).toEqual(['K'])
+})
+test('a drop in an empty drawing becomes a top level element', () => {
+    const {container, spy} = mount(OneLineSchema, withTree([]), {idx: 0})
+    fireEvent.dragStart(pal('Verdeelbord'))
+    fireEvent.drop(container.querySelector('svg.sheet'), {clientX: 10})
+    expect(spy.p.een[0].tree.map((n) => n.type)).toEqual(['bord'])
 })

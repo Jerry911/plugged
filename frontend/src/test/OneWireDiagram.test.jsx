@@ -523,11 +523,15 @@ test('the stem of a circuit is a latch zone: dragging into it previews and drops
     expect(kids(spy).map((c) => c.type)).toEqual(['schakelaar', 'wandlamp'])
     expect(find(spy.p.een[0].tree, 'S').children).toHaveLength(0)
 })
-test('in the latch zone a symbol that cannot be a branch still goes before the circuit; over a symbol it keeps inserting before / after it', () => {
+test('in the latch zone a smeltveiligheid goes before the circuit and a differentieel makes a new circuit; over a symbol it keeps inserting before / after it', () => {
     const {container, spy} = mount(OneLineSchema, circ(), {idx: 0})
+    fireEvent.dragStart(pal('Smeltveiligheid'))
+    fireEvent.drop(container.querySelector('[data-stem="K"]'), {clientX: 10})
+    expect(find(spy.p.een[0].tree, 'B').children[0].type).toBe('zekering')
     fireEvent.dragStart(pal('Differentieel (aardlek)'))
     fireEvent.drop(container.querySelector('[data-stem="K"]'), {clientX: 10})
-    expect(find(spy.p.een[0].tree, 'B').children[0].type).toBe('diff')
+    const dk = find(spy.p.een[0].tree, 'B').children[0].children[1]
+    expect(dk).toMatchObject({type: 'kring', p: {bescherming: 'differentieel', delta: 30, diffType: 'A'}})
     fireEvent.dragStart(pal('Wandlamp'))
     fireEvent.drop(container.querySelector('[data-nid="S"]'), {clientX: 10})
     expect(find(spy.p.een[0].tree, 'S').children.map((c) => c.type)).toEqual(['wandlamp'])
@@ -602,14 +606,38 @@ test('on the bus: a circuit becomes the last circuit, a differentieel / verdeelb
     expect(container.querySelector('#eds-drop-preview [stroke="#0a6cff"]')).not.toBeNull() // the new circuit is drawn in blue
     fireEvent.drop(bus(), {clientX: 10})
     expect(bord().children.map((c) => c.type)).toEqual(['kring', 'wandlamp', 'kring'])
-    // a differentieel attaches to the main line: between the connection and the board
-    fireEvent.dragStart(pal('Differentieel (aardlek)'))
-    fireEvent.dragOver(bus(), {clientX: 10})
-    expect(container.querySelector('#eds-drop-preview line[stroke="#0a6cff"]')).not.toBeNull() // it is not drawn itself: the bus is marked in blue
+    // a hoofdschakelaar goes on the main line: between the connection and the board; a verdeelbord hangs under the board (the circuits stay visible)
+    fireEvent.dragStart(pal('Hoofdschakelaar'))
     fireEvent.drop(bus(), {clientX: 10})
     const top = find(spy.p.een[0].tree, 'A')
-    expect(top.children.map((c) => c.type)).toEqual(['diff'])
+    expect(top.children.map((c) => c.type)).toEqual(['hoofdschakelaar'])
     expect(top.children[0].children.map((c) => c.id)).toEqual(['B'])
+    fireEvent.dragStart(pal('Verdeelbord'))
+    fireEvent.dragOver(bus(), {clientX: 10})
+    expect(container.querySelector('#eds-drop-preview line[stroke="#0a6cff"]')).not.toBeNull() // not drawn itself: the bus is marked in blue
+    fireEvent.drop(bus(), {clientX: 10})
+    expect(bord().children.map((c) => c.type)).toEqual(['kring', 'wandlamp', 'kring', 'bord'])
+})
+test('a differentieel makes a new circuit (a kring that is protected by a differentieel), just like an automaat', () => {
+    const {container, spy} = mount(OneLineSchema, circ(), {idx: 0}),
+        bus = () => container.querySelector('[data-bus="B"]'),
+        bord = () => find(spy.p.een[0].tree, 'B')
+    fireEvent.dragStart(pal('Differentieel (aardlek)'))
+    fireEvent.dragOver(bus(), {clientX: 10})
+    expect(container.querySelector('#eds-drop-preview [stroke="#0a6cff"]')).not.toBeNull() // drawn in blue
+    fireEvent.drop(bus(), {clientX: 10})
+    expect(bord().children.map((c) => c.type)).toEqual(['kring', 'kring'])
+    const dk = bord().children[1]
+    expect(dk.p).toMatchObject({bescherming: 'differentieel', polen: 2, amp: 25, delta: 30, diffType: 'A'})
+    expect(dk.label).not.toBe('K')
+    // it can be corrected in the properties: Bescherming, with Δ mA and Type instead of the curve
+    fireEvent.click(container.querySelector(`[data-nid="${dk.id}"]`))
+    expect(screen.getByLabelText('Bescherming').value).toBe('differentieel')
+    expect(screen.getByText('Differentieel (mA)')).not.toBeNull()
+    expect(screen.queryByText('Curve')).toBeNull()
+    fireEvent.change(screen.getByLabelText('Bescherming'), {target: {value: 'automatisch'}})
+    expect(bord().children[1].p.bescherming).toBe('automatisch')
+    expect(screen.getByText('Curve')).not.toBeNull()
 })
 test('anywhere on the sheet works: above the bus the nearest circuit counts, below it the bus', () => {
     const {container, spy} = mount(OneLineSchema, circ(), {idx: 0}),
@@ -619,12 +647,11 @@ test('anywhere on the sheet works: above the bus the nearest circuit counts, bel
     fireEvent.drop(sheet(), {clientX: 10}) // jsdom has no layout: the right half of the nearest circuit
     expect(bord().children.map((c) => c.id)[0]).toBe('K')
     expect(bord().children).toHaveLength(2)
-    fireEvent.dragStart(pal('Differentieel (aardlek)'))
+    fireEvent.dragStart(pal('Verdeelbord'))
     fireEvent.dragOver(sheet(), {clientX: 10})
-    expect(container.querySelector('#eds-drop-preview')).not.toBeNull() // previewed: the circuit it protects is marked in blue
+    expect(container.querySelector('#eds-drop-preview')).not.toBeNull() // previewed: the bus is marked in blue
     fireEvent.drop(sheet(), {clientX: 10})
-    expect(bord().children.map((c) => c.type)).toEqual(['diff', 'kring'])
-    expect(bord().children[0].children.map((c) => c.id)).toEqual(['K'])
+    expect(bord().children.map((c) => c.type)).toEqual(['kring', 'kring', 'bord'])
 })
 test('a drop in an empty drawing becomes a top level element', () => {
     const {container, spy} = mount(OneLineSchema, withTree([]), {idx: 0})

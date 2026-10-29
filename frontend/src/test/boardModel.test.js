@@ -334,3 +334,11 @@ test('a circuit has a latch zone along its stem, above the click area, reaching 
     expect(z.x + z.w / 2).toBe(30) // centred on the stem
     expect(circuit(base(), node('K~', 'kring', [], {p: {bescherming: 'geen'}})).items.some((i) => i.k === 'stem')).toBe(false)
 })
+test('a circuit that is protected by a differentieel is drawn with the differentieel symbol and its mA / type', () => {
+    const d = circuit(base(), kring('D', [], {bescherming: 'differentieel', amp: 25, curve: '', delta: 30, diffType: 'A', kortsl: ''}, {label: 'D'})),
+        a = circuit(base(), kring('K', [], {}, {label: 'K'}))
+    expect(texts(d.items).map((x) => x.s)).toEqual(expect.arrayContaining(['2P - 25A', 'Δ30mA', 'Type A']))
+    expect(texts(d.items).map((x) => x.s)).not.toContain('Curve B')
+    expect(d.items.filter((i) => i.breaker)).toHaveLength(1)
+    expect(a.items.filter((i) => i.breaker)).toHaveLength(1)
+})

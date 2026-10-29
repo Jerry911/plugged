@@ -270,6 +270,8 @@ export function circuit(p, n) {
         // the name sits left of the placement symbols
         tx = xs - 14 - (ind ? IND_W : 0),
         none = pr.bescherming === 'geen',
+        // a circuit that is protected by a differentieel (instead of an automaat) is drawn with the differentieel symbol and its Δ mA / type
+        diff = pr.bescherming === 'differentieel',
         cable = pr.kabel || '',
         y0 = -Math.max(215, 150 + tw(cable) + 40)
     const st = stack(p, n.children, xs, y0, out, STUB, true)
@@ -277,7 +279,7 @@ export function circuit(p, n) {
     else {
         // the line does not run through the breaker: it stops at the lower contact, the lever swings up and to the left
         // (with its filled block, see the kring symbol), the line carries on above the lever
-        out.push(line(xs, 0, xs, -30), breakerItem(p, 'kring', xs, -30), line(xs, -30 - BRK_TIP, xs, y0))
+        out.push(line(xs, 0, xs, -30), breakerItem(p, diff ? 'diff' : 'kring', xs, -30), line(xs, -30 - BRK_TIP, xs, y0))
     }
     const long = (n.label || '').length > 3
     out.push(
@@ -287,7 +289,11 @@ export function circuit(p, n) {
     )
     if (pr.tekst) out.push(text(tx, long ? -12 - tw(n.label) - 8 : -72, pr.tekst, {bold: 1, size: 14, rot: 1, id: n.id}))
     if (!none) {
-        const sp = pr.amp ? [`${pr.polen || 2}P - ${pr.amp}A`, pr.curve ? `Curve ${pr.curve}` : null] : [n.info || null],
+        const sp = diff
+                ? [pr.amp ? `${pr.polen || 2}P - ${pr.amp}A` : null, pr.delta ? `Δ${pr.delta}mA` : null, pr.diffType ? `Type ${pr.diffType}` : null]
+                : pr.amp
+                    ? [`${pr.polen || 2}P - ${pr.amp}A`, pr.curve ? `Curve ${pr.curve}` : null]
+                    : [n.info || null],
             k = pr.kortsl ? `${pr.kortsl}000` : null
         sp.filter(Boolean).forEach((s, i) => out.push(text(xs + 13 + 13 * i, -62, s, {rot: 1})))
         if (k) out.push({k: 'rect', x: xs + 33, y: -66 - tw(k) - 4, w: 15, h: tw(k) + 8}, text(xs + 44, -66, k, {rot: 1}))

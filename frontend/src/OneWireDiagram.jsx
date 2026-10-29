@@ -159,6 +159,11 @@ const FIELDS = {
         ['kortsl', 'Kortsluitvermogen (kA)'],
     ],
 }
+// a circuit that is protected by a differentieel has Δ mA and Type instead of the curve
+const kringFields = (q) =>
+    q?.bescherming === 'differentieel'
+        ? FIELDS.kring.flatMap((f) => (f[0] === 'curve' ? [['delta', 'Differentieel (mA)', 4], ['diffType', 'Type', 2]] : [f]))
+        : FIELDS.kring
 const OTHER = [
     ['aantal', 'Aantal (x)'],
     ['nr', 'Nr'],
@@ -271,8 +276,15 @@ export default function OneWireDiagram({p, setP, idx, focus, onFocused, onFooter
         if (DIST.includes(t.k)) setSel(n.id)
     }
     // insert a symbol type before / after the element `id` and select it
+    // dropped from the palette: a differentieel makes a new circuit (a kring) that is protected by a differentieel, just like an automaat makes a circuit
+    const mkDrop = (t) => {
+        if (t.k !== 'diff') return mk(t)
+        const n = mk(tp('kring')),
+            q = {...n.p, bescherming: 'differentieel', amp: 25, curve: '', delta: 30, diffType: 'A', kortsl: ''}
+        return {...n, p: q, info: infoOf(q)}
+    }
     const insertSym = (id, mode, t) => {
-        const n = mk(t)
+        const n = mkDrop(t)
         set(insertAt(tree, id, mode, n))
         unfold([id])
         setSel(n.id)
@@ -324,24 +336,26 @@ export default function OneWireDiagram({p, setP, idx, focus, onFocused, onFooter
     // drag & drop: any symbol can be dropped anywhere. It does not check whether the symbol "fits" there, it just does it and the user corrects a mistake.
     // Where it lands depends on what the pointer is over:
     // - a symbol inside a circuit: before it (left half) or after it (right half)
-    // - the free area or the stem of a circuit: a circuit comes next to it (left / right half), a part of the main line (differentieel, verdeelbord, ...) in front of it,
-    //   anything else becomes its last branch
-    // - the bus, the head (kWh meter, earth) or the space below the bus: a circuit becomes the last circuit, a part of the main line comes in front of the board, anything else hangs under the board
+    // - the free area or the stem of a circuit: a circuit (kring, differentieel) comes next to it (left / right half), a smeltveiligheid in front of it, a part of the
+    //   main line (teller, verdeelbord, ...) goes where it goes on the bus, anything else becomes its last branch
+    // - the bus, the head (kWh meter, earth) or the space below the bus: a circuit (kring, differentieel) becomes the last circuit, a part of the main line (verdeelbord, ...) comes in front of the board, anything else hangs under the board
     // - anywhere else on the sheet (above the bus): the nearest circuit counts
-    const MAIN = ['aansluiting', 'teller', 'hoofdschakelaar', 'diff', 'zekering', 'bord']
+    // parts of the main line go in front of the board (the circuits stay visible); a second verdeelbord hangs under the first one, so the circuits stay visible too
+    const MAIN = ['aansluiting', 'teller', 'hoofdschakelaar']
     const dropAt = (e) => {
         if (!dragT) return null
         const k = dragT.k,
+            circ = k === 'kring' || k === 'diff', // both make a new circuit
             root = e.currentTarget,
             busId = plan[0]?.b.bus?.id,
             onBus = () =>
                 busId
-                    ? {id: busId, mode: k !== 'kring' && MAIN.includes(k) ? 'before' : 'after', zone: 'bus'}
+                    ? {id: busId, mode: MAIN.includes(k) ? 'before' : 'after', zone: 'bus'}
                     : tree.length
                         ? {id: tree.at(-1).id, mode: 'after', zone: 'bus'}
                         : {id: null, mode: 'root', zone: 'bus'},
             onCircuit = (c, hit) => {
-                if (k !== 'kring') return {id: c.id, mode: MAIN.includes(k) ? 'before' : 'after', zone: 'circuit'}
+                if (!circ) return k === 'zekering' ? {id: c.id, mode: 'before', zone: 'circuit'} : MAIN.includes(k) || k === 'bord' ? onBus() : {id: c.id, mode: 'after', zone: 'circuit'}
                 const box = (hit || root?.querySelector?.(`[data-hit="${c.id}"]`))?.getBoundingClientRect()
                 return {id: c.id, mode: box && e.clientX < box.left + box.width / 2 ? 'left' : 'right', zone: 'circuit'}
             }
@@ -365,7 +379,7 @@ export default function OneWireDiagram({p, setP, idx, focus, onFocused, onFooter
         const c = circuitOf(tree, tgt.id)
         if (!c) return onBus() // the head: the main line
         if (tgt.id === c.id) return onCircuit(c, el.hasAttribute('data-hit') ? el : null) // the circuit itself: its area, stem or letter
-        if (k === 'kring') return onCircuit(c)
+        if (circ) return onCircuit(c)
         const half = el.tagName.toLowerCase() !== 'text',
             r = el.getBoundingClientRect()
         return {id: tgt.id, mode: half && e.clientX < r.left + r.width / 2 ? 'before' : 'after', zone: 'element'}
@@ -395,7 +409,7 @@ export default function OneWireDiagram({p, setP, idx, focus, onFocused, onFooter
     // what the sheet would look like after the drop: the whole sheet is laid out again with the new element in it (drawn in blue)
     const preview = (() => {
         if (!drop || !dragT) return null
-        const n = {...mk(dragT), id: GHOST},
+        const n = {...mkDrop(dragT), id: GHOST},
             pp = {...p, een: p.een.map((g, i) => (i === idx ? {...g, tree: insertAt(tree, drop.id, drop.mode, n)} : g))},
             pl = sheetPlan(pp, true).filter((e) => e.kind === 'een' && e.pg === pp.een[idx]),
             k = pl.findIndex((e) => e.b.circuits.slice(e.sl.from, e.sl.to).some((c) => c.items.some((it) => it.id === GHOST)))
@@ -463,7 +477,7 @@ export default function OneWireDiagram({p, setP, idx, focus, onFocused, onFooter
             ]
         })
     const ob = (f) => () => set(f(tree, s.id)),
-        fields = s && (FIELDS[s.type] || (['bord'].includes(s.type) ? [] : OTHER)),
+        fields = s && ((s.type === 'kring' ? kringFields(s.p) : FIELDS[s.type]) || (['bord'].includes(s.type) ? [] : OTHER)),
         plan = sheetPlan(p, true).filter((e) => e.kind === 'een' && e.pg === pg),
         fieldRows = (fields || []).reduce((a, f) => {
             const last = a[a.length - 1]
@@ -570,6 +584,18 @@ export default function OneWireDiagram({p, setP, idx, focus, onFocused, onFooter
                                 <input type="checkbox" checked={!!s.p?.geaard}
                                        onChange={(e) => setProp('geaard', e.target.checked)}/>{' '}
                                 Geaard
+                            </label>
+                        )}
+                        {s.type === 'kring' && (
+                            <label>
+                                Bescherming
+                                <select aria-label="Bescherming" value={s.p?.bescherming || 'automatisch'}
+                                        onChange={(e) => setProp('bescherming', e.target.value)}
+                                        style={{width: '100%', boxSizing: 'border-box'}}>
+                                    <option value="automatisch">Automaat</option>
+                                    <option value="differentieel">Differentieel</option>
+                                    <option value="geen">Geen</option>
+                                </select>
                             </label>
                         )}
                         {fieldRows.map((r) =>

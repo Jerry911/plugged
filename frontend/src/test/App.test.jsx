@@ -4,6 +4,7 @@ import {act, fireEvent, render, screen, waitFor} from '@testing-library/react'
 import App from '../App.jsx'
 import {node} from './utils.jsx'
 import pako from 'pako'
+import {importEds} from '../eds.jsx'
 import standard from './fixtures/standard-symbols.json'
 
 const makePdf = vi.fn(async () => {})
@@ -239,6 +240,20 @@ test('EDS import replaces schema and footer, reports a message and can be undone
     screen.getByText('Dorpstraat 1, 9000 Gent')
     fireEvent.click(screen.getByRole('button', {name: /Ongedaan/}))
     expect(screen.queryByText('Keuken')).toBeNull()
+})
+test('EDS export downloads the schema as .eds, reports it, and the file imports again', async () => {
+    await mount()
+    await act(async () => {})
+    fireEvent.change(document.querySelector('input[accept=".eds"]'), {target: {files: [{text: async () => enc(EDS())}]}})
+    await screen.findByText(/EDS geïmporteerd/)
+    HTMLAnchorElement.prototype.click.mockClear()
+    URL.createObjectURL.mockClear()
+    fireEvent.click(screen.getByText('EDS ↑'))
+    expect(HTMLAnchorElement.prototype.click).toHaveBeenCalledTimes(1)
+    await screen.findByText(/EDS geëxporteerd: 1 kringen, 5 elementen$/)
+    const r = importEds(await readBlob(URL.createObjectURL.mock.calls[0][0]))
+    expect(r.stats).toMatchObject({circuits: 1, nodes: 5})
+    expect(r.footer).toMatchObject({eigenaar: 'Jan', straat: 'Dorpstraat', nr: '1', postcode: '9000', gemeente: 'Gent'})
 })
 test('EDS import without unknown types and with an invalid file', async () => {
     await mount()

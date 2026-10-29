@@ -221,3 +221,228 @@ export function edsToProject(j) {
     }
 }
 export const importEds = (text) => edsToProject(decodeEds(text))
+// ---- Export: the inverse of the import above. Writes the eendraadschema (all pages, one after the other) and the owner/address of the footer;
+// the situatieschema is not exported. Symbols with no EDS equivalent become a 'Verbruiker' with their name as text and are reported.
+const LAMPS = {
+    lichtpunt: {type_lamp: 'standaard'},
+    tl: {type_lamp: 'TL'},
+    spot: {type_lamp: 'spot'},
+    led: {type_lamp: 'led'},
+    wandlamp: {type_lamp: 'standaard', is_wandlamp: true},
+    noodlicht: {type_lamp: 'standaard', type_noodverlichting: 'Centraal'},
+}
+const SWITCHES_OUT = {
+    schakelaar: 'enkelpolig',
+    schakelaar2: 'dubbelpolig',
+    schakelaar3: 'driepolig',
+    verklikker: 'enkelpolig',
+    wissel: 'wissel_enkel',
+    wissel2: 'wissel_dubbel',
+    omschakelaar: 'dubbelaansteking',
+    kruis: 'kruis_enkel',
+    dimmer: 'dimschakelaar',
+    rolluik: 'rolluikschakelaar',
+    beweging: 'bewegingsschakelaar',
+}
+const MODULES_OUT = {modulaire: '', teleruptor: 'teleruptor', dimmermodule: 'dimmer', relais: 'relais', minuterie: 'minuterie', klok: 'tijdschakelaar'}
+// elements that the EDS keeps inside the Aansluiting (meter, main switch, residual-current device): they disappear, their children move up
+const MERGED = new Set(['teller', 'hoofdschakelaar', 'diff', 'zekering', 'leeg'])
+const BACK = Object.fromEntries(Object.entries(MAP).map(([k, v]) => [v, k]))
+const SOCKETS = {
+    stopcontact: {is_geaard: true, is_kinderveilig: false},
+    stopcontact2: {is_geaard: true, is_kinderveilig: false, aantal: 2},
+    stopcontact3: {is_geaard: true, is_kinderveilig: false, aantal: 3},
+    stopcontact_alg: {is_geaard: false, is_kinderveilig: false},
+    stopcontact_kid: {is_geaard: false, is_kinderveilig: true},
+    stopcontact_pekid: {is_geaard: true, is_kinderveilig: true},
+}
+// EDS types that have a field of their own for the details (brand, type, serial number, ...); elsewhere they follow the text after a '|'
+const HAS_DETAILS = new Set(['Aansluiting', 'Omvormer', 'Zonnepaneel', 'Batterij'])
+// EDS types where the free text is called 'tekst' instead of 'adres'
+const HAS_TEKST = new Set(['Domotica', 'Verbruiker'])
+const COUNTED = new Set(['Contactdoos', 'Drukknop', 'Lichtpunt', 'Warmtepomp/airco', 'Zonnepaneel'])
+const VERBRUIKER = {horizontale_uitlijning: 'centreer', heeft_automatische_breedte: 'automatisch', breedte: '70', is_vet: false, is_cursief: false}
+const str = (v, d = '') => (v === undefined || v === null || v === '' ? d : String(v))
+// the EDS type of a node (null = no equivalent) and the options that go with it
+export const edsTypeOf = (k) =>
+    k in SOCKETS ? 'Contactdoos' : k in LAMPS ? 'Lichtpunt' : k in SWITCHES_OUT ? 'Schakelaars' : k in MODULES_OUT ? 'Modulaire schakelaar' : k === 'subbord' ? 'Bord' : BACK[k] || null
+const KABEL_LOCATIE = {ondergronds: 'Ondergronds', luchtleiding: 'Luchtleiding', inwand: 'In wand', opwand: 'Op wand'}
+function propsOf(n, names) {
+    const q = n.p || {},
+        k = n.type,
+        t = edsTypeOf(k),
+        lab = n.label || '',
+        det = detailLines(q.details),
+        base = {nr: str(q.nr), autonr: 'auto', autoKringNaam: 'auto'}
+    if (t === 'Kring')
+        return {
+            ...base,
+            type: t,
+            aantal_polen: str(q.polen, '2'),
+            bescherming: q.bescherming || 'automatisch',
+            amperage: str(q.amp),
+            type_kabel: str(q.kabel),
+            differentieel_delta_amperage: '300',
+            tekst: str(q.tekst),
+            kabel_locatie: KABEL_LOCATIE[q.plaatsing] || 'N/A',
+            type_differentieel: 'A',
+            curve_automaat: str(q.curve),
+            kabel_is_in_buis: !!q.inbuis && q.plaatsing !== 'luchtleiding',
+            differentieel_is_selectief: false,
+            kortsluitvermogen: str(q.kortsl),
+            huishoudelijk: true,
+            fase: '',
+            normaalGesloten: false,
+            sturing: '',
+            adres: '',
+            newPage: false,
+            kabel_is_aanwezig: true,
+            naam: lab,
+        }
+    if (t === 'Aansluiting')
+        return {
+            ...base,
+            type: t,
+            met_teller: q.teller !== false,
+            aantal_polen: q.polen ?? 2,
+            bescherming: q.bescherming || 'geen',
+            amperage: q.amp ?? '',
+            type_kabel_na_teller: str(q.kabel),
+            differentieel_delta_amperage: q.delta ?? 300,
+            adres: '',
+            type_differentieel: str(q.diffType, 'A'),
+            curve_automaat: 'C',
+            differentieel_is_selectief: false,
+            kortsluitvermogen: str(q.kortsl),
+            naam: lab === 'Aansluiting net' ? '' : lab,
+            type_kabel_voor_teller: '',
+            huishoudelijk: true,
+            fase: '',
+            normaalGesloten: false,
+            newPage: false,
+            kabel_locatie: 'N/A',
+            kabel_is_in_buis: false,
+            details: det.join('|'),
+        }
+    if (t === 'Bord') return {...base, type: t, is_geaard: q.geaard !== false, naam: lab === 'Verdeelbord' ? '' : lab, adres: ''}
+    // the free text: where the EDS has no field for the details they follow the text, separated by '|' (the import splits them again)
+    const free = HAS_DETAILS.has(t) ? lab : [lab, ...det].filter(Boolean).join(' | '),
+        o = {...base, type: t || 'Verbruiker'},
+        n1 = Math.max(1, Math.round(Number(q.aantal)) || 1)
+    if (!t) {
+        // no EDS equivalent: a free consumer named after the symbol
+        return {...o, tekst: [lab || names[k] || k, ...det].join(' | '), ...VERBRUIKER, adres: ''}
+    }
+    if (HAS_TEKST.has(t)) Object.assign(o, {tekst: free, adres: ''})
+    else o.adres = free
+    if (t === 'Verbruiker') Object.assign(o, VERBRUIKER)
+    if (COUNTED.has(t)) o.aantal = String(SOCKETS[k]?.aantal && n1 < SOCKETS[k].aantal ? SOCKETS[k].aantal : n1)
+    if (t === 'Contactdoos')
+        Object.assign(o, {
+            is_geaard: SOCKETS[k].is_geaard,
+            is_kinderveilig: SOCKETS[k].is_kinderveilig,
+            aantal_fases_indien_meerfasig: '3',
+            heeft_ingebouwde_schakelaar: false,
+            is_halfwaterdicht: !!q.h,
+            is_meerfasig: false,
+            heeft_nul_indien_meerfasig: false,
+            in_verdeelbord: false,
+        })
+    if (t === 'Lichtpunt')
+        Object.assign(o, {aantal_buizen_indien_TL: '1', type_noodverlichting: 'Geen', is_wandlamp: false, is_halfwaterdicht: !!q.h, heeft_ingebouwde_schakelaar: false}, LAMPS[k])
+    if (t === 'Schakelaars' || k === 'lichtcircuit')
+        Object.assign(o, {
+            aantal_schakelaars: String(n1),
+            type_schakelaar: SWITCHES_OUT[k] || 'enkelpolig',
+            heeft_signalisatielampje: false,
+            is_halfwaterdicht: !!q.h,
+            vertraagde_opening: false,
+            heeft_verklikkerlampje: k === 'verklikker',
+            is_trekschakelaar: false,
+            normaalGesloten: false,
+            sturing: '',
+            in_verdeelbord: false,
+        })
+    if (t === 'Lichtcircuit') o.aantal_lichtpunten = String(n1)
+    if (t === 'Drukknop') Object.assign(o, {aantal_knoppen_per_armatuur: '1', type_knop: 'standaard', is_afgeschermd: false, is_halfwaterdicht: false, heeft_verklikkerlampje: false})
+    if (t === 'Modulaire schakelaar') o.module_type = MODULES_OUT[k]
+    if (t === 'Transformator') o.voltage = '230V/24V'
+    if (t === 'Warmtepomp/airco') o.warmtefunctie = 'Verwarmend en koelend'
+    if (t === 'Ventilator') o.ventilatortype = 'ventilator'
+    if (t === 'Kookfornuis') Object.assign(o, {aantal_fases_indien_meerfasig: '3', is_meerfasig: false, heeft_nul_indien_meerfasig: false})
+    if (t === 'Omvormer') Object.assign(o, {inkring: false, micro: false, type_ingang: 'AC', type_uitgang: 'DC', tekst: ''})
+    if (t === 'Zonnepaneel') o.symbool = 'driehoek'
+    if (t === 'Batterij') o.symbool = 'standaard'
+    if (HAS_DETAILS.has(t)) o.details = det.join('|')
+    return o
+}
+// {eigenaar, straat, nr, postcode, gemeente, stelsel} of the footer as the owner/info of the EDS (the lines are separated by <br>)
+const ownerOf = (f = {}) =>
+    [f.eigenaar, [f.straat, f.nr].filter(Boolean).join(' '), [f.postcode, f.gemeente].filter(Boolean).join(' ')].filter(Boolean).join('<br>')
+export function projectToEds(p, names = {}) {
+    const rows = [],
+        approx = new Set(),
+        walk = (n, parent, indent) => {
+            if (MERGED.has(n.type)) return n.children.forEach((c) => walk(c, parent, indent))
+            const id = rows.length + 1
+            if (!edsTypeOf(n.type)) approx.add(names[n.type] || n.type)
+            rows.push({id, parent, indent, collapsed: false, props: propsOf(n, names), sourcelist: null})
+            n.children.forEach((c) => walk(c, id, indent + 1))
+        }
+    p.een.forEach((g) => g.tree.forEach((n) => walk(n, 0, 0)))
+    const f = p.footer || {}
+    return {
+        j: {
+            moving_id: null,
+            sitplanview: null,
+            currentView: '',
+            idToOrdinalMap: {},
+            length: rows.length,
+            data: rows,
+            active: rows.map(() => true),
+            id: rows.map((r) => r.id),
+            print_table: {
+                height: 1148,
+                maxwidth: 1983,
+                displaypage: 0,
+                orientation: 'landscape',
+                enableAutopage: true,
+                printPageMode: 'all',
+                printPageRange: '',
+                pages: [{height: 1148, start: 0, stop: 1983, info: f.stelsel || ''}],
+                pagemarkers: {markers: []},
+                modevertical: 'alles',
+                starty: 0,
+                stopy: 1148,
+                papersize: 'A4',
+            },
+            properties: {
+                filename: (f.titel || 'eendraadschema') + '.eds',
+                owner: ownerOf(f),
+                installer: '',
+                control: '',
+                dpi: 300,
+                orientation: 'landscape',
+                info: f.stelsel || '',
+                currentView: null,
+                legacySchakelaars: false,
+            },
+            curid: rows.length + 1,
+            mode: 'edit',
+            sitplan: null,
+            sitplanjson: {numPages: 1, activePage: 1, defaults: {fontsize: 11, scale: 0.7, rotate: 0}, elements: []},
+        },
+        stats: {nodes: rows.length, circuits: rows.filter((r) => r.props.type === 'Kring').length, approx: [...approx]},
+    }
+}
+// "EDS004" + "0000" + base64(zlib(JSON)), the format that decodeEds reads (and the online tool opens)
+export function encodeEds(j) {
+    const z = pako.deflate(JSON.stringify(j))
+    let bin = ''
+    for (let i = 0; i < z.length; i += 0x8000) bin += String.fromCharCode.apply(null, z.subarray(i, i + 0x8000))
+    return 'EDS0040000' + btoa(bin)
+}
+export const exportEds = (p, names) => {
+    const r = projectToEds(p, names)
+    return {text: encodeEds(r.j), stats: r.stats}
+}

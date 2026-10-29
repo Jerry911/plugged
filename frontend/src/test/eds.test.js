@@ -1,7 +1,7 @@
 // Copyright 2026 Pleysier Jeroen
 // SPDX-License-Identifier: AGPL-3.0-only
 import pako from 'pako'
-import {decodeEds, edsToProject, importEds, KNOWN, lampKey, moduleKey, socketKey, switchKey} from '../eds.jsx'
+import {decodeEds, edsToProject, edsTypeOf, encodeEds, exportEds, importEds, KNOWN, lampKey, moduleKey, projectToEds, socketKey, switchKey} from '../eds.jsx'
 import {flat} from '../util.jsx'
 import {verify} from '../rules.jsx'
 import {base} from './utils.jsx'
@@ -304,4 +304,106 @@ test('a waterproof socket of the eendraadschema becomes a normal socket with the
     expect(get(r, 'e31').p.h).toBeUndefined()
     expect(get(r, 'e32')).toMatchObject({type: 'stopcontact_pekid', p: {h: true}}) // the 'h' is no longer lost next to child protection
     expect(r.stats.unknown).toEqual([])
+})
+
+// ---- export ----
+const el = (id, type, children = [], o = {}) => ({id, type, label: '', info: '', children, p: {aantal: 1, nr: '', details: ''}, ...o})
+const proj = (tree, footer = {}) => ({footer, een: [{id: 'e1', name: 'Blad 1', tree}], sit: [], custom: []})
+const aansl = (kids) =>
+    el('a', 'aansluiting', [el('b', 'bord', kids, {label: 'Verdeelbord', p: {geaard: true}})], {
+        label: 'Aansluiting net',
+        p: {teller: true, polen: 4, amp: 40, bescherming: 'differentieel', delta: 300, diffType: 'A', kabel: '4x16', kortsl: '3'},
+    })
+const kring = (label, kids, p = {}) => el('k' + label, 'kring', kids, {label, p: {polen: 2, amp: 16, curve: 'B', kabel: 'XVB Cca 3G2,5', kortsl: '3', tekst: 'Keuken', bescherming: 'automatisch', ...p}})
+test('encodeEds writes the EDS header and decodes again, also for large files', () => {
+    // incompressible text, so that the encoded file is large
+    let s0 = 1
+    const j = {data: [], a: Array.from({length: 200000}, () => 'abcdefghijklmnopqrstuvwxyz0123456789'[(s0 = (s0 * 48271) % 2147483647) % 36]).join('')}
+    const s = encodeEds(j)
+    expect(s.startsWith('EDS0040000')).toBe(true)
+    expect(decodeEds(s)).toEqual(j)
+})
+test('export writes the rows like the online tool: parent ids, depth, same top level keys', () => {
+    const {j, stats} = projectToEds(proj([aansl([kring('A', [el('s', 'stopcontact', [], {label: 'Keuken', p: {aantal: 2, nr: '1', details: ''}})])])]))
+    expect(Object.keys(j).sort()).toEqual(
+        ['active', 'curid', 'currentView', 'data', 'id', 'idToOrdinalMap', 'length', 'mode', 'moving_id', 'print_table', 'properties', 'sitplan', 'sitplanjson', 'sitplanview'].sort(),
+    )
+    expect(j.data.map((r) => [r.id, r.parent, r.indent, r.props.type])).toEqual([
+        [1, 0, 0, 'Aansluiting'],
+        [2, 1, 1, 'Bord'],
+        [3, 2, 2, 'Kring'],
+        [4, 3, 3, 'Contactdoos'],
+    ])
+    expect(j.id).toEqual([1, 2, 3, 4])
+    expect(j.active).toEqual([true, true, true, true])
+    expect(j.length).toBe(4)
+    expect(j.curid).toBe(5)
+    expect(j.data[2].props).toMatchObject({naam: 'A', amperage: '16', aantal_polen: '2', curve_automaat: 'B', type_kabel: 'XVB Cca 3G2,5', tekst: 'Keuken', kabel_locatie: 'N/A'})
+    expect(j.data[3].props).toMatchObject({adres: 'Keuken', aantal: '2', nr: '1', is_geaard: true, is_kinderveilig: false})
+    expect(stats).toEqual({nodes: 4, circuits: 1, approx: []})
+})
+test('export then import gives the same schema', () => {
+    const tree = [
+        aansl([
+            kring('A', [el('l', 'tl', [], {label: '36W', p: {aantal: 3, nr: '', details: ''}}), el('w', 'wissel'), el('r', 'rolluik'), el('m', 'teleruptor'), el('d', 'drukknop', [el('bl', 'bel')])], {plaatsing: 'inwand', inbuis: true}),
+            kring('B', [el('z', 'zonnepanelen', [], {p: {aantal: 15, nr: '', details: 'Merk: X\nType: Y'}}), el('o', 'omvormer', [], {label: 'Huawei', p: {aantal: 1, nr: '', details: 'Pmax: 6 kW'}})], {amp: 6.5, curve: 'C'}),
+        ]),
+    ]
+    const back = importEds(exportEds(proj(tree)).text)
+    const f = flat(back.een[0].tree)
+    expect(f.map((n) => n.type)).toEqual(['aansluiting', 'bord', 'kring', 'tl', 'wissel', 'rolluik', 'teleruptor', 'drukknop', 'bel', 'kring', 'zonnepanelen', 'omvormer'])
+    expect(f.find((n) => n.type === 'kring')).toMatchObject({label: 'A', p: {polen: 2, amp: 16, curve: 'B', kabel: 'XVB Cca 3G2,5', plaatsing: 'inwand', inbuis: true, tekst: 'Keuken'}})
+    expect(f.find((n) => n.type === 'tl')).toMatchObject({label: '36W', p: {aantal: 3}})
+    expect(f.find((n) => n.type === 'zonnepanelen').p).toMatchObject({aantal: 15, details: 'Merk: X\nType: Y'})
+    expect(f.find((n) => n.type === 'omvormer')).toMatchObject({label: 'Huawei', p: {details: 'Pmax: 6 kW'}})
+    expect(f.find((n) => n.type === 'aansluiting')).toMatchObject({label: 'Aansluiting net', p: {teller: true, polen: 4, amp: 40, bescherming: 'differentieel', delta: 300, diffType: 'A', kabel: '4x16'}})
+})
+test('every symbol that has an EDS type comes back as the same symbol', () => {
+    const keys = [
+        'stopcontact', 'stopcontact_alg', 'stopcontact_kid', 'stopcontact_pekid', 'lichtpunt', 'tl', 'spot', 'led', 'wandlamp', 'noodlicht',
+        'schakelaar', 'schakelaar2', 'schakelaar3', 'verklikker', 'wissel', 'wissel2', 'omschakelaar', 'kruis', 'dimmer', 'rolluik', 'beweging',
+        'drukknop', 'teleruptor', 'dimmermodule', 'relais', 'minuterie', 'klok', 'modulaire', 'motor', 'bel', 'domotica', 'trafo', 'airco', 'ventilatie',
+        'microgolf', 'oven', 'kookplaat', 'laadpaal', 'vaatwas', 'droogkast', 'wasmachine', 'zonnepanelen', 'omvormer', 'batterij', 'vrij', 'subbord',
+    ]
+    const back = importEds(exportEds(proj([aansl([kring('A', keys.map((k, i) => el('n' + i, k)))])])).text)
+    const k = flat(back.een[0].tree).find((n) => n.type === 'kring')
+    expect(k.children.map((n) => n.type)).toEqual(keys)
+    keys.forEach((x) => expect(edsTypeOf(x)).toBeTruthy())
+})
+test('double and triple sockets are one socket with a count; waterproof and count survive', () => {
+    const back = importEds(exportEds(proj([aansl([kring('A', [el('s2', 'stopcontact2'), el('s3', 'stopcontact3'), el('s', 'stopcontact', [], {p: {aantal: 4, nr: '', details: '', h: true}})])])])).text)
+    const [a, b, c] = flat(back.een[0].tree).filter((n) => n.type === 'stopcontact')
+    expect([a.p.aantal, b.p.aantal, c.p.aantal, c.p.h]).toEqual([2, 3, 4, true])
+})
+test('meter, main switch, differential and fuse are part of the Aansluiting: they disappear and their children move up', () => {
+    const t = [el('a', 'aansluiting', [el('t', 'teller', [el('h', 'hoofdschakelaar', [el('d', 'diff', [el('b', 'bord', [kring('A', [])])])])])], {p: {teller: true}})]
+    const {j, stats} = projectToEds(proj(t))
+    expect(j.data.map((r) => [r.parent, r.props.type])).toEqual([[0, 'Aansluiting'], [1, 'Bord'], [2, 'Kring']])
+    expect(stats.approx).toEqual([])
+})
+test('symbols without an EDS equivalent become a free consumer and are reported', () => {
+    const t = [aansl([kring('A', [el('c', 'custom:z', [], {p: {aantal: 1, nr: '', details: 'SN: 1'}}), el('z', 'zoemer', [], {label: 'Gong'}), el('k', 'koelkast')])])]
+    const {j, stats} = projectToEds(proj(t), {'custom:z': 'Zelf', koelkast: 'Koelkast'})
+    const kids = j.data.filter((r) => r.parent === 3).map((r) => [r.props.type, r.props.tekst])
+    expect(kids).toEqual([['Verbruiker', 'Zelf | SN: 1'], ['Verbruiker', 'Gong'], ['Verbruiker', 'Koelkast']])
+    expect(stats.approx).toEqual(['Zelf', 'zoemer', 'Koelkast'])
+})
+test('details of elements without a details field follow the text and are split again on import', () => {
+    const back = importEds(exportEds(proj([aansl([kring('A', [el('m', 'motor', [], {p: {aantal: 1, nr: '', details: 'EVW C8R W\nSN: 62'}})])])])).text)
+    expect(flat(back.een[0].tree).find((n) => n.type === 'motor')).toMatchObject({label: '', p: {details: 'EVW C8R W\nSN: 62'}})
+})
+test('all pages are written one after the other; footer becomes owner and info', () => {
+    const p = {...proj([aansl([])], {titel: 'Villa', eigenaar: 'Jan Peeters', straat: 'Dorpstraat', nr: '12A', postcode: '9000', gemeente: 'Gent', stelsel: '230V'}), een: [{id: 'a', tree: [aansl([])]}, {id: 'b', tree: [aansl([])]}]}
+    const {j} = projectToEds(p)
+    expect(j.data.filter((r) => r.parent === 0)).toHaveLength(2)
+    expect(j.properties).toMatchObject({owner: 'Jan Peeters<br>Dorpstraat 12A<br>9000 Gent', info: '230V', filename: 'Villa.eds'})
+    // the footer survives an export followed by an import
+    expect(importEds(exportEds(p).text).footer).toEqual({eigenaar: 'Jan Peeters', straat: 'Dorpstraat', nr: '12A', postcode: '9000', gemeente: 'Gent', stelsel: '230V'})
+    expect(projectToEds(proj([])).j.properties.owner).toBe('')
+})
+test('kring: cable placement, conduit (never with a luchtleiding) and protection', () => {
+    const k = (p) => projectToEds(proj([aansl([kring('A', [], p)])])).j.data[2].props
+    expect(k({plaatsing: 'opwand', inbuis: true})).toMatchObject({kabel_locatie: 'Op wand', kabel_is_in_buis: true})
+    expect(k({plaatsing: 'luchtleiding', inbuis: true})).toMatchObject({kabel_locatie: 'Luchtleiding', kabel_is_in_buis: false})
+    expect(k({plaatsing: '', bescherming: 'geen'})).toMatchObject({kabel_locatie: 'N/A', bescherming: 'geen'})
 })

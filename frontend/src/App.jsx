@@ -8,7 +8,7 @@ import {useLibrary} from './library.jsx'
 import {FooterDialog} from './Footer'
 import {useHistory} from './history.jsx'
 import {defaultTree} from './boardModel.jsx'
-import {importEds} from './eds.jsx'
+import {exportEds, importEds} from './eds.jsx'
 import Verify from './Verify'
 import {verify} from './rules.jsx'
 import {AllSheets, makePdf} from './Export'
@@ -224,6 +224,17 @@ function Editor({library}) {
         a.download = (p.footer.titel || 'schema') + '.json'
         a.click()
     }
+    const exportEdsFile = () => {
+        // symbols without an EDS equivalent (own components, ...) are written as a free consumer named after the symbol
+        const r = exportEds(p, Object.fromEntries(lib.map((c) => [c.k, c.name]))),
+            a = document.createElement('a')
+        a.href = URL.createObjectURL(new Blob([r.text], {type: 'text/plain'}))
+        a.download = (p.footer.titel || 'schema') + '.eds'
+        a.click()
+        setMsg(
+            `EDS geëxporteerd: ${r.stats.circuits} kringen, ${r.stats.nodes} elementen${r.stats.approx.length ? ` (als vrij element: ${r.stats.approx.join(', ')})` : ''}`,
+        )
+    }
     const tabs = ['Eendraadschema', 'Situatieschema', 'Components'],
         un = unplacedOf(p).length,
         e = Math.min(ei, p.een.length - 1),
@@ -279,10 +290,7 @@ function Editor({library}) {
                         title="Importeer een projectbestand (.json)"
                         onClick={(ev) => ev.currentTarget.previousElementSibling.click()}>JSON ↓</button>
                 </span>
-                <button onClick={() => setShowV((v) => !v)}>
-                    Controleer{ec ? ` ✖${ec}` : ''}
-                    {wc ? ` ⚠${wc}` : ''}
-                </button>
+                <button title="Exporteer een .eds-bestand (eendraadschema.goethals-jacobs.be)" onClick={exportEdsFile}>EDS ↑</button>
                 <span>
                     <input
                         type="file"
@@ -294,11 +302,14 @@ function Editor({library}) {
                             ev.target.value = ''
                         }}
                     />
-                    <button title="Importeer een .eds-bestand"
-                            onClick={(ev) => ev.currentTarget.previousElementSibling.click()}>
-                        Importeer
-                    </button>
+                    <button
+                        title="Importeer een .eds-bestand (eendraadschema.goethals-jacobs.be)"
+                        onClick={(ev) => ev.currentTarget.previousElementSibling.click()}>EDS ↓</button>
                 </span>
+                <button onClick={() => setShowV((v) => !v)}>
+                    Controleer{ec ? ` ✖${ec}` : ''}
+                    {wc ? ` ⚠${wc}` : ''}
+                </button>
                 <button onClick={() => setJob('pdf')}>PDF</button>
                 <button onClick={() => setJob('print')}>Afdrukken</button>
             </div>

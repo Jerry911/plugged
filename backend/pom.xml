@@ -22,10 +22,14 @@
         <frontend.dir>${project.basedir}/../frontend</frontend.dir>
         <node.version>v22.22.2</node.version>
         <frontend-maven-plugin.version>1.15.1</frontend-maven-plugin.version>
-        <!-- -Dfrontend.skip=true skips node install, frontend build and frontend tests; -DskipTests skips backend and frontend tests -->
+        <!-- -Dfrontend.skip=true skips node install, frontend build, frontend tests and end-to-end tests; -DskipTests skips backend, frontend and end-to-end tests;
+             -Dfrontend.e2e.skip=true skips only the end-to-end (Playwright) tests -->
         <frontend.skip>false</frontend.skip>
         <skipTests>false</skipTests>
         <frontend.tests.skip>${skipTests}</frontend.tests.skip>
+        <frontend.e2e.skip>${skipTests}</frontend.e2e.skip>
+        <!-- port of the application started for the end-to-end tests (not 8080, so a running development instance is left alone) -->
+        <e2e.port>18080</e2e.port>
     </properties>
     <dependencies>
         <dependency>
@@ -111,6 +115,37 @@
                             <skip>${frontend.tests.skip}</skip>
                         </configuration>
                     </execution>
+                    <!-- end-to-end tests (Playwright, in a real browser) against the packaged application: after the backend and frontend
+                         tests (test phase) and after the jar has been built (package phase) -->
+                    <execution>
+                        <id>playwright-install-browser</id>
+                        <phase>pre-integration-test</phase>
+                        <goals>
+                            <goal>npm</goal>
+                        </goals>
+                        <configuration>
+                            <arguments>run e2e:install</arguments>
+                            <skip>${frontend.e2e.skip}</skip>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>npm-e2e</id>
+                        <phase>integration-test</phase>
+                        <goals>
+                            <goal>npm</goal>
+                        </goals>
+                        <configuration>
+                            <arguments>run e2e</arguments>
+                            <skip>${frontend.e2e.skip}</skip>
+                            <environmentVariables>
+                                <CI>true</CI>
+                                <E2E_REAL_BACKEND>1</E2E_REAL_BACKEND>
+                                <E2E_JAR>${project.build.directory}${file.separator}${project.build.finalName}.jar</E2E_JAR>
+                                <E2E_JAVA>${java.home}${file.separator}bin${file.separator}java</E2E_JAVA>
+                                <E2E_PORT>${e2e.port}</E2E_PORT>
+                            </environmentVariables>
+                        </configuration>
+                    </execution>
                 </executions>
             </plugin>
             <plugin>
@@ -166,6 +201,7 @@
             </activation>
             <properties>
                 <frontend.tests.skip>true</frontend.tests.skip>
+                <frontend.e2e.skip>true</frontend.e2e.skip>
             </properties>
         </profile>
     </profiles>

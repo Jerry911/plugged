@@ -32,7 +32,7 @@ import java.util.Map;
  * are then replaced by the new standard when the application starts (see {@link SymbolService#seed()}).
  */
 public final class StandardSymbols {
-    public static final int VERSION = 10;
+    public static final int VERSION = 11;
 
     private static final String V = "Verdeling", S = "Stopcontacten", O = "Verlichting & bediening", A = "Toestellen", E = "Energie", G = "Overig";
 
@@ -135,7 +135,7 @@ public final class StandardSymbols {
         x("hoofdschakelaar", "Hoofdschakelaar", V, List.of("teller"), breaker(false), false);
         x("bord", "Verdeelbord", V, List.of("teller", "hoofdschakelaar", "diff", "bord"), of(rect(2, 8.5, 20, 7)), true);
         // the differential is drawn like a circuit breaker (kring): the lever with its filled block
-        x("diff", "Differentieel (aardlek)", V, List.of("bord", "hoofdschakelaar", "teller"), breaker(true), false);
+        x("diff", "Differentieel (aardlek)", V, List.of("bord", "hoofdschakelaar", "teller", "subbord"), breaker(true), false);
         x("overspanning", "Overspanningsbeveiliging", V, List.of("bord"), UpstreamSymbols.overspanning(), false);
         x("kring", "Kring (automaat)", V, List.of("bord", "diff", "domotica", "subbord", "kring"), breaker(true), false);
         x("zekering", "Smeltveiligheid", V, List.of("bord", "diff"), UpstreamSymbols.zekering(), false);
@@ -194,7 +194,7 @@ public final class StandardSymbols {
         x("batterij", "Thuisbatterij", E, EL, UpstreamSymbols.batterij(), true);
 
         x("domotica", "Domotica (kast)", G, EL, of(rect(3, 3, 18, 18), line(3, 10, 21, 10), circle(9, 16, 1.5), line(10.1, 14.9, 14, 12), line(14, 12, 15.5, 13.5)), true);
-        x("subbord", "Onderbord", G, plus(EL, "bord"), of(rect(2, 5, 20, 14), line(2, 12, 22, 12)), true);
+        x("subbord", "Onderbord", G, plus(EL, "bord", "diff"), of(rect(2, 5, 20, 14), line(2, 12, 22, 12)), true);
         x("trafo", "Transformator", G, EL, UpstreamSymbols.trafo(), true);
         x("modulaire", "Modulaire schakelaar", O, EL, of(rect(5, 2, 14, 19), line(5, 18.5, 19, 18.5), circle(10, 14.5, 1.6), line(11.1, 13.4, 15, 8), line(15, 8, 16.9, 10.3)), true);
         x("teleruptor", "Teleruptor", O, EL, UpstreamSymbols.teleruptor(), true);

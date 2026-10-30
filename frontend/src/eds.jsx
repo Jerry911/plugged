@@ -187,6 +187,22 @@ export function edsToProject(j) {
         if (par) par.children.push(n)
         else if (!r.parent) tree.push(n)
     })
+    // A differential circuit of the EDS (a Kring with protection 'differentieel' or 'differentieelautomaat') that only feeds boards is a Differentieel:
+    // name, specs (info) and cable stay, and the boards under it become sub boards. With ordinary elements under it, it stays a Kring.
+    const props = new Map(rows.map((r) => [by.get(r.id), r.props])),
+        diffs = (n) => {
+            n.children.forEach(diffs)
+            const q = props.get(n)
+            if (n.type !== 'kring' || !['differentieel', 'differentieelautomaat'].includes(n.p.bescherming) || !n.children.length || !n.children.every((c) => c.type === 'bord')) return
+            const o = n.p,
+                breaker = q.bescherming === 'differentieelautomaat' && o.curve && o.amp ? o.curve + o.amp : o.amp ? o.amp + 'A' : ''
+            n.type = 'diff'
+            n.info = [o.polen + 'P', breaker, num(q.differentieel_delta_amperage) ? num(q.differentieel_delta_amperage) + 'mA' : '', q.type_differentieel ? 'type ' + q.type_differentieel : ''].filter(Boolean).join(' ')
+            // the specs are kept as properties: the diagram writes them on separate lines, like the differentieel of the aansluiting
+            n.p = {polen: o.polen, amp: o.amp, curve: q.bescherming === 'differentieelautomaat' ? o.curve : '', delta: num(q.differentieel_delta_amperage), diffType: q.type_differentieel || '', kabel: o.kabel, plaatsing: o.plaatsing, inbuis: o.inbuis, kortsl: o.kortsl, tekst: o.tekst, nr: o.nr}
+            n.children.forEach((c) => (c.type = 'subbord'))
+        }
+    tree.forEach(diffs)
     const MAIN = ['aansluiting', 'teller', 'hoofdschakelaar', 'diff'],
         fix = (n, anc) => {
             if (n.type === 'bord' && anc.some((a) => !MAIN.includes(a.type))) n.type = 'subbord'
@@ -379,14 +395,37 @@ function propsOf(n, names) {
 // {eigenaar, straat, nr, postcode, gemeente, stelsel} of the footer as the owner/info of the EDS (the lines are separated by <br>)
 const ownerOf = (f = {}) =>
     [f.eigenaar, [f.straat, f.nr].filter(Boolean).join(' '), [f.postcode, f.gemeente].filter(Boolean).join(' ')].filter(Boolean).join('<br>')
+// A differentieel that feeds sub boards (not a main board: that one is in the main line) is a circuit of the EDS (a Kring with protection 'differentieel', or 'differentieelautomaat' when its specs name a
+// breaker curve, e.g. 'C40'); its specs ('2P C40 30mA type A') are read from the info. Any other differentieel is part of the Aansluiting (MERGED).
+const feedsBoards = (n) => n.type === 'diff' && n.children.length > 0 && n.children.every((c) => c.type === 'subbord')
+const diffCircuit = (n) => {
+    const i = n.info || '',
+        curve = /\b([BCDK])\s*(\d{1,3})\b/i.exec(i),
+        pick = (re) => (re.exec(i) || [])[1],
+        q = n.p || {},
+        letter = q.curve || (curve ? curve[1].toUpperCase() : '')
+    return {
+        k: {...n, type: 'kring', p: {...q, polen: q.polen || pick(/(\d)\s*P\b/i) || 2, amp: q.amp || (curve ? curve[2] : pick(/(\d{1,3})\s*A\b/i)), curve: letter, bescherming: letter ? 'differentieelautomaat' : 'differentieel'}},
+        delta: String(q.delta || pick(/(\d+)\s*mA/i) || '30'),
+        type: q.diffType || pick(/type\s*(\w+)/i) || 'A',
+    }
+}
 export function projectToEds(p, names = {}) {
     const rows = [],
         approx = new Set(),
         walk = (n, parent, indent) => {
-            if (MERGED.has(n.type)) return n.children.forEach((c) => walk(c, parent, indent))
+            const d = feedsBoards(n) && diffCircuit(n)
+            if (MERGED.has(n.type) && !d) return n.children.forEach((c) => walk(c, parent, indent))
             const id = rows.length + 1
-            if (!edsTypeOf(n.type)) approx.add(names[n.type] || n.type)
-            rows.push({id, parent, indent, collapsed: false, props: propsOf(n, names), sourcelist: null})
+            if (!d && !edsTypeOf(n.type)) approx.add(names[n.type] || n.type)
+            rows.push({
+                id,
+                parent,
+                indent,
+                collapsed: false,
+                props: d ? {...propsOf(d.k, names), differentieel_delta_amperage: d.delta, type_differentieel: d.type} : propsOf(n, names),
+                sourcelist: null,
+            })
             n.children.forEach((c) => walk(c, id, indent + 1))
         }
     p.een.forEach((g) => g.tree.forEach((n) => walk(n, 0, 0)))

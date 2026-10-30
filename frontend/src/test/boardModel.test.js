@@ -142,6 +142,40 @@ test('board finds the bus through the chain, flattens differentials and ignores 
     b.circuits.slice(1).forEach((c, i) => expect(c.x).toBe(b.circuits[i].x + b.circuits[i].w + SP))
     expect(b.end).toBe(b.circuits[3].x + b.circuits[3].w + SP)
 })
+test('a differentieel that feeds a sub board is drawn as the circuit of that board', () => {
+    const d = node('D', 'diff', [node('S', 'subbord', [kring('U')]), node('S2', 'subbord')], {label: 'ZB', info: '2P C40 30mA type A', p: {kabel: 'XVB Cca 3G6'}})
+    const p = proj(tree([d, node('S3', 'subbord')])),
+        b = board(p, p.een[0])
+    // the first sub board of the differentieel gets its id (a click selects the differentieel); the others and a plain sub board are anonymous circuits
+    expect(b.circuits.map((c) => c.n.id)).toEqual(['D', 'S2~', 'S3~'])
+    const c = b.circuits[0]
+    expect(c.n).toMatchObject({diff: true, label: 'ZB'})
+    expect(texts(c.items).map((x) => x.s)).toEqual(expect.arrayContaining(['ZB', '2P C40 30mA type A', 'XVB Cca 3G6']))
+    expect(c.items.some((i) => i.breaker)).toBe(true)
+    expect(b.circuits[1].items.some((i) => i.breaker)).toBe(false)
+    expect(b.circuits[2].items.some((i) => i.breaker)).toBe(false)
+})
+test('a differentieel with specs is drawn on separate lines like the differentieel of the aansluiting, without the short-circuit box', () => {
+    const d = node('D', 'diff', [node('S', 'subbord')], {label: 'ZB', info: '2P C40 30mA type A', p: {polen: 2, amp: 40, curve: 'C', delta: 30, diffType: 'A', kabel: 'XVB Cca 3G6', kortsl: '3'}})
+    const p = proj(tree([d])),
+        c = board(p, p.een[0]).circuits[0]
+    const s = texts(c.items).map((x) => x.s)
+    expect(s).toEqual(expect.arrayContaining(['Δ30mA', '2P - 40A', 'Curve C', 'Type A', 'XVB Cca 3G6']))
+    expect(s).not.toContain('2P C40 30mA type A')
+    expect(s).not.toContain('3000')
+    expect(c.items.filter((i) => i.k === 'rect')).toHaveLength(1)
+})
+test('inside a sub board a differentieel shows its breaker and specs, and a circuit under a circuit keeps its name', () => {
+    const d = node('D', 'diff', [node('S', 'subbord')], {label: 'ZB', p: {polen: 2, amp: 40, delta: 30, diffType: 'A', kabel: 'XVB Cca 3G6'}})
+    const c = circuit(base(), kring('K', [node('X', 'subbord', [d, kring('Z', [kring('ZA', [node('S2', 'subbord')])])])]))
+    expect(texts(c.items).map((x) => x.s)).toEqual(expect.arrayContaining(['Δ30mA', '2P - 40A', 'Type A', 'XVB Cca 3G6', 'ZB', 'ZA']))
+    expect(c.items.filter((i) => i.breaker)).toHaveLength(2)
+})
+test('a differentieel inside a sub board is a circuit of that board', () => {
+    const d = node('D', 'diff', [node('S', 'subbord')], {label: 'ZB', p: {kabel: 'XVB Cca 3G6'}})
+    const c = circuit(base(), kring('K', [node('X', 'subbord', [d])]))
+    expect(texts(c.items).map((x) => x.s)).toEqual(expect.arrayContaining(['ZB', 'XVB Cca 3G6']))
+})
 test('board head variants', () => {
     const mk = (t) => {
         const p = proj(t)
@@ -333,12 +367,4 @@ test('a circuit has a latch zone along its stem, above the click area, reaching 
     expect(z.y + z.h).toBeLessThan(0) // stays above the breaker
     expect(z.x + z.w / 2).toBe(30) // centred on the stem
     expect(circuit(base(), node('K~', 'kring', [], {p: {bescherming: 'geen'}})).items.some((i) => i.k === 'stem')).toBe(false)
-})
-test('a circuit that is protected by a differentieel is drawn with the differentieel symbol and its mA / type', () => {
-    const d = circuit(base(), kring('D', [], {bescherming: 'differentieel', amp: 25, curve: '', delta: 30, diffType: 'A', kortsl: ''}, {label: 'D'})),
-        a = circuit(base(), kring('K', [], {}, {label: 'K'}))
-    expect(texts(d.items).map((x) => x.s)).toEqual(expect.arrayContaining(['2P - 25A', 'Δ30mA', 'Type A']))
-    expect(texts(d.items).map((x) => x.s)).not.toContain('Curve B')
-    expect(d.items.filter((i) => i.breaker)).toHaveLength(1)
-    expect(a.items.filter((i) => i.breaker)).toHaveLength(1)
 })

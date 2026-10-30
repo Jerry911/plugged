@@ -51,20 +51,20 @@ The project is saved as one JSON document (id 1) in a file-based H2 database: `b
 - **Components**: the symbol library and a symbol editor.
 - **Controleer**: verification against guideline AREI limits.
 - **Export**: vector PDF (jsPDF + svg2pdf.js, A4 landscape, all sheets).
-- **Undo/redo** (100 steps), **EDS import** from the online eendraadschema tool.
+- **Undo/redo** (100 steps), **EDS import and export** with the online eendraadschema tool.
 
 ## Eendraadschema layout and editing
 - The diagram is drawn like the original tool: a horizontal bus with the kWh meter, main differential and earth below it, and circuits placed from left to right. Each circuit gets the width its elements need; a circuit that is lower than the overhang of the previous circuits slides left underneath it to save width and sheets. When a sheet is full the next circuits continue on the next A4 sheet ("vervolg op blad N").
 - New projects start with an aansluiting (kWh meter, 4P 40A 300 mA differential) and a geaard verdeelbord. Choose "Kring (automaat)" in the palette to append a circuit; elements are added to the selected circuit (or to the last one).
 - **Palette**: click a symbol to add it, or drag it onto the diagram; a blue preview shows where it will land. Drag & drop never checks whether a symbol "fits": every symbol can be dropped anywhere and you correct a mistake afterwards.
   - Over a symbol of a circuit: before it (left half) or after it (right half).
-  - Over a circuit (its free area or stem): a *Kring* or *Differentieel* comes left or right of it, a smeltveiligheid in front of it, a teller / hoofdschakelaar / verdeelbord goes where it goes on the bus (see below), anything else becomes its last branch.
-  - Over the bus, the head or below the bus: a *Kring* or *Differentieel* becomes the last circuit, a teller / hoofdschakelaar in front of the board (on the main line), anything else (e.g. a verdeelbord) under the board, so the circuits stay visible.
-  - Anywhere else above the bus: the nearest circuit counts. Elements that are not drawn themselves (e.g. a verdeelbord) show their place by marking the bus or the circuit in blue.
-  - A dropped *Differentieel* makes a new circuit (a kring) that is protected by a differentieel instead of an automaat: it is drawn with the differentieel symbol and Δ mA / type. Change it in Eigenschappen with *Bescherming* (Automaat / Differentieel / Geen). Clicking *Differentieel* in the palette still adds the separate differentieel element.
+  - Over a circuit (its free area or stem): a *Kring* comes left or right of it, a differentieel / verdeelbord / teller / hoofdschakelaar in front of it, anything else becomes its last branch.
+  - Over the bus, the head or below the bus: a *Kring* becomes the last circuit, a differentieel / verdeelbord in front of the board (on the main line), anything else under the board.
+  - Anywhere else above the bus: the nearest circuit counts. Elements that are not drawn themselves (a differentieel) show their place by marking the bus or the circuit in blue.
 - **Eigenschappen** (above *Opbouw*, close with the cross) holds the properties of the selected element. The toolbar there inserts an empty element before / after / as a branch of the selection (its Type dropdown only lists what fits there), moves it earlier / later, one level up / down, duplicates, deletes, and rotates a symbol counter-clockwise / clockwise in steps of 15° (full 360°).
 - **Opbouw** shows the tree; main levels have an arrow that collapses / expands everything below them.
-- **EDS ↑** in the header imports a file exported from https://eendraadschema.goethals-jacobs.be/: the circuits, elements and owner/address for the footer. The situatieschema in the file is not imported (existing situatieschema pages and walls are kept and their symbols are cleared). Unknown element types become "Vrij element"; the import message lists them.
+- **EDS ↓** in the header imports a file exported from https://eendraadschema.goethals-jacobs.be/: the circuits, elements and owner/address for the footer. The situatieschema in the file is not imported (existing situatieschema pages and walls are kept and their symbols are cleared). Unknown element types become "Vrij element"; the import message lists them. A differential circuit of the file (protection "differentieel" or "differentieelautomaat") that feeds a board is imported as a *Differentieel* (specs such as `4P 40A 30mA type A` in its info) with the board as an *Onderbord* under it, and is drawn as the circuit of that board.
+- **EDS ↑** exports the eendraadschema (all sheets one after the other) and the owner/address as a `.eds` file that the online tool opens. The situatieschema is not exported. A Differentieel that feeds boards is written back as a differential circuit; meter, main switch and the other differentials are part of the Aansluiting in the EDS format; symbols without an EDS equivalent (own components, fridge, buzzer, ...) are written as a free consumer named after the symbol, and the export message lists them.
 
 ## Situatieschema: placing symbols
 - The left list holds the components that can be placed; filter it with the search box. The *Nergens geplaatst* panel right of the drawing lists the eendraadschema elements that are not on the plan yet; collapse it with the `>` button.

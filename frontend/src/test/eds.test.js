@@ -407,3 +407,41 @@ test('kring: cable placement, conduit (never with a luchtleiding) and protection
     expect(k({plaatsing: 'luchtleiding', inbuis: true})).toMatchObject({kabel_locatie: 'Luchtleiding', kabel_is_in_buis: false})
     expect(k({plaatsing: '', bescherming: 'geen'})).toMatchObject({kabel_locatie: 'N/A', bescherming: 'geen'})
 })
+
+// ---- differential circuits ----
+const dk = (id, parent, o = {}) =>
+    row(id, parent, 'Kring', {naam: 'ZB', bescherming: 'differentieel', amperage: '40', aantal_polen: '4', differentieel_delta_amperage: '30', type_differentieel: 'A', type_kabel: 'XVB Cca 3G6', kortsluitvermogen: '3', ...o})
+const DJ = (o) => ({data: [row(1, 0, 'Aansluiting'), row(2, 1, 'Bord'), dk(3, 2, o), row(4, 3, 'Bord', {naam: 'Hoofdbord'}), row(5, 4, 'Kring', {naam: 'U', amperage: '16'}), row(6, 5, 'Contactdoos')]})
+test('a differential circuit that feeds a board is imported as a Differentieel with its specs and the board under it as a sub board', () => {
+    const r = edsToProject(DJ())
+    expect(get(r, 'e3')).toMatchObject({type: 'diff', label: 'ZB', info: '4P 40A 30mA type A', p: {kabel: 'XVB Cca 3G6', kortsl: '3'}})
+    // the specs stay properties: the diagram writes them on separate lines
+    expect(get(r, 'e3').p).toMatchObject({polen: 4, amp: 40, delta: 30, diffType: 'A', curve: ''})
+    expect(get(r, 'e4').type).toBe('subbord')
+    expect(get(r, 'e4').label).toBe('Hoofdbord')
+    // the circuits of that board stay circuits, under the sub board
+    expect(get(r, 'e5').type).toBe('kring')
+    expect(r.een[0].tree[0].children[0].children[0].id).toBe('e3')
+})
+test('a differentieelautomaat names its breaker in the specs', () => {
+    const r = edsToProject(DJ({bescherming: 'differentieelautomaat', amperage: '40', aantal_polen: '2', curve_automaat: 'C'}))
+    expect(get(r, 'e3')).toMatchObject({type: 'diff', info: '2P C40 30mA type A', p: {polen: 2, amp: 40, curve: 'C', delta: 30, diffType: 'A'}})
+})
+test('a differential circuit with ordinary elements under it, or an unfinished one, stays a Kring', () => {
+    const j = {data: [row(1, 0, 'Aansluiting'), row(2, 1, 'Bord'), dk(3, 2), row(4, 3, 'Contactdoos'), dk(5, 2, {naam: 'Leeg'})]}
+    const r = edsToProject(j)
+    expect(get(r, 'e3')).toMatchObject({type: 'kring', p: {bescherming: 'differentieel', amp: 40}})
+    expect(get(r, 'e5').type).toBe('kring')
+})
+test('a Differentieel that feeds boards is exported as a differential circuit and comes back unchanged; other differentials stay in the Aansluiting', () => {
+    const imp = importEds(enc(DJ())),
+        back = importEds(exportEds({...proj([]), een: imp.een}).text)
+    const d = flat(back.een[0].tree).find((n) => n.type === 'diff')
+    expect(d).toMatchObject({label: 'ZB', info: '4P 40A 30mA type A'})
+    const {j} = projectToEds(proj(importEds(enc(DJ({bescherming: 'differentieelautomaat', aantal_polen: '2', curve_automaat: 'C'}))).een[0].tree))
+    expect(j.data[2].props).toMatchObject({type: 'Kring', naam: 'ZB', bescherming: 'differentieelautomaat', aantal_polen: '2', amperage: '40', curve_automaat: 'C', differentieel_delta_amperage: '30', type_differentieel: 'A'})
+    expect(j.data[3]).toMatchObject({parent: 3, props: {type: 'Bord', naam: 'Hoofdbord'}})
+    // a differentieel in the main line (circuits under it) disappears, as before
+    const main = [el('a', 'aansluiting', [el('b', 'bord', [el('d', 'diff', [kring('A', [])], {info: '30mA'})])])]
+    expect(projectToEds(proj(main)).j.data.map((r) => r.props.type)).toEqual(['Aansluiting', 'Bord', 'Kring'])
+})

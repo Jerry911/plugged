@@ -180,7 +180,7 @@ function stack(p, kids, sx, y, out, stub, num) {
         acc += ext(p, c)
         last = yi
         out.push(line(sx, yi, sx + stub, yi))
-        if (num) out.push(text(sx + 4, yi - 10, c.p?.nr || String(i + 1), {size: 13}))
+        if (num) out.push(text(sx - 4, yi - 10, c.p?.nr || String(i + 1), {size: 13, anchor: 'end'}))
         const e = node(p, c, sx + stub, yi, out)
         r = Math.max(r, e.r)
         top = Math.min(top, e.top)

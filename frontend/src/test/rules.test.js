@@ -108,11 +108,11 @@ test('kring specs and cable limits', () => {
     K.info = '25A 2,5 mm'
     expect(rule(p, 'kring.cable')).toHaveLength(1)
 })
-test('too many stopcontacten (double counts twice)', () => {
+test('too many stopcontacten (a double or triple socket counts as one)', () => {
     const p = ok(),
         K = get(p, 'K1')
-    K.children = Array.from({length: 4}, (_, i) => node('d' + i, 'stopcontact2'))
-    expect(rule(p, 'kring.stop')).toHaveLength(0)
+    K.children = [...Array.from({length: 4}, (_, i) => node('d' + i, 'stopcontact2')), ...Array.from({length: 4}, (_, i) => node('t' + i, 'stopcontact3'))]
+    expect(rule(p, 'kring.stop')).toHaveLength(0) // 8 boxes, 20 outlets
     K.children.push(node('x', 'stopcontact'))
     expect(rule(p, 'kring.stop')[0].msg).toContain(`${LIMITS.maxStop + 1} stopcontacten`)
 })
@@ -250,14 +250,12 @@ test('circuits without protection skip the spec checks', () => {
     K.p = {bescherming: 'automatisch'}
     expect(rule(p, 'kring.cable')).toHaveLength(1)
 })
-test('aantal weighs stopcontacten and lichtpunten', () => {
+test('aantal weighs lichtpunten but not stopcontacten (a multiple socket is one)', () => {
     const p = ok(),
         K = get(p, 'K1')
     K.children = [node('a', 'stopcontact', [], {p: {aantal: 9}})]
-    expect(rule(p, 'kring.stop')).toHaveLength(1)
-    K.children = [node('a', 'stopcontact2', [], {p: {aantal: 5}})]
-    expect(rule(p, 'kring.stop')).toHaveLength(1)
-    K.children = [node('a', 'stopcontact2', [], {p: {aantal: 4}})]
+    expect(rule(p, 'kring.stop')).toHaveLength(0)
+    K.children = [node('a', 'stopcontact2', [], {p: {aantal: 2}})]
     expect(rule(p, 'kring.stop')).toHaveLength(0)
     const L = get(p, 'K2')
     L.children = [node('l', 'lichtpunt', [], {p: {aantal: '9'}})]
@@ -320,4 +318,45 @@ test('an empty symbol (made by the insert buttons) is a warning, not a hierarchy
     const is = verify(p)
     expect(is.some((i) => i.rule === 'symbol.empty' && i.nodeId === 'X' && i.level === 'warn')).toBe(true)
     expect(is.some((i) => i.rule === 'hierarchy')).toBe(false)
+})
+
+// a circuit that only feeds a sub board (feeder) must not collect what hangs behind the circuits further down
+const feeder = () => {
+    const p = ok()
+    const many = (t, n) => Array.from({length: n}, (_, i) => node('m' + t + i, t))
+    get(p, 'D').children = [
+        node('Z', 'kring', [
+            node('ZA', 'kring', [
+                node('SB', 'subbord', [
+                    node('ZB', 'diff', [node('SB2', 'subbord', [
+                        node('ZC', 'kring', many('lichtpunt', 6).concat(many('stopcontact', 6)), {info: 'B16 2,5mm²'}),
+                        node('ZD', 'kring', [node('AC', 'airco')], {info: 'B20 2,5mm²'}),
+                        node('ZE', 'kring', many('lichtpunt', 6).concat(many('stopcontact', 6)), {info: 'B16 2,5mm²'}),
+                    ])], {info: '40A 30mA'}),
+                ]),
+            ], {info: 'C40 2P'}),
+        ], {info: 'C40 2P 6mm²'}),
+    ]
+    return p
+}
+test('counts are done on the last circuit, not on the feeder circuits above it', () => {
+    const p = feeder()
+    // 6 + 6 per circuit stays within the limits, but summed over ZC + ZE it would not (12 + 12)
+    expect(rule(p, 'kring.stop')).toHaveLength(0)
+    expect(rule(p, 'kring.light')).toHaveLength(0)
+    expect(rule(p, 'kring.dedicated')).toHaveLength(0) // the airco is alone behind ZD
+})
+test('a circuit behind the last breaker is still counted, with the sheet it is drawn on', () => {
+    const p = feeder()
+    get(p, 'ZC').children.push(...Array.from({length: 5}, (_, i) => node('x' + i, 'stopcontact')))
+    const i = rule(p, 'kring.stop')
+    expect(i).toHaveLength(1)
+    expect(i[0].msg).toContain("'ZC'")
+    expect(i[0].msg).toContain('11 stopcontacten')
+    expect(i[0].pageName).toBeTruthy()
+})
+test('a dedicated appliance sharing its own circuit with others is still reported', () => {
+    const p = feeder()
+    get(p, 'ZD').children.push(node('extra', 'stopcontact'))
+    expect(rule(p, 'kring.dedicated').map((x) => x.nodeId)).toEqual(['ZD'])
 })

@@ -4,6 +4,7 @@
 // Guideline checks only (limits live in LIMITS so they are easy to adjust); NOT a substitute for an inspection by an accredited body.
 import {typeOf} from './symbols'
 import {allNodes, flat, marksOf, nameOf} from './util.jsx'
+import {sheetPlan} from './boardModel.jsx'
 
 export const LIMITS = {maxStop: 8, maxLicht: 8, maxDiffmA: 30, cable: {1.5: 16, 2.5: 20, 4: 25, 6: 32, 10: 50, 16: 63}} // cable: mm² -> max protective rating (A)
 const S = (a) => new Set(a)
@@ -13,6 +14,11 @@ const STOP = S(['stopcontact', 'stopcontact_alg', 'stopcontact_kid', 'stopcontac
 // a rolluik switch controls a motor, not a light: it is a control element but not a SWITCH (no 'operates no light' warning)
 const CONTROL = S(['schakelaar', 'schakelaar2', 'schakelaar3', 'verklikker', 'wissel', 'wissel2', 'omschakelaar', 'kruis', 'dimmer', 'beweging', 'rolluik', 'drukknop', 'aftakdoos'])
 const DEDICATED = S(['kookplaat', 'oven', 'wasmachine', 'droogkast', 'vaatwas', 'boiler', 'airco', 'laadpaal'])
+// Protective devices and boards: what hangs behind them belongs to THAT circuit, not to the feeder circuit above it.
+const BOUNDARY = S(['kring', 'diff', 'bord', 'subbord', 'zekering'])
+// the elements a circuit feeds itself: everything below it, but not what hangs behind a nested breaker, differential or (sub)board.
+// A feeder circuit (e.g. one that only feeds a sub board) therefore has no consumers of its own; they are counted on the last circuit.
+const ownOf = (ns) => ns.flatMap((n) => (BOUNDARY.has(n.type) ? [] : [n, ...ownOf(n.children)]))
 const REQUIRED = {titel: 'titel', gemeente: 'gemeente', eigenaar: 'eigenaar', tekenaar: 'getekend door', datum: 'datum'}
 const ORDER = {error: 0, warn: 1, info: 2}
 export const parseSpecs = (info = '') => {
@@ -28,18 +34,42 @@ export const summarize = (is) => ({
 })
 export function verify(p) {
     const out = [],
-        marks = marksOf(p),
-        add = (level, rule, msg, pg, n) =>
-            out.push({
-                id: rule + ':' + (n ? n.id : 'g' + out.length),
-                level,
-                rule,
-                msg,
-                mark: n ? marks.get(n.id) : undefined, // circuit + point as drawn, e.g. 'F6'
-                nodeId: n?.id,
-                page: pg ? p.een.indexOf(pg) : null,
-                pageName: pg?.name,
-            })
+        marks = marksOf(p)
+    // The sheet an element is DRAWN on (a page of the project is laid out over one or more printed sheets, 'Blad 2/6'), worked out
+    // once and only when there is something to report. Elements of the head/bus (aansluiting, bord, earth) sit on the first sheet of their page.
+    let sheets
+    const sheetOf = (pg, n) => {
+        if (!sheets) {
+            sheets = {byNode: new Map(), first: new Map(), count: new Map()}
+            try {
+                sheetPlan(p, true)
+                    .filter((e) => e.kind === 'een')
+                    .forEach((e) => {
+                        if (e.sl.first) sheets.first.set(e.pg, e)
+                        sheets.count.set(e.pg, (sheets.count.get(e.pg) || 0) + 1)
+                        e.b.circuits.slice(e.sl.from, e.sl.to).forEach((c) => flat([c.n]).forEach((x) => sheets.byNode.set(x.id, e)))
+                    })
+            } catch (e) {
+                // layout not possible: fall back on the name of the page
+            }
+        }
+        const e = sheets.byNode.get(n.id) || sheets.first.get(pg)
+        return e && {...e, multi: sheets.count.get(pg) > 1}
+    }
+    const add = (level, rule, msg, pg, n) => {
+        const sh = pg && n ? sheetOf(pg, n) : null
+        out.push({
+            id: rule + ':' + (n ? n.id : 'g' + out.length),
+            level,
+            rule,
+            msg,
+            mark: n ? marks.get(n.id) : undefined, // circuit + point as drawn, e.g. 'F6'
+            nodeId: n?.id,
+            page: pg ? p.een.indexOf(pg) : null,
+            sheet: sh ? sh.no : undefined,
+            pageName: sh && sh.multi ? `Blad ${sh.no}/${sh.total}` : pg?.name,
+        })
+    }
     const finish = () =>
         out
             .map((o, i) => [o, i])
@@ -98,9 +128,10 @@ export function verify(p) {
                 const geen = n.p?.bescherming === 'geen',
                     w = (k) => Number(k.p?.aantal) || 1,
                     {amp, mm2} = parseSpecs(n.info),
-                    cons = kids.filter((k) => !CONTROL.has(k.type)),
-                    stops = kids.reduce((a, k) => a + (STOP.has(k.type) ? w(k) * (k.type === 'stopcontact2' ? 2 : 1) : 0), 0),
-                    lamps = kids.filter((k) => LIGHT.has(k.type)).reduce((a, k) => a + w(k), 0),
+                    mine = ownOf(n.children), // only what this circuit feeds itself, not what hangs behind a nested breaker/differential/sub board
+                    cons = mine.filter((k) => !CONTROL.has(k.type)),
+                    stops = mine.filter((k) => STOP.has(k.type)).length, // a double or triple socket (aantal, stopcontact2/3) counts as one
+                    lamps = mine.filter((k) => LIGHT.has(k.type)).reduce((a, k) => a + w(k), 0),
                     ded = cons.filter((k) => DEDICATED.has(k.type))
                 if (parent?.type === 'bord' && !anc.some((a) => a.type === 'diff' || a.p?.bescherming === 'differentieel'))
                     add('error', 'kring.noDiff', `Kring '${L}' hangt niet onder een differentieel (aardlekbeveiliging).`, pg, n)

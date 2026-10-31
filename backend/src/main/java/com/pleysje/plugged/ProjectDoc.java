@@ -17,13 +17,25 @@ public class ProjectDoc {
     @Lob
     @Column(length = 10_000_000)
     private String json;
+    /** Human readable name of the project (null for projects saved before names existed). */
+    @Column(length = 255)
+    private String name;
+    /** Moment of the last save, ISO-8601 (a string, so it sorts and serializes without surprises). */
+    @Column(length = 40)
+    private String updated;
 
     public ProjectDoc() {
     }
 
     public ProjectDoc(Long id, String json) {
+        this(id, json, null);
+    }
+
+    public ProjectDoc(Long id, String json, String name) {
         this.id = id;
         this.json = json;
+        this.name = name;
+        this.updated = java.time.Instant.now().toString();
     }
 
     public Long getId() {
@@ -36,5 +48,13 @@ public class ProjectDoc {
 
     public void setJson(String j) {
         json = j;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public String getUpdated() {
+        return updated;
     }
 }

@@ -62,6 +62,7 @@ test.describe('Info page', () => {
 test.describe('import and export buttons', () => {
     test('Exporteren opens a dialog; .eds gives an .eds file named after the project', async ({page, app, backend}) => {
         await app.open(backend, withCircuit({footer: {titel: 'Villa'}}))
+        await app.project()
         await page.locator('#btn-export').click()
         await expect(page.getByRole('dialog', {name: 'Exporteren'})).toBeVisible()
         await expect(page.locator('#export-type-json')).toBeChecked()
@@ -74,9 +75,11 @@ test.describe('import and export buttons', () => {
     })
     test('the default choice is the project file; Escape closes the dialog without a download', async ({page, app, backend}) => {
         await app.open(backend, withCircuit({footer: {titel: 'Villa'}}))
+        await app.project()
         await page.locator('#btn-export').click()
         const [download] = await Promise.all([page.waitForEvent('download'), page.locator('#export-confirm').click()])
         expect(download.suggestedFilename()).toBe('Villa.json')
+        await app.project()
         await page.locator('#btn-export').click()
         await page.keyboard.press('Escape')
         await expect(page.getByRole('dialog', {name: 'Exporteren'})).toHaveCount(0)
@@ -91,6 +94,7 @@ test.describe('import and export buttons', () => {
     })
     test('Importeren opens the file chooser', async ({page, app, backend}) => {
         await app.open(backend)
+        await app.project()
         const [chooser] = await Promise.all([page.waitForEvent('filechooser'), page.locator('#btn-import').click()])
         expect(chooser).toBeTruthy()
     })

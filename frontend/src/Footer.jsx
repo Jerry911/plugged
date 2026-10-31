@@ -80,7 +80,7 @@ export const Sheet = ({p, page, total = 2, name, children, svgRef, onFooter, ...
                 ))}
                 <line x1="5" y1="198" x2="292" y2="198" />
                 <text x="6" y="203" fontSize="3" stroke="none">
-                    {name} - volgens AREI{f.stelsel ? ' - ' + f.stelsel : ''}
+                    {f.stelsel ? ' - ' + f.stelsel : ''}
                     {f.dossier ? ' - dossier ' + f.dossier : ''}
                     {f.keurder ? ' - ' + f.keurder : ''}
                 </text>

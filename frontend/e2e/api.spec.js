@@ -24,6 +24,16 @@ test.describe('/api/projects', () => {
         expect((await request.get('/api/projects/4242')).status()).toBe(404)
         expect(await (await request.get('/api/projects')).json()).not.toContain(4242)
     })
+    test('the name given on save is listed in the summaries, without the project document', async ({request}) => {
+        const doc = project({footer: {titel: 'Lijst'}})
+        await request.put('/api/projects/4243?name=' + encodeURIComponent('Woning Jan'), {data: JSON.stringify(doc), headers: json})
+        const rows = await (await request.get('/api/projects/summaries')).json()
+        const row = rows.find((r) => r.id === 4243)
+        expect(row).toMatchObject({id: 4243, name: 'Woning Jan'})
+        expect(row.updated).toBeTruthy()
+        expect(row.een).toBeUndefined()
+        await request.delete('/api/projects/4243')
+    })
     test('an unknown project is a 404', async ({request}) => {
         expect((await request.get('/api/projects/987654')).status()).toBe(404)
     })

@@ -19,7 +19,13 @@ public class ProjectController {
 
     @GetMapping
     public List<Long> list() {
-        return projectRepo.findAll().stream().map(ProjectDoc::getId).toList();
+        return projectRepo.summaries().stream().map(ProjectSummary::id).toList();
+    }
+
+    /** Id, name and last save of every stored project (for the "Laden" list). */
+    @GetMapping("/summaries")
+    public List<ProjectSummary> summaries() {
+        return projectRepo.summaries();
     }
 
     @GetMapping(value = "/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
@@ -28,8 +34,8 @@ public class ProjectController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Void> put(@PathVariable Long id, @RequestBody String json) {
-        projectRepo.save(new ProjectDoc(id, json));
+    public ResponseEntity<Void> put(@PathVariable Long id, @RequestBody String json, @RequestParam(required = false) String name) {
+        projectRepo.save(new ProjectDoc(id, json, name == null || name.isBlank() ? null : name.strip()));
         return ResponseEntity.noContent().build();
     }
 

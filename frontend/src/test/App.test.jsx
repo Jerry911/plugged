@@ -21,10 +21,10 @@ const symbols = (extra = []) => (url, o) =>
     url === '/api/symbols'
         ? {ok: true, json: async () => [...standard, ...extra]}
         : url === '/api/symbols/template'
-            ? {ok: true, json: async () => ({k: 'custom:nieuw', name: '', cat: 'Eigen', parents: ['kring'], place: true, shapes: []})}
-            : url.startsWith('/api/symbols/') && o?.method === 'PUT'
-                ? {ok: true, json: async () => ({cat: 'Eigen', parents: ['kring'], place: true, ...JSON.parse(o.body), builtin: false, modified: false})}
-                : null
+          ? {ok: true, json: async () => ({k: 'custom:nieuw', name: '', cat: 'Eigen', parents: ['kring'], place: true, shapes: []})}
+          : url.startsWith('/api/symbols/') && o?.method === 'PUT'
+            ? {ok: true, json: async () => ({cat: 'Eigen', parents: ['kring'], place: true, ...JSON.parse(o.body), builtin: false, modified: false})}
+            : null
 const setup = (data = null, ok = true, extra = []) => {
     global.fetch = vi.fn(
         async (url, o) => symbols(extra)(url, o) ?? (o?.method === 'PUT' ? {ok} : data ? {ok: true, json: async () => data} : {ok: false}),
@@ -34,7 +34,14 @@ const setup = (data = null, ok = true, extra = []) => {
 const puts = () => global.fetch.mock.calls.filter((c) => c[1]?.method === 'PUT' && c[0].startsWith('/api/projects'))
 // import / export go through the buttons with these ids: one file picker (json and eds) and one export dialog with a file type choice
 const byId = (id) => document.getElementById(id)
+const toProject = () => fireEvent.click(byId('tab-project'))
+const clickSave = () => {
+    toProject()
+    fireEvent.click(byId('btn-save'))
+}
 const exportAs = (type) => {
+    toProject()
+    toProject()
     fireEvent.click(byId('btn-export'))
     fireEvent.click(byId('export-type-' + type))
     fireEvent.click(byId('export-confirm'))
@@ -62,21 +69,21 @@ test('starts with empty project, switches tabs, saves', async () => {
     screen.getByText('Selecteer')
     fireEvent.click(screen.getByText('Components'))
     screen.getByText('＋ Nieuw component')
-    fireEvent.click(screen.getByText('Opslaan'))
+    clickSave()
     await screen.findByText('Opgeslagen ✓')
     expect(JSON.parse(puts()[0][1].body).een).toHaveLength(1)
 })
 test('save failure message', async () => {
     setup(null, false)
     await mount()
-    fireEvent.click(screen.getByText('Opslaan'))
+    clickSave()
     await screen.findByText('Fout bij opslaan')
 })
 test('migrates old format on load', async () => {
     setup(old)
     await mount()
     await screen.findAllByText('Oud sc')
-    fireEvent.click(screen.getByText('Opslaan'))
+    clickSave()
     await screen.findByText('Opgeslagen ✓')
     const b = JSON.parse(puts()[0][1].body)
     expect(b.een[0].tree[0].label).toBe('Oud sc')
@@ -84,14 +91,128 @@ test('migrates old format on load', async () => {
     expect(b.footer.titel).toBe('Oud')
     screen.getAllByTitle('Niet geplaatst op situatieschema')
 })
-test('loads new format and other project numbers', async () => {
-    setup({een: [{id: 'a', name: 'Eigen blad', tree: []}], sit: [{id: 'b', name: 'P', walls: [], items: []}], custom: [], footer: {}})
+// an in-memory /api/projects: id -> document (names travel in the document and as ?name= on save)
+const projectsApi = (store) => {
+    const names = new Map()
+    global.fetch = vi.fn(async (url, o) => {
+        const sym = symbols()(url, o)
+        if (sym) return sym
+        if (url === '/api/projects/summaries')
+            return {ok: true, json: async () => [...store].map(([id, d]) => ({id, name: names.get(id) ?? d.name ?? null, updated: '2026-03-0' + id + 'T10:00:00Z'}))}
+        if (url === '/api/projects') return {ok: true, json: async () => [...store.keys()]}
+        const m = /^\/api\/projects\/(\d+)(?:\?name=(.*))?$/.exec(url)
+        if (!m) return {ok: false}
+        const id = +m[1]
+        if (o?.method === 'PUT') {
+            store.set(id, JSON.parse(o.body))
+            names.set(id, m[2] ? decodeURIComponent(m[2]) : null)
+            return {ok: true}
+        }
+        if (o?.method === 'DELETE') return store.delete(id), {ok: true}
+        return store.has(id) ? {ok: true, json: async () => store.get(id)} : {ok: false}
+    })
+    return names
+}
+const doc = (name, titel) => ({een: [{id: 'a' + name, name: 'Blad ' + name, tree: []}], sit: [{id: 'b', name: 'P', walls: [], items: []}], custom: [], footer: {titel}, name})
+test('the project number is gone from the header; the Project tab has the project menu', async () => {
     await mount()
-    await screen.findByText('Eigen blad')
-    fireEvent.change(screen.getByTitle('Project-nr'), {target: {value: '2'}})
-    await waitFor(() => expect(global.fetch).toHaveBeenCalledWith('/api/projects/2'))
-    fireEvent.change(screen.getByTitle('Project-nr'), {target: {value: ''}})
-    await waitFor(() => expect(global.fetch).toHaveBeenLastCalledWith('/api/projects/1'))
+    await act(async () => {})
+    expect(screen.queryByTitle('Project-nr')).toBeNull()
+    for (const id of ['btn-save', 'btn-load', 'btn-import', 'btn-export']) expect(byId(id)).toBeNull()
+    toProject()
+    for (const id of ['btn-save', 'btn-saveas', 'btn-new', 'btn-load', 'btn-import', 'btn-export']) expect(byId(id)).toBeTruthy()
+})
+test('a project is saved with its name (in the document and as ?name=) and Ctrl+S saves too', async () => {
+    projectsApi(new Map())
+    await mount()
+    await act(async () => {})
+    toProject()
+    fireEvent.change(byId('project-name'), {target: {value: 'Woning Jan'}})
+    fireEvent.click(byId('btn-save'))
+    await screen.findByText('Opgeslagen ✓')
+    expect(puts()[0][0]).toBe('/api/projects/1?name=Woning%20Jan')
+    expect(JSON.parse(puts()[0][1].body).name).toBe('Woning Jan')
+    fireEvent.keyDown(window, {key: 's', ctrlKey: true})
+    await waitFor(() => expect(puts()).toHaveLength(2))
+})
+test('Laden lists the stored projects by name and loads the chosen one; saving then goes to that project', async () => {
+    projectsApi(new Map([[1, doc('Eerste', 'T1')], [2, doc('Tweede', 'T2')]]))
+    await mount()
+    await screen.findByText('Blad Eerste')
+    toProject()
+    expect(screen.queryByRole('table', {name: 'Opgeslagen projecten'})).toBeNull()
+    fireEvent.click(byId('btn-load'))
+    const table = await screen.findByRole('table', {name: 'Opgeslagen projecten'})
+    expect(table.textContent).toMatch(/Eerste.*huidig/)
+    expect(table.textContent).toContain('Tweede')
+    fireEvent.click(screen.getByTitle('Laad project 2'))
+    await screen.findByText('Project 2 geladen')
+    await screen.findByText('Blad Tweede')
+    clickSave()
+    await waitFor(() => expect(puts().at(-1)[0]).toBe('/api/projects/2?name=Tweede'))
+})
+test('loading another project asks first when there are unsaved changes', async () => {
+    projectsApi(new Map([[1, doc('Eerste', 'T1')], [2, doc('Tweede', 'T2')]]))
+    await mount()
+    await screen.findByText('Blad Eerste')
+    toProject()
+    fireEvent.click(byId('btn-load'))
+    await screen.findByRole('table', {name: 'Opgeslagen projecten'})
+    fireEvent.click(byId('tab-project')) // (stay on the tab)
+    fireEvent.change(byId('project-name'), {target: {value: 'Gewijzigd'}})
+    const ask = vi.spyOn(window, 'confirm').mockReturnValueOnce(false).mockReturnValueOnce(true)
+    fireEvent.click(screen.getByTitle('Laad project 2'))
+    await act(async () => {})
+    expect(ask).toHaveBeenCalledTimes(1)
+    expect(global.fetch).not.toHaveBeenCalledWith('/api/projects/2')
+    fireEvent.click(screen.getByTitle('Laad project 2'))
+    await screen.findByText('Project 2 geladen')
+    expect(ask).toHaveBeenCalledTimes(2)
+    // unchanged project: no question
+    toProject()
+    fireEvent.click(byId('btn-load'))
+    fireEvent.click(await screen.findByTitle('Laad project 1'))
+    await screen.findByText('Project 1 geladen')
+    expect(ask).toHaveBeenCalledTimes(2)
+})
+test('Nieuw starts an empty project under the next free number, Opslaan als stores a copy under a new number', async () => {
+    const store = new Map([[1, doc('Eerste', 'T1')], [4, doc('Vierde', 'T4')]])
+    projectsApi(store)
+    await mount()
+    await screen.findByText('Blad Eerste')
+    toProject()
+    fireEvent.click(byId('btn-new'))
+    await screen.findByText(/Nieuw project \(nr 5\)/)
+    expect(screen.queryByText('Blad Eerste')).toBeNull()
+    toProject()
+    expect(byId('project-name').value).toBe('')
+    fireEvent.change(byId('project-name'), {target: {value: 'Garage'}})
+    fireEvent.click(byId('btn-save'))
+    await waitFor(() => expect(store.has(5)).toBe(true))
+    vi.spyOn(window, 'prompt').mockReturnValue('Garage (kopie)')
+    fireEvent.click(byId('btn-saveas'))
+    await screen.findByText('Opgeslagen als project 6 ✓')
+    expect(store.get(6).name).toBe('Garage (kopie)')
+    expect(store.get(5).name).toBe('Garage')
+    vi.spyOn(window, 'prompt').mockReturnValue(null) // cancelled: nothing is saved
+    fireEvent.click(byId('btn-saveas'))
+    await act(async () => {})
+    expect(store.size).toBe(4)
+})
+test('a project can be deleted from the list after confirming', async () => {
+    const store = new Map([[1, doc('Eerste', 'T1')], [2, doc('Tweede', 'T2')]])
+    projectsApi(store)
+    await mount()
+    await screen.findByText('Blad Eerste')
+    toProject()
+    fireEvent.click(byId('btn-load'))
+    await screen.findByRole('table', {name: 'Opgeslagen projecten'})
+    vi.spyOn(window, 'confirm').mockReturnValueOnce(false).mockReturnValueOnce(true)
+    fireEvent.click(screen.getByLabelText('Verwijder Tweede'))
+    expect(store.has(2)).toBe(true)
+    fireEvent.click(screen.getByLabelText('Verwijder Tweede'))
+    await waitFor(() => expect(store.has(2)).toBe(false))
+    await waitFor(() => expect(screen.queryByTitle('Laad project 2')).toBeNull())
 })
 test.each([
     ['Eendraadschema', 'Blad'],
@@ -125,13 +246,13 @@ test('duplicating an eendraad page regenerates node ids', async () => {
     await mount()
     await screen.findAllByText('n1')
     fireEvent.click(screen.getByText('⧉'))
-    fireEvent.click(screen.getByText('Opslaan'))
+    clickSave()
     await screen.findByText('Opgeslagen ✓')
     const b = JSON.parse(puts()[0][1].body)
     expect(b.een[1].tree[0].id).not.toBe('n1')
     fireEvent.click(screen.getByText('Situatieschema'))
     fireEvent.click(screen.getByText('⧉'))
-    fireEvent.click(screen.getByText('Opslaan'))
+    clickSave()
     await waitFor(() => expect(puts()).toHaveLength(2))
     expect(JSON.parse(puts()[1][1].body).sit[1].walls[0].id).not.toBe('w')
 })
@@ -242,7 +363,7 @@ test('new sheets start with a default board', async () => {
     await mount()
     await act(async () => {})
     fireEvent.click(screen.getByText('＋ blad'))
-    fireEvent.click(screen.getByText('Opslaan'))
+    clickSave()
     await screen.findByText('Opgeslagen ✓')
     const b = JSON.parse(puts()[0][1].body)
     expect(b.een[1].tree[0].type).toBe('aansluiting')
@@ -314,7 +435,7 @@ test('components stored inside an old project move into the library', async () =
     expect(JSON.parse(global.fetch.mock.calls.find((c) => c[0] === '/api/symbols/custom%3Ac1')[1].body)).not.toHaveProperty('parents')
     fireEvent.click(screen.getByText('Components'))
     await screen.findByText('Mijn ding')
-    fireEvent.click(screen.getByText('Opslaan'))
+    clickSave()
     await screen.findByText('Opgeslagen ✓')
     expect(JSON.parse(puts().at(-1)[1].body).custom).toEqual([])
 })
@@ -339,6 +460,7 @@ test('shows that the symbols are loading', async () => {
 test('import and export are one button each; the old separate JSON / EDS buttons are gone', async () => {
     await mount()
     await act(async () => {})
+    toProject()
     expect(byId('btn-import')).toHaveTextContent('Importeren')
     expect(byId('btn-export')).toHaveTextContent('Exporteren')
     expect(byId('import-input')).toHaveAttribute('accept', '.json,.eds')
@@ -347,6 +469,7 @@ test('import and export are one button each; the old separate JSON / EDS buttons
 test('the import button opens the file picker', async () => {
     await mount()
     const click = vi.spyOn(byId('import-input'), 'click')
+    toProject()
     fireEvent.click(byId('btn-import'))
     expect(click).toHaveBeenCalledTimes(1)
 })
@@ -354,6 +477,7 @@ test('the export dialog offers both file types, json first, and downloads the ch
     await mount()
     await act(async () => {})
     expect(screen.queryByRole('dialog', {name: 'Exporteren'})).toBeNull()
+    toProject()
     fireEvent.click(byId('btn-export'))
     screen.getByRole('dialog', {name: 'Exporteren'})
     expect(byId('export-type-json')).toBeChecked()
@@ -374,6 +498,7 @@ test('the export dialog closes with the cross, Annuleer, Escape and the export b
     await act(async () => {})
     const dlg = () => screen.queryByRole('dialog', {name: 'Exporteren'})
     for (const close of [() => fireEvent.click(byId('export-close')), () => fireEvent.click(byId('export-cancel')), () => fireEvent.keyDown(dlg(), {key: 'Escape'}), () => fireEvent.click(byId('btn-export'))]) {
+        toProject()
         fireEvent.click(byId('btn-export'))
         expect(dlg()).not.toBeNull()
         fireEvent.keyDown(dlg(), {key: 'a'})
@@ -386,10 +511,12 @@ test('the export dialog closes with the cross, Annuleer, Escape and the export b
 test('the export dialog and the Kaderinfo dialog do not stay open together', async () => {
     await mount()
     await act(async () => {})
+    toProject()
     fireEvent.click(byId('btn-export'))
     fireEvent.click(byId('btn-footer'))
     expect(screen.queryByRole('dialog', {name: 'Exporteren'})).toBeNull()
     screen.getByRole('dialog', {name: 'Kaderinfo'})
+    toProject()
     fireEvent.click(byId('btn-export'))
     expect(screen.queryByRole('dialog', {name: 'Kaderinfo'})).toBeNull()
     screen.getByRole('dialog', {name: 'Exporteren'})

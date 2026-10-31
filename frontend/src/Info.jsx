@@ -36,7 +36,7 @@ const STEPS = [
     ],
     [
         'Bewaren, importeren en exporteren',
-        '"Opslaan" bewaart het project op de server onder het projectnummer naast de knop. "Importeren" opent een .json (projectbestand) of een .eds (van eendraadschema.goethals-jacobs.be). "Exporteren" laat je kiezen tussen .json en .eds. "PDF" maakt een vectoriële PDF (A4 liggend) van alle bladen, "Afdrukken" opent het afdrukvenster van je browser.',
+        'Op het tabblad "Project" geef je het project een naam en bewaar je het met "Opslaan" (of Ctrl+S) op de server. "Opslaan als…" bewaart een kopie als nieuw project, "Nieuw" begint een leeg project en "Laden" toont de lijst met opgeslagen projecten, met naam en datum van de laatste keer opslaan. "Importeren" opent een .json (projectbestand) of een .eds (van eendraadschema.goethals-jacobs.be). "Exporteren" laat je kiezen tussen .json en .eds. "PDF" maakt een vectoriële PDF (A4 liggend) van alle bladen, "Afdrukken" opent het afdrukvenster van je browser.',
     ],
 ]
 const KEYS = [
@@ -51,8 +51,8 @@ const FAQ = [
         'Nee. Pas als je op "Opslaan" klikt, wordt het project bewaard op de server. Maak daarnaast af en toe een back-up via Exporteren → Projectbestand (.json).',
     ],
     [
-        'Wat is het projectnummer naast de knop Opslaan?',
-        'Elk nummer is een apart project. Verander je het nummer, dan wordt het project met dat nummer geladen (of een leeg project als het nog niet bestaat).',
+        'Kan ik meerdere projecten bewaren?',
+        'Ja. Elk project heeft een naam en een nummer (dat nummer geeft de server zelf). Via Project → Laden kies je een opgeslagen project; zijn er niet-opgeslagen wijzigingen, dan vraagt Plugged eerst om bevestiging.',
     ],
     [
         'Kan ik een schema uit het online eendraadschema openen?',

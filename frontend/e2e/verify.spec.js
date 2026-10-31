@@ -28,7 +28,7 @@ test('a new project reports its empty board; an empty schema is reported as empt
     await expect(panel(page).getByText(/heeft geen kringen/)).toBeVisible()
     await panel(page).getByText('Sluiten').click()
     await backend.seed(2, project({een: [{id: 'a', name: 'Leeg', tree: []}]}))
-    await page.getByTitle('Project-nr').fill('2')
+    await app.load(2)
     await expect(page.getByRole('button', {name: 'Leeg'})).toBeVisible()
     await open(page)
     await expect(panel(page).getByText('Het eendraadschema is leeg.')).toBeVisible()

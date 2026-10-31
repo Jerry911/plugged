@@ -35,7 +35,7 @@ test('a saved project is still there after reloading the page', async ({page, ap
 test('shows a message when saving fails', async ({page, app, backend}) => {
     backend.failSave = true
     await app.open(backend)
-    await page.getByRole('button', {name: 'Opslaan'}).click()
+    await page.keyboard.press('Control+s')
     await expect(page.getByText('Fout bij opslaan')).toBeVisible()
 })
 
@@ -49,19 +49,32 @@ test('an old project (tree + plan) is migrated when it is loaded', async ({page,
     expect(saved.footer.titel).toBe('Oud')
 })
 
-test('other project numbers load their own project; an empty number goes back to project 1', async ({page, app, backend}) => {
-    await backend.seed(2, project({een: [{id: 'a', name: 'Eigen blad', tree: []}]}))
-    await app.open(backend, project({een: [{id: 'b', name: 'Blad van een', tree: []}]}))
+test('Laden lists the stored projects by name and opens the chosen one; saving goes to that project', async ({page, app, backend}) => {
+    await backend.seed(2, project({name: 'Tweede woning', een: [{id: 'a', name: 'Eigen blad', tree: []}]}))
+    await app.open(backend, project({name: 'Eerste woning', een: [{id: 'b', name: 'Blad van een', tree: []}]}))
     await expect(page.getByRole('button', {name: 'Blad van een'})).toBeVisible()
-    await page.getByTitle('Project-nr').fill('2')
+    await app.project()
+    await page.locator('#btn-load').click()
+    const list = page.getByRole('table', {name: 'Opgeslagen projecten'})
+    await expect(list).toContainText('Eerste woning')
+    await expect(list).toContainText('Tweede woning')
+    await list.getByTitle('Laad project 2').click()
     await expect(page.getByRole('button', {name: 'Eigen blad'})).toBeVisible()
-    await page.getByTitle('Project-nr').fill('')
-    await expect(page.getByTitle('Project-nr')).toHaveValue('1')
-    await expect(page.getByRole('button', {name: 'Blad van een'})).toBeVisible()
-    // saving goes to the number that is shown
-    await page.getByTitle('Project-nr').fill('3')
-    const saved = await app.save(backend, 3)
-    expect(saved).toBeTruthy()
+    const saved = await app.save(backend, 2)
+    expect(saved.name).toBe('Tweede woning')
+})
+
+test('Nieuw starts an empty project that is saved under a new number with its name', async ({page, app, backend}) => {
+    await app.open(backend, project({name: 'Eerste woning'}))
+    await app.project()
+    await page.locator('#btn-new').click()
+    await expect(page.getByText(/Nieuw project \(nr 2\)/)).toBeVisible()
+    await app.project()
+    await page.locator('#project-name').fill('Garage')
+    await page.locator('#btn-save').click()
+    await expect(page.getByText('Opgeslagen ✓')).toBeVisible()
+    expect((await backend.saved(2)).name).toBe('Garage')
+    expect((await backend.saved(1)).name).toBe('Eerste woning')
 })
 
 test('undo and redo with the buttons and the keyboard', async ({page, app, backend}) => {
@@ -90,6 +103,7 @@ test('undo and redo with the buttons and the keyboard', async ({page, app, backe
 test('JSON export downloads the project with its own components; JSON import loads a project file', async ({page, app, backend}) => {
     await backend.addSymbol({k: 'custom:z', name: 'Zelf', cat: 'Eigen', parents: ['kring'], place: true, shapes: [{t: 'line', x1: 0, y1: 12, x2: 24, y2: 12}]})
     await app.open(backend, withCircuit({footer: {titel: 'Villa'}}))
+    await app.project()
     await page.locator('#btn-export').click()
     await page.locator('#export-type-json').check()
     const [download] = await Promise.all([page.waitForEvent('download'), page.locator('#export-confirm').click()])

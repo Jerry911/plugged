@@ -19,6 +19,7 @@ const keyOf = (path) => decodeURIComponent(path.split('/').filter(Boolean)[2] ??
 export class FakeBackend {
     fake = true
     projects = new Map()
+    names = new Map() // id -> name given with ?name= on save
     symbols = clone(standard)
     puts = [] // every project save: {id, body}
     failSave = false // PUT /api/projects/:id answers 500
@@ -39,11 +40,14 @@ export class FakeBackend {
         if (path.startsWith('/api/projects')) {
             const id = Number(path.split('/')[3])
             if (!path.split('/')[3]) return json([...this.projects.keys()])
+            if (path === '/api/projects/summaries')
+                return json([...this.projects].map(([pid, d]) => ({id: pid, name: this.names.get(pid) ?? d.name ?? null, updated: null})))
             if (m === 'GET') return this.projects.has(id) ? json(this.projects.get(id)) : empty(404)
             if (m === 'PUT') {
                 if (this.failSave) return empty(500)
                 const body = JSON.parse(req.postData())
                 this.projects.set(id, body)
+                this.names.set(id, new URL(req.url()).searchParams.get('name'))
                 this.puts.push({id, body})
                 return empty()
             }
@@ -141,7 +145,7 @@ class RealBackend {
         await this.request.post('/api/symbols/restore')
     }
     async seed(id, doc) {
-        const r = await this.request.put('/api/projects/' + id, {data: JSON.stringify(doc), headers: {'Content-Type': 'application/json'}})
+        const r = await this.request.put('/api/projects/' + id + (doc.name ? '?name=' + encodeURIComponent(doc.name) : ''), {data: JSON.stringify(doc), headers: {'Content-Type': 'application/json'}})
         expect(r.ok()).toBeTruthy()
     }
     async saved(id = 1) {
@@ -208,9 +212,19 @@ export class App {
     tab(name) {
         return this.page.locator('.bar').getByRole('button', {name, exact: false}).first().click()
     }
-    /** presses "Opslaan" and returns the saved project document */
+    /** opens the Project tab (Opslaan, Laden, Importeren, Exporteren) */
+    project() {
+        return this.page.locator('#tab-project').click()
+    }
+    /** loads a stored project through Project -> Laden */
+    async load(id) {
+        await this.project()
+        await this.page.locator('#btn-load').click()
+        await this.page.getByRole('table', {name: 'Opgeslagen projecten'}).getByTitle('Laad project ' + id).click()
+    }
+    /** saves with Ctrl+S (works on every tab) and returns the saved project document */
     async save(backend, id = 1) {
-        await this.page.getByRole('button', {name: 'Opslaan'}).click()
+        await this.page.keyboard.press('Control+s')
         await expect(this.page.getByText('Opgeslagen ✓')).toBeVisible()
         return backend.saved(id)
     }

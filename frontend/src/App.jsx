@@ -6,6 +6,7 @@ import SituationSchema from './SituationSchema.jsx'
 import Components from './Components.jsx'
 import Info from './Info.jsx'
 import {ExportDialog, IMPORT_ACCEPT, importKind} from './ImportExport.jsx'
+import Projects from './Projects.jsx'
 import {useLibrary} from './library.jsx'
 import {FooterDialog} from './Footer'
 import {useHistory} from './history.jsx'
@@ -126,12 +127,14 @@ export default function App() {
 }
 function Editor({library}) {
     const {p, setP, reset, undo, redo, canUndo, canRedo} = useHistory(init),
+        snap = useRef(JSON.stringify(init)), // the project as last saved or loaded: tells whether there are unsaved changes
         [footer, setFooter] = useState(null),
         [tab, setTab] = useState(0),
         [msg, setMsg] = useState(''),
         [ei, setEi] = useState(0),
         [si, setSi] = useState(0),
         [pid, setPid] = useState(1),
+        [listKey, setListKey] = useState(0), // bumped after a save or delete so an open project list reloads
         [job, setJob] = useState(null),
         [showV, setShowV] = useState(false),
         [showExport, setShowExport] = useState(false),
@@ -163,18 +166,21 @@ function Editor({library}) {
         })
         setP((cur) => ({...cur, custom: []}))
     }, [p.custom])
+    // the project that was open last time is not remembered: the editor starts with project 1 (a new project when that does not exist yet)
     useEffect(() => {
-        fetch('/api/projects/' + pid)
+        fetch('/api/projects/1')
             .then((r) => (r.ok ? r.json() : null))
             .then((d) => {
                 if (d) {
-                    reset(norm(d))
+                    const n = norm(d)
+                    reset(n)
+                    snap.current = JSON.stringify(n)
                     setEi(0)
                     setSi(0)
                 }
             })
             .catch(() => {})
-    }, [pid])
+    }, [])
     useEffect(() => {
         if (!job) return
         const currentJob = job
@@ -204,14 +210,88 @@ function Editor({library}) {
         addEventListener('keydown', f)
         return () => removeEventListener('keydown', f)
     }, [undo, redo])
-    const save = async () => {
-        const r = await fetch('/api/projects/' + pid, {
+    const dirty = () => JSON.stringify(p) !== snap.current
+    const sure = () => !dirty() || window.confirm('Er zijn niet-opgeslagen wijzigingen in dit project. Toch doorgaan?')
+    // the next free project number
+    const nextId = async () => {
+        try {
+            const ids = await (await fetch('/api/projects')).json()
+            return Math.max(0, ...(Array.isArray(ids) ? ids : []).map(Number).filter(Number.isFinite)) + 1
+        } catch {
+            return pid + 1
+        }
+    }
+    const putProject = async (id, doc) => {
+        const name = (doc.name || '').trim()
+        const r = await fetch('/api/projects/' + id + (name ? '?name=' + encodeURIComponent(name) : ''), {
             method: 'PUT',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify(p),
+            body: JSON.stringify(doc),
         })
-        setMsg(r.ok ? 'Opgeslagen ✓' : 'Fout bij opslaan')
+        if (r.ok) {
+            snap.current = JSON.stringify(doc)
+            setListKey((k) => k + 1)
+        }
+        return r.ok
     }
+    const save = async () => setMsg((await putProject(pid, p)) ? 'Opgeslagen ✓' : 'Fout bij opslaan')
+    const saveAs = async () => {
+        const n = window.prompt('Naam van het nieuwe project', (p.name || p.footer?.titel || '').trim())
+        if (n === null) return
+        const id = await nextId(),
+            doc = {...p, name: n.trim()}
+        if (await putProject(id, doc)) {
+            setP(doc)
+            setPid(id)
+            setMsg(`Opgeslagen als project ${id} ✓`)
+            snap.current = JSON.stringify(doc)
+        } else setMsg('Fout bij opslaan')
+    }
+    const newProject = async () => {
+        if (!sure()) return
+        const id = await nextId(),
+            n = {...init, footer: {...init.footer, datum: new Date().toISOString().slice(0, 10)}}
+        reset(n)
+        snap.current = JSON.stringify(n)
+        setPid(id)
+        setEi(0)
+        setSi(0)
+        setTab(0)
+        setMsg(`Nieuw project (nr ${id}); klik op Opslaan om het te bewaren`)
+    }
+    const loadProject = async (id) => {
+        if (!sure()) return
+        try {
+            const r = await fetch('/api/projects/' + id)
+            if (!r.ok) return setMsg(`Project ${id} niet gevonden`)
+            const n = norm(await r.json())
+            reset(n)
+            snap.current = JSON.stringify(n)
+            setPid(id)
+            setEi(0)
+            setSi(0)
+            setTab(0)
+            setMsg(`Project ${id} geladen`)
+        } catch {
+            setMsg('Fout bij laden')
+        }
+    }
+    const deleteProject = async (r) => {
+        if (!window.confirm(`Project '${r.name || 'Project ' + r.id}' definitief verwijderen?`)) return
+        const res = await fetch('/api/projects/' + r.id, {method: 'DELETE'})
+        setMsg(res.ok ? `Project ${r.id} verwijderd` : 'Fout bij verwijderen')
+        setListKey((k) => k + 1)
+    }
+    useEffect(() => {
+        const f = (e) => {
+            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+                e.preventDefault()
+                save()
+            }
+        }
+        addEventListener('keydown', f)
+        return () => removeEventListener('keydown', f)
+    }, [p, pid])
     const importEdsText = (t) => {
         try {
             const r = importEds(t)
@@ -219,6 +299,7 @@ function Editor({library}) {
             setP((cur) => ({...cur, een: r.een, sit: cur.sit.map((g) => ({...g, items: []})), footer: {...cur.footer, ...r.footer}}))
             setEi(0)
             setSi(0)
+            setTab(0)
             setMsg(
                 `EDS geïmporteerd: ${r.stats.circuits} kringen, ${r.stats.nodes} elementen${r.stats.unknown.length ? ` (onbekend: ${r.stats.unknown.join(', ')})` : ''}`,
             )
@@ -231,6 +312,7 @@ function Editor({library}) {
             setP(norm(JSON.parse(t)))
             setEi(0)
             setSi(0)
+            setTab(0)
             setMsg('Project geïmporteerd')
         } catch {
             window.alert('Dit is geen geldig projectbestand (.json).')
@@ -311,32 +393,10 @@ function Editor({library}) {
                 </button>
                 <span style={{flex: 1}}/>
                 {msg}
-                <input
-                    id="project-nr"
-                    type="number"
-                    min="1"
-                    value={pid}
-                    onChange={(ev) => setPid(+ev.target.value || 1)}
-                    style={{width: 48}}
-                    title="Project-nr"
-                />
-                <button id="btn-save" onClick={save}>Opslaan</button>
+                <button id="tab-project" className={tab === 4 ? 'on' : ''} title="Opslaan, laden, importeren en exporteren van projecten" onClick={() => setTab(4)}>
+                    Project
+                </button>
                 <input id="import-input" type="file" accept={IMPORT_ACCEPT} hidden onChange={importFile} />
-                <button
-                    id="btn-import"
-                    title="Importeer een projectbestand (.json) of een .eds-bestand (eendraadschema.goethals-jacobs.be)"
-                    onClick={() => document.getElementById('import-input').click()}>
-                    Importeren
-                </button>
-                <button
-                    id="btn-export"
-                    title="Exporteer als projectbestand (.json) of als .eds-bestand"
-                    onClick={() => {
-                        setFooter(null)
-                        setShowExport((v) => !v)
-                    }}>
-                    Exporteren
-                </button>
                 <span className="sep" />
                 <button id="btn-pdf" onClick={() => setJob('pdf')}>PDF</button>
                 <button id="btn-print" onClick={() => setJob('print')}>Afdrukken</button>
@@ -362,6 +422,24 @@ function Editor({library}) {
                     </>
                 )}
                 {tab === 3 && <Info />}
+                {tab === 4 && (
+                    <Projects
+                        name={p.name}
+                        onName={(name) => setP((cur) => ({...cur, name}))}
+                        pid={pid}
+                        refresh={listKey}
+                        onSave={save}
+                        onSaveAs={saveAs}
+                        onNew={newProject}
+                        onLoad={loadProject}
+                        onDelete={deleteProject}
+                        onImport={() => document.getElementById('import-input').click()}
+                        onExport={() => {
+                            setFooter(null)
+                            setShowExport((v) => !v)
+                        }}
+                    />
+                )}
                 {tab === 2 && <Components lib={lib} onSave={saveComp} onRemove={removeComp} onReset={resetComp} onMakeStandard={makeStandard} onRestoreAll={restoreAll} onTemplate={template} />}
             </div>
             {job && (

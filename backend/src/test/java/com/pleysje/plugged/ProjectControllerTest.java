@@ -80,4 +80,23 @@ class ProjectControllerTest {
         putProject(9, big);
         mvc.perform(get("/api/projects/9")).andExpect(status().isOk()).andExpect(jsonPath("$.data", hasLength(300_000)));
     }
+
+    @Test
+    void nameIsStoredAndListedWithoutTheDocument() throws Exception {
+        mvc.perform(put("/api/projects/2").param("name", "Woning Jan").contentType(MediaType.APPLICATION_JSON).content("{\"v\":1}"))
+                .andExpect(status().isNoContent());
+        putProject(1, "{\"v\":2}");
+        mvc.perform(get("/api/projects/summaries")).andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(2)))
+                .andExpect(jsonPath("$[0].id", is(1)))
+                .andExpect(jsonPath("$[0].name").value(nullValue()))
+                .andExpect(jsonPath("$[1].id", is(2)))
+                .andExpect(jsonPath("$[1].name", is("Woning Jan")))
+                .andExpect(jsonPath("$[1].updated", notNullValue()))
+                .andExpect(jsonPath("$[1].v").doesNotExist());
+        // the name is replaced by the next save (and a blank name clears it)
+        mvc.perform(put("/api/projects/2").param("name", "  ").contentType(MediaType.APPLICATION_JSON).content("{\"v\":3}"))
+                .andExpect(status().isNoContent());
+        mvc.perform(get("/api/projects/summaries")).andExpect(jsonPath("$[1].name").value(nullValue()));
+    }
 }

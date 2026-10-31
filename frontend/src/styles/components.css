@@ -426,3 +426,9 @@
 .eds-dragging .eds-bus {
     pointer-events: all;
 }
+
+/* Project tab: list of the stored projects */
+.plist { border-collapse: collapse; margin: 8px 12px; min-width: 520px; }
+.plist th, .plist td { text-align: left; padding: 4px 10px; border-bottom: 1px solid #ddd; }
+.plist tr.cur td { background: #eef5ff; }
+.plist td:last-child { white-space: nowrap; }

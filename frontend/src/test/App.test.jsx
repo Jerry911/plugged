@@ -21,10 +21,10 @@ const symbols = (extra = []) => (url, o) =>
     url === '/api/symbols'
         ? {ok: true, json: async () => [...standard, ...extra]}
         : url === '/api/symbols/template'
-          ? {ok: true, json: async () => ({k: 'custom:nieuw', name: '', cat: 'Eigen', parents: ['kring'], place: true, shapes: []})}
-          : url.startsWith('/api/symbols/') && o?.method === 'PUT'
-            ? {ok: true, json: async () => ({cat: 'Eigen', parents: ['kring'], place: true, ...JSON.parse(o.body), builtin: false, modified: false})}
-            : null
+            ? {ok: true, json: async () => ({k: 'custom:nieuw', name: '', cat: 'Eigen', parents: ['kring'], place: true, shapes: []})}
+            : url.startsWith('/api/symbols/') && o?.method === 'PUT'
+                ? {ok: true, json: async () => ({cat: 'Eigen', parents: ['kring'], place: true, ...JSON.parse(o.body), builtin: false, modified: false})}
+                : null
 const setup = (data = null, ok = true, extra = []) => {
     global.fetch = vi.fn(
         async (url, o) => symbols(extra)(url, o) ?? (o?.method === 'PUT' ? {ok} : data ? {ok: true, json: async () => data} : {ok: false}),
@@ -187,6 +187,16 @@ test('Controleer button shows counts, lists issues and navigates to the node', a
     expect(screen.getByDisplayValue('K')).toBeInTheDocument()
     fireEvent.click(screen.getByText('Sluiten'))
     expect(screen.queryByRole('region', {name: 'Controle'})).toBeNull()
+})
+test('Controleer sits in the eendraadschema bar and the tab shows errors and warnings', async () => {
+    setup(flawed)
+    await mount()
+    await screen.findAllByText('Hoofd')
+    const tab = screen.getByRole('button', {name: /^Eendraadschema/})
+    expect(tab.textContent).toMatch(/✖2.*⚠\d+/)
+    expect(screen.getByRole('button', {name: /Controleer/}).closest('.bar')).toBeNull() // not in the header
+    fireEvent.click(screen.getByText('Situatieschema'))
+    expect(screen.queryByRole('button', {name: /Controleer/})).toBeNull() // only on the eendraadschema tab
 })
 test('footer issue goes to eendraad tab, plan issue to situatieschema, global issue without node', async () => {
     setup(flawed)

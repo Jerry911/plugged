@@ -41,7 +41,7 @@ const normRaw = (d) =>
                 },
             ],
         }
-const PageBar = ({p, setP, k, idx, setIdx}) => {
+const PageBar = ({p, setP, k, idx, setIdx, verify}) => {
     const L = p[k],
         set = (l) => setP({...p, [k]: l}),
         sw = (d) => {
@@ -78,6 +78,12 @@ const PageBar = ({p, setP, k, idx, setIdx}) => {
             >
                 ＋ blad
             </button>
+            {verify && (
+                <button id="btn-verify" onClick={verify.onToggle}>
+                    Controleer{verify.ec ? ` ✖${verify.ec}` : ''}
+                    {verify.wc ? ` ⚠${verify.wc}` : ''}
+                </button>
+            )}
             <button
                 onClick={() => {
                     const n = prompt('Naam', L[idx].name)
@@ -283,7 +289,12 @@ function Editor({library}) {
                         )}
                         {t === 'Eendraadschema' && ec > 0 && (
                             <span title="Fouten in eendraadschema">
-                                 {' '} ✖{ec}
+                                {' '}✖{ec}
+                            </span>
+                        )}
+                        {t === 'Eendraadschema' && wc > 0 && (
+                            <span title="Waarschuwingen in eendraadschema">
+                                {' '}⚠{wc}
                             </span>
                         )}
                     </button>
@@ -327,10 +338,6 @@ function Editor({library}) {
                     Exporteren
                 </button>
                 <span className="sep" />
-                <button id="btn-verify" onClick={() => setShowV((v) => !v)}>
-                    Controleer{ec ? ` ✖${ec}` : ''}
-                    {wc ? ` ⚠${wc}` : ''}
-                </button>
                 <button id="btn-pdf" onClick={() => setJob('pdf')}>PDF</button>
                 <button id="btn-print" onClick={() => setJob('print')}>Afdrukken</button>
                 <span className="sep" />
@@ -344,7 +351,7 @@ function Editor({library}) {
             <div className="ui">
                 {tab === 0 && (
                     <>
-                        <PageBar p={p} setP={setP} k="een" idx={e} setIdx={setEi} />
+                        <PageBar p={p} setP={setP} k="een" idx={e} setIdx={setEi} verify={{ec, wc, onToggle: () => setShowV((v) => !v)}} />
                         <OneWireDiagram key={p.een[e].id} p={p} setP={setP} idx={e} focus={focus} onFocused={() => setFocus(null)} onFooter={openFooter} />
                     </>
                 )}

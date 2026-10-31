@@ -91,13 +91,15 @@ test('undo and redo with the buttons and the keyboard', async ({page, app, backe
 test('JSON export downloads the project with its own components; JSON import loads a project file', async ({page, app, backend}) => {
     await backend.addSymbol({k: 'custom:z', name: 'Zelf', cat: 'Eigen', parents: ['kring'], place: true, shapes: [{t: 'line', x1: 0, y1: 12, x2: 24, y2: 12}]})
     await app.open(backend, withCircuit({footer: {titel: 'Villa'}}))
-    const [download] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', {name: 'JSON ↑'}).click()])
+    await page.locator('#btn-export').click()
+    await page.locator('#export-type-json').check()
+    const [download] = await Promise.all([page.waitForEvent('download'), page.locator('#export-confirm').click()])
     expect(download.suggestedFilename()).toBe('Villa.json')
     const out = JSON.parse(readFileSync(await download.path(), 'utf8'))
     expect(out.een[0].name).toBe('Hoofd')
     expect(out.custom.map((c) => c.id)).toContain('z')
     // import: an old-format file is migrated like a loaded project
-    await page.locator('input[type=file][accept=".json"]').setInputFiles({name: 'oud.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(oldFormat()))})
+    await page.locator('#import-input').setInputFiles({name: 'oud.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(oldFormat()))})
     await expect(page.locator('.tree')).toContainText('Oud sc')
 })
 

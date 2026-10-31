@@ -55,7 +55,7 @@ test.describe('PDF and printing', () => {
 })
 
 test.describe('importing an .eds file', () => {
-    const eds = (page, content, name = 'huis.eds') => page.locator('input[accept=".eds"]').setInputFiles({name, mimeType: 'application/octet-stream', buffer: Buffer.from(content)})
+    const eds = (page, content, name = 'huis.eds') => page.locator('#import-input').setInputFiles({name, mimeType: 'application/octet-stream', buffer: Buffer.from(content)})
     test('replaces the schema and the footer, reports what was imported, and can be undone', async ({page, app, backend}) => {
         await app.open(backend)
         await eds(page, edsFile())

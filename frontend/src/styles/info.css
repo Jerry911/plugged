@@ -1,0 +1,175 @@
+/* Info page and the export dialog */
+.infopage {
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 16px 20px 60px;
+    line-height: 1.5
+}
+
+.infopage h1 {
+    margin: 0 0 8px
+}
+
+.infopage h2 {
+    margin: 0 0 8px;
+    color: #1f3a5f
+}
+
+.infopage section {
+    margin: 28px 0;
+    scroll-margin-top: 12px
+}
+
+.infonav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    position: sticky;
+    top: 0;
+    padding: 6px 0;
+    background: #fff;
+    z-index: 5;
+    border-bottom: 1px solid #ddd
+}
+
+.infonav button {
+    padding: 5px 12px;
+    cursor: pointer
+}
+
+.infopage .note {
+    background: #fff8e1;
+    border-left: 4px solid #ffd54a;
+    padding: 8px 10px
+}
+
+.steps {
+    padding-left: 22px
+}
+
+.steps li {
+    margin: 0 0 10px
+}
+
+.steps p {
+    margin: 2px 0 0
+}
+
+.keys {
+    display: grid;
+    grid-template-columns: max-content 1fr;
+    gap: 4px 14px
+}
+
+.keys div {
+    display: contents
+}
+
+.keys dt, .keys dd {
+    margin: 0
+}
+
+.keys kbd {
+    background: #eee;
+    border: 1px solid #bbb;
+    border-radius: 3px;
+    padding: 1px 6px;
+    font: 12px monospace
+}
+
+.faq {
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    margin: 0 0 6px;
+    padding: 0 10px
+}
+
+.faq summary {
+    cursor: pointer;
+    padding: 8px 0;
+    font-weight: 600
+}
+
+.faq p {
+    margin: 0 0 10px
+}
+
+.contactform {
+    display: grid;
+    gap: 4px;
+    max-width: 520px
+}
+
+.contactform label {
+    font-size: 12px;
+    margin-top: 6px
+}
+
+.contactform input, .contactform textarea {
+    width: 100%;
+    box-sizing: border-box;
+    font: inherit;
+    padding: 5px
+}
+
+.contactform button {
+    padding: 6px 14px;
+    margin-top: 8px;
+    cursor: pointer
+}
+
+.cstatus {
+    margin: 6px 0 0;
+    font-size: 13px;
+    color: #555
+}
+
+.donate {
+    display: inline-block;
+    padding: 9px 18px;
+    border-radius: 4px;
+    border: 0;
+    background: #ffc439;
+    color: #111;
+    font-weight: 700;
+    text-decoration: none;
+    cursor: pointer
+}
+
+.donate:disabled {
+    background: #ddd;
+    color: #777;
+    cursor: not-allowed
+}
+
+.exporttype {
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    padding: 6px 8px;
+    margin: 4px 0;
+    cursor: pointer
+}
+
+.exporttype.on {
+    border-color: #1f3a5f;
+    background: #eef4ff
+}
+
+.exporttype span {
+    display: flex;
+    flex-direction: column
+}
+
+.exporttype small {
+    color: #555
+}
+
+.bar .sep {
+    width: 1px;
+    align-self: stretch;
+    background: #ffffff55;
+    margin: 0 4px
+}

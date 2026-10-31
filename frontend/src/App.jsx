@@ -4,6 +4,8 @@ import {useEffect, useMemo, useRef, useState} from 'react'
 import OneWireDiagram from './OneWireDiagram.jsx'
 import SituationSchema from './SituationSchema.jsx'
 import Components from './Components.jsx'
+import Info from './Info.jsx'
+import {ExportDialog, IMPORT_ACCEPT, importKind} from './ImportExport.jsx'
 import {useLibrary} from './library.jsx'
 import {FooterDialog} from './Footer'
 import {useHistory} from './history.jsx'
@@ -126,6 +128,7 @@ function Editor({library}) {
         [pid, setPid] = useState(1),
         [job, setJob] = useState(null),
         [showV, setShowV] = useState(false),
+        [showExport, setShowExport] = useState(false),
         [focus, setFocus] = useState(null),
         ref = useRef()
     const {lib, save: saveComp, remove: removeComp, reset: resetComp, makeStandard, restoreAll, template} = library
@@ -133,7 +136,10 @@ function Editor({library}) {
     const issues = useMemo(() => verify(p), [p, lib]),
         ec = issues.filter((i) => i.level === 'error').length,
         wc = issues.filter((i) => i.level === 'warn').length
-    const openFooter = (k) => setFooter({k, n: Date.now()})
+    const openFooter = (k) => {
+        setShowExport(false)
+        setFooter({k, n: Date.now()})
+    }
     const go = (i) => {
         if (i.rule === 'footer') return openFooter('titel')
         if (i.rule.startsWith('plan.')) return setTab(1)
@@ -214,6 +220,30 @@ function Editor({library}) {
             window.alert(e.message)
         }
     }
+    const importJsonText = (t) => {
+        try {
+            setP(norm(JSON.parse(t)))
+            setEi(0)
+            setSi(0)
+            setMsg('Project geïmporteerd')
+        } catch {
+            window.alert('Dit is geen geldig projectbestand (.json).')
+        }
+    }
+    // one file picker for both kinds: the extension (or the "EDS" header) decides how the file is read
+    const importFile = async (ev) => {
+        const f = ev.target.files[0]
+        ev.target.value = ''
+        if (!f) return
+        const t = await f.text()
+        if (importKind(f.name, t) === 'eds') importEdsText(t)
+        else importJsonText(t)
+    }
+    const doExport = (type) => {
+        setShowExport(false)
+        if (type === 'eds') exportEdsFile()
+        else exportJson()
+    }
     const exportJson = () => {
         const a = document.createElement('a')
         // own components travel along with the project file (as `custom`) so it opens on another installation
@@ -236,6 +266,7 @@ function Editor({library}) {
         )
     }
     const tabs = ['Eendraadschema', 'Situatieschema', 'Components'],
+        tabIds = ['een', 'sit', 'comp'],
         un = unplacedOf(p).length,
         e = Math.min(ei, p.een.length - 1),
         s = Math.min(si, p.sit.length - 1)
@@ -243,7 +274,7 @@ function Editor({library}) {
         <>
             <div className="bar ui">
                 {tabs.map((t, i) => (
-                    <button key={t} className={tab === i ? 'on' : ''} onClick={() => setTab(i)}>
+                    <button key={t} id={'tab-' + tabIds[i]} className={tab === i ? 'on' : ''} onClick={() => setTab(i)}>
                         {t}
                         {t === 'Situatieschema' && un > 0 && (
                             <span title="Niet geplaatst op situatieschema">
@@ -258,18 +289,20 @@ function Editor({library}) {
                     </button>
                 ))}
                 {un > 0 && <span title="Niet geplaatst op situatieschema">⚠ {un}</span>}
-                <button title="Ongedaan maken (Ctrl+Z)" disabled={!canUndo} onClick={undo}>
+                <span className="sep" />
+                <button id="btn-undo" title="Ongedaan maken (Ctrl+Z)" disabled={!canUndo} onClick={undo}>
                     ↶ Ongedaan
                 </button>
-                <button title="Opnieuw (Ctrl+Y)" disabled={!canRedo} onClick={redo}>
+                <button id="btn-redo" title="Opnieuw (Ctrl+Y)" disabled={!canRedo} onClick={redo}>
                     ↷ Opnieuw
                 </button>
-                <button className="accent" onClick={() => openFooter()}>
+                <button id="btn-footer" className="accent" onClick={() => openFooter()}>
                     ✎ Kaderinfo
                 </button>
                 <span style={{flex: 1}}/>
                 {msg}
                 <input
+                    id="project-nr"
                     type="number"
                     min="1"
                     value={pid}
@@ -277,42 +310,36 @@ function Editor({library}) {
                     style={{width: 48}}
                     title="Project-nr"
                 />
-                <button onClick={save}>Opslaan</button>
-                <button title="Exporteer een projectbestand (.json)" onClick={exportJson}>JSON ↑</button>
-                <span>
-                    <input
-                        type="file"
-                        accept=".json"
-                        hidden
-                        onChange={(ev) => ev.target.files[0]?.text().then((t) => setP(norm(JSON.parse(t))))}
-                    />
-                    <button
-                        title="Importeer een projectbestand (.json)"
-                        onClick={(ev) => ev.currentTarget.previousElementSibling.click()}>JSON ↓</button>
-                </span>
-                <button title="Exporteer een .eds-bestand (eendraadschema.goethals-jacobs.be)" onClick={exportEdsFile}>EDS ↑</button>
-                <span>
-                    <input
-                        type="file"
-                        accept=".eds"
-                        hidden
-                        onChange={(ev) => {
-                            const f = ev.target.files[0]
-                            f && f.text().then(importEdsText)
-                            ev.target.value = ''
-                        }}
-                    />
-                    <button
-                        title="Importeer een .eds-bestand (eendraadschema.goethals-jacobs.be)"
-                        onClick={(ev) => ev.currentTarget.previousElementSibling.click()}>EDS ↓</button>
-                </span>
-                <button onClick={() => setShowV((v) => !v)}>
+                <button id="btn-save" onClick={save}>Opslaan</button>
+                <input id="import-input" type="file" accept={IMPORT_ACCEPT} hidden onChange={importFile} />
+                <button
+                    id="btn-import"
+                    title="Importeer een projectbestand (.json) of een .eds-bestand (eendraadschema.goethals-jacobs.be)"
+                    onClick={() => document.getElementById('import-input').click()}>
+                    Importeren
+                </button>
+                <button
+                    id="btn-export"
+                    title="Exporteer als projectbestand (.json) of als .eds-bestand"
+                    onClick={() => {
+                        setFooter(null)
+                        setShowExport((v) => !v)
+                    }}>
+                    Exporteren
+                </button>
+                <span className="sep" />
+                <button id="btn-verify" onClick={() => setShowV((v) => !v)}>
                     Controleer{ec ? ` ✖${ec}` : ''}
                     {wc ? ` ⚠${wc}` : ''}
                 </button>
-                <button onClick={() => setJob('pdf')}>PDF</button>
-                <button onClick={() => setJob('print')}>Afdrukken</button>
+                <button id="btn-pdf" onClick={() => setJob('pdf')}>PDF</button>
+                <button id="btn-print" onClick={() => setJob('print')}>Afdrukken</button>
+                <span className="sep" />
+                <button id="tab-info" className={tab === 3 ? 'on' : ''} title="Uitleg, veelgestelde vragen, contact" onClick={() => setTab(3)}>
+                    ⓘ Info
+                </button>
             </div>
+            {showExport && <ExportDialog onExport={doExport} onClose={() => setShowExport(false)} />}
             {showV && <Verify issues={issues} onGo={go} onClose={() => setShowV(false)} />}
             {footer && <FooterDialog key={footer.n} p={p} setP={setP} focus={footer.k} onClose={() => setFooter(null)} />}
             <div className="ui">
@@ -328,6 +355,7 @@ function Editor({library}) {
                         <SituationSchema key={p.sit[s].id} p={p} setP={setP} idx={s} onFooter={openFooter} />
                     </>
                 )}
+                {tab === 3 && <Info />}
                 {tab === 2 && <Components lib={lib} onSave={saveComp} onRemove={removeComp} onReset={resetComp} onMakeStandard={makeStandard} onRestoreAll={restoreAll} onTemplate={template} />}
             </div>
             {job && (

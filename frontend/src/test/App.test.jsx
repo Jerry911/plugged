@@ -32,6 +32,14 @@ const setup = (data = null, ok = true, extra = []) => {
 }
 // project saves only (not the symbols)
 const puts = () => global.fetch.mock.calls.filter((c) => c[1]?.method === 'PUT' && c[0].startsWith('/api/projects'))
+// import / export go through the buttons with these ids: one file picker (json and eds) and one export dialog with a file type choice
+const byId = (id) => document.getElementById(id)
+const exportAs = (type) => {
+    fireEvent.click(byId('btn-export'))
+    fireEvent.click(byId('export-type-' + type))
+    fireEvent.click(byId('export-confirm'))
+}
+const importFile = (name, text) => fireEvent.change(byId('import-input'), {target: {files: [{name, text: async () => text}]}})
 // the editor appears once the backend has delivered the symbols
 const mount = async () => {
     const r = render(<App />)
@@ -135,7 +143,7 @@ test('footer edits flow into the project', async () => {
     fireEvent.change(i, {target: {value: 'Villa'}})
     screen.getAllByText('Villa')
 })
-test('pdf, print and json export / import', async () => {
+test('pdf, print, json export and json import', async () => {
     await mount()
     await act(async () => {})
     fireEvent.click(screen.getByText('PDF'))
@@ -146,12 +154,12 @@ test('pdf, print and json export / import', async () => {
     await waitFor(() => expect(window.alert).toHaveBeenCalledWith('Export mislukt: boom'))
     fireEvent.click(screen.getByText('Afdrukken'))
     await waitFor(() => expect(window.print).toHaveBeenCalled())
-    fireEvent.click(screen.getByText('JSON ↑'))
+    exportAs('json')
     expect(HTMLAnchorElement.prototype.click).toHaveBeenCalled()
-    const f = document.querySelector('input[type=file]')
-    fireEvent.change(f, {target: {files: []}})
-    fireEvent.change(f, {target: {files: [{text: async () => JSON.stringify(old)}]}})
+    fireEvent.change(byId('import-input'), {target: {files: []}})
+    importFile('oud.json', JSON.stringify(old))
     await screen.findAllByText('Oud sc')
+    await screen.findByText('Project geïmporteerd')
 })
 
 const flawed = {
@@ -233,8 +241,7 @@ test('new sheets start with a default board', async () => {
 test('EDS import replaces schema and footer, reports a message and can be undone', async () => {
     await mount()
     await act(async () => {})
-    const input = document.querySelector('input[accept=".eds"]')
-    fireEvent.change(input, {target: {files: [{text: async () => enc(EDS())}]}})
+    importFile('huis.eds', enc(EDS()))
     await screen.findByText(/EDS geïmporteerd: 1 kringen, 5 elementen \(onbekend: Rare\)/)
     screen.getAllByText('Keuken')
     screen.getByText('Dorpstraat 1, 9000 Gent')
@@ -244,11 +251,11 @@ test('EDS import replaces schema and footer, reports a message and can be undone
 test('EDS export downloads the schema as .eds, reports it, and the file imports again', async () => {
     await mount()
     await act(async () => {})
-    fireEvent.change(document.querySelector('input[accept=".eds"]'), {target: {files: [{text: async () => enc(EDS())}]}})
+    importFile('huis.eds', enc(EDS()))
     await screen.findByText(/EDS geïmporteerd/)
     HTMLAnchorElement.prototype.click.mockClear()
     URL.createObjectURL.mockClear()
-    fireEvent.click(screen.getByText('EDS ↑'))
+    exportAs('eds')
     expect(HTMLAnchorElement.prototype.click).toHaveBeenCalledTimes(1)
     await screen.findByText(/EDS geëxporteerd: 1 kringen, 5 elementen$/)
     const r = importEds(await readBlob(URL.createObjectURL.mock.calls[0][0]))
@@ -258,14 +265,13 @@ test('EDS export downloads the schema as .eds, reports it, and the file imports 
 test('EDS import without unknown types and with an invalid file', async () => {
     await mount()
     await act(async () => {})
-    const input = document.querySelector('input[accept=".eds"]')
     const j = EDS()
     j.data.pop()
-    fireEvent.change(input, {target: {files: [{text: async () => enc(j)}]}})
+    importFile('huis.eds', enc(j))
     await screen.findByText(/EDS geïmporteerd: 1 kringen, 4 elementen$/)
-    fireEvent.change(input, {target: {files: [{text: async () => 'nope'}]}})
+    importFile('kapot.eds', 'nope')
     await waitFor(() => expect(window.alert).toHaveBeenCalledWith('Dit is geen geldig .eds-bestand.'))
-    fireEvent.change(input, {target: {files: []}})
+    fireEvent.change(byId('import-input'), {target: {files: []}})
 })
 
 const readBlob = (b) =>
@@ -281,7 +287,7 @@ test('library comes from the backend and the own symbols travel along in the JSO
     fireEvent.click(screen.getByText('Components'))
     await screen.findByText('Zelf')
     expect(global.fetch).toHaveBeenCalledWith('/api/symbols', undefined)
-    fireEvent.click(screen.getByText('JSON ↑'))
+    exportAs('json')
     const out = JSON.parse(await readBlob(URL.createObjectURL.mock.calls[0][0]))
     expect(out.custom).toEqual([{id: 'z', name: 'Zelf', cat: 'Eigen', parents: ['kring'], place: true, shapes: zelf.shapes}])
 })
@@ -318,4 +324,101 @@ test('shows that the symbols are loading', async () => {
     render(<App />)
     screen.getByText('Symbolen laden…')
     await act(async () => done({ok: false}))
+})
+
+test('import and export are one button each; the old separate JSON / EDS buttons are gone', async () => {
+    await mount()
+    await act(async () => {})
+    expect(byId('btn-import')).toHaveTextContent('Importeren')
+    expect(byId('btn-export')).toHaveTextContent('Exporteren')
+    expect(byId('import-input')).toHaveAttribute('accept', '.json,.eds')
+    for (const t of ['JSON ↑', 'JSON ↓', 'EDS ↑', 'EDS ↓']) expect(screen.queryByText(t)).toBeNull()
+})
+test('the import button opens the file picker', async () => {
+    await mount()
+    const click = vi.spyOn(byId('import-input'), 'click')
+    fireEvent.click(byId('btn-import'))
+    expect(click).toHaveBeenCalledTimes(1)
+})
+test('the export dialog offers both file types, json first, and downloads the chosen one', async () => {
+    await mount()
+    await act(async () => {})
+    expect(screen.queryByRole('dialog', {name: 'Exporteren'})).toBeNull()
+    fireEvent.click(byId('btn-export'))
+    screen.getByRole('dialog', {name: 'Exporteren'})
+    expect(byId('export-type-json')).toBeChecked()
+    expect(byId('export-type-eds')).not.toBeChecked()
+    // choosing nothing exports the project file
+    fireEvent.click(byId('export-confirm'))
+    expect(HTMLAnchorElement.prototype.click).toHaveBeenCalledTimes(1)
+    expect(screen.queryByRole('dialog', {name: 'Exporteren'})).toBeNull()
+    const out = JSON.parse(await readBlob(URL.createObjectURL.mock.calls[0][0]))
+    expect(out.een).toHaveLength(1)
+    // .eds: other file, and the message of the export
+    exportAs('eds')
+    expect(HTMLAnchorElement.prototype.click).toHaveBeenCalledTimes(2)
+    await screen.findByText(/EDS geëxporteerd/)
+})
+test('the export dialog closes with the cross, Annuleer, Escape and the export button, without downloading', async () => {
+    await mount()
+    await act(async () => {})
+    const dlg = () => screen.queryByRole('dialog', {name: 'Exporteren'})
+    for (const close of [() => fireEvent.click(byId('export-close')), () => fireEvent.click(byId('export-cancel')), () => fireEvent.keyDown(dlg(), {key: 'Escape'}), () => fireEvent.click(byId('btn-export'))]) {
+        fireEvent.click(byId('btn-export'))
+        expect(dlg()).not.toBeNull()
+        fireEvent.keyDown(dlg(), {key: 'a'})
+        expect(dlg()).not.toBeNull()
+        close()
+        expect(dlg()).toBeNull()
+    }
+    expect(HTMLAnchorElement.prototype.click).not.toHaveBeenCalled()
+})
+test('the export dialog and the Kaderinfo dialog do not stay open together', async () => {
+    await mount()
+    await act(async () => {})
+    fireEvent.click(byId('btn-export'))
+    fireEvent.click(byId('btn-footer'))
+    expect(screen.queryByRole('dialog', {name: 'Exporteren'})).toBeNull()
+    screen.getByRole('dialog', {name: 'Kaderinfo'})
+    fireEvent.click(byId('btn-export'))
+    expect(screen.queryByRole('dialog', {name: 'Kaderinfo'})).toBeNull()
+    screen.getByRole('dialog', {name: 'Exporteren'})
+})
+test('the import picks json or eds from the extension, or from the content when the name says nothing', async () => {
+    await mount()
+    await act(async () => {})
+    importFile('project', JSON.stringify(old)) // no extension: not an EDS header, so json
+    await screen.findAllByText('Oud sc')
+    importFile('schema', enc(EDS())) // no extension: EDS header
+    await screen.findByText(/EDS geïmporteerd: 1 kringen/)
+    importFile('verkeerd.json', enc(EDS())) // the extension wins: not valid json
+    await waitFor(() => expect(window.alert).toHaveBeenCalledWith('Dit is geen geldig projectbestand (.json).'))
+    importFile('verkeerd.eds', JSON.stringify(old)) // the extension wins: not a valid eds
+    await waitFor(() => expect(window.alert).toHaveBeenCalledWith('Dit is geen geldig .eds-bestand.'))
+    importFile(undefined, enc(EDS())) // a file without name
+    await waitFor(() => expect(screen.getAllByText(/EDS geïmporteerd/).length).toBeGreaterThan(0))
+})
+test('importing the same file twice works: the picker is reset after every choice', async () => {
+    await mount()
+    await act(async () => {})
+    const input = byId('import-input')
+    importFile('a.json', JSON.stringify(old))
+    await screen.findAllByText('Oud sc')
+    expect(input.value).toBe('')
+})
+test('the Info tab shows the info page and the other tabs bring the editor back', async () => {
+    await mount()
+    await act(async () => {})
+    expect(byId('info-page')).toBeNull()
+    fireEvent.click(byId('tab-info'))
+    expect(byId('info-page')).not.toBeNull()
+    expect(byId('tab-info')).toHaveClass('on')
+    expect(byId('tab-een')).not.toHaveClass('on')
+    fireEvent.click(byId('tab-comp'))
+    expect(byId('info-page')).toBeNull()
+    expect(byId('tab-info')).not.toHaveClass('on')
+    fireEvent.click(byId('tab-een'))
+    expect(byId('tab-een')).toHaveClass('on')
+    fireEvent.click(byId('tab-sit'))
+    screen.getByText('Selecteer')
 })

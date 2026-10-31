@@ -123,7 +123,9 @@ test('a new component is stored by the backend and then available in the eendraa
     await page.getByLabel('Zoek component').fill('Testlamp')
     await expect(page.locator('.compbtn[id^="comp-"]')).toHaveCount(1)
     // and it travels along in the JSON export
-    const [download] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', {name: 'JSON ↑'}).click()])
+    await page.locator('#btn-export').click()
+    await page.locator('#export-type-json').check()
+    const [download] = await Promise.all([page.waitForEvent('download'), page.locator('#export-confirm').click()])
     const out = JSON.parse(await (await import('node:fs')).promises.readFile(await download.path(), 'utf8'))
     expect(out.custom.map((c) => c.name)).toContain('Testlamp')
 })

@@ -23,6 +23,7 @@ export class FakeBackend {
     failSave = false // PUT /api/projects/:id answers 500
     symbolsDown = false // /api/symbols is not reachable
     gate = null // a promise the first symbol request waits for (to look at the loading state)
+    info = {donateUrl: 'https://www.paypal.com/donate/?hosted_button_id=TEST', contactEmail: 'me@example.be'} // GET /api/info
 
     async install(page) {
         await page.route('**/api/**', (route) => this.handle(route))
@@ -73,6 +74,7 @@ export class FakeBackend {
                 return json(s)
             }
         }
+        if (path === '/api/info') return json(this.info)
         if (path.startsWith('/api/components')) return m === 'GET' ? json([]) : empty()
         return empty(404)
     }

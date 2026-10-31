@@ -8,8 +8,11 @@ import {project, withCircuit} from './data.js'
 const SYM = {add: '＋ blad', rename: '✎', copy: '⧉', left: '◀', right: '▶', del: '🗑'}
 const bar = (page) => page.locator('.tb.ui').filter({has: page.getByRole('button', {name: SYM.add, exact: true})})
 const btn = (page, k) => bar(page).getByRole('button', {name: SYM[k], exact: true})
-// the names of the sheets: all buttons of the bar that are not one of the symbols
-const names = async (page) => (await bar(page).getByRole('button').allTextContents()).map((t) => t.trim()).filter((t) => !Object.values(SYM).includes(t))
+// the names of the sheets: all buttons of the bar that are not one of the symbols or the "Controleer" (check) button
+const names = async (page) =>
+    (await bar(page).getByRole('button').allTextContents())
+        .map((t) => t.trim())
+        .filter((t) => !Object.values(SYM).includes(t) && !t.startsWith('Controleer'))
 
 test.describe('eendraadschema sheets', () => {
     test('a new sheet is empty apart from a default board, becomes the current sheet and is saved', async ({page, app, backend}) => {

@@ -361,6 +361,23 @@ function Editor({library}) {
     return (
         <>
             <div className="bar ui">
+                <Projects
+                    name={p.name}
+                    onName={(name) => setP((cur) => ({...cur, name}))}
+                    pid={pid}
+                    refresh={listKey}
+                    onSave={save}
+                    onSaveAs={saveAs}
+                    onNew={newProject}
+                    onLoad={loadProject}
+                    onDelete={deleteProject}
+                    onImport={() => document.getElementById('import-input').click()}
+                    onExport={() => {
+                        setFooter(null)
+                        setShowExport((v) => !v)
+                    }}
+                />
+                <span className="sep" />
                 {tabs.map((t, i) => (
                     <button key={t} id={'tab-' + tabIds[i]} className={tab === i ? 'on' : ''} onClick={() => setTab(i)}>
                         {t}
@@ -393,22 +410,6 @@ function Editor({library}) {
                 </button>
                 <span style={{flex: 1}}/>
                 {msg}
-                <Projects
-                    name={p.name}
-                    onName={(name) => setP((cur) => ({...cur, name}))}
-                    pid={pid}
-                    refresh={listKey}
-                    onSave={save}
-                    onSaveAs={saveAs}
-                    onNew={newProject}
-                    onLoad={loadProject}
-                    onDelete={deleteProject}
-                    onImport={() => document.getElementById('import-input').click()}
-                    onExport={() => {
-                        setFooter(null)
-                        setShowExport((v) => !v)
-                    }}
-                />
                 <input id="import-input" type="file" accept={IMPORT_ACCEPT} hidden onChange={importFile} />
                 <span className="sep" />
                 <button id="btn-pdf" onClick={() => setJob('pdf')}>PDF</button>

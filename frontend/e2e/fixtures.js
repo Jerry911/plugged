@@ -224,7 +224,10 @@ export class App {
     }
     /** saves with Ctrl+S (works on every tab) and returns the saved project document */
     async save(backend, id = 1) {
+        // wait for the PUT itself: the "Opgeslagen ✓" message stays on screen after a first save, so on a second save it proves nothing
+        const put = this.page.waitForResponse((r) => r.request().method() === 'PUT' && new RegExp('/api/projects/' + id + '(\\?|$)').test(r.url()))
         await this.page.keyboard.press('Control+s')
+        await put
         await expect(this.page.getByText('Opgeslagen ✓')).toBeVisible()
         return backend.saved(id)
     }

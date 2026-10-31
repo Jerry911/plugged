@@ -288,7 +288,6 @@ function Editor({library}) {
                         )}
                     </button>
                 ))}
-                {un > 0 && <span title="Niet geplaatst op situatieschema">⚠ {un}</span>}
                 <span className="sep" />
                 <button id="btn-undo" title="Ongedaan maken (Ctrl+Z)" disabled={!canUndo} onClick={undo}>
                     ↶ Ongedaan

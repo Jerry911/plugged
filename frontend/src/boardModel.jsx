@@ -74,6 +74,10 @@ export const breakerItem = (p, key, x, y, extra = {}) => ({
     breaker: 1,
     ...extra,
 })
+// A differentieel either groups circuits (it has none under it yet, or circuits: they are drawn side by side and the differentieel itself is not
+// drawn) or is a circuit of its own: a breaker with what it feeds under it (sub boards, elements, another differentieel). The main line (a board
+// under it) is not a circuit.
+export const isDiffCircuit = (d) => d.type === 'diff' && d.children.length > 0 && !d.children.some((c) => c.type === 'kring' || c.type === 'bord')
 // The lines next to the breaker of a differentieel, like the differentieel of the aansluiting: 'Δ30mA', '4P - 40A', ('Curve C' of a
 // differentieelautomaat), 'Type A'. A differentieel without these properties (typed in by hand) shows its info instead.
 export const diffSpecs = (pr = {}, info = '') =>
@@ -155,14 +159,15 @@ export const reach = (shapes) => {
 }
 // vertical room of an element in a stack: the symbol, its count (x3), its label and one line per detail
 const own = (n) => (n.label ? 100 : Number(n.p?.aantal) > 1 ? 80 : 66) + detailLines(n.p?.details).length * DET_LINE
-const ext = (n) =>
+// A sub board needs the room of its circuits, which are drawn like the circuits on the bus: measure them (at least 300 for a board with circuits)
+const ext = (p, n) =>
     BOXT.has(n.type)
         ? n.children.length
-            ? 300
+            ? Math.max(300, 30 - node(p, n, 0, 0, []).top)
             : 100
         : Math.max(
             own(n),
-            n.children.reduce((a, c) => a + ext(c), 0),
+            n.children.reduce((a, c) => a + ext(p, c), 0),
         )
 function stack(p, kids, sx, y, out, stub, num) {
     let acc = 0,
@@ -172,7 +177,7 @@ function stack(p, kids, sx, y, out, stub, num) {
         last = y
     kids.forEach((c, i) => {
         const yi = y - acc
-        acc += ext(c)
+        acc += ext(p, c)
         last = yi
         out.push(line(sx, yi, sx + stub, yi))
         if (num) out.push(text(sx + 4, yi - 10, c.p?.nr || String(i + 1), {size: 13}))
@@ -184,38 +189,69 @@ function stack(p, kids, sx, y, out, stub, num) {
     if (last !== y) out.push(line(sx, y, sx, last))
     return {r, top, bot}
 }
+// BW = room of a breaker that lies on the line between two elements (a circuit or differentieel under another one: AC -> breaker -> Veranda board)
+const BW = 64
+// The breaker of a circuit or differentieel under another circuit: the symbol lies on its side on the line (the current flows from left to right),
+// the line stops at the lower contact and carries on after the lever. Name above it, specs and cable under it; then what hangs under it.
+function inline(p, n, x, y, out) {
+    const dif = n.type === 'diff',
+        pr = n.p || {},
+        u = BRK_S / 24,
+        cx = x + BW / 2,
+        px = cx - 2 * u
+    out.push(
+        line(x, y, px, y),
+        {k: 'sym', shapes: typeOf(p, dif ? 'diff' : 'kring').shapes, x: cx, y: y - u, s: BRK_S, breaker: 1, r: 90, id: n.id},
+        line(px + BRK_TIP, y, x + BW, y),
+    )
+    const specs = dif ? diffSpecs(pr, n.info) : pr.amp ? [`${pr.polen || 2}P - ${pr.amp}A`, pr.curve ? `Curve ${pr.curve}` : ''] : [n.info]
+    ;[...specs, pr.kabel].filter(Boolean).forEach((t, i) => out.push(text(cx, y + 24 + 13 * i, t, {anchor: 'middle', id: n.id})))
+    if (n.label) out.push(text(cx, y - 22, n.label, {bold: 1, size: 13, anchor: 'middle', id: n.id}))
+    return stack(p, n.children, x + BW, y, out, STUB, false)
+}
+// a drawn item moved by (dx, dy)
+const shift = (it, dx, dy) =>
+    it.k === 'line' ? {...it, x1: it.x1 + dx, x2: it.x2 + dx, y1: it.y1 + dy, y2: it.y2 + dy} : {...it, x: it.x + dx, y: it.y + dy}
+// A differentieel that is a circuit of its own is drawn like a circuit: its breaker (the diff symbol), name, specs and cable are those of the
+// differentieel, a click on it selects the differentieel, and what hangs under it is drawn above it.
+const diffCircuit = (c) => ({id: c.id, type: 'kring', diff: true, label: c.label || '', info: c.info || '', p: {...c.p, bescherming: 'automatisch'}, children: c.children})
+// the circuits under a bus or a sub board, in drawing order. A sub board (or, in a sub board, any other element) directly under it is drawn as an
+// anonymous circuit without breaker; a differentieel that groups circuits is not drawn itself.
+const circuitsOf = (n, inBoard = false) =>
+    n.children.flatMap((c) =>
+        c.type === 'kring'
+            ? [c]
+            : c.type === 'subbord'
+                ? [{id: c.id + '~', type: 'kring', label: '', info: '', p: {bescherming: 'geen'}, children: [c]}]
+                : isDiffCircuit(c)
+                    ? [diffCircuit(c)]
+                    : ['diff', 'zekering', 'hoofdschakelaar', 'leeg', 'overspanning'].includes(c.type) // an empty element (insert buttons) keeps the circuits under it visible
+                        ? circuitsOf(c, inBoard)
+                        : inBoard
+                            ? [{id: c.id + '~', type: 'kring', label: '', info: '', p: {bescherming: 'geen'}, children: [c]}]
+                            : [],
+    )
 function node(p, n, x, y, out) {
     const t = typeOf(p, n.type),
         pr = n.p || {},
         lab = n.label || ''
-    if (n.type === 'kring') {
-        // a circuit directly under another circuit (ZA under Z) keeps its name, on the line between the two
-        if (n.label) out.push(text(x + STUB / 2, y - 6, n.label, {bold: 1, size: 13, anchor: 'middle', id: n.id}))
-        return stack(p, n.children, x, y, out, STUB, false)
-    }
+    if (n.type === 'kring' || n.type === 'diff') return inline(p, n, x, y, out)
     if (BOXT.has(n.type)) {
-        const title = pr.tekst || lab || t.name,
-            up = y - 26 - BOXUP
+        const title = pr.tekst || lab || t.name
         let cx = x + 14,
             top = y - 26
-        n.children.forEach((c) => {
-            const sx = cx,
-                dif = c.type === 'diff',
-                // the breaker of a differentieel sits above its name; the line stops at the lower contact and carries on above the lever
-                yb = y - 38 - Math.max(tw(c.label), 14) - 14,
-                top0 = dif ? up - 14 : up // its cable text is longer than the room above the breaker: a little more stem
-            if (dif) out.push(line(sx, y - 25, sx, yb), breakerItem(p, 'diff', sx, yb, {id: c.id}), line(sx, yb - BRK_TIP, sx, top0))
-            else out.push(line(sx, y - 25, sx, up))
-            // a differentieel inside a sub board is a circuit of that board too: name, breaker with its specs, cable, then what it feeds
-            const circ = c.type === 'kring' || dif
-            if (circ) {
-                const cols = [...(dif ? diffSpecs(c.p, c.info) : []), c.p?.kabel].filter(Boolean)
-                cols.forEach((t, i) => out.push(text(sx + 13 + 13 * i, y - 38, t, {rot: 1, id: dif ? c.id : undefined})))
-                if (c.label) out.push(text(sx - 5, y - 38, c.label, {rot: 1, bold: 1, size: 13, id: c.id}))
-            }
-            const st = stack(p, circ ? c.children : [c], sx, top0, out, STUB, false)
-            top = Math.min(top, st.top)
-            cx = Math.max(st.r, sx + STUB + SYM) + GAP
+        // The circuits of a sub board are drawn by circuit(), exactly like the circuits on the bus (breaker, specs, plaatsing, in buis, numbers of the
+        // elements, click area and latch zone), and moved so that their stem starts on the top edge of the board.
+        circuitsOf(n, true).forEach((c) => {
+            const l = circuit(p, c),
+                bx = l.items.map(box).filter(Boolean),
+                left = Math.min(...bx.map((b) => b[0]), 0),
+                right = Math.max(l.w, ...bx.map((b) => b[2])),
+                dx = cx - left,
+                dy = y - 25
+            l.items.forEach((it) => out.push(shift(it, dx, dy)))
+            top = Math.min(top, dy + l.minY)
+            cx = dx + right + GAP
         })
         const w = Math.max(100, tw(title) * 1.4 + 30, n.children.length ? cx - x - GAP + 16 : 0)
         out.push(
@@ -364,25 +400,7 @@ export function board(p, pg) {
         return null
     }
     const bus = (root && findBus(root)) || flat(tree).find((n) => n.type === 'bord') || null
-    // A differentieel that feeds a sub board (an imported differential circuit) is drawn as the circuit of that board: its breaker (the diff symbol),
-    // name, specs (info) and cable are those of the differentieel, and a click on it selects the differentieel. Only the first sub board of a
-    // differentieel gets them (the id must be unique); a differentieel with ordinary circuits under it is not drawn itself.
-    const owned = new Set()
-    const circs = (n, d = null) =>
-        n.children.flatMap((c) =>
-            c.type === 'kring'
-                ? [c]
-                : c.type === 'subbord'
-                    ? [
-                        d && !owned.has(d.id) && owned.add(d.id)
-                            ? {id: d.id, type: 'kring', diff: true, label: d.label || '', info: d.info || '', p: {...d.p, bescherming: 'automatisch'}, children: [c]}
-                            : {id: c.id + '~', type: 'kring', label: '', info: '', p: {bescherming: 'geen'}, children: [c]},
-                    ]
-                    : ['diff', 'zekering', 'hoofdschakelaar', 'leeg'].includes(c.type) // an empty element (insert buttons) keeps the circuits under it visible
-                        ? circs(c, c.type === 'diff' ? c : d)
-                        : [],
-        )
-    const cs = bus ? circs(bus) : []
+    const cs = bus ? circuitsOf(bus) : []
     // Circuits are placed left to right. A circuit that is lower than the overhang of earlier circuits on the same sheet
     // (their wide rows sit higher up) slides left underneath that overhang, which saves width (and sometimes a whole sheet).
     // Without such an overhang the spacing is exactly `previous width + SP`. `brk` marks the first circuit of a new sheet.

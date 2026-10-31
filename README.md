@@ -43,7 +43,7 @@ To make a port permanent without environment variables:
 - Docker without Compose: the container listens on `PORT` (8080 by default); either map another host port (`-p 9090:8080`) or change both (`-e PORT=9090 -p 9090:9090`).
 
 ## Data
-The project is saved as one JSON document (id 1) in a file-based H2 database: `backend/data/plugged` when you run from `backend/`, the `plugged-data` volume (`/data`) in Docker. Override the location with `SPRING_DATASOURCE_URL` (e.g. `jdbc:h2:file:/some/dir/plugged`). The symbol library is stored in the same database and shared by all projects. Use **Exporteren** (choose *Projectbestand .json* or *Eendraadschema .eds*) and **Importeren** (accepts `.json` and `.eds`) in the header to export and import files.
+The project is saved as one JSON document (id 1) in a file-based H2 database: `backend/data/plugged` when you run from `backend/`, the `plugged-data` volume (`/data`) in Docker. Override the location with `SPRING_DATASOURCE_URL` (e.g. `jdbc:h2:file:/some/dir/plugged`). The symbol library is stored in the same database and shared by all projects. Use **JSON ↑ / JSON ↓** in the header to export and import a project file.
 
 ## Features
 - **Eendraadschema**: multi-sheet A4 diagram with a bus, kWh meter, main differential and circuits; palette, properties panel and a collapsible tree (*Opbouw*).
@@ -52,7 +52,6 @@ The project is saved as one JSON document (id 1) in a file-based H2 database: `b
 - **Controleer**: verification against guideline AREI limits.
 - **Export**: vector PDF (jsPDF + svg2pdf.js, A4 landscape, all sheets).
 - **Undo/redo** (100 steps), **EDS import and export** with the online eendraadschema tool.
-- **Info** tab (right end of the header): about, how to use, FAQ, contact form and a PayPal donate button (see *Info page* below).
 
 ## Eendraadschema layout and editing
 - The diagram is drawn like the original tool: a horizontal bus with the kWh meter, main differential and earth below it, and circuits placed from left to right. Each circuit gets the width its elements need; a circuit that is lower than the overhang of the previous circuits slides left underneath it to save width and sheets. When a sheet is full the next circuits continue on the next A4 sheet ("vervolg op blad N").
@@ -64,17 +63,8 @@ The project is saved as one JSON document (id 1) in a file-based H2 database: `b
   - Anywhere else above the bus: the nearest circuit counts. Elements that are not drawn themselves (a differentieel) show their place by marking the bus or the circuit in blue.
 - **Eigenschappen** (above *Opbouw*, close with the cross) holds the properties of the selected element. The toolbar there inserts an empty element before / after / as a branch of the selection (its Type dropdown only lists what fits there), moves it earlier / later, one level up / down, duplicates, deletes, and rotates a symbol counter-clockwise / clockwise in steps of 15° (full 360°).
 - **Opbouw** shows the tree; main levels have an arrow that collapses / expands everything below them.
-- **Importeren** in the header (one file picker for `.json` and `.eds`; the extension, or an `EDS` header when there is none, decides) imports a file exported from https://eendraadschema.goethals-jacobs.be/: the circuits, elements and owner/address for the footer. The situatieschema in the file is not imported (existing situatieschema pages and walls are kept and their symbols are cleared). Unknown element types become "Vrij element"; the import message lists them. A differential circuit of the file (protection "differentieel" or "differentieelautomaat") that feeds a board is imported as a *Differentieel* (specs such as `4P 40A 30mA type A` in its info) with the board as an *Onderbord* under it, and is drawn as the circuit of that board.
-- **Exporteren → Eendraadschema (.eds)** exports the eendraadschema (all sheets one after the other) and the owner/address as a `.eds` file that the online tool opens. The situatieschema is not exported. A Differentieel that feeds boards is written back as a differential circuit; meter, main switch and the other differentials are part of the Aansluiting in the EDS format; symbols without an EDS equivalent (own components, fridge, buzzer, ...) are written as a free consumer named after the symbol, and the export message lists them.
-
-## Info page
-The **Info** tab holds the about text, a how-to, an FAQ (`frontend/src/Info.jsx`), a contact form and a PayPal donate button. The server tells the frontend what this installation offers (`GET /api/info`):
-| Setting (`application.properties`) | Env var | Effect |
-|---|---|---|
-| `plugged.donate.paypal-url` | `PLUGGED_PAYPAL_URL` | Link of the donate button (default: the project's PayPal donate page). Empty: the button is shown disabled. |
-| `plugged.contact.email` | `PLUGGED_CONTACT_EMAIL` | Address of the contact form. Empty: the form is hidden. |
-
-The contact form never sends anything from the server: **Open e-mailprogramma** builds a `mailto:` link (subject and body filled in) and hands it to the visitor's own mail program; the address is shown underneath for browsers without one. The backend has no mail dependency and no mail endpoint.
+- **EDS ↓** in the header imports a file exported from https://eendraadschema.goethals-jacobs.be/: the circuits, elements and owner/address for the footer. The situatieschema in the file is not imported (existing situatieschema pages and walls are kept and their symbols are cleared). Unknown element types become "Vrij element"; the import message lists them. A differential circuit of the file (protection "differentieel" or "differentieelautomaat") that feeds a board is imported as a *Differentieel* (specs such as `4P 40A 30mA type A` in its info) with the board as an *Onderbord* under it, and is drawn as the circuit of that board. A circuit or differentieel directly under another one (e.g. a second breaker in front of a sub board) is drawn as a breaker lying on the line, with its name above and its specs under it. Circuits inside a sub board are drawn exactly like the circuits on the bus (breaker, specs, short-circuit value, plaatsing, in buis, numbers of the elements) and are selected the same way, by clicking anywhere on their stem. A Differentieel may hang under a Differentieel, Kring, Overspanningsbeveiliging or Onderbord.
+- **EDS ↑** exports the eendraadschema (all sheets one after the other) and the owner/address as a `.eds` file that the online tool opens. The situatieschema is not exported. A Differentieel that feeds boards is written back as a differential circuit; meter, main switch and the other differentials are part of the Aansluiting in the EDS format; symbols without an EDS equivalent (own components, fridge, buzzer, ...) are written as a free consumer named after the symbol, and the export message lists them.
 
 ## Situatieschema: placing symbols
 - The left list holds the components that can be placed; filter it with the search box. The *Nergens geplaatst* panel right of the drawing lists the eendraadschema elements that are not on the plan yet; collapse it with the `>` button.

@@ -427,11 +427,38 @@ test('a differentieelautomaat names its breaker in the specs', () => {
     const r = edsToProject(DJ({bescherming: 'differentieelautomaat', amperage: '40', aantal_polen: '2', curve_automaat: 'C'}))
     expect(get(r, 'e3')).toMatchObject({type: 'diff', info: '2P C40 30mA type A', p: {polen: 2, amp: 40, curve: 'C', delta: 30, diffType: 'A'}})
 })
-test('a differential circuit with ordinary elements under it, or an unfinished one, stays a Kring', () => {
+test('a differential circuit with elements under it is a Differentieel too; an empty one stays a Kring', () => {
     const j = {data: [row(1, 0, 'Aansluiting'), row(2, 1, 'Bord'), dk(3, 2), row(4, 3, 'Contactdoos'), dk(5, 2, {naam: 'Leeg'})]}
     const r = edsToProject(j)
-    expect(get(r, 'e3')).toMatchObject({type: 'kring', p: {bescherming: 'differentieel', amp: 40}})
-    expect(get(r, 'e5').type).toBe('kring')
+    expect(get(r, 'e3')).toMatchObject({type: 'diff', label: 'ZB', info: '4P 40A 30mA type A'})
+    expect(get(r, 'e4').type).toBe('stopcontact')
+    // an empty differentieel would not be drawn at all
+    expect(get(r, 'e5')).toMatchObject({type: 'kring', p: {bescherming: 'differentieel', amp: 40}})
+})
+test('differentials under a circuit, under a differentieel and a differential in the main line import without hierarchy errors', () => {
+    const j = {
+        data: [
+            row(1, 0, 'Aansluiting'),
+            row(2, 1, 'Bord'),
+            row(3, 2, 'Kring', {naam: 'AC', amperage: '25', aantal_polen: '4'}),
+            dk(4, 3, {naam: ''}),
+            row(5, 4, 'Bord', {naam: 'Veranda'}),
+            dk(6, 5, {naam: 'D2'}),
+            dk(7, 6, {naam: 'D3'}),
+            row(8, 7, 'Contactdoos'),
+            row(9, 6, 'Bord', {naam: 'Sub'}),
+        ],
+    }
+    const r = edsToProject(j)
+    expect(['e4', 'e6', 'e7'].map((id) => get(r, id).type)).toEqual(['diff', 'diff', 'diff'])
+    expect(get(r, 'e5').type).toBe('subbord')
+    expect(get(r, 'e9').type).toBe('subbord')
+    // (other rules, like the earthing, are not the point here)
+    expect(verify({...base(), ...r, custom: []}).filter((i) => i.rule === 'hierarchy').map((i) => i.msg)).toEqual([])
+    // a differential directly under the aansluiting is the main line: the board under it stays the main board
+    const m = edsToProject({data: [row(1, 0, 'Aansluiting'), dk(2, 1), row(3, 2, 'Bord', {naam: 'Hoofd'}), row(4, 3, 'Kring', {naam: 'A'})]})
+    expect(get(m, 'e2').type).toBe('diff')
+    expect(get(m, 'e3').type).toBe('bord')
 })
 test('a Differentieel that feeds boards is exported as a differential circuit and comes back unchanged; other differentials stay in the Aansluiting', () => {
     const imp = importEds(enc(DJ())),
@@ -444,4 +471,23 @@ test('a Differentieel that feeds boards is exported as a differential circuit an
     // a differentieel in the main line (circuits under it) disappears, as before
     const main = [el('a', 'aansluiting', [el('b', 'bord', [el('d', 'diff', [kring('A', [])], {info: '30mA'})])])]
     expect(projectToEds(proj(main)).j.data.map((r) => r.props.type)).toEqual(['Aansluiting', 'Bord', 'Kring'])
+})
+test('export: differentials under a circuit, with elements under them, or in a chain are circuits of the EDS; the main line is not', () => {
+    const d3 = el('d3', 'diff', [el('s', 'stopcontact')], {label: 'D3', p: {polen: 2, amp: 20, delta: 30, diffType: 'A'}})
+    const d2 = el('d2', 'diff', [d3], {label: 'D2', p: {polen: 2, amp: 40, curve: 'C', delta: 30, diffType: 'A'}})
+    const t = [aansl([kring('A', [el('x', 'subbord', [d2])])])]
+    const {j} = projectToEds(proj(t))
+    expect(j.data.map((r) => [r.parent, r.props.type, r.props.naam || ''])).toEqual([
+        [0, 'Aansluiting', ''],
+        [1, 'Bord', ''],
+        [2, 'Kring', 'A'],
+        [3, 'Bord', ''],
+        [4, 'Kring', 'D2'],
+        [5, 'Kring', 'D3'],
+        [6, 'Contactdoos', ''],
+    ])
+    expect(j.data[4].props).toMatchObject({bescherming: 'differentieelautomaat', curve_automaat: 'C', amperage: '40'})
+    expect(j.data[5].props).toMatchObject({bescherming: 'differentieel', amperage: '20'})
+    const back = importEds(exportEds(proj(t)).text)
+    expect(flat(back.een[0].tree).map((n) => n.type)).toEqual(['aansluiting', 'bord', 'kring', 'subbord', 'diff', 'diff', 'stopcontact'])
 })

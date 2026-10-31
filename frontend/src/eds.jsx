@@ -4,7 +4,7 @@
 // Lights (type_lamp, is_wandlamp, type_noodverlichting) and switches (type_schakelaar, heeft_verklikkerlampje) choose their symbol from their options.
 // Only the eendraadschema (circuits, elements) and the owner/address footer are imported; the situatieschema (sitplanjson) is ignored.
 import pako from 'pako'
-import {detailLines, infoOf, plaatsingOf} from './boardModel.jsx'
+import {detailLines, infoOf, isDiffCircuit, plaatsingOf} from './boardModel.jsx'
 import {uid} from './util.jsx'
 
 const MAP = {
@@ -187,22 +187,23 @@ export function edsToProject(j) {
         if (par) par.children.push(n)
         else if (!r.parent) tree.push(n)
     })
-    // A differential circuit of the EDS (a Kring with protection 'differentieel' or 'differentieelautomaat') that only feeds boards is a Differentieel:
-    // name, specs (info) and cable stay, and the boards under it become sub boards. With ordinary elements under it, it stays a Kring.
+    // A differential circuit of the EDS (a Kring with protection 'differentieel' or 'differentieelautomaat', with something under it) is a Differentieel:
+    // name, specs (info and properties) and cable stay, and a board under it becomes a sub board (unless the differential sits in the main line,
+    // directly under the aansluiting, meter or main switch: then the board under it is the main board).
     const props = new Map(rows.map((r) => [by.get(r.id), r.props])),
-        diffs = (n) => {
-            n.children.forEach(diffs)
+        diffs = (n, parent) => {
+            n.children.forEach((c) => diffs(c, n))
             const q = props.get(n)
-            if (n.type !== 'kring' || !['differentieel', 'differentieelautomaat'].includes(n.p.bescherming) || !n.children.length || !n.children.every((c) => c.type === 'bord')) return
+            if (n.type !== 'kring' || !['differentieel', 'differentieelautomaat'].includes(n.p.bescherming) || !n.children.length) return
             const o = n.p,
                 breaker = q.bescherming === 'differentieelautomaat' && o.curve && o.amp ? o.curve + o.amp : o.amp ? o.amp + 'A' : ''
             n.type = 'diff'
             n.info = [o.polen + 'P', breaker, num(q.differentieel_delta_amperage) ? num(q.differentieel_delta_amperage) + 'mA' : '', q.type_differentieel ? 'type ' + q.type_differentieel : ''].filter(Boolean).join(' ')
             // the specs are kept as properties: the diagram writes them on separate lines, like the differentieel of the aansluiting
             n.p = {polen: o.polen, amp: o.amp, curve: q.bescherming === 'differentieelautomaat' ? o.curve : '', delta: num(q.differentieel_delta_amperage), diffType: q.type_differentieel || '', kabel: o.kabel, plaatsing: o.plaatsing, inbuis: o.inbuis, kortsl: o.kortsl, tekst: o.tekst, nr: o.nr}
-            n.children.forEach((c) => (c.type = 'subbord'))
+            if (!['aansluiting', 'teller', 'hoofdschakelaar'].includes(parent?.type)) n.children.forEach((c) => c.type === 'bord' && (c.type = 'subbord'))
         }
-    tree.forEach(diffs)
+    tree.forEach((n) => diffs(n, null))
     const MAIN = ['aansluiting', 'teller', 'hoofdschakelaar', 'diff'],
         fix = (n, anc) => {
             if (n.type === 'bord' && anc.some((a) => !MAIN.includes(a.type))) n.type = 'subbord'
@@ -395,9 +396,10 @@ function propsOf(n, names) {
 // {eigenaar, straat, nr, postcode, gemeente, stelsel} of the footer as the owner/info of the EDS (the lines are separated by <br>)
 const ownerOf = (f = {}) =>
     [f.eigenaar, [f.straat, f.nr].filter(Boolean).join(' '), [f.postcode, f.gemeente].filter(Boolean).join(' ')].filter(Boolean).join('<br>')
-// A differentieel that feeds sub boards (not a main board: that one is in the main line) is a circuit of the EDS (a Kring with protection 'differentieel', or 'differentieelautomaat' when its specs name a
-// breaker curve, e.g. 'C40'); its specs ('2P C40 30mA type A') are read from the info. Any other differentieel is part of the Aansluiting (MERGED).
-const feedsBoards = (n) => n.type === 'diff' && n.children.length > 0 && n.children.every((c) => c.type === 'subbord')
+// A differentieel that is a circuit of its own (isDiffCircuit) is a circuit of the EDS: a Kring with protection 'differentieel', or
+// 'differentieelautomaat' when its specs name a breaker curve, e.g. 'C40'. Its specs come from its properties, else from the info ('2P C40 30mA type A').
+// Any other differentieel (one that groups circuits, or sits in the main line) is part of the Aansluiting (MERGED).
+const feedsBoards = isDiffCircuit
 const diffCircuit = (n) => {
     const i = n.info || '',
         curve = /\b([BCDK])\s*(\d{1,3})\b/i.exec(i),

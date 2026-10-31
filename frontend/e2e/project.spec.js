@@ -33,7 +33,6 @@ test('a saved project is still there after reloading the page', async ({page, ap
 })
 
 test('shows a message when saving fails', async ({page, app, backend}) => {
-    test.skip(!backend.fake, 'needs a backend that can be broken on purpose')
     backend.failSave = true
     await app.open(backend)
     await page.getByRole('button', {name: 'Opslaan'}).click()
@@ -104,7 +103,6 @@ test('JSON export downloads the project with its own components; JSON import loa
 })
 
 test.describe('the backend has no symbols', () => {
-    test.skip(!!process.env.E2E_REAL_BACKEND, 'needs a backend that can be broken on purpose')
     test('shows a message with a retry button until the symbols can be loaded', async ({page, backend}) => {
         backend.symbolsDown = true
         await page.goto('/')

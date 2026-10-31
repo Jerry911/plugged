@@ -1,7 +1,7 @@
 // Copyright 2026 Pleysier Jeroen
 // SPDX-License-Identifier: AGPL-3.0-only
 // Contract of the REST API of the Spring Boot backend. These only make sense against the real application, so they run with
-// E2E_REAL_BACKEND=1 (the other end-to-end tests then run against the same backend through the browser).
+// E2E_REAL_BACKEND=1 or `npm run e2e:all` (the other end-to-end tests then run against the same backend through the browser).
 import {test, expect, REAL} from './fixtures.js'
 import {project} from './data.js'
 

@@ -180,11 +180,15 @@ test('a standard component can be restored; "Maak standaard" makes the edit the 
     await expect(page.getByText('Standaardsymbool', {exact: true})).toBeVisible()
     await expect.poll(async () => (await backend.symbol('oven')).name).toBe('Oven')
     // make the edit the standard
-    test.skip(!backend.fake, 'the real backend overwrites its standard catalog; keep that to the Java tests')
-    await name(page).fill('Oven 3')
-    await page.locator('.cactions').getByRole('button', {name: 'Opslaan', exact: true}).click()
-    await page.getByRole('button', {name: /Maak standaard/}).click()
-    await expect(page.getByText('Standaardsymbool', {exact: true})).toBeVisible()
+    try {
+        await name(page).fill('Oven 3')
+        await page.locator('.cactions').getByRole('button', {name: 'Opslaan', exact: true}).click()
+        await page.getByRole('button', {name: /Maak standaard/}).click()
+        await expect(page.getByText('Standaardsymbool', {exact: true})).toBeVisible()
+    } finally {
+        // the real application remembers the new standard until the end of the run: put the original back so the other tests find "Oven"
+        await backend.resetStandard('oven')
+    }
 })
 
 test('own components can be removed after confirmation; standard ones too, and "Alle standaard herstellen" brings them back', async ({page, app, backend, dialogs}) => {
@@ -213,7 +217,6 @@ test('own components can be removed after confirmation; standard ones too, and "
 })
 
 test('a symbol the backend refuses is reported and the changes are kept', async ({page, app, backend}) => {
-    test.skip(!backend.fake, 'needs a backend that can be broken on purpose')
     await open(page, app, backend)
     await pick(page, 'Oven')
     await name(page).fill('Oven 2')

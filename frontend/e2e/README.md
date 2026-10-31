@@ -8,7 +8,8 @@ sheets, dragging symbols from the palette, downloading PDFs. They complement the
 ```
 npm install
 npm run e2e:install     # once: downloads the Chromium that Playwright uses
-npm run e2e             # starts the Vite dev server itself and runs everything
+npm run e2e             # starts the Vite dev server itself and runs everything against an in-memory fake of the REST API
+npm run e2e:all         # starts the real Spring Boot jar (profile "test") and runs ALL specs against it, api.spec.js included
 npm run e2e:ui          # the same in Playwright's interactive UI
 npx playwright test verify            # only e2e/verify.spec.js
 npx playwright show-report            # the HTML report of the last run
@@ -23,7 +24,7 @@ npx playwright show-report            # the HTML report of the last run
 | `test` | backend tests (surefire) and the frontend unit tests (`npm test`) |
 | `package` | the jar, with the built frontend inside |
 | `pre-integration-test` | `npm run e2e:install` (downloads Chromium once; a no-op when it is already there) |
-| `integration-test` | `npm run e2e`: Playwright starts the jar on port 18080 with an in-memory H2 database and runs every spec, plus `api.spec.js` |
+| `integration-test` | `npm run e2e` with `E2E_REAL_BACKEND=1`: Playwright starts the jar on port 18080 with the `test` profile and runs every spec, plus `api.spec.js` |
 | `verify` / `install` | JaCoCo check, install |
 
 A failing end-to-end test fails the build, so a broken jar is not installed. Reports end up in `frontend/playwright-report`
@@ -39,12 +40,24 @@ A failing end-to-end test fails the build, so a broken jar is not installed. Rep
 ```
 cd ../backend && mvn -DskipTests package       # builds target/plugged-0.1.0.jar with the frontend inside
 cd ../frontend
-E2E_REAL_BACKEND=1 npm run e2e                  # PowerShell: $env:E2E_REAL_BACKEND=1; npm run e2e
+npm run e2e:all                                 # works the same in every shell
 ```
+(`E2E_REAL_BACKEND=1 npm run e2e` does the same; PowerShell: `$env:E2E_REAL_BACKEND=1; npm run e2e`.)
 
-Playwright starts the jar itself on port 18080 (`E2E_PORT`, `E2E_JAR` and `E2E_JAVA` change the port, the jar and the java). The tests delete
-all projects and restore the symbol catalog of the server they talk to, so they never use a server that is already running unless you
-set `E2E_REUSE_SERVER=1`. Tests that need a broken backend (a failing save, an unreachable symbol service) are skipped.
+Playwright starts the jar itself on port 18080 (`E2E_PORT`, `E2E_JAR` and `E2E_JAVA` change the port, the jar and the java), with
+`--spring.profiles.active=test --spring.config.additional-location=optional:file:./e2e/`. That loads **`e2e/application-test.properties`**, which
+overrides the settings inside the jar: an in-memory H2 database and a fixed PayPal link and contact address for the Info page (the tests read
+the same file to know what to expect). Add settings there when a test needs the application configured in a certain way.
+
+The tests delete all projects and restore the symbol catalog of the server they talk to, so they never use a server that is already running
+unless you set `E2E_REUSE_SERVER=1`.
+
+### Nothing is skipped (apart from `api.spec.js` in the fake mode)
+
+Every test runs in both modes. A backend that breaks on purpose (`backend.failSave`, `backend.symbolsDown`, `backend.gate`, `backend.info`) is
+simulated in the real mode by answering those requests of the page in the browser (`page.route`, see `RealBackend` in `fixtures.js`), while the
+requests of the tests themselves still reach the application. The one test that changes the standard of a symbol ("Maak standaard") puts the
+original back afterwards (`backend.resetStandard`), because the application keeps that choice in a hidden row until it stops.
 
 ## Files
 
@@ -58,7 +71,8 @@ set `E2E_REUSE_SERVER=1`. Tests that need a broken backend (a failing save, an u
 | `situatie.spec.js` | walls, rooms, typed lengths, doors, windows, symbols, text, selection, hiding, waterproof, zoom, snapping |
 | `components.spec.js` | the symbol editor, and a new component used in both schemas |
 | `import-export.spec.js` | PDF, printing, `.eds` import |
+| `info.spec.js` | the Info tab (FAQ, donate button, contact form that opens the mail program) and the Importeren / Exporteren buttons |
 | `api.spec.js` | contract of the REST API (real backend only) |
 
-`fixtures.js` has the fake backend, the dialog handling (`alert`/`confirm`/`prompt`) and the helpers for the drawing sheets;
+`mode.js` decides between the fake and the real backend and reads `application-test.properties`; `fixtures.js` has the fake and the real backend, the dialog handling (`alert`/`confirm`/`prompt`) and the helpers for the drawing sheets;
 `data.js` has the project documents the tests start from.

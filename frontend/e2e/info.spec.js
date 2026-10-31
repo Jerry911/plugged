@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // The Info tab (about, how to, faq, contact, donate) and the combined import / export buttons of the top bar.
 import {readFileSync} from 'node:fs'
-import {test, expect} from './fixtures.js'
+import {test, expect, testInfo} from './fixtures.js'
 import {edsFile, project, withCircuit} from './data.js'
 
 test.describe('Info page', () => {
@@ -24,13 +24,11 @@ test.describe('Info page', () => {
         await expect(q).toHaveAttribute('open', '')
     })
     test('the donate button links to the configured PayPal page', async ({page, app, backend}) => {
-        test.skip(!backend.fake, 'the fake backend knows the PayPal url')
         await app.open(backend)
         await page.locator('#tab-info').click()
-        await expect(page.locator('#donate-button')).toHaveAttribute('href', backend.info.donateUrl)
+        await expect(page.locator('#donate-button')).toHaveAttribute('href', testInfo.donateUrl)
     })
     test('the contact form opens the mail program and never sends anything itself', async ({page, app, backend}) => {
-        test.skip(!backend.fake, 'the fake backend knows the contact address')
         const posted = []
         page.on('request', (r) => r.method() === 'POST' && r.url().includes('/api/contact') && posted.push(r.url()))
         await app.open(backend)
@@ -46,13 +44,12 @@ test.describe('Info page', () => {
         })
         await page.locator('#contact-send').click()
         const [href] = await page.evaluate(() => window.__mailto)
-        expect(href).toBe('mailto:me@example.be?subject=Plugged%20-%20Jan&body=Dit%20is%20een%20testbericht%0A%0AJan')
+        expect(href).toBe(`mailto:${testInfo.contactEmail}?subject=Plugged%20-%20Jan&body=Dit%20is%20een%20testbericht%0A%0AJan`)
         await expect(page.locator('#contact-hint')).toContainText('zou nu moeten openen')
-        await expect(page.locator('#contact-address')).toHaveAttribute('href', 'mailto:me@example.be')
+        await expect(page.locator('#contact-address')).toHaveAttribute('href', 'mailto:' + testInfo.contactEmail)
         expect(posted).toEqual([])
     })
     test('without a contact address there is no form', async ({page, app, backend}) => {
-        test.skip(!backend.fake, 'the fake backend can switch the contact address off')
         backend.info = {donateUrl: '', contactEmail: ''}
         await app.open(backend)
         await page.locator('#tab-info').click()

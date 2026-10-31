@@ -7,8 +7,9 @@
 import {readFileSync} from 'node:fs'
 import {fileURLToPath} from 'node:url'
 import {test as base, expect} from '@playwright/test'
+import {REAL, testInfo} from './mode.js'
 
-export const REAL = !!process.env.E2E_REAL_BACKEND
+export {REAL, testInfo}
 // the standard symbols of the backend catalog (generated from StandardSymbols.java), the same ones the unit tests use
 const standard = JSON.parse(readFileSync(fileURLToPath(new URL('../src/test/fixtures/standard-symbols.json', import.meta.url)), 'utf8'))
 const clone = (x) => JSON.parse(JSON.stringify(x))
@@ -23,7 +24,7 @@ export class FakeBackend {
     failSave = false // PUT /api/projects/:id answers 500
     symbolsDown = false // /api/symbols is not reachable
     gate = null // a promise the first symbol request waits for (to look at the loading state)
-    info = {donateUrl: 'https://www.paypal.com/donate/?hosted_button_id=TEST', contactEmail: 'me@example.be'} // GET /api/info
+    info = {...testInfo} // GET /api/info: what the "test" profile of the real application says
 
     async install(page) {
         await page.route('**/api/**', (route) => this.handle(route))
@@ -92,6 +93,7 @@ export class FakeBackend {
     async symbol(k) {
         return this.symbols.find((s) => s.k === k)
     }
+    async resetStandard() {} // the fake has no hidden rows
     async symbolByName(name) {
         return this.symbols.find((s) => s.name === name)
     }
@@ -103,10 +105,34 @@ export class FakeBackend {
 /** The real application: the same operations through its REST API. */
 class RealBackend {
     fake = false
+    // The same switches as the fake has. A backend that breaks on purpose is simulated in the browser: the requests of the page are answered
+    // here instead of by the application (the requests of the tests themselves, through `request`, always reach the real one).
+    failSave = false // PUT /api/projects/:id answers 500
+    symbolsDown = false // /api/symbols answers 503
+    gate = null // a promise every /api/symbols request waits for (to look at the loading state)
+    info = null // GET /api/info answers this instead of the settings of the application
     constructor(request) {
         this.request = request
     }
-    async install() {}
+    async install(page) {
+        await page.route('**/api/**', async (route) => {
+            const req = route.request(),
+                path = new URL(req.url()).pathname
+            if (path === '/api/info' && this.info) return route.fulfill({status: 200, contentType: 'application/json', body: JSON.stringify(this.info)})
+            if (path.startsWith('/api/symbols')) {
+                if (this.gate) await this.gate
+                if (this.symbolsDown) return route.fulfill({status: 503})
+            }
+            if (path.startsWith('/api/projects/') && req.method() === 'PUT' && this.failSave) return route.fulfill({status: 500})
+            return route.continue()
+        })
+    }
+    // "Maak standaard" keeps the chosen standard in a hidden row that the API cannot delete: make the original drawing the standard again
+    async resetStandard(k) {
+        const original = standard.find((s) => s.k === k)
+        expect((await this.request.put('/api/symbols/' + encodeURIComponent(k), {data: original})).ok()).toBeTruthy()
+        expect((await this.request.post('/api/symbols/' + encodeURIComponent(k) + '/standard')).ok()).toBeTruthy()
+    }
     // clean slate: no projects, only the standard symbols
     async init() {
         for (const id of await (await this.request.get('/api/projects')).json()) await this.request.delete('/api/projects/' + id)

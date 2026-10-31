@@ -427,8 +427,315 @@
     pointer-events: all;
 }
 
-/* Project tab: list of the stored projects */
-.plist { border-collapse: collapse; margin: 8px 12px; min-width: 520px; }
-.plist th, .plist td { text-align: left; padding: 4px 10px; border-bottom: 1px solid #ddd; }
-.plist tr.cur td { background: #eef5ff; }
-.plist td:last-child { white-space: nowrap; }
+/* Project menu: a flyout under the "Project" button in the top bar, with a nested flyout for the stored projects */
+.pm {
+    position: relative
+}
+
+.pm > button {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px
+}
+
+.pm-ico {
+    width: 18px;
+    height: 18px;
+    flex: none;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round
+}
+
+.pm > button .pm-ico {
+    width: 14px;
+    height: 14px;
+    transition: transform .15s
+}
+
+.pm > button[aria-expanded="true"] .pm-ico {
+    transform: rotate(180deg)
+}
+
+.pm-menu {
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 0;
+    z-index: 30;
+    width: 280px;
+    max-width: calc(100vw - 16px);
+    padding: 6px;
+    color: #1d2b3f;
+    background: #fff;
+    border: 1px solid #c9d3e0;
+    border-radius: 10px;
+    box-shadow: 0 12px 32px #0003, 0 2px 6px #0002;
+    transform-origin: top left;
+    animation: pm-in .12s ease-out
+}
+
+.pm-menu.end {
+    left: auto;
+    right: 0;
+    transform-origin: top right
+}
+
+/* little arrow pointing at the button */
+.pm-menu::before {
+    content: '';
+    position: absolute;
+    top: -6px;
+    left: 22px;
+    width: 10px;
+    height: 10px;
+    background: #fff;
+    border-top: 1px solid #c9d3e0;
+    border-left: 1px solid #c9d3e0;
+    transform: rotate(45deg)
+}
+
+.pm-menu.end::before {
+    left: auto;
+    right: 22px
+}
+
+@keyframes pm-in {
+    from {
+        opacity: 0;
+        transform: translateY(-4px) scale(.98)
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .pm-menu {
+        animation: none
+    }
+}
+
+.pm-head {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    padding: 6px 6px 10px;
+    margin-bottom: 4px;
+    border-bottom: 1px solid #e3e8ef
+}
+
+.pm-head label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    color: #5b6b82
+}
+
+.pm-head input {
+    padding: 6px 8px;
+    font: inherit;
+    color: inherit;
+    border: 1px solid #b8c4d4;
+    border-radius: 6px
+}
+
+.pm-head input:focus {
+    outline: 2px solid #ffd54a;
+    outline-offset: 0;
+    border-color: #1f3a5f
+}
+
+.pm-head small {
+    color: #5b6b82
+}
+
+.pm-list {
+    list-style: none;
+    margin: 0;
+    padding: 0
+}
+
+.pm-sepline {
+    height: 1px;
+    margin: 4px 6px;
+    background: #e3e8ef
+}
+
+.pm-menu .pm-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 8px 10px;
+    font: inherit;
+    text-align: left;
+    color: inherit;
+    background: transparent;
+    border: 0;
+    border-radius: 6px
+}
+
+.pm-menu .pm-item:hover, .pm-menu .pm-item.active {
+    background: #e8f0fb
+}
+
+.pm-menu .pm-item:focus-visible {
+    outline: 2px solid #1f3a5f;
+    outline-offset: -2px
+}
+
+.pm-item .pm-label {
+    flex: 1
+}
+
+.pm-item kbd {
+    font: inherit;
+    font-size: 12px;
+    color: #6b7a90
+}
+
+.pm-has-sub {
+    position: relative
+}
+
+.pm-has-sub > .pm-item > .pm-ico:last-child {
+    width: 14px;
+    height: 14px;
+    color: #6b7a90
+}
+
+/* the nested flyout with the stored projects */
+.pm-sub {
+    position: absolute;
+    top: -6px;
+    z-index: 1;
+    width: 460px;
+    max-width: calc(100vw - 16px);
+    max-height: 60vh;
+    overflow: auto;
+    padding: 6px;
+    background: #fff;
+    border: 1px solid #c9d3e0;
+    border-radius: 10px;
+    box-shadow: 0 12px 32px #0003, 0 2px 6px #0002;
+    animation: pm-in .12s ease-out
+}
+
+.pm-sub.left {
+    right: calc(100% + 8px)
+}
+
+.pm-sub.right {
+    left: calc(100% + 8px)
+}
+
+/* no room beside the menu (narrow window): the list opens below the "Laden" item */
+.pm-sub.inline {
+    position: static;
+    width: auto;
+    max-height: 40vh;
+    margin: 4px 0 2px;
+    box-shadow: none;
+    background: #f6f8fb;
+    animation: none
+}
+
+/* inline list: every project is a two-line row (name over date) with its buttons on the right */
+.pm-sub.inline .plist, .pm-sub.inline .plist tbody {
+    display: block
+}
+
+.pm-sub.inline .plist thead, .pm-sub.inline .plist td:nth-child(2) {
+    display: none
+}
+
+.pm-sub.inline .plist tr {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    border-bottom: 1px solid #eef1f5
+}
+
+.pm-sub.inline .plist td {
+    border: 0;
+    padding: 4px 8px
+}
+
+.pm-sub.inline .plist .pm-name {
+    grid-column: 1;
+    padding-bottom: 0
+}
+
+.pm-sub.inline .plist .pm-when {
+    grid-column: 1;
+    padding-top: 0
+}
+
+.pm-sub.inline .plist .pm-acts {
+    grid-column: 2;
+    grid-row: 1 / span 2
+}
+
+.pm-note {
+    margin: 0;
+    padding: 8px 10px;
+    color: #44546a
+}
+
+.plist {
+    width: 100%;
+    border-collapse: collapse
+}
+
+.plist th {
+    text-align: left;
+    padding: 4px 8px;
+    font-size: 11px;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    color: #5b6b82;
+    border-bottom: 1px solid #e3e8ef
+}
+
+.plist td {
+    text-align: left;
+    padding: 6px 8px;
+    border-bottom: 1px solid #eef1f5
+}
+
+.plist tbody tr:hover td {
+    background: #f3f7fc
+}
+
+.plist tr.cur td {
+    background: #eef5ff
+}
+
+.plist .pm-name {
+    font-weight: 600;
+    word-break: break-word
+}
+
+.plist .pm-name small {
+    font-weight: 400;
+    color: #5b6b82
+}
+
+.plist .pm-when {
+    white-space: nowrap;
+    font-size: 12px;
+    color: #44546a
+}
+
+.plist .pm-acts {
+    white-space: nowrap;
+    text-align: right
+}
+
+.plist .pm-acts button {
+    margin-left: 4px
+}
+
+.plist .pm-del:hover {
+    background: #fdecea
+}

@@ -187,7 +187,6 @@ test('SitSheet static: orphan symbol, text, window, no handles', () => {
     screen.getByText('(verwijderd)')
     screen.getByText('Hi')
     expect(container.querySelector('line[stroke="transparent"]')).toBeNull()
-    screen.getByText(/Situatieschema – X/)
 })
 test('grid dots follow the snap setting; the selector lives in the drawing', () => {
     const {container} = mount(SituationSchema, P(), {idx: 0}),

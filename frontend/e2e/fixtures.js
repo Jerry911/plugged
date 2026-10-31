@@ -212,7 +212,7 @@ export class App {
     tab(name) {
         return this.page.locator('.bar').getByRole('button', {name, exact: false}).first().click()
     }
-    /** opens the Project tab (Opslaan, Laden, Importeren, Exporteren) */
+    /** opens (or closes again) the Project menu: Opslaan, Laden, Importeren, Exporteren */
     project() {
         return this.page.locator('#tab-project').click()
     }

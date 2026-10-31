@@ -393,9 +393,22 @@ function Editor({library}) {
                 </button>
                 <span style={{flex: 1}}/>
                 {msg}
-                <button id="tab-project" className={tab === 4 ? 'on' : ''} title="Opslaan, laden, importeren en exporteren van projecten" onClick={() => setTab(4)}>
-                    Project
-                </button>
+                <Projects
+                    name={p.name}
+                    onName={(name) => setP((cur) => ({...cur, name}))}
+                    pid={pid}
+                    refresh={listKey}
+                    onSave={save}
+                    onSaveAs={saveAs}
+                    onNew={newProject}
+                    onLoad={loadProject}
+                    onDelete={deleteProject}
+                    onImport={() => document.getElementById('import-input').click()}
+                    onExport={() => {
+                        setFooter(null)
+                        setShowExport((v) => !v)
+                    }}
+                />
                 <input id="import-input" type="file" accept={IMPORT_ACCEPT} hidden onChange={importFile} />
                 <span className="sep" />
                 <button id="btn-pdf" onClick={() => setJob('pdf')}>PDF</button>
@@ -422,24 +435,6 @@ function Editor({library}) {
                     </>
                 )}
                 {tab === 3 && <Info />}
-                {tab === 4 && (
-                    <Projects
-                        name={p.name}
-                        onName={(name) => setP((cur) => ({...cur, name}))}
-                        pid={pid}
-                        refresh={listKey}
-                        onSave={save}
-                        onSaveAs={saveAs}
-                        onNew={newProject}
-                        onLoad={loadProject}
-                        onDelete={deleteProject}
-                        onImport={() => document.getElementById('import-input').click()}
-                        onExport={() => {
-                            setFooter(null)
-                            setShowExport((v) => !v)
-                        }}
-                    />
-                )}
                 {tab === 2 && <Components lib={lib} onSave={saveComp} onRemove={removeComp} onReset={resetComp} onMakeStandard={makeStandard} onRestoreAll={restoreAll} onTemplate={template} />}
             </div>
             {job && (

@@ -191,6 +191,11 @@ export const test = base.extend({
     },
     app: async ({page, backend, dialogs}, use) => {
         void backend, void dialogs
+        // the editor opens as a visitor who has seen the guided tour; tour.spec.js starts as a new visitor (and sets the session flag below)
+        await page.addInitScript(() => {
+            if (!sessionStorage.getItem('e2e-new-visitor') && localStorage.getItem('plugged.tour') === null)
+                localStorage.setItem('plugged.tour', JSON.stringify({v: 99, how: 'e2e'}))
+        })
         await use(new App(page))
     },
 })

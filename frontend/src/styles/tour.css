@@ -1,0 +1,235 @@
+/* Guided tour (Tour.jsx): dimmed page with a highlighted element and a card next to it */
+.tour {
+    position: fixed;
+    inset: 0;
+    z-index: 10000;
+    pointer-events: none;
+    font: 14px/1.45 system-ui, sans-serif
+}
+
+/* in an explaining step the page behind the tour cannot be clicked; in an interactive step it can (the highlight lets everything through) */
+.tour-block {
+    position: fixed;
+    inset: 0;
+    pointer-events: auto
+}
+
+.tour-dim {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 28, 46, .62)
+}
+
+.tour-spot {
+    position: fixed;
+    border-radius: 10px;
+    box-shadow: 0 0 0 200vmax rgba(15, 28, 46, .62);
+    outline: 2px solid #ffd54a;
+    outline-offset: 0;
+    transition: left .25s ease, top .25s ease, width .25s ease, height .25s ease
+}
+
+.tour-spot.live {
+    animation: tour-pulse 1.6s ease-out infinite
+}
+
+@keyframes tour-pulse {
+    0% {
+        outline-color: #ffd54a;
+        outline-offset: 0
+    }
+    70% {
+        outline-color: rgba(255, 213, 74, 0);
+        outline-offset: 10px
+    }
+    100% {
+        outline-color: rgba(255, 213, 74, 0);
+        outline-offset: 10px
+    }
+}
+
+.tour-tip {
+    --ax: 50%;
+    --ay: 50%;
+    position: fixed;
+    box-sizing: border-box;
+    width: 340px;
+    max-width: calc(100vw - 24px);
+    max-height: calc(100vh - 24px);
+    overflow-y: auto;
+    padding: 0 16px 14px;
+    background: #fff;
+    color: #1d2733;
+    border-radius: 14px;
+    box-shadow: 0 12px 40px rgba(15, 28, 46, .35), 0 0 0 1px rgba(15, 28, 46, .08);
+    pointer-events: auto;
+    animation: tour-in .22s ease-out
+}
+
+@keyframes tour-in {
+    from {
+        opacity: 0;
+        transform: translateY(6px) scale(.98)
+    }
+    to {
+        opacity: 1;
+        transform: none
+    }
+}
+
+/* the little arrow that points at the highlighted element */
+.tour-tip::before {
+    content: '';
+    position: absolute;
+    display: none;
+    width: 14px;
+    height: 14px;
+    background: #fff;
+    transform: rotate(45deg)
+}
+
+.tour-tip[data-side="right"]::before {
+    display: block;
+    left: -7px;
+    top: calc(var(--ay) - 7px)
+}
+
+.tour-tip[data-side="left"]::before {
+    display: block;
+    right: -7px;
+    top: calc(var(--ay) - 7px)
+}
+
+.tour-tip[data-side="bottom"]::before {
+    display: block;
+    top: -7px;
+    left: calc(var(--ax) - 7px)
+}
+
+.tour-tip[data-side="top"]::before {
+    display: block;
+    bottom: -7px;
+    left: calc(var(--ax) - 7px)
+}
+
+.tour-bar {
+    height: 4px;
+    margin: 0 -16px 10px;
+    background: #e6ebf2;
+    border-radius: 14px 14px 0 0;
+    overflow: hidden
+}
+
+.tour-bar i {
+    display: block;
+    height: 100%;
+    background: #ffd54a;
+    transition: width .3s ease
+}
+
+.tour-count {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #667;
+    letter-spacing: .02em
+}
+
+.tour-tag {
+    padding: 1px 8px;
+    border-radius: 10px;
+    background: #1f3a5f;
+    color: #fff;
+    font-size: 11px
+}
+
+.tour-tip h3 {
+    margin: 4px 0 6px;
+    color: #1f3a5f;
+    font-size: 17px
+}
+
+.tour-body p {
+    margin: 0 0 8px
+}
+
+.tour-body kbd {
+    padding: 0 5px;
+    border: 1px solid #c4ccd8;
+    border-bottom-width: 2px;
+    border-radius: 4px;
+    background: #f4f6fa;
+    font: 12px ui-monospace, monospace
+}
+
+.tour-hint {
+    margin: 4px 0 8px;
+    padding: 6px 8px;
+    border-radius: 8px;
+    background: #fff3cd;
+    border: 1px solid #e0a800
+}
+
+.tour-ok {
+    margin: 4px 0 8px;
+    padding: 6px 8px;
+    border-radius: 8px;
+    background: #d4edda;
+    font-weight: 600
+}
+
+.tour-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 10px
+}
+
+.tour-btn, .tour-ghost {
+    padding: 6px 12px;
+    border-radius: 8px;
+    font: inherit;
+    cursor: pointer
+}
+
+.tour-btn {
+    border: 1px solid #b9c3d3;
+    background: #fff;
+    color: #1f3a5f
+}
+
+.tour-btn.primary {
+    border-color: #1f3a5f;
+    background: #1f3a5f;
+    color: #fff;
+    font-weight: 600
+}
+
+.tour-btn:focus-visible, .tour-ghost:focus-visible {
+    outline: 3px solid #ffd54a;
+    outline-offset: 2px
+}
+
+.tour-ghost {
+    border: 0;
+    background: none;
+    color: #667
+}
+
+.tour-ghost:hover {
+    text-decoration: underline
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .tour-spot, .tour-spot.live, .tour-tip, .tour-bar i {
+        animation: none;
+        transition: none
+    }
+}
+
+/* the tour is for the screen only */
+@media print {
+    .tour {
+        display: none
+    }
+}

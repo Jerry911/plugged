@@ -17,6 +17,8 @@ import {verify} from './rules.jsx'
 import {AllSheets, makePdf} from './Export'
 import {migrateWaterproof, reid, uid, unplacedOf} from './util.jsx'
 import {setLibrary} from './symbols'
+import Tour, {markTourSeen, tourSeen} from './Tour.jsx'
+import {TOUR_STEPS} from './tourSteps.jsx'
 
 const init = {
     footer: {datum: new Date().toISOString().slice(0, 10), schaal: '1:50', rev: 'A'},
@@ -24,6 +26,9 @@ const init = {
     sit: [{id: 's1', name: 'Plattegrond 1', walls: [], items: []}],
     custom: [],
 }
+const treeNodes = (t) => (t || []).flatMap((n) => [n, ...treeNodes(n.children)])
+const isEmpty = (d) =>
+    !d.een.some((g) => treeNodes(g.tree).some((n) => n.type === 'kring')) && !d.sit.some((g) => g.walls.length || g.items.length)
 const norm = (d) => migrateWaterproof(normRaw(d))
 const normRaw = (d) =>
     d.een
@@ -65,7 +70,7 @@ const PageBar = ({p, setP, k, idx, setIdx, verify}) => {
         setIdx(idx + 1)
     }
     return (
-        <div className="tb ui" style={{padding: '6px 10px', display: 'flex', gap: 4, flexWrap: 'wrap'}}>
+        <div className="tb ui" data-tour="pagebar" style={{padding: '6px 10px', display: 'flex', gap: 4, flexWrap: 'wrap'}}>
             {L.map((g, i) => (
                 <button key={g.id} className={i === idx ? 'on' : ''} onClick={() => setIdx(i)}>
                     {g.name}
@@ -139,6 +144,8 @@ function Editor({library}) {
         [showV, setShowV] = useState(false),
         [showExport, setShowExport] = useState(false),
         [focus, setFocus] = useState(null),
+        [tour, setTour] = useState(false),
+        [tourOk, setTourOk] = useState(false), // the project has been fetched and the tour may draw in it
         ref = useRef()
     const {lib, save: saveComp, remove: removeComp, reset: resetComp, makeStandard, restoreAll, template} = library
     setLibrary(lib)
@@ -177,10 +184,24 @@ function Editor({library}) {
                     snap.current = JSON.stringify(n)
                     setEi(0)
                     setSi(0)
-                }
+                    // a new browser that finds real work on the server is not a beginner: the tour does not draw in it by itself
+                    setTourOk(isEmpty(n))
+                } else setTourOk(true)
             })
-            .catch(() => {})
+            .catch(() => setTourOk(true))
     }, [])
+    // first visit: the browser has not seen the tour yet (see Tour.jsx) and the project is fetched, so the tour does not jump around
+    useEffect(() => {
+        if (tourOk && !tourSeen()) setTour(true)
+    }, [tourOk])
+    const closeTour = (how) => {
+        markTourSeen(how)
+        setTour(false)
+    }
+    // started from Info: the tour draws in the open project, so ask first when there is work in it
+    const startTour = () => {
+        if (isEmpty(p) || window.confirm('De rondleiding tekent mee in je huidige project (een kring, muren en een deur). Toch starten? Je kan daarna een nieuw project beginnen.')) setTour(true)
+    }
     useEffect(() => {
         if (!job) return
         const currentJob = job
@@ -435,9 +456,10 @@ function Editor({library}) {
                         <SituationSchema key={p.sit[s].id} p={p} setP={setP} idx={s} onFooter={openFooter} />
                     </>
                 )}
-                {tab === 3 && <Info />}
+                {tab === 3 && <Info onTour={startTour} />}
                 {tab === 2 && <Components lib={lib} onSave={saveComp} onRemove={removeComp} onReset={resetComp} onMakeStandard={makeStandard} onRestoreAll={restoreAll} onTemplate={template} />}
             </div>
+            {tour && <Tour steps={TOUR_STEPS} ctx={{p, tab, setTab, onNew: newProject}} onClose={closeTour} />}
             {job && (
                 <div ref={ref}>
                     <AllSheets p={p} />

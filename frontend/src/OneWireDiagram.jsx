@@ -487,7 +487,7 @@ export default function OneWireDiagram({p, setP, idx, focus, onFocused, onFooter
         }, [])
     return (
         <div className="row">
-            <div className="side ui pal sticky-side">
+            <div className="side ui pal sticky-side" data-tour="eds-palette">
                 <input
                     placeholder="Zoek element…"
                     value={q}
@@ -508,6 +508,7 @@ export default function OneWireDiagram({p, setP, idx, focus, onFocused, onFooter
                                 {Ls.map((t) => (
                                     <button
                                         key={t.k}
+                                        data-tour={'pal-' + t.k}
                                         draggable
                                         title="Klik om toe te voegen, of sleep het naar het schema"
                                         onClick={() => add(t)}
@@ -531,7 +532,7 @@ export default function OneWireDiagram({p, setP, idx, focus, onFocused, onFooter
                     )
                 })}
                 {s && (
-                    <div className="warn">
+                    <div className="warn" data-tour="eds-props">
                         <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
                             <b>Eigenschappen</b>
                             <button

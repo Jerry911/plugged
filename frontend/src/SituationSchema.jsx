@@ -645,6 +645,7 @@ export default function SituationSchema({p, setP, idx, onFooter}) {
     const Tool = ({k, l}) => (
         <button
             className={tool === k ? 'on' : ''}
+            data-tour={'tool-' + k}
             onClick={() => {
                 setTool(k)
                 reset()
@@ -820,7 +821,7 @@ export default function SituationSchema({p, setP, idx, onFooter}) {
                         </div>
                     </div>
                 )}
-                <div className="pal">
+                <div className="pal" data-tour="comp-palette">
                     <b>
                         Componenten ({placed} op dit blad)
                     </b>
@@ -886,11 +887,12 @@ export default function SituationSchema({p, setP, idx, onFooter}) {
                         </button>
                     </div>
                     {pend && (tool === 'wall' || tool === 'room') && (
-                        <div className="ui dimbox">
+                        <div className="ui dimbox" data-tour="dimbox">
                             <label>
                                 {tool === 'room' ? 'Breedte x hoogte' : 'Lengte'}{' '}
                                 <input
                                     ref={dimRef}
+                                    data-tour="dim-input"
                                     className={dimText && !dimValid ? 'bad' : ''}
                                     title={dimErr}
                                     value={dimText}
@@ -912,7 +914,15 @@ export default function SituationSchema({p, setP, idx, onFooter}) {
                             </label>{' '}
                             <button onClick={commitDim}>OK</button>
                             {bigger && (
-                                <button onClick={() => setP({...p, footer: {...p.footer, schaal: '1:' + bigger}})}>Schaal 1:{bigger}</button>
+                                <button
+                                    data-tour="dim-scale"
+                                    onClick={() => {
+                                        setP({...p, footer: {...p.footer, schaal: '1:' + bigger}})
+                                        dimRef.current?.focus() // the button disappears: Enter has to keep working in the length box
+                                    }}
+                                >
+                                    Schaal 1:{bigger}
+                                </button>
                             )}
                             <div>
                                 {dimErr ? <span className="dimerr"> {dimErr}</span> : <span className="dimhint"> ←↑↓→ richting</span>}
@@ -936,7 +946,7 @@ export default function SituationSchema({p, setP, idx, onFooter}) {
                     </div>
                 </div>
             </div>
-            <div className={'rightpanel ui' + (panelOpen ? '' : ' closed')}>
+            <div className={'rightpanel ui' + (panelOpen ? '' : ' closed')} data-tour="unplaced">
                 <button
                     className="paneltoggle"
                     aria-label={panelOpen ? 'Nergens geplaatst inklappen' : 'Nergens geplaatst openen'}

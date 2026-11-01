@@ -27,6 +27,19 @@ describe('Info page', () => {
         expect(byId('donate-button').getAttribute('rel')).toContain('noopener')
         await screen.findByLabelText('Naam')
     })
+    test('the tour button at the top starts the tour whenever the person wants, and is absent when there is no tour', () => {
+        api(null)
+        const start = vi.fn()
+        const {unmount} = render(<Info onTour={start} />)
+        fireEvent.click(byId('btn-tour'))
+        fireEvent.click(byId('btn-tour'))
+        expect(start).toHaveBeenCalledTimes(2)
+        // it is the first thing on the page, above the navigation
+        expect(byId('btn-tour').compareDocumentPosition(document.querySelector('.infonav')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+        unmount()
+        render(<Info />)
+        expect(byId('btn-tour')).toBeNull()
+    })
     test('the navigation scrolls to a section (and copes with a browser without scrollIntoView)', () => {
         api(null)
         render(<Info />)

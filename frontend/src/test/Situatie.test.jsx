@@ -708,6 +708,8 @@ test('a length that does not fit offers a larger scale that makes it fit', () =>
     expect(container.querySelector('.dimerr').textContent).toMatch(/1:50/)
     fireEvent.click(screen.getByText('Schaal 1:200'))
     expect(spy.p.footer.schaal).toBe('1:200')
+    // the button disappears: the length box gets the keyboard back, so Enter can place the wall right away
+    expect(document.activeElement).toBe(input)
 })
 test('arrow keys in the length input choose the direction', () => {
     const {container, spy} = mount(SituationSchema, P(), {idx: 0})

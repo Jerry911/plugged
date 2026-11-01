@@ -116,7 +116,7 @@ export const ContactForm = ({to}) => {
 }
 
 // The server tells what this installation offers: a PayPal link (plugged.donate.paypal-url) and the address of the contact form (plugged.contact.email)
-export default function Info() {
+export default function Info({onTour}) {
     const [info, setInfo] = useState({donateUrl: '', contactEmail: ''})
     useEffect(() => {
         fetch('/api/info')
@@ -127,6 +127,14 @@ export default function Info() {
     return (
         <div id="info-page" className="infopage">
             <h1>Plugged</h1>
+            {onTour && (
+                <p className="tourcta">
+                    <button id="btn-tour" className="accent" onClick={onTour}>
+                        ▶ Rondleiding starten
+                    </button>
+                    <span>Nieuw hier? In een paar minuten teken je een eerste kring, enkele muren en een deur. Je kan de rondleiding altijd opnieuw starten.</span>
+                </p>
+            )}
             <nav className="infonav" aria-label="Info">
                 {SECTIONS.map(([id, t]) => (
                     <button key={id} id={'nav-' + id} onClick={() => goto(id)}>

@@ -6,6 +6,8 @@ import {setLibrary} from '../symbols'
 // The symbols come from the backend. The tests use the standard symbols of the backend catalog (generated from StandardSymbols.java,
 // see StandardSymbolsJson in the backend tests) as the active library.
 setLibrary(standard)
+// Visitors that have seen the guided tour: the tests of the editor are not interrupted by it (the tour tests call forgetTour)
+beforeEach(() => localStorage.setItem('plugged.tour', JSON.stringify({v: 99, how: 'test'})))
 // jsdom lacks SVG geometry + PointerEvent: minimal polyfills so clientX/clientY map 1:1 to SVG user units.
 const P = window.SVGSVGElement.prototype
 P.createSVGPoint = function () {

@@ -23,6 +23,7 @@ export const FooterForm = ({p, setP, focus}) => (
                 <label>{l}</label>
                 <input
                     autoFocus={focus === k}
+                data-tour={'footer-' + k}
                     value={p.footer[k] || ''}
                     onChange={(e) => setP({...p, footer: {...p.footer, [k]: e.target.value}})}
                 />

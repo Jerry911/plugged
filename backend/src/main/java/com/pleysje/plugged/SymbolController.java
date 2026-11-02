@@ -3,6 +3,8 @@
 package com.pleysje.plugged;
 
 import java.util.List;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -26,6 +28,8 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/symbols")
 public class SymbolController {
+    private static final Logger log = LoggerFactory.getLogger(SymbolController.class);
+
     private final SymbolService service;
 
     public SymbolController(SymbolService service) {
@@ -34,42 +38,62 @@ public class SymbolController {
 
     @GetMapping
     public List<SymbolDto> list() {
-        return service.list();
+        return ApiLog.run(log, "GET /api/symbols", "", service::list);
     }
 
     @GetMapping("/template")
     public SymbolDto template() {
-        return service.template();
+        return ApiLog.run(log, "GET /api/symbols/template", "", service::template);
     }
 
     @GetMapping("/{k}")
     public SymbolDto get(@PathVariable String k) {
-        return service.get(k);
+        return ApiLog.run(log, "GET /api/symbols/{k}", "k=" + k, () -> service.get(k));
     }
 
     @PutMapping("/{k}")
     public SymbolDto put(@PathVariable String k, @RequestBody SymbolDto symbol) {
-        return service.save(k, symbol);
+        return ApiLog.run(log, "PUT /api/symbols/{k}", "k=" + k + ", " + (symbol == null ? "no body" : "name=\"" + symbol.name() + "\", cat=" + symbol.cat()
+                + ", " + (symbol.shapes() == null ? 0 : symbol.shapes().size()) + " shapes, " + (symbol.parents() == null ? 0 : symbol.parents().size()) + " parents"), () -> {
+            SymbolDto saved = service.save(k, symbol);
+            log.info("Saved symbol {} (modified={})", saved.k(), saved.modified());
+            return saved;
+        });
     }
 
     @DeleteMapping("/{k}")
     public ResponseEntity<Void> delete(@PathVariable String k) {
-        service.delete(k);
-        return ResponseEntity.noContent().build();
+        return ApiLog.run(log, "DELETE /api/symbols/{k}", "k=" + k, () -> {
+            service.delete(k);
+            log.info("Deleted symbol {}", k);
+            return ResponseEntity.noContent().<Void>build();
+        });
     }
 
     @PostMapping("/restore")
     public List<SymbolDto> restoreAll() {
-        return service.restoreAll();
+        return ApiLog.run(log, "POST /api/symbols/restore", "", () -> {
+            List<SymbolDto> all = service.restoreAll();
+            log.info("Restored all standard symbols ({} symbols in the catalog)", all.size());
+            return all;
+        });
     }
 
     @PostMapping("/{k}/standard")
     public SymbolDto makeStandard(@PathVariable String k) {
-        return service.makeStandard(k);
+        return ApiLog.run(log, "POST /api/symbols/{k}/standard", "k=" + k, () -> {
+            SymbolDto d = service.makeStandard(k);
+            log.info("Current drawing of symbol {} is now its standard", k);
+            return d;
+        });
     }
 
     @PostMapping("/{k}/restore")
     public SymbolDto restore(@PathVariable String k) {
-        return service.restore(k);
+        return ApiLog.run(log, "POST /api/symbols/{k}/restore", "k=" + k, () -> {
+            SymbolDto d = service.restore(k);
+            log.info("Restored symbol {} to its standard drawing", k);
+            return d;
+        });
     }
 }

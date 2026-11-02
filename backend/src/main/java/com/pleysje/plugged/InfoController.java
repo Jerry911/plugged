@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 package com.pleysje.plugged;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -14,6 +16,8 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/info")
 public class InfoController {
+    private static final Logger log = LoggerFactory.getLogger(InfoController.class);
+
     public record Info(String donateUrl, String contactEmail) {
     }
 
@@ -22,10 +26,13 @@ public class InfoController {
     public InfoController(@Value("${plugged.donate.paypal-url:}") String donateUrl,
                           @Value("${plugged.contact.email:}") String contactEmail) {
         this.info = new Info(donateUrl.trim(), contactEmail.trim());
+        // the address itself is not logged, only whether the contact form is on
+        log.info("Info page configured: donate button {}, contact form {}", info.donateUrl().isEmpty() ? "disabled" : "enabled (" + info.donateUrl() + ")",
+                info.contactEmail().isEmpty() ? "hidden" : "enabled");
     }
 
     @GetMapping
     public Info info() {
-        return info;
+        return ApiLog.run(log, "GET /api/info", "", () -> info);
     }
 }

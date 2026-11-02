@@ -5,6 +5,7 @@ target/
 data/
 .env
 *.log
+/backend/logs/
 /frontend/node/
 /backend/src/main/resources/static/
 /frontend/.env.local

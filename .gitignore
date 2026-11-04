@@ -10,3 +10,4 @@ data/
 /backend/src/main/resources/static/
 /frontend/.env.local
 /backend/config/
+/backend/src/main/resources/application-dev.properties

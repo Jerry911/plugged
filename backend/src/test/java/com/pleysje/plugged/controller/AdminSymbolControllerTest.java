@@ -133,4 +133,66 @@ class AdminSymbolControllerTest {
         assertTrue(symbols.findById("lichtpunt").orElseThrow().sameDefinition(SymbolMapper.toEntity(StandardSymbols.find("lichtpunt"))));
         assertEquals("Mijn motor", symbols.findById("motor").orElseThrow().getName());
     }
+
+    /** The log lines of SymbolService while `seed` runs. */
+    private List<String> seedLog() {
+        List<String> lines = new java.util.concurrent.CopyOnWriteArrayList<>();
+        ch.qos.logback.core.AppenderBase<ch.qos.logback.classic.spi.ILoggingEvent> appender = new ch.qos.logback.core.AppenderBase<>() {
+            @Override
+            protected void append(ch.qos.logback.classic.spi.ILoggingEvent event) {
+                lines.add(event.getFormattedMessage());
+            }
+        };
+        appender.start();
+        ch.qos.logback.classic.Logger logger = (ch.qos.logback.classic.Logger) org.slf4j.LoggerFactory.getLogger(SymbolService.class);
+        logger.addAppender(appender);
+        try {
+            service.seed();
+        } finally {
+            logger.detachAppender(appender);
+        }
+        return lines;
+    }
+
+    @Test
+    void theStartSaysWhatHappenedToEveryStandardSymbol() throws Exception {
+        // nothing to do
+        assertEquals(List.of("Standard symbols: catalog catalog/standard-symbols.json has " + StandardSymbols.all().size()
+                + " symbols; 0 added, 0 updated to the catalog, 0 removed (no longer in the catalog)"), seedLog());
+        // an edited one, one with its own standard, a deleted one, one that left the catalog, one that is missing
+        draw("motor", "Mijn motor", NEW_LAMP);
+        draw("lichtpunt", "Lamp", NEW_LAMP);
+        mvc.perform(post("/api/symbols/lichtpunt/standard").with(as(user))).andExpect(status().isOk());
+        mvc.perform(delete("/api/symbols/tv").with(as(user))).andExpect(status().isNoContent());
+        SymbolEntity gone = SymbolMapper.toEntity(new SymbolDto("weg", "Weg", "Overig", List.of(), true, List.of(Map.of("t", "rect", "x", 2.0, "y", 2.0, "w", 10.0, "h", 8.0)),
+                null, StandardSymbols.VERSION, true, false, false));
+        gone.setBuiltin(true);
+        symbols.save(gone);
+        symbols.deleteById("teller");
+        List<String> lines = seedLog();
+        assertTrue(lines.get(0).endsWith("1 added, 0 updated to the catalog, 1 removed (no longer in the catalog)"), lines.get(0));
+        assertTrue(lines.contains("    removed: [weg]"), lines.toString());
+        assertTrue(lines.stream().anyMatch(line -> line.startsWith("    kept, because a user edited them") && line.endsWith("[motor]")), lines.toString());
+        assertTrue(lines.stream().anyMatch(line -> line.startsWith("    this installation keeps its own standard") && line.endsWith("[lichtpunt]")), lines.toString());
+        assertTrue(lines.contains("    deleted by a user, not put back: [tv]"), lines.toString());
+        assertEquals("Lamp", symbols.findById("lichtpunt").orElseThrow().getName());
+    }
+
+    @Test
+    void theStartUpdatesAnOutdatedVersion() {
+        SymbolEntity stored = symbols.findById("motor").orElseThrow();
+        stored.setStandardVersion(StandardSymbols.VERSION - 1);
+        symbols.save(stored);
+        assertTrue(seedLog().contains("    updated to the catalog: [motor]"));
+    }
+
+    @Test
+    void theDatabaseIsDescribedSoYouKnowWhichFileItIs() {
+        String expected = java.nio.file.Path.of("data/plugged").toAbsolutePath().normalize() + ".mv.db";
+        assertEquals("H2 file " + expected, com.pleysje.plugged.config.DatabaseLocationLogger.describe("jdbc:h2:file:./data/plugged;MODE=LEGACY"));
+        assertEquals("jdbc:h2:mem:test", com.pleysje.plugged.config.DatabaseLocationLogger.describe("jdbc:h2:mem:test;DB_CLOSE_DELAY=-1"));
+        assertEquals("(not configured)", com.pleysje.plugged.config.DatabaseLocationLogger.describe(""));
+        assertEquals("(not configured)", com.pleysje.plugged.config.DatabaseLocationLogger.describe(null));
+        new com.pleysje.plugged.config.DatabaseLocationLogger("jdbc:h2:mem:x").logLocation();
+    }
 }

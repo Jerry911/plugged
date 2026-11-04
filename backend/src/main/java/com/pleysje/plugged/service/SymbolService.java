@@ -3,6 +3,8 @@
 package com.pleysje.plugged.service;
 
 import com.pleysje.plugged.catalog.StandardSymbols;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import com.pleysje.plugged.catalog.SymbolShapes;
 import com.pleysje.plugged.dto.SymbolDto;
 import com.pleysje.plugged.entity.SymbolEntity;
@@ -26,6 +28,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @Transactional
 public class SymbolService {
+    private static final Logger log = LoggerFactory.getLogger(SymbolService.class);
     /** keys that are part of the URLs of the API */
     public static final List<String> RESERVED_KEYS = List.of("template", "restore");
     /** prefix of the hidden rows that hold the standard a user chose with {@link #makeStandard}; they never show up in the catalog */
@@ -48,19 +51,48 @@ public class SymbolService {
      * are replaced, and unedited ones that are no longer in the catalog are removed. A standard symbol the user deleted stays away until it is restored.
      */
     public void seed() {
+        List<String> added = new java.util.ArrayList<>(), updated = new java.util.ArrayList<>(), keptEdited = new java.util.ArrayList<>(),
+                keptOwnStandard = new java.util.ArrayList<>(), deleted = new java.util.ArrayList<>(), removed = new java.util.ArrayList<>();
         for (SymbolDto standard : StandardSymbols.all()) {
-            if (repository.existsById(DELETED_MARKER_PREFIX + standard.key())) continue;
-            SymbolEntity stored = repository.findById(standard.key()).orElse(null);
-            SymbolDto current = standardOf(standard.key());
-            // an unedited copy follows its standard: a new VERSION, or a drawing that changed (in the code or in the released drawings)
-            boolean outdated = stored != null && stored.isBuiltin() && !stored.isModified()
-                    && (stored.getStandardVersion() < StandardSymbols.VERSION || !stored.sameDefinition(SymbolMapper.toEntity(current)));
-            if (stored == null || outdated) repository.save(asStandard(current));
+            String key = standard.key();
+            if (repository.existsById(DELETED_MARKER_PREFIX + key)) {
+                deleted.add(key);
+                continue;
+            }
+            SymbolEntity stored = repository.findById(key).orElse(null);
+            SymbolDto current = standardOf(key);
+            boolean ownStandard = repository.existsById(CHOSEN_STANDARD_PREFIX + key)
+                    && !SymbolMapper.toEntity(current).sameDefinition(SymbolMapper.toEntity(standard));
+            if (ownStandard) keptOwnStandard.add(key);
+            if (stored == null) {
+                repository.save(asStandard(current));
+                added.add(key);
+                continue;
+            }
+            boolean differs = stored.getStandardVersion() < StandardSymbols.VERSION || !stored.sameDefinition(SymbolMapper.toEntity(current));
+            if (!differs) continue;
+            // an unedited copy follows its standard; a copy a user edited stays as it is
+            if (stored.isBuiltin() && !stored.isModified()) {
+                repository.save(asStandard(current));
+                updated.add(key);
+            } else keptEdited.add(key);
         }
         // a standard symbol that left the catalog (e.g. the waterproof socket, now a property of the socket) disappears too, unless the user changed it
         for (SymbolEntity entity : repository.findAll()) {
-            if (!isHidden(entity.getKey()) && entity.isBuiltin() && !entity.isModified() && StandardSymbols.find(entity.getKey()) == null) repository.delete(entity);
+            if (!isHidden(entity.getKey()) && entity.isBuiltin() && !entity.isModified() && StandardSymbols.find(entity.getKey()) == null) {
+                repository.delete(entity);
+                removed.add(entity.getKey());
+            }
         }
+        log.info("Standard symbols: catalog {} has {} symbols; {} added, {} updated to the catalog, {} removed (no longer in the catalog)",
+                StandardSymbols.CATALOG, StandardSymbols.all().size(), added.size(), updated.size(), removed.size());
+        if (!updated.isEmpty()) log.info("    updated to the catalog: {}", updated);
+        if (!removed.isEmpty()) log.info("    removed: {}", removed);
+        if (!keptEdited.isEmpty())
+            log.info("    kept, because a user edited them (\"Standaard herstellen\" in Componenten gives them the catalog drawing): {}", keptEdited);
+        if (!keptOwnStandard.isEmpty())
+            log.info("    this installation keeps its own standard (chosen with \"Maak standaard\"), not the catalog drawing: {}", keptOwnStandard);
+        if (!deleted.isEmpty()) log.info("    deleted by a user, not put back: {}", deleted);
     }
 
     @Transactional(readOnly = true)

@@ -108,11 +108,12 @@ Everything under `/api/` needs a signed-in user (401 otherwise), except `/api/au
 
 ## Components (symbol library)
 - The **Components** tab has a menu with all components on the left and the selected component on the right: name, category, where it may hang, placeable on the situatieschema, and a 24x24 drawing canvas (line, circle, rectangle, half circle, text) with a **Raster** dropdown (0.5 / 1 / 2 / 4) that sets the grid and the snapping. The connection point of a symbol is the red centre line (y = 12).
-- The symbols live in the backend. The standard symbols are defined in `backend/.../StandardSymbols.java` and stored in the H2 database (tables `symbols`, `symbol_parents`, `symbol_shapes`; REST `/api/symbols`). They are seeded on first start; when `StandardSymbols.VERSION` goes up, stored standard symbols that were not edited are replaced by the new drawing, edited ones are kept. Standard symbols can be edited and restored ("Standaard herstellen" per symbol, "Alle standaard herstellen" for all of them; they cannot be deleted); own symbols can be duplicated and deleted. The library is shared by all projects; own symbols are also written into the exported project JSON (`custom`).
-- Orientation: the eendraadschema chains the symbols along a horizontal line, so every symbol is drawn with its supply entering from the left on `y = 12`. Where the PDF draws a symbol with a vertical supply (sockets) it is drawn rotated: the supply meets the apex of the arch. Most symbols (sockets, switches, lamps, appliances, energy) are drawn like those of the online eendraadschema and generated from its `SVGSymbols.ts` (`UpstreamSymbols.java`, see `tools/upstream-symbols/`); the shapes therefore also include `path` (SVG path data), a relative line weight `sw`, white fill (`f: 2`) and bold text (`b`). Symbols that the eendraadschema does not have keep their own drawing. Breakers and the earthing symbol are vertical symbols. A socket can still be drawn vertically (hanging) per element with the "Horizontaal" checkbox.
+- The symbols live in the backend, in the H2 database (tables `symbols`, `symbol_parents`, `symbol_shapes`; REST `/api/symbols`). The standard symbols that ship with the application are the **catalog file** `backend/src/main/resources/catalog/standard-symbols.json` (read by `StandardSymbols.java`). On every start, before the web server answers (`SymbolSeeder`), a new installation gets them, and an existing one replaces its stored standard symbols that nobody edited when their drawing differs from the catalog; edited ones are kept. Standard symbols can be edited and restored ("Standaard herstellen" per symbol, "Alle standaard herstellen" for all of them; they cannot be deleted); own symbols can be duplicated and deleted. The library is shared by all projects; own symbols are also written into the exported project JSON (`custom`).
+- **Changing the standard symbols for a release** happens in the application: draw a standard symbol in the Components tab and choose **Maak standaard**, then **Beheer → Symbolen** lists what differs from the running version and downloads the complete catalog (`standard-symbols.json`, one symbol per line, so git shows readable differences). Replace the catalog file with it and build; `StandardSymbolsTest` checks the rules a catalog must follow (valid shapes, known parents, every circuit symbol touches `y = 12`, one arch per socket). Only "Maak standaard" counts: an edit that was not made the standard, a deleted standard symbol and the users' own symbols do not change the catalog. API: `GET /api/admin/symbols/catalog` (the file) and `GET /api/admin/symbols/catalog/changes`.
+- Orientation: the eendraadschema chains the symbols along a horizontal line, so every symbol touches the line `y = 12`. Sockets are drawn rotated: the supply meets the apex of the arch. Shapes can be `line`, `circle`, `rect`, `arc`, `text` and `path` (SVG path data), with a relative line weight `sw`, white fill (`f: 2`) and bold text (`b`). Breakers and the earthing symbol are vertical symbols. A socket can still be drawn vertically (hanging) per element with the "Horizontaal" checkbox.
 - Custom components made with an older version (table `component_doc`, `/api/components`) are copied into the symbols table the first time the app is opened and then removed from the old table.
 - API: `GET /api/symbols`, `GET /api/symbols/template`, `GET|PUT|DELETE /api/symbols/{k}` (400 when invalid, 409 when deleting a standard symbol), `POST /api/symbols/{k}/restore`, `POST /api/symbols/restore`.
-- The frontend tests use `frontend/src/test/fixtures/standard-symbols.json` as their library. It is generated from the Java catalog (run `StandardSymbolsJson` from the backend tests, working directory `backend`); `StandardSymbolsTest` fails when it is out of date.
+- The frontend tests (`src/test/fixtures/standardSymbols.js`) and the fake backend of the browser tests read the same catalog file as their library, so they always test the symbols that ship; there is no copy to keep in step.
 
 ## Verification ("Controleer" button)
 `frontend/src/rules.jsx` checks the eendraadschema (all sheets) and returns errors / warnings / info; click an issue to jump to the node.
@@ -152,18 +153,18 @@ frontend/src
   symbols/        symbol shapes, library helpers, SymbolGraphic
   components/     shared UI: Sheet, ZoomPane, ZoomControls, domId
   features/       oneWire (eendraadschema), situation (situatieschema), symbolEditor, verify, footer, info, tour, project (load/export/PDF),
-                  auth (first start, sign in, register, AuthGate), admin (Beheer: users and groups)
+                  auth (first start, sign in, register, AuthGate), admin (Beheer: users, groups, standard symbols)
   styles/
   test/           Vitest tests, mirroring the folders above
 backend/src/main/java/com/pleysje/plugged
   PluggedApplication
-  controller/     REST controllers (projects, groups, symbols, info, auth, admin users and groups, legacy components)
+  controller/     REST controllers (projects, groups, symbols, info, auth, admin users, groups and symbol catalog, legacy components)
   service/        SymbolService (catalog rules), SymbolMapper, SymbolSeeder, ProjectService (who may see and change which project), GroupService
   repository/     Spring Data repositories
   entity/         JPA entities (ProjectDoc, SymbolEntity, ShapeRow, ComponentDoc, AppUser, UserGroup)
   dto/            API records (SymbolDto, ProjectSummary, InfoDto, UserDto, AuthStatusDto, AuthRequests, GroupDto, AdminRequests, ProjectRow)
   security/       SecurityConfig (who may call what, CSRF, session), UserService (accounts), ActiveUserFilter, CsrfCookieFilter
-  catalog/        the standard symbols and their drawing primitives
+  catalog/        StandardSymbols (reads the catalog file catalog/standard-symbols.json), CatalogJson (its format), SymbolShapes (shape rules)
   i18n/, config/  localized errors and the locale/message configuration
   logging/        ApiLog
 ```

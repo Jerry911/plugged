@@ -5,7 +5,7 @@ import SymbolEditor from '../../../features/symbolEditor/SymbolEditor.jsx'
 import {setLanguage, t} from '../../../i18n/translate.js'
 import {toDomId} from '../../../components/domId.js'
 import {byId, getById} from '../../utils.jsx'
-import standard from '../../fixtures/standard-symbols.json'
+import standard from '../../fixtures/standardSymbols.js'
 
 const DEFAULTS = standard
 

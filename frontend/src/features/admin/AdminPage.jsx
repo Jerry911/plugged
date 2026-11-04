@@ -1,7 +1,7 @@
 // Copyright 2026 Pleysier Jeroen
 // SPDX-License-Identifier: AGPL-3.0-only
-// Beheer, for administrators: the accounts (approve a registration, make an account administrator or an ordinary user again, remove it)
-// and the groups of coworkers (create, rename, remove, choose the members). A project shared with a group can be opened and saved by its
+// Beheer, for administrators: the accounts (approve a registration, make an account administrator or an ordinary user again, remove it),
+// the groups of coworkers (create, rename, remove, choose the members) and the standard symbols for the next release (SymbolsPanel.jsx). A project shared with a group can be opened and saved by its
 // members (see ProjectMenu.jsx).
 import {useCallback, useEffect, useState} from 'react'
 import {useTranslation} from '../../i18n/I18nProvider.jsx'
@@ -19,6 +19,7 @@ import {
 } from '../../api/authApi.js'
 import UsersPanel from './UsersPanel.jsx'
 import GroupsPanel from './GroupsPanel.jsx'
+import SymbolsPanel from './SymbolsPanel.jsx'
 import {fullName} from './names.js'
 
 /** `currentUser` = the administrator; `onUsersChange(users)` is told the accounts after every change (the top bar counts the waiting ones). */
@@ -89,6 +90,9 @@ export default function AdminPage({currentUser, onUsersChange}) {
                     {t('admin.groups')}
                     {groups && <span className="admincount">{groups.length}</span>}
                 </button>
+                <button id="admin-tab-symbols" role="tab" aria-selected={section === 'symbols'} className={section === 'symbols' ? 'on' : ''} onClick={() => setSection('symbols')}>
+                    {t('admin.symbols')}
+                </button>
             </nav>
             {message.text && (
                 <p id="admin-message" className={'authmsg ' + (message.kind === 'ok' ? 'info' : 'error')} role="status">
@@ -102,6 +106,7 @@ export default function AdminPage({currentUser, onUsersChange}) {
             )}
             {users && groups && section === 'users' && <UsersPanel users={users} groups={groups} currentUser={currentUser} busy={busy} actions={actions} />}
             {users && groups && section === 'groups' && <GroupsPanel users={users} groups={groups} busy={busy} actions={actions} />}
+            {section === 'symbols' && <SymbolsPanel />}
         </div>
     )
 }

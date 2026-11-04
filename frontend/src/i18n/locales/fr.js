@@ -829,6 +829,7 @@ export default {
         groups: 'Groupes',
         reload: 'Actualiser',
         loadFailed: 'Les utilisateurs et les groupes n’ont pas pu être chargés.',
+        symbols: 'Symboles',
     },
     users: {
         intro: 'Les nouveaux utilisateurs ne peuvent se connecter qu’après l’approbation de leur compte.',
@@ -882,5 +883,18 @@ export default {
         memberRemoved: '{name} n’est plus membre de {group}.',
         removeMember: 'Retirer {name} du groupe',
         empty: 'Il n’y a pas encore de groupes.',
+    },
+    catalog: {
+        intro: 'Les symboles standard livrés avec Plugged se trouvent dans un seul fichier. Dessinez un symbole standard dans l’onglet Composants et choisissez « Définir comme standard » : ce dessin se retrouve alors dans ce fichier lorsque vous le téléchargez ici.',
+        changes: '{count} symbole(s) standard diffère(nt) de la version actuelle :',
+        noChanges: 'Aucun changement : les symboles standard sont les mêmes que dans la version actuelle.',
+        loadFailed: 'Les changements n’ont pas pu être chargés.',
+        step1: 'Téléchargez le catalogue tel que cette installation l’a.',
+        download: 'Télécharger standard-symbols.json',
+        step2: 'Remplacez-en le fichier dans le code source :',
+        step3: 'Construisez et livrez la nouvelle version (mvn clean install) ; les tests vérifient le catalogue.',
+        note: 'Au démarrage, chaque installation reprend les nouveaux dessins pour les symboles standard que personne n’a modifiés ; les symboles modifiés restent tels quels.',
+        downloaded: '{file} téléchargé.',
+        downloadFailed: 'Le téléchargement n’a pas réussi.',
     },
 }

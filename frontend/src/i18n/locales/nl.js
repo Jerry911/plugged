@@ -833,6 +833,7 @@ export default {
         groups: 'Groepen',
         reload: 'Vernieuwen',
         loadFailed: 'De gebruikers en groepen konden niet geladen worden.',
+        symbols: 'Symbolen',
     },
     users: {
         intro: 'Nieuwe gebruikers kunnen pas aanmelden nadat je hun account hebt goedgekeurd.',
@@ -886,5 +887,18 @@ export default {
         memberRemoved: '{name} is geen lid meer van {group}.',
         removeMember: '{name} uit de groep halen',
         empty: 'Er zijn nog geen groepen.',
+    },
+    catalog: {
+        intro: 'De standaardsymbolen die met Plugged meegeleverd worden, staan in één bestand. Teken een standaardsymbool in het tabblad Componenten en kies "Maak standaard": dan komt die tekening in dat bestand terecht wanneer je het hier downloadt.',
+        changes: '{count} standaardsymbool/-symbolen verschillen van de versie die nu draait:',
+        noChanges: 'Geen wijzigingen: de standaardsymbolen zijn dezelfde als in de versie die nu draait.',
+        loadFailed: 'De wijzigingen konden niet geladen worden.',
+        step1: 'Download de catalogus zoals deze installatie hem heeft.',
+        download: 'standard-symbols.json downloaden',
+        step2: 'Vervang er het bestand mee in de broncode:',
+        step3: 'Bouw en lever de nieuwe versie (mvn clean install); de tests controleren de catalogus.',
+        note: 'Bij de start neemt elke installatie de nieuwe tekeningen over voor de standaardsymbolen die niemand er aanpaste; aangepaste symbolen blijven zoals ze zijn.',
+        downloaded: '{file} gedownload.',
+        downloadFailed: 'Downloaden is niet gelukt.',
     },
 }

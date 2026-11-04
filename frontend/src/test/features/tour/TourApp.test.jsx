@@ -3,7 +3,7 @@
 // The tour inside the real editor: it starts on a first visit, points at things that exist, waits for what the person does.
 import {act, fireEvent, render, waitFor} from '@testing-library/react'
 import App from '../../../app/App.jsx'
-import standard from '../../fixtures/standard-symbols.json'
+import standard from '../../fixtures/standardSymbols.js'
 import {forgetTour, markTourSeen, tourKey} from '../../../features/tour/Tour.jsx'
 import {tourSteps} from '../../../features/tour/tourSteps.jsx'
 import {t} from '../../../i18n/translate.js'

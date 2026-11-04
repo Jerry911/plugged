@@ -6,7 +6,7 @@ import {arcPath, placedShapesOf, socketShapes, socketStackOf} from '../../symbol
 import SymbolGraphic from '../../symbols/SymbolGraphic.jsx'
 import {connectionReach} from '../../model/boardLayout.js'
 import {setLanguage} from '../../i18n/translate.js'
-import standard from '../fixtures/standard-symbols.json'
+import standard from '../fixtures/standardSymbols.js'
 
 // the symbols come from the backend; these tests use its standard catalog (see setup.js)
 const BUILTIN = standard

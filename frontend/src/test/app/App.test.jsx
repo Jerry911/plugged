@@ -6,7 +6,7 @@ import pako from 'pako'
 import {importEds} from '../../model/eds.js'
 import {setLanguage, t} from '../../i18n/translate.js'
 import {byId, getById, node} from '../utils.jsx'
-import standard from '../fixtures/standard-symbols.json'
+import standard from '../fixtures/standardSymbols.js'
 
 const makePdf = vi.fn(async () => {})
 vi.mock('../../features/project/pdfExport.jsx', async (original) => ({...(await original()), makePdf: (...args) => makePdf(...args)}))

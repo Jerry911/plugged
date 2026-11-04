@@ -18,7 +18,10 @@ import {t} from './texts.js'
 
 export {REAL, testInfo}
 // the standard symbols of the backend catalog (generated from StandardSymbols.java), the same ones the unit tests use
-const standard = JSON.parse(readFileSync(fileURLToPath(new URL('../src/test/fixtures/standard-symbols.json', import.meta.url)), 'utf8'))
+// the catalog that ships with the application (made with Beheer → Symbolen), as the stored copies of a new installation
+const standard = JSON.parse(readFileSync(fileURLToPath(new URL('../../backend/src/main/resources/catalog/standard-symbols.json', import.meta.url)), 'utf8')).map(
+    (symbol) => ({...symbol, v: 11, builtin: true, modified: false}),
+)
 const clone = (x) => JSON.parse(JSON.stringify(x))
 /** the localStorage key in which the browser remembers that this user saw the guided tour (see Tour.jsx) */
 export const tourKey = (userId) => 'plugged.tour.' + userId

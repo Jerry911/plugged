@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import {act, renderHook, waitFor} from '@testing-library/react'
 import {useSymbolLibrary} from '../../api/useSymbolLibrary.js'
-import standard from '../fixtures/standard-symbols.json'
+import standard from '../fixtures/standardSymbols.js'
 
 const mine = {k: 'custom:b', name: 'Beta', cat: 'Eigen', parents: ['kring'], place: true, shapes: [{t: 'line', x1: 0, y1: 12, x2: 5, y2: 12}], v: 0, builtin: false, modified: false}
 const json = (body, ok = true) => ({ok, json: async () => body})

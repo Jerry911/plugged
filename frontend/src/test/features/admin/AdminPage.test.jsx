@@ -25,6 +25,7 @@ const backend = (accounts, groupList = []) => {
             return json({detail}, 409)
         }
         // copies, like a real server: the page must not share objects with the backend
+        if (url === '/api/admin/symbols/catalog/changes') return json([])
         if (url === '/api/admin/users') return json(structuredClone(state.users))
         if (url === '/api/admin/groups' && method === 'GET') return json(structuredClone(state.groups))
         if (url === '/api/admin/groups') {
@@ -228,4 +229,13 @@ describe('groups', () => {
         expect(byId('group-7-candidate')).toBeNull()
         // choosing nothing adds nothing
     })
+})
+
+test('Symbolen: the standard symbols for the next release', async () => {
+    backend([ME])
+    await mount()
+    clickId('admin-tab-symbols')
+    expect(getById('admin-tab-symbols')).toHaveClass('on')
+    await waitFor(() => getById('catalog-no-changes'))
+    expect(byId('admin-users')).toBeNull()
 })

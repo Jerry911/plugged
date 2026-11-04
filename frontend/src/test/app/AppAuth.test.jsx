@@ -3,7 +3,7 @@
 // The signed-in user in the editor: Afmelden in the top bar (no name: everybody knows who he is), Beheer for an administrator.
 import {fireEvent, render, waitFor} from '@testing-library/react'
 import App from '../../app/App.jsx'
-import standard from '../fixtures/standard-symbols.json'
+import standard from '../fixtures/standardSymbols.js'
 import {t} from '../../i18n/translate.js'
 import {byId, clickId, getById} from '../utils.jsx'
 

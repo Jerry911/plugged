@@ -829,6 +829,7 @@ export default {
         groups: 'Groups',
         reload: 'Refresh',
         loadFailed: 'The users and groups could not be loaded.',
+        symbols: 'Symbols',
     },
     users: {
         intro: 'New users can only sign in after you have approved their account.',
@@ -882,5 +883,18 @@ export default {
         memberRemoved: '{name} is no longer a member of {group}.',
         removeMember: 'Remove {name} from the group',
         empty: 'There are no groups yet.',
+    },
+    catalog: {
+        intro: 'The standard symbols that ship with Plugged are in one file. Draw a standard symbol in the Components tab and choose "Make standard": that drawing then ends up in the file when you download it here.',
+        changes: '{count} standard symbol(s) differ from the version that is running:',
+        noChanges: 'No changes: the standard symbols are the same as in the version that is running.',
+        loadFailed: 'The changes could not be loaded.',
+        step1: 'Download the catalog as this installation has it.',
+        download: 'Download standard-symbols.json',
+        step2: 'Replace this file in the source code with it:',
+        step3: 'Build and ship the new version (mvn clean install); the tests check the catalog.',
+        note: 'On start, every installation takes over the new drawings for the standard symbols nobody edited; edited symbols stay as they are.',
+        downloaded: '{file} downloaded.',
+        downloadFailed: 'The download did not work.',
     },
 }

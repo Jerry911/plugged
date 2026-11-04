@@ -1,7 +1,7 @@
 // Copyright 2026 Pleysier Jeroen
 // SPDX-License-Identifier: AGPL-3.0-only
 import '@testing-library/jest-dom/vitest'
-import standard from './fixtures/standard-symbols.json'
+import standard from './fixtures/standardSymbols.js'
 import {setLibrary} from '../symbols/symbolLibrary.js'
 import {setLanguage} from '../i18n/translate.js'
 // The symbols come from the backend. The tests use the standard symbols of the backend catalog (generated from StandardSymbols.java,

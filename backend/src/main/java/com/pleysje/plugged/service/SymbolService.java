@@ -51,8 +51,11 @@ public class SymbolService {
         for (SymbolDto standard : StandardSymbols.all()) {
             if (repository.existsById(DELETED_MARKER_PREFIX + standard.key())) continue;
             SymbolEntity stored = repository.findById(standard.key()).orElse(null);
-            boolean outdated = stored != null && stored.isBuiltin() && !stored.isModified() && stored.getStandardVersion() < StandardSymbols.VERSION;
-            if (stored == null || outdated) repository.save(asStandard(standardOf(standard.key())));
+            SymbolDto current = standardOf(standard.key());
+            // an unedited copy follows its standard: a new VERSION, or a drawing that changed (in the code or in the released drawings)
+            boolean outdated = stored != null && stored.isBuiltin() && !stored.isModified()
+                    && (stored.getStandardVersion() < StandardSymbols.VERSION || !stored.sameDefinition(SymbolMapper.toEntity(current)));
+            if (stored == null || outdated) repository.save(asStandard(current));
         }
         // a standard symbol that left the catalog (e.g. the waterproof socket, now a property of the socket) disappears too, unless the user changed it
         for (SymbolEntity entity : repository.findAll()) {
@@ -125,6 +128,26 @@ public class SymbolService {
         repository.save(chosen);
         stored.setModified(false);
         return SymbolMapper.toDto(repository.save(stored));
+    }
+
+    /**
+     * The catalog to ship with the next release (the file {@link StandardSymbols#CATALOG}): every standard symbol, in catalog order, with
+     * its standard as it is now in this installation, i.e. the drawing chosen with "make standard", else the one of the catalog. Edits that
+     * were not made the standard, deleted standard symbols and the symbols of the users do not change it.
+     */
+    @Transactional(readOnly = true)
+    public List<SymbolDto> catalog() {
+        List<SymbolDto> catalog = new java.util.ArrayList<>();
+        for (SymbolDto shipped : StandardSymbols.all()) catalog.add(standardOf(shipped.key()));
+        return catalog;
+    }
+
+    /** The standard symbols whose standard in this installation differs from the shipped catalog: what the next release would change. */
+    @Transactional(readOnly = true)
+    public List<SymbolDto> catalogChanges() {
+        return catalog().stream()
+                .filter(standard -> !SymbolMapper.toEntity(standard).sameDefinition(SymbolMapper.toEntity(StandardSymbols.find(standard.key()))))
+                .toList();
     }
 
     /** Puts a standard symbol back to its standard drawing (also when the user changed or deleted it). */

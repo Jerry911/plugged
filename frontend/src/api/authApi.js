@@ -93,3 +93,21 @@ export const deleteGroup = async (id) => {
         return {ok: false, error: t('auth.unreachable')}
     }
 }
+
+/** The standard symbols whose standard in this installation differs from the catalog of this version ([{k, name, ...}]). Throws when not available. */
+export const fetchCatalogChanges = async () => {
+    const response = await apiFetch('/api/admin/symbols/catalog/changes')
+    if (!response.ok) throw new Error('catalog changes not available')
+    const changes = await response.json()
+    return Array.isArray(changes) ? changes : []
+}
+
+/** The catalog file standard-symbols.json as this installation has it (text), or null when it cannot be fetched. */
+export const fetchCatalogFile = async () => {
+    try {
+        const response = await apiFetch('/api/admin/symbols/catalog')
+        return response.ok ? await response.text() : null
+    } catch {
+        return null
+    }
+}

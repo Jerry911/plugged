@@ -423,3 +423,41 @@
         flex-wrap: wrap
     }
 }
+
+/* Beheer → Symbolen */
+.catalogchanges ul {
+    margin: 6px 0 12px;
+    columns: 2;
+    max-width: 640px
+}
+
+.catalogchanges small {
+    color: #666
+}
+
+.catalogsteps {
+    padding-left: 20px;
+    line-height: 2
+}
+
+.catalogsteps code {
+    background: #eef2f7;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 12px
+}
+
+.catalogsteps .accent {
+    margin-left: 6px;
+    padding: 4px 10px;
+    background: #ffd54a;
+    border: 1px solid #e0b400;
+    font-weight: 700;
+    cursor: pointer
+}
+
+.catalognote {
+    color: #555;
+    font-size: 13px;
+    max-width: 760px
+}

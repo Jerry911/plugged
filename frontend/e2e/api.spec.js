@@ -66,7 +66,7 @@ test.describe('/api/symbols', () => {
         expect((await request.delete(url)).status()).toBe(204)
         expect((await request.get(url)).ok()).toBeFalsy()
     })
-    test('an error is answered in the language of the request, Dutch when it is not spoken', async ({request}) => {
+    test('an error is answered in the language of the request, English when it is not spoken', async ({request}) => {
         const nameless = {k: 'custom:nameless', name: ' ', shapes: [{t: 'line', x1: 0, y1: 12, x2: 24, y2: 12}]}
         const answer = async (language) => {
             const response = await request.put('/api/symbols/custom:nameless', {data: nameless, headers: {'Accept-Language': language}})
@@ -76,7 +76,7 @@ test.describe('/api/symbols', () => {
         expect(await answer('nl')).toMatchObject({detail: 'Geef het symbool een naam', messageKey: 'symbol.nameRequired'})
         expect((await answer('fr-BE')).detail).toBe('Donnez un nom au symbole')
         expect((await answer('en')).detail).toBe('Give the symbol a name')
-        expect((await answer('de')).detail).toBe('Geef het symbool een naam')
+        expect((await answer('de')).detail).toBe('Give the symbol a name')
     })
     test('an edited standard symbol is marked modified and can be restored; "restore all" brings back deleted ones', async ({request}) => {
         const url = '/api/symbols/oven',

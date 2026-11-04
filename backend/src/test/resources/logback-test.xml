@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Logging of the backend tests (this file wins over logback-spring.xml on the test classpath; it is not in the jar).
+  Nothing reaches the console, so the output of `mvn install` stays readable, also before Spring starts. The levels are the ones of
+  logback-spring.xml, so the code runs as in production. To see the logs: mvn test -Dplugged.test.log=DEBUG (or INFO, TRACE).
+-->
+<configuration>
+    <statusListener class="ch.qos.logback.core.status.NopStatusListener"/>
+
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+            <level>${plugged.test.log:-OFF}</level>
+        </filter>
+        <encoder>
+            <pattern>%d{HH:mm:ss.SSS} %-5level %-28.28logger{27} : %msg%n</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+    <logger name="com.pleysje.plugged" level="DEBUG"/>
+
+    <root level="INFO">
+        <appender-ref ref="CONSOLE"/>
+    </root>
+</configuration>

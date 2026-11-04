@@ -47,7 +47,8 @@ npm run e2e:all                                 # works the same in every shell
 Playwright starts the jar itself on port 18080 (`E2E_PORT`, `E2E_JAR` and `E2E_JAVA` change the port, the jar and the java), with
 `--spring.profiles.active=test --spring.config.additional-location=optional:file:./e2e/`. That loads **`e2e/application-test.properties`**, which
 overrides the settings inside the jar: an in-memory H2 database and a fixed PayPal link and contact address for the Info page (the tests read
-the same file to know what to expect). Add settings there when a test needs the application configured in a certain way.
+the same file to know what to expect), and no console logging (`logging.threshold.console=OFF`, so the Playwright output only shows the
+tests; `E2E_LOG=1` shows the log of the application). Add settings there when a test needs the application configured in a certain way.
 
 The tests delete all projects and restore the symbol catalog of the server they talk to, so they never use a server that is already running
 unless you set `E2E_REUSE_SERVER=1`.

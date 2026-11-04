@@ -1,7 +1,7 @@
 // Copyright 2026 Pleysier Jeroen
 // SPDX-License-Identifier: AGPL-3.0-only
 import {act, fireEvent, render, waitFor} from '@testing-library/react'
-import Tour, {forgetTour, markTourSeen, place, TOUR_KEY, TOUR_VERSION, tourSeen} from '../../../features/tour/Tour.jsx'
+import Tour, {forgetTour, markTourSeen, place, TOUR_KEY, TOUR_VERSION, tourKey, tourSeen} from '../../../features/tour/Tour.jsx'
 import {tourSteps} from '../../../features/tour/tourSteps.jsx'
 import {setLanguage, t} from '../../../i18n/translate.js'
 import {byId, getById} from '../../utils.jsx'
@@ -35,6 +35,19 @@ describe('first visit', () => {
         expect(JSON.parse(localStorage.getItem(TOUR_KEY))).toMatchObject({v: TOUR_VERSION, how: 'done'})
         forgetTour()
         expect(tourSeen()).toBe(false)
+    })
+    test('every user has his own: one user seeing the tour does not count for another user in the same browser', () => {
+        forgetTour(7)
+        forgetTour(8)
+        expect(tourKey(7)).toBe('plugged.tour.7')
+        expect(tourKey(undefined)).toBe(TOUR_KEY)
+        markTourSeen('skip', 7)
+        expect(tourSeen(7)).toBe(true)
+        expect(tourSeen(8)).toBe(false)
+        expect(tourSeen()).toBe(false)
+        expect(JSON.parse(localStorage.getItem('plugged.tour.7'))).toMatchObject({v: TOUR_VERSION, how: 'skip'})
+        forgetTour(7)
+        expect(tourSeen(7)).toBe(false)
     })
     test('an older version of the tour counts as not seen, a broken value as well', () => {
         localStorage.setItem(TOUR_KEY, JSON.stringify({v: TOUR_VERSION - 1}))

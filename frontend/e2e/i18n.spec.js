@@ -51,8 +51,22 @@ test.describe('a browser in English', () => {
 
 test.describe('a browser in a language Plugged does not speak', () => {
     test.use({locale: 'de-DE'})
-    test('starts in Dutch', async ({page, app, backend}) => {
+    test('opens in English (and keeps a language chosen later)', async ({page, app, backend}) => {
         await app.open(backend)
+        await expect(picker(page)).toHaveValue('en')
+        await expect(page.locator('html')).toHaveAttribute('lang', 'en')
+        await expect(page.locator('#tab-een')).toContainText(t('tabs.oneWire', {}, 'en'))
+        await picker(page).selectOption('nl')
+        await page.reload()
         await expect(picker(page)).toHaveValue('nl')
+    })
+})
+
+test.describe('a French browser', () => {
+    test.use({locale: 'fr-BE'})
+    test('opens in French', async ({page, app, backend}) => {
+        await app.open(backend)
+        await expect(picker(page)).toHaveValue('fr')
+        await expect(page.locator('#tab-een')).toContainText(t('tabs.oneWire', {}, 'fr'))
     })
 })

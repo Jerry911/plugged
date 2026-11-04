@@ -4,7 +4,7 @@
 import {act, fireEvent, render, waitFor} from '@testing-library/react'
 import App from '../../../app/App.jsx'
 import standard from '../../fixtures/standard-symbols.json'
-import {forgetTour, markTourSeen, TOUR_KEY} from '../../../features/tour/Tour.jsx'
+import {forgetTour, markTourSeen, tourKey} from '../../../features/tour/Tour.jsx'
 import {tourSteps} from '../../../features/tour/tourSteps.jsx'
 import {t} from '../../../i18n/translate.js'
 import {byId, getById} from '../../utils.jsx'
@@ -34,10 +34,19 @@ const waitForCard = () => waitFor(() => getById('tour-card'))
 // waits until the card shows the step with this id
 const waitForStep = (id, options) => waitFor(() => expect(getById('tour-card')).toHaveAttribute('data-step', id), options)
 const next = () => fireEvent.click(getById('tour-next'))
+// the signed-in user of these tests (the mocked status above): the tour is remembered per user
+const USER_ID = 2
 beforeEach(() => {
-    forgetTour()
+    forgetTour(USER_ID)
     global.fetch = vi.fn(async (url) => (url === '/api/symbols' ? {ok: true, json: async () => standard} : {ok: false}))
     window.alert = vi.fn()
+})
+
+test('another user in the same browser has seen the tour: this user still gets it', async () => {
+    markTourSeen('done', 1)
+    markTourSeen('done')
+    await mount()
+    await waitForCard()
 })
 
 test('a first visit starts the tour; Nu niet closes it for good', async () => {
@@ -47,15 +56,15 @@ test('a first visit starts the tour; Nu niet closes it for good', async () => {
     expect(welcome).toHaveAttribute('data-step', 'welkom')
     fireEvent.click(getById('tour-close'))
     expect(card()).toBeNull()
-    expect(JSON.parse(localStorage.getItem(TOUR_KEY)).how).toBe('skip')
+    expect(JSON.parse(localStorage.getItem(tourKey(USER_ID))).how).toBe('skip')
     unmount()
     await mount()
     await act(async () => {})
     expect(card()).toBeNull()
 })
 
-test('a returning visitor does not get the tour', async () => {
-    markTourSeen()
+test('a returning user does not get the tour', async () => {
+    markTourSeen('done', USER_ID)
     await mount()
     await act(async () => {})
     expect(card()).toBeNull()
@@ -82,7 +91,7 @@ test('every step points at something that exists in the editor', async () => {
         next()
     }
     expect(card()).toBeNull()
-    expect(JSON.parse(localStorage.getItem(TOUR_KEY)).how).toBe('done')
+    expect(JSON.parse(localStorage.getItem(tourKey(USER_ID))).how).toBe('done')
     // the steps on the situatieschema switched to that tab, and the last steps are on no tab in particular: it stays where the tour left it
     expect(byId('tab-sit').className).toBe('on')
 })
@@ -114,7 +123,7 @@ test('the tour switches tabs by itself and waits for the first circuit', async (
 
 test('the tour goes to the situatieschema and waits for the walls', async () => {
     layout()
-    markTourSeen()
+    markTourSeen('done', USER_ID)
     await mount()
     fireEvent.click(byId('tab-info'))
     fireEvent.click(await waitFor(() => getById('btn-tour')))

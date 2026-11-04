@@ -14,7 +14,7 @@ import org.springframework.web.servlet.i18n.AcceptHeaderLocaleResolver;
 
 /**
  * The language of an answer: the frontend sends the language the user chose as Accept-Language. Plugged speaks Dutch, French and English;
- * any other language (or none) gets Dutch. The messages are in i18n/messages.properties (Dutch), messages_fr.properties and messages_en.properties.
+ * any other language (or none) gets English. The messages are in i18n/messages.properties (Dutch), messages_fr.properties and messages_en.properties.
  */
 @Configuration
 public class LocaleConfig {
@@ -25,7 +25,7 @@ public class LocaleConfig {
     public LocaleResolver localeResolver() {
         AcceptHeaderLocaleResolver resolver = new AcceptHeaderLocaleResolver();
         resolver.setSupportedLocales(SUPPORTED);
-        resolver.setDefaultLocale(DUTCH);
+        resolver.setDefaultLocale(Locale.ENGLISH);
         return resolver;
     }
 
@@ -34,7 +34,7 @@ public class LocaleConfig {
         ResourceBundleMessageSource messages = new ResourceBundleMessageSource();
         messages.setBasename("i18n/messages");
         messages.setDefaultEncoding(StandardCharsets.UTF_8.name());
-        // a language without its own file gets the Dutch of messages.properties, not the language of the server
+        // never the language of the server (the resolver above only lets nl, fr and en through)
         messages.setFallbackToSystemLocale(false);
         // ' is written as '' in every message, also in the ones without arguments
         messages.setAlwaysUseMessageFormat(true);

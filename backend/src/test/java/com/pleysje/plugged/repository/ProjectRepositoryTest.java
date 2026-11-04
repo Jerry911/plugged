@@ -10,7 +10,7 @@ import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-@DataJpaTest
+@DataJpaTest(showSql = false) // no SQL on the console: the output of mvn install stays readable
 class ProjectRepositoryTest {
     @Autowired
     ProjectRepository repository;

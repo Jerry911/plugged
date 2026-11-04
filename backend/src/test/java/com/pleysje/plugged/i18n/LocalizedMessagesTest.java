@@ -29,6 +29,8 @@ import org.springframework.test.web.servlet.MockMvc;
 @SpringBootTest
 @AutoConfigureMockMvc
 class LocalizedMessagesTest {
+    static final String EN_NAME_REQUIRED = "Give the symbol a name";
+
     private static final String NAMELESS = "{\"k\":\"custom:i18n\",\"name\":\" \",\"shapes\":[{\"t\":\"line\",\"x1\":0,\"y1\":0,\"x2\":1,\"y2\":1}]}";
     private static final String BAD_CIRCLE = "{\"k\":\"custom:i18n\",\"name\":\"Cirkel\",\"shapes\":[{\"t\":\"circle\",\"cx\":1,\"cy\":1,\"r\":0}]}";
 
@@ -50,10 +52,10 @@ class LocalizedMessagesTest {
 
     @ParameterizedTest
     @ValueSource(strings = {"de-DE", ""})
-    void anotherLanguageOrNoneGetsDutch(String language) throws Exception {
+    void anotherLanguageOrNoneGetsEnglish(String language) throws Exception {
         mvc.perform(put("/api/symbols/custom:i18n").header(HttpHeaders.ACCEPT_LANGUAGE, language).contentType(MediaType.APPLICATION_JSON).content(NAMELESS))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.detail").value("Geef het symbool een naam"));
+                .andExpect(jsonPath("$.detail").value(EN_NAME_REQUIRED));
     }
 
     @Test

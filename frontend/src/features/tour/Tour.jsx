@@ -5,31 +5,34 @@ import {createPortal} from 'react-dom'
 import {useTranslation} from '../../i18n/I18nProvider.jsx'
 
 // ---- "is this the first visit?" -------------------------------------------------------------------------------------------------
-// There are no user accounts, so the browser remembers that the tour was seen. Raise TOUR_VERSION when the tour changes so much that
+// The browser remembers per user that the tour was seen (plugged.tour.<user id>): a new account that signs in on a browser where somebody
+// else already saw the tour still gets it. Without a user id the key is plugged.tour. Raise TOUR_VERSION when the tour changes so much that
 // returning users should see it again. When the browser blocks localStorage (private mode) the tour is shown once per page load.
 export const TOUR_KEY = 'plugged.tour'
 export const TOUR_VERSION = 1
-let memory = 0
-const stored = () => {
+/** The localStorage key of the tour of this user. */
+export const tourKey = (userId) => (userId == null ? TOUR_KEY : `${TOUR_KEY}.${userId}`)
+const memory = new Map() // key -> version seen during this page load (when storage is blocked)
+const stored = (key) => {
     try {
-        return JSON.parse(localStorage.getItem(TOUR_KEY))?.v ?? 0
+        return JSON.parse(localStorage.getItem(key))?.v ?? 0
     } catch {
         return 0
     }
 }
-export const tourSeen = () => Math.max(stored(), memory) >= TOUR_VERSION
-export const markTourSeen = (how = 'done') => {
-    memory = TOUR_VERSION
+export const tourSeen = (userId) => Math.max(stored(tourKey(userId)), memory.get(tourKey(userId)) ?? 0) >= TOUR_VERSION
+export const markTourSeen = (how = 'done', userId) => {
+    memory.set(tourKey(userId), TOUR_VERSION)
     try {
-        localStorage.setItem(TOUR_KEY, JSON.stringify({v: TOUR_VERSION, how, at: new Date().toISOString()}))
+        localStorage.setItem(tourKey(userId), JSON.stringify({v: TOUR_VERSION, how, at: new Date().toISOString()}))
     } catch {
         /* blocked: `memory` is enough for this page load */
     }
 }
-export const forgetTour = () => {
-    memory = 0
+export const forgetTour = (userId) => {
+    memory.delete(tourKey(userId))
     try {
-        localStorage.removeItem(TOUR_KEY)
+        localStorage.removeItem(tourKey(userId))
     } catch {
         /* nothing to forget */
     }

@@ -1,22 +1,24 @@
 // Copyright 2026 Pleysier Jeroen
 // SPDX-License-Identifier: AGPL-3.0-only
 // The guided tour: starts on a first visit, waits for the person to do the steps, is remembered and can be started again from Info.
-import {test, expect, t} from './fixtures.js'
+import {test, expect, t, tourKey} from './fixtures.js'
 import {withCircuit} from './data.js'
 
 const card = (page) => page.locator('#tour-card')
 // the card shows this step (by the id of the step, see tourSteps.jsx)
 const showsStep = (page, id, options) => expect(card(page)).toHaveAttribute('data-step', id, options)
 // the other specs start as a visitor who has seen the tour (fixtures.js); these tests start as a new visitor (once per browser session, so a reload keeps what the tour stored)
-const asNewVisitor = (page) =>
-    page.addInitScript(() => {
+const asNewVisitor = (page, backend) =>
+    page.addInitScript((key) => {
         if (sessionStorage.getItem('e2e-new-visitor')) return
         sessionStorage.setItem('e2e-new-visitor', '1')
-        localStorage.removeItem('plugged.tour')
-    })
+        localStorage.removeItem(key)
+    }, tourKey(backend.userId))
+// what the browser remembers of the tour of the signed-in user
+const storedTour = (page, backend) => page.evaluate((key) => JSON.parse(localStorage.getItem(key)), tourKey(backend.userId))
 
 test('a first visit starts the tour, which waits for the first circuit and is not shown again', async ({page, app, backend}) => {
-    await asNewVisitor(page)
+    await asNewVisitor(page, backend)
     await app.open(backend)
     await showsStep(page, 'welkom')
     await primary(page).click()
@@ -48,7 +50,7 @@ test('Info starts the tour again', async ({page, app, backend}) => {
 const step = (page) => card(page).getAttribute('data-step')
 const primary = (page) => page.locator('#tour-next')
 const startTour = async (page, app, backend, doc) => {
-    await asNewVisitor(page)
+    await asNewVisitor(page, backend)
     await app.open(backend, doc)
     await showsStep(page, 'welkom')
 }
@@ -217,7 +219,7 @@ test('the whole tour: a circuit, a stopcontact, walls with a typed length and a 
     await advanceTo(page, 'klaar')
     await primary(page).click()
     await expect(card(page)).toHaveCount(0)
-    expect(await page.evaluate(() => JSON.parse(localStorage.getItem('plugged.tour')).how)).toBe('done')
+    expect((await storedTour(page, backend)).how).toBe('done')
     // what was drawn is really in the project, including the new scale
     const doc = await app.save(backend)
     expect(JSON.stringify(doc.een)).toContain('"type":"kring"')
@@ -260,7 +262,7 @@ test('Nu niet on the first card closes the tour for good', async ({page, app, ba
     await startTour(page, app, backend)
     await page.locator('#tour-close').click()
     await expect(card(page)).toHaveCount(0)
-    expect(await page.evaluate(() => JSON.parse(localStorage.getItem('plugged.tour')).how)).toBe('skip')
+    expect((await storedTour(page, backend)).how).toBe('skip')
     await page.reload()
     await expect(page.locator('#tab-comp')).toBeVisible()
     await page.waitForTimeout(600)
@@ -289,7 +291,7 @@ test('Escape closes an explaining step; Enter on the first card starts the tour'
     await showsStep(page, 'tabs')
     await page.keyboard.press('Escape')
     await expect(card(page)).toHaveCount(0)
-    expect(await page.evaluate(() => JSON.parse(localStorage.getItem('plugged.tour')).how)).toBe('skip')
+    expect((await storedTour(page, backend)).how).toBe('skip')
 })
 
 test('Sla over skips an interactive step, a step whose target is not there says what to do, and Terug goes back', async ({page, app, backend}) => {
@@ -317,11 +319,11 @@ test('Leeg project starten ends the tour and begins a new, empty project', async
     expect(dialogs.messages.join('\n')).toContain('niet-opgeslagen')
     await expect(page.locator('#status-message')).toContainText(t('app.newProject'))
     await expect(page.locator('#btn-undo')).toBeDisabled()
-    expect(await page.evaluate(() => JSON.parse(localStorage.getItem('plugged.tour')).how)).toBe('done')
+    expect((await storedTour(page, backend)).how).toBe('done')
 })
 
 test('a new browser that finds real work on the server does not get the tour by itself; Info asks before starting it', async ({page, app, backend, dialogs}) => {
-    await asNewVisitor(page)
+    await asNewVisitor(page, backend)
     await app.open(backend, withCircuit())
     await page.waitForTimeout(700)
     await expect(card(page)).toHaveCount(0)

@@ -18,7 +18,7 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-@DataJpaTest
+@DataJpaTest(showSql = false) // no SQL on the console: the output of mvn install stays readable
 class SymbolRepositoryTest {
     @Autowired
     SymbolRepository repository;

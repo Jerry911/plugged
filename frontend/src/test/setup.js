@@ -8,8 +8,9 @@ import {setLanguage} from '../i18n/translate.js'
 // see StandardSymbolsJson in the backend tests) as the active library.
 setLibrary(standard)
 beforeEach(() => {
-    // Visitors that have seen the guided tour: the tests of the editor are not interrupted by it (the tour tests call forgetTour)
-    localStorage.setItem('plugged.tour', JSON.stringify({v: 99, how: 'test'}))
+    // Users that have seen the guided tour: the tests of the editor are not interrupted by it (the tour tests call forgetTour). The tour is
+    // remembered per user (plugged.tour.<id>); the tests sign in as one of the users with ids 1 to 9.
+    for (let id = 1; id < 10; id++) localStorage.setItem('plugged.tour.' + id, JSON.stringify({v: 99, how: 'test'}))
     // The tests find elements by id and compare texts with t(): they run in Dutch unless a test switches the language itself
     setLanguage('nl')
 })

@@ -13,14 +13,17 @@ export const LANGUAGES = [
     {code: 'fr', label: 'Français', short: 'FR'},
     {code: 'en', label: 'English', short: 'EN'},
 ]
-export const DEFAULT_LANGUAGE = 'nl'
+// the language when neither a stored choice nor a language of the browser is one of ours
+export const DEFAULT_LANGUAGE = 'en'
+// the language the texts are written in first (always complete): a text missing in another language falls back on it
+export const SOURCE_LANGUAGE = 'nl'
 export const LANGUAGE_STORAGE_KEY = 'plugged.language'
 // the locale used to format dates and numbers in each language (Belgian variants: the AREI is a Belgian regulation)
 export const LOCALES = {nl: 'nl-BE', fr: 'fr-BE', en: 'en-GB'}
 
 const isSupported = (code) => Object.hasOwn(DICTIONARIES, code)
 
-/** The language chosen earlier in this browser, else the first supported language of the browser, else Dutch. */
+/** The language chosen earlier in this browser, else the first supported language of the browser (nl, fr, en), else English. */
 export const detectLanguage = () => {
     try {
         const stored = localStorage.getItem(LANGUAGE_STORAGE_KEY)
@@ -64,7 +67,7 @@ export const onLanguageChange = (listener) => {
 const lookup = (dictionary, key) => key.split('.').reduce((value, part) => (value == null ? undefined : value[part]), dictionary)
 
 /** The raw entry of a key (a string, a list or a group of entries) in the active language, falling back on Dutch. */
-export const translation = (key, language = currentLanguage) => lookup(DICTIONARIES[language], key) ?? lookup(DICTIONARIES[DEFAULT_LANGUAGE], key)
+export const translation = (key, language = currentLanguage) => lookup(DICTIONARIES[language], key) ?? lookup(DICTIONARIES[SOURCE_LANGUAGE], key)
 
 /** Fills in the {placeholders} of a text. */
 export const interpolate = (text, params = {}) =>

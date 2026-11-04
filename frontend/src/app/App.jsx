@@ -165,12 +165,12 @@ function Editor({library, user, onLogout}) {
             }
         })()
     }, [])
-    // first visit: the browser has not seen the tour yet (see Tour.jsx) and the project is fetched, so the tour does not jump around
+    // first visit: this user has not seen the tour in this browser yet (see Tour.jsx) and the project is fetched, so the tour does not jump around
     useEffect(() => {
-        if (tourAllowed && !tourSeen()) setTourOpen(true)
-    }, [tourAllowed])
+        if (tourAllowed && !tourSeen(user.id)) setTourOpen(true)
+    }, [tourAllowed, user.id])
     const closeTour = (how) => {
-        markTourSeen(how)
+        markTourSeen(how, user.id)
         setTourOpen(false)
     }
     // started from Info: the tour draws in the open project, so ask first when there is work in it

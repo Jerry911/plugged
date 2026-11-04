@@ -20,6 +20,8 @@ export {REAL, testInfo}
 // the standard symbols of the backend catalog (generated from StandardSymbols.java), the same ones the unit tests use
 const standard = JSON.parse(readFileSync(fileURLToPath(new URL('../src/test/fixtures/standard-symbols.json', import.meta.url)), 'utf8'))
 const clone = (x) => JSON.parse(JSON.stringify(x))
+/** the localStorage key in which the browser remembers that this user saw the guided tour (see Tour.jsx) */
+export const tourKey = (userId) => 'plugged.tour.' + userId
 /** the user the fake backend says is signed in */
 export const FAKE_USER = {id: 2, name: 'Test', surname: 'Gebruiker', email: 'test@example.be', admin: false, approved: true, created: null}
 /** the administrator the tests sign in as against the real application */
@@ -126,6 +128,7 @@ export class FakeBackend {
         return empty(404)
     }
 
+    userId = FAKE_USER.id // the signed-in user (the tour remembers per user that it was seen: plugged.tour.<id>)
     async init() {}
     async seed(id, doc) {
         this.projects.set(id, clone(doc))
@@ -182,7 +185,9 @@ class RealBackend {
         expect((await this.request.post('/api/symbols/' + encodeURIComponent(k) + '/standard')).ok()).toBeTruthy()
     }
     // clean slate: no projects, only the standard symbols
+    userId = null // the signed-in administrator (the tour remembers per user that it was seen: plugged.tour.<id>)
     async init() {
+        this.userId = (await (await this.request.get('/api/auth/status')).json()).user.id
         for (const id of await (await this.request.get('/api/projects')).json()) await this.request.delete('/api/projects/' + id)
         const list = await (await this.request.get('/api/symbols')).json()
         for (const s of list.filter((x) => !x.builtin)) await this.request.delete('/api/symbols/' + encodeURIComponent(s.k))
@@ -270,11 +275,10 @@ export const test = base.extend({
     },
     app: async ({page, backend, dialogs}, use) => {
         void backend, void dialogs
-        // the editor opens as a visitor who has seen the guided tour; tour.spec.js starts as a new visitor (and sets the session flag below)
-        await page.addInitScript(() => {
-            if (!sessionStorage.getItem('e2e-new-visitor') && localStorage.getItem('plugged.tour') === null)
-                localStorage.setItem('plugged.tour', JSON.stringify({v: 99, how: 'e2e'}))
-        })
+        // the editor opens as a user who has seen the guided tour; tour.spec.js starts as a new user (and sets the session flag below)
+        await page.addInitScript((key) => {
+            if (!sessionStorage.getItem('e2e-new-visitor') && localStorage.getItem(key) === null) localStorage.setItem(key, JSON.stringify({v: 99, how: 'e2e'}))
+        }, tourKey(backend.userId))
         await use(new App(page))
     },
 })

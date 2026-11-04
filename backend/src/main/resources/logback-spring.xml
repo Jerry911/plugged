@@ -4,6 +4,9 @@
   - Console: always.
   - File logs/plugged.log (rolled daily and at 10 MB, 30 days kept): only with the Spring profile "file" (spring.profiles.active=file).
   - Levels: logging.level.* in application.properties / environment, e.g. PLUGGED_LOG_LEVEL=TRACE also logs the (truncated) request bodies.
+  - logging.threshold.console (Spring Boot): the lowest level that reaches the console, OFF = nothing. The tests use it to keep the
+    output of `mvn install` and of Playwright clean (src/test/resources/application.properties, frontend/e2e/application-test.properties);
+    the levels themselves stay, so the code runs exactly as in production.
 -->
 <configuration>
     <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
@@ -13,6 +16,9 @@
               value="%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [%thread] %-28.28logger{27} : %msg%n%wEx"/>
 
     <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+            <level>${CONSOLE_LOG_THRESHOLD}</level>
+        </filter>
         <encoder>
             <pattern>${PLUGGED_PATTERN}</pattern>
             <charset>UTF-8</charset>
@@ -37,10 +43,16 @@
 
     <logger name="com.pleysje.plugged" level="DEBUG"/>
 
-    <root level="INFO">
-        <appender-ref ref="CONSOLE"/>
-        <springProfile name="file">
+    <!-- one root per case: Spring Boot does not allow <springProfile> inside <root> (it warns on every start) -->
+    <springProfile name="file">
+        <root level="INFO">
+            <appender-ref ref="CONSOLE"/>
             <appender-ref ref="FILE"/>
-        </springProfile>
-    </root>
+        </root>
+    </springProfile>
+    <springProfile name="!file">
+        <root level="INFO">
+            <appender-ref ref="CONSOLE"/>
+        </root>
+    </springProfile>
 </configuration>

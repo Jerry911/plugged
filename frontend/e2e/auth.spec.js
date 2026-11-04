@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Accounts against the real application: registering, waiting for approval, the administrator approving, signing in and out.
 // The administrator itself is created by the fixtures (first start) with the address of plugged.admin.email of the test profile.
-import {test, expect, REAL, t, ADMIN} from './fixtures.js'
+import {test, expect, REAL, t, ADMIN, tourKey} from './fixtures.js'
 
 test.skip(!REAL, 'needs the real Spring Boot backend (E2E_REAL_BACKEND=1)')
 
@@ -11,8 +11,8 @@ const uniqueEmail = () => `user-${Date.now()}-${Math.random().toString(36).slice
 test('a new user registers, cannot sign in until the administrator approves, then can', async ({browser, page, app, backend}) => {
     const email = uniqueEmail()
     const context = await browser.newContext({locale: 'nl-BE'})
-    // a browser that has seen the guided tour (a new browser gets it after signing in, see tour.spec.js)
-    await context.addInitScript(() => localStorage.setItem('plugged.tour', JSON.stringify({v: 99, how: 'e2e'})))
+    // a browser in which somebody else already saw the guided tour: the new account still gets it (the tour is remembered per user)
+    await context.addInitScript(() => localStorage.setItem('plugged.tour.1', JSON.stringify({v: 1, how: 'done'})))
     const visitor = await context.newPage()
     await visitor.goto('/')
     await expect(visitor.locator('#login-form')).toBeVisible()
@@ -39,6 +39,9 @@ test('a new user registers, cannot sign in until the administrator approves, the
 
     await visitor.locator('#auth-submit').click()
     await expect(visitor.locator('#tab-comp')).toBeVisible()
+    await expect(visitor.locator('#tour-card')).toHaveAttribute('data-step', 'welkom')
+    await visitor.locator('#tour-close').click()
+    await expect(visitor.locator('#tour-card')).toHaveCount(0)
     await expect(visitor.locator('#tab-admin')).toHaveCount(0)
     await visitor.locator('#btn-logout').click()
     await expect(visitor.locator('#auth-notice')).toHaveText(t('auth.signedOut'))
@@ -70,7 +73,8 @@ const coworker = async ({browser, playwright, baseURL, request}, name) => {
     await anonymous.dispose()
     expect((await request.post(`/api/admin/users/${user.id}/approve`)).ok()).toBeTruthy()
     const context = await browser.newContext({locale: 'nl-BE'})
-    await context.addInitScript(() => localStorage.setItem('plugged.tour', JSON.stringify({v: 99, how: 'e2e'})))
+    // a coworker who has seen the guided tour
+    await context.addInitScript((key) => localStorage.setItem(key, JSON.stringify({v: 99, how: 'e2e'})), tourKey(user.id))
     const page = await context.newPage()
     await page.goto('/')
     await page.locator('#auth-email').fill(email)

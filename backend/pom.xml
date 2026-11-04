@@ -72,6 +72,27 @@
     </dependencies>
     <build>
         <plugins>
+            <!-- the path of the Mockito jar as a property (${org.mockito:mockito-core:jar}), for the agent below -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>properties</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <!-- Mockito as a Java agent (instead of attaching itself at run time, which the JDK warns about on every run); @{argLine} keeps
+                 the JaCoCo agent. -Xshare:off: no class-data-sharing warning once agents are on the class path. -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <argLine>@{argLine} -javaagent:${org.mockito:mockito-core:jar} -Xshare:off</argLine>
+                </configuration>
+            </plugin>
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>

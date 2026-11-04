@@ -15,10 +15,12 @@ import {REAL} from './e2e/mode.js'
 //                               E2E_JAR     the jar to start        (default ../backend/target/plugged-0.1.0.jar)
 //                               E2E_JAVA    the java to start it with (default: java on the PATH)
 //                               E2E_PORT    port of the application (default 18080, so a development instance on 8080 is left alone)
+//                               E2E_LOG=1   show the log of the application (it is off: e2e/application-test.properties)
 //                               E2E_REUSE_SERVER=1  use a server that already runs on that port instead of starting one. DANGEROUS:
 //                                           these tests delete all projects and restore the symbol catalog of the server they talk to.
 const CI = !!process.env.CI
 const port = REAL ? Number(process.env.E2E_PORT || 18080) : 5173
+const showLog = process.env.E2E_LOG === '1'
 const java = process.env.E2E_JAVA || 'java',
     jar = process.env.E2E_JAR || '../backend/target/plugged-0.1.0.jar'
 if (REAL && !existsSync(jar) && process.env.E2E_REUSE_SERVER !== '1') throw new Error(`The application jar ${jar} does not exist: build it first (cd ../backend && mvn -DskipTests package) or set E2E_JAR.`)
@@ -44,10 +46,11 @@ export default defineConfig({
     projects: [{name: 'chromium', use: {...devices['Desktop Chrome'], viewport: {width: 1500, height: 1000}, locale: 'nl-BE'}}],
     webServer: REAL
         ? {
-              command: `"${java}" -jar "${jar}" --server.port=${port} --spring.profiles.active=test --spring.config.additional-location=optional:file:./e2e/`,
-              url: `http://localhost:${port}/api/projects`,
+              command: `"${java}" -jar "${jar}" --server.port=${port} --spring.profiles.active=test --spring.config.additional-location=optional:file:./e2e/${showLog ? ' --logging.threshold.console=TRACE' : ''}`,
+              // public (the projects need a signed-in user)
+              url: `http://localhost:${port}/api/info`,
               reuseExistingServer: process.env.E2E_REUSE_SERVER === '1',
-              stdout: 'pipe',
+              stdout: showLog ? 'pipe' : 'ignore',
               stderr: 'pipe',
               timeout: 120_000,
           }

@@ -3,6 +3,7 @@
 import {act, fireEvent, render} from '@testing-library/react'
 import {
     allTranslations,
+    DEFAULT_LANGUAGE,
     detectLanguage,
     DICTIONARIES,
     getLanguage,
@@ -99,7 +100,7 @@ describe('translating', () => {
         expect(translation('common.close', 'en')).toBe('Close')
         expect(allTranslations('board.boardLabel')).toEqual(['Verdeelbord', 'Tableau de distribution', 'Distribution board'])
     })
-    test('the language is taken from this browser: the stored choice first, then the browser languages, else Dutch', () => {
+    test('the language is taken from this browser: the stored choice first, then the browser languages, else English', () => {
         localStorage.setItem(LANGUAGE_STORAGE_KEY, 'en')
         expect(detectLanguage()).toBe('en')
         localStorage.removeItem(LANGUAGE_STORAGE_KEY)
@@ -108,7 +109,17 @@ describe('translating', () => {
         expect(detectLanguage()).toBe('fr')
         languages.mockReturnValue(['de-DE'])
         vi.spyOn(navigator, 'language', 'get').mockReturnValue('es-ES')
+        expect(detectLanguage()).toBe('en')
+        expect(DEFAULT_LANGUAGE).toBe('en')
+        // the first language of the browser that is one of ours wins, also a regional variant
+        languages.mockReturnValue(['nl-BE', 'fr-BE', 'en-US'])
         expect(detectLanguage()).toBe('nl')
+        languages.mockReturnValue(['de-CH', 'FR-ch'])
+        expect(detectLanguage()).toBe('fr')
+        // no browser languages at all
+        languages.mockReturnValue([])
+        vi.spyOn(navigator, 'language', 'get').mockReturnValue('')
+        expect(detectLanguage()).toBe('en')
         // a browser that blocks the storage still gets a language
         vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
             throw new Error('blocked')

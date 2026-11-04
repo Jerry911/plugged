@@ -13,7 +13,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@SpringBootTest(properties = {"plugged.donate.paypal-url= https://www.paypal.com/donate/?hosted_button_id=ABC ", "plugged.contact.email= me@example.be "})
+@SpringBootTest(properties = {"plugged.donate.paypal-url= https://www.paypal.com/donate/?hosted_button_id=ABC ", "plugged.admin.email= me@example.be "})
 @AutoConfigureMockMvc
 class InfoControllerConfiguredTest {
     @Autowired

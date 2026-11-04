@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 /**
  * What this installation shows on the Info page: the PayPal donate link (plugged.donate.paypal-url) and the address the contact form
- * writes to (plugged.contact.email). The server never sends mail: the contact form opens the visitor's own mail program.
+ * writes to (plugged.admin.email, the address of the administrator). The server never sends mail: the contact form opens the visitor's own mail program.
  */
 @RestController
 @RequestMapping("/api/info")
@@ -23,7 +23,7 @@ public class InfoController {
     private final InfoDto info;
 
     public InfoController(@Value("${plugged.donate.paypal-url:}") String donateUrl,
-                          @Value("${plugged.contact.email:}") String contactEmail) {
+                          @Value("${plugged.admin.email:}") String contactEmail) {
         this.info = new InfoDto(donateUrl.trim(), contactEmail.trim());
         // the address itself is not logged, only whether the contact form is on
         log.info("Info page configured: donate button {}, contact form {}", info.donateUrl().isEmpty() ? "disabled" : "enabled (" + info.donateUrl() + ")",

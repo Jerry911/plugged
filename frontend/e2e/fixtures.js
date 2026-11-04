@@ -2,6 +2,9 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Shared fixtures of the end-to-end tests:
 //  - `backend`  the REST API of the application: an in-memory fake (default) or the real Spring Boot application (E2E_REAL_BACKEND=1).
+//               Either way the browser is signed in: the fake says so, against the real application the tests sign in as the
+//               administrator (created on the first test of the run, with the address of plugged.admin.email of the test profile).
+//  - `request`  (real application) API calls of the tests themselves, signed in as that administrator and with the CSRF token.
 //  - `dialogs`  answers the alert / confirm / prompt dialogs of the browser and remembers what was said.
 //  - `app`      small helpers to drive the editor (open it, switch tabs, save, click inside the drawing sheet).
 import {readFileSync} from 'node:fs'
@@ -17,6 +20,10 @@ export {REAL, testInfo}
 // the standard symbols of the backend catalog (generated from StandardSymbols.java), the same ones the unit tests use
 const standard = JSON.parse(readFileSync(fileURLToPath(new URL('../src/test/fixtures/standard-symbols.json', import.meta.url)), 'utf8'))
 const clone = (x) => JSON.parse(JSON.stringify(x))
+/** the user the fake backend says is signed in */
+export const FAKE_USER = {id: 2, name: 'Test', surname: 'Gebruiker', email: 'test@example.be', admin: false, approved: true, created: null}
+/** the administrator the tests sign in as against the real application */
+export const ADMIN = {email: testInfo.contactEmail, name: 'E2E', surname: 'Beheerder', password: 'e2e-geheim-123'}
 const keyOf = (path) => decodeURIComponent(path.split('/').filter(Boolean)[2] ?? '')
 
 /** In-memory stand-in for the Spring Boot REST API (same URLs, status codes and bodies as the controllers). */
@@ -83,6 +90,7 @@ export class FakeBackend {
                 return json(s)
             }
         }
+        if (path === '/api/auth/status') return json({setupRequired: false, adminEmail: testInfo.contactEmail, user: FAKE_USER})
         if (path === '/api/info') return json(this.info)
         if (path.startsWith('/api/components')) return m === 'GET' ? json([]) : empty()
         return empty(404)
@@ -172,9 +180,44 @@ class RealBackend {
     }
 }
 
+/** The CSRF token the application handed out to this request context (the XSRF-TOKEN cookie). */
+const csrfOf = async (context) => (await context.storageState()).cookies.find((cookie) => cookie.name === 'XSRF-TOKEN')?.value
+/**
+ * Signs `context` (an APIRequestContext) in as the administrator; on the very first test of the run the administrator does not exist yet,
+ * so it is created (the first start of the application). Answers the cookies of the session.
+ */
+export const signInAsAdmin = async (context) => {
+    const status = await (await context.get('/api/auth/status')).json()
+    const headers = {'X-XSRF-TOKEN': await csrfOf(context)}
+    const response = status.setupRequired
+        ? await context.post('/api/auth/setup', {data: {name: ADMIN.name, surname: ADMIN.surname, password: ADMIN.password}, headers})
+        : await context.post('/api/auth/login', {data: {email: ADMIN.email, password: ADMIN.password}, headers})
+    expect(response.ok(), 'sign in as the administrator: ' + (await response.text())).toBeTruthy()
+    return (await context.storageState()).cookies
+}
+/** An APIRequestContext whose put/post/delete/patch/fetch carry the CSRF token, like the frontend does. */
+const withCsrf = (context) =>
+    new Proxy(context, {
+        get(target, name) {
+            const original = target[name]
+            if (!['put', 'post', 'delete', 'patch', 'fetch'].includes(name)) return typeof original === 'function' ? original.bind(target) : original
+            return async (url, options = {}) => original.call(target, url, {...options, headers: {'X-XSRF-TOKEN': await csrfOf(target), ...options.headers}})
+        },
+    })
+
 export const test = base.extend({
+    // against the real application: the API calls of the tests are made by the signed-in administrator
+    request: async ({request, playwright, baseURL}, use) => {
+        if (!REAL) return use(request)
+        const context = await playwright.request.newContext({baseURL})
+        await signInAsAdmin(context)
+        await use(withCsrf(context))
+        await context.dispose()
+    },
     backend: async ({page, request}, use) => {
         const b = REAL ? new RealBackend(request) : new FakeBackend()
+        // the browser shares the session of `request`: it opens the editor signed in
+        if (REAL) await page.context().addCookies((await request.storageState()).cookies)
         await b.init()
         await b.install(page)
         await use(b)

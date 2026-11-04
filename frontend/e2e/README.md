@@ -52,12 +52,17 @@ the same file to know what to expect). Add settings there when a test needs the 
 The tests delete all projects and restore the symbol catalog of the server they talk to, so they never use a server that is already running
 unless you set `E2E_REUSE_SERVER=1`.
 
-### Nothing is skipped (apart from `api.spec.js` in the fake mode)
+### Nothing is skipped (apart from `api.spec.js` and `auth.spec.js` in the fake mode)
 
 Every test runs in both modes. A backend that breaks on purpose (`backend.failSave`, `backend.symbolsDown`, `backend.gate`, `backend.info`) is
 simulated in the real mode by answering those requests of the page in the browser (`page.route`, see `RealBackend` in `fixtures.js`), while the
 requests of the tests themselves still reach the application. The one test that changes the standard of a symbol ("Maak standaard") puts the
 original back afterwards (`backend.resetStandard`), because the application keeps that choice in a hidden row until it stops.
+
+The editor needs a signed-in user. The fake answers `/api/auth/status` with a signed-in user (`FAKE_USER`). Against the real application the
+`request` fixture signs in as the administrator (`ADMIN`, the address of `plugged.admin.email` in `application-test.properties`; the first test
+of a run creates it, like the first start of a real installation), sends the CSRF token with every change, and the browser of each test gets the
+same session cookies.
 
 ## Files
 
@@ -75,6 +80,7 @@ original back afterwards (`backend.resetStandard`), because the application keep
 | `tour.spec.js` | the guided tour, step by step, and its cards in small windows |
 | `i18n.spec.js` | switching between Dutch, French and English, the language of the browser, `Accept-Language` on the requests |
 | `api.spec.js` | contract of the REST API (real backend only) |
+| `auth.spec.js` | registering, approval by the administrator, signing in and out, 401 without a session, CSRF (real backend only) |
 
 `mode.js` decides between the fake and the real backend and reads `application-test.properties`; `fixtures.js` has the fake and the real backend, the dialog handling (`alert`/`confirm`/`prompt`) and the helpers for the drawing sheets;
 `data.js` has the project documents the tests start from; `texts.js` gives the texts of the application (`t('app.saved')`).

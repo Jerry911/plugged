@@ -10,6 +10,11 @@ import standard from '../fixtures/standard-symbols.json'
 
 const makePdf = vi.fn(async () => {})
 vi.mock('../../features/project/pdfExport.jsx', async (original) => ({...(await original()), makePdf: (...args) => makePdf(...args)}))
+// the editor is shown to a signed-in user: the sign-in itself is tested in AuthGate.test.jsx and AppAuth.test.jsx
+vi.mock('../../api/authApi.js', async (original) => ({
+    ...(await original()),
+    fetchAuthStatus: async () => ({setupRequired: false, adminEmail: '', user: {id: 2, name: 'Jan', surname: 'Peeters', email: 'jan@example.be', admin: false, approved: true}}),
+}))
 vi.mock('jspdf', () => ({jsPDF: class {}}))
 vi.mock('svg2pdf.js', () => ({svg2pdf: async () => {}}))
 const old = {
@@ -525,7 +530,8 @@ test('shows that the symbols are loading', async () => {
     let done
     global.fetch = vi.fn(() => new Promise((res) => (done = res)))
     render(<App />)
-    expect(getById('library-loading')).toHaveTextContent(t('app.loadingSymbols'))
+    // first the session is checked (mocked above), then the symbols load
+    await waitFor(() => expect(getById('library-loading')).toHaveTextContent(t('app.loadingSymbols')))
     await act(async () => done({ok: false}))
 })
 

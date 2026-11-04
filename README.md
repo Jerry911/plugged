@@ -7,8 +7,10 @@ Spring Boot 4 backend (Java 21, JPA, file-based H2) with a React 18 + Vite front
 | You want to | Command | Open |
 |---|---|---|
 | Develop | `cd backend && mvn spring-boot:run`, and in a second terminal `cd frontend && npm i && npm run dev` | http://localhost:5173 (proxies `/api` to the backend) |
-| Run as one jar | `cd backend && mvn clean install`, then `java -jar target/plugged-0.1.0.jar` | http://localhost:8080 |
-| Run with Docker | `docker compose up --build` | http://localhost:8080 |
+| Run as one jar | `cd backend && mvn clean install`, then `PLUGGED_ADMIN_EMAIL=you@example.be java -jar target/plugged-0.1.0.jar` | http://localhost:8080 |
+| Run with Docker | `PLUGGED_ADMIN_EMAIL=you@example.be docker compose up --build` | http://localhost:8080 |
+
+On the first start Plugged asks for the details of the administrator account (see [Accounts and signing in](#accounts-and-signing-in)).
 
 Requirements: JDK 21 and Maven 3.9+. Node is only needed for frontend development (`mvn clean install` downloads Node 22 into `frontend/node` by itself). Docker is optional.
 
@@ -44,6 +46,22 @@ To make a port permanent without environment variables:
 
 ## Data
 The project is saved as one JSON document (id 1) in a file-based H2 database: `backend/data/plugged` when you run from `backend/`, the `plugged-data` volume (`/data`) in Docker. Override the location with `SPRING_DATASOURCE_URL` (e.g. `jdbc:h2:file:/some/dir/plugged`). The symbol library is stored in the same database and shared by all projects. Use **JSON ↑ / JSON ↓** in the header to export and import a project file.
+
+## Accounts and signing in
+Everybody signs in before the editor opens (Spring Security, session cookie, CSRF token in the `XSRF-TOKEN` cookie / `X-XSRF-TOKEN` header).
+
+| Setting | Environment variable | What it does |
+|---|---|---|
+| `plugged.admin.email` | `PLUGGED_ADMIN_EMAIL` | Email address of the administrator, **required**. It is also the address the contact form of the Info page writes to (it replaces the former `PLUGGED_CONTACT_EMAIL`). |
+| `server.servlet.session.timeout` | `PLUGGED_SESSION_TIMEOUT` | How long a session lasts without any request (default `8h`). |
+
+- **First start**: as long as there is no administrator, the page shows *Welkom bij Plugged* and asks for the first name, surname and password of the administrator. The email address is the one of `PLUGGED_ADMIN_EMAIL`, shown read-only: it cannot be chosen or changed. The administrator account is approved from the start and is signed in at once. Without `PLUGGED_ADMIN_EMAIL` the page says how to set it and nobody can sign in.
+- **Registering**: the sign-in page links to *Registreren* (`/#register`): first name, surname, email address and password (at least 8 characters). A new account is **not approved** and cannot sign in until the administrator approves it.
+- **Approving**: the administrator has a **Gebruikers** tab in the top bar (a badge counts the accounts waiting). *Goedkeuren* approves an account; *Weigeren* / *Verwijderen* removes it (the administrator account cannot be removed). A removed account is signed out on its next request.
+- **Signing out**: *Afmelden* in the top bar (it asks first when the open project has unsaved changes). When a session ends during the work (timeout, restart of the server), the sign-in form opens on top of the editor, so the open project is not lost.
+- Accounts live in the `users` table (name, surname, email, bcrypt password hash, `admin` default false, `approved`). Email addresses are stored in lower case.
+
+REST API: `GET /api/auth/status`, `POST /api/auth/setup | register | login | logout`; for the administrator `GET /api/admin/users`, `POST /api/admin/users/{id}/approve`, `DELETE /api/admin/users/{id}`. Everything else under `/api/` needs a signed-in user (401 otherwise), except `/api/info`.
 
 ## Features
 - **Eendraadschema**: multi-sheet A4 diagram with a bus, kWh meter, main differential and circuits; palette, properties panel and a collapsible tree (*Opbouw*).
@@ -124,23 +142,25 @@ frontend/src
   model/          pure logic: tree, project, boardLayout, insertion, geometry, rules (AREI checks), eds (import/export)
   symbols/        symbol shapes, library helpers, SymbolGraphic
   components/     shared UI: Sheet, ZoomPane, ZoomControls, domId
-  features/       oneWire (eendraadschema), situation (situatieschema), symbolEditor, verify, footer, info, tour, project (load/export/PDF)
+  features/       oneWire (eendraadschema), situation (situatieschema), symbolEditor, verify, footer, info, tour, project (load/export/PDF),
+                  auth (first start, sign in, register, AuthGate), users (Gebruikers, for the administrator)
   styles/
   test/           Vitest tests, mirroring the folders above
 backend/src/main/java/com/pleysje/plugged
   PluggedApplication
-  controller/     REST controllers (projects, symbols, info, legacy components)
+  controller/     REST controllers (projects, symbols, info, auth, admin/users, legacy components)
   service/        SymbolService (catalog rules), SymbolMapper, SymbolSeeder
   repository/     Spring Data repositories
-  entity/         JPA entities (ProjectDoc, SymbolEntity, ShapeRow, ComponentDoc)
-  dto/            API records (SymbolDto, ProjectSummary, InfoDto)
+  entity/         JPA entities (ProjectDoc, SymbolEntity, ShapeRow, ComponentDoc, AppUser)
+  dto/            API records (SymbolDto, ProjectSummary, InfoDto, UserDto, AuthStatusDto, AuthRequests)
+  security/       SecurityConfig (who may call what, CSRF, session), UserService (accounts), ActiveUserFilter, CsrfCookieFilter
   catalog/        the standard symbols and their drawing primitives
   i18n/, config/  localized errors and the locale/message configuration
   logging/        ApiLog
 ```
 
 ## Test conventions
-Tests find elements by their **id**, never by the text on a button: texts change with the language. Every interactive element has a stable id, prefixed by the part of the screen it belongs to (`tab-*`, `btn-*`, `eds-*` eendraadschema, `sit-*` situatieschema, `comp-*` symbol editor, `verify-*`, `footer-*`, `tour-*`, `project-*`, `export-*`). Ids built from data go through `toDomId` (`custom:1` becomes `custom_1`), e.g. `#eds-palette-stopcontact`, `#eds-tree-<node id>`, `#comp-item-<symbol key>`. Where a test does check a text, it compares it with the dictionary (`t('app.saved')` in unit tests, `t()` of `e2e/texts.js` in Playwright), so a rewording of a text never breaks a test. Unit tests run in Dutch (`src/test/setup.js`), the browser tests in a Dutch browser (`locale: 'nl-BE'`); `i18n.test.jsx` and `e2e/i18n.spec.js` cover the switching.
+Tests find elements by their **id**, never by the text on a button: texts change with the language. Every interactive element has a stable id, prefixed by the part of the screen it belongs to (`tab-*`, `btn-*`, `eds-*` eendraadschema, `sit-*` situatieschema, `comp-*` symbol editor, `verify-*`, `footer-*`, `tour-*`, `project-*`, `export-*`, `auth-*` sign-in / registration / first start, `users-*` Gebruikers). Ids built from data go through `toDomId` (`custom:1` becomes `custom_1`), e.g. `#eds-palette-stopcontact`, `#eds-tree-<node id>`, `#comp-item-<symbol key>`. Where a test does check a text, it compares it with the dictionary (`t('app.saved')` in unit tests, `t()` of `e2e/texts.js` in Playwright), so a rewording of a text never breaks a test. Unit tests run in Dutch (`src/test/setup.js`), the browser tests in a Dutch browser (`locale: 'nl-BE'`); `i18n.test.jsx` and `e2e/i18n.spec.js` cover the switching.
 
 ## Build, tests and Docker
 - `cd backend && mvn clean install` builds everything: it installs Node 22 locally (into `frontend/node`), runs `npm ci`, builds the React app into the jar, runs the backend tests **and the frontend tests** (`npm test`), then enforces the JaCoCo gate.

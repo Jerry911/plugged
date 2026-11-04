@@ -50,7 +50,7 @@ export const ContactForm = ({to}) => {
 
 /**
  * The server tells what this installation offers: a PayPal link (plugged.donate.paypal-url) and the address of the contact form
- * (plugged.contact.email). onTour starts the guided tour.
+ * (plugged.admin.email). onTour starts the guided tour.
  */
 export default function InfoPage({onTour}) {
     const {t} = useTranslation()

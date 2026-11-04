@@ -19,4 +19,4 @@ export const testProperties = Object.fromEntries(
         .map((l) => [l.slice(0, l.indexOf('=')).trim(), l.slice(l.indexOf('=') + 1).trim()]),
 )
 /** what GET /api/info tells with the test profile */
-export const testInfo = {donateUrl: testProperties['plugged.donate.paypal-url'], contactEmail: testProperties['plugged.contact.email']}
+export const testInfo = {donateUrl: testProperties['plugged.donate.paypal-url'], contactEmail: testProperties['plugged.admin.email']}

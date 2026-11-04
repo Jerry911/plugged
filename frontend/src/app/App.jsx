@@ -1,11 +1,15 @@
 // Copyright 2026 Pleysier Jeroen
 // SPDX-License-Identifier: AGPL-3.0-only
-// The application: the top bar (project menu, tabs, undo/redo, Kaderinfo, PDF, print, language, Info) and the tab that is open.
-import {useEffect, useMemo, useRef, useState} from 'react'
+// The application: signing in first (AuthGate), then the top bar (project menu, tabs, undo/redo, Kaderinfo, PDF, print, language, Info,
+// Gebruikers for the administrator, the user and Afmelden) and the tab that is open.
+import {useCallback, useEffect, useMemo, useRef, useState} from 'react'
 import OneWireDiagram from '../features/oneWire/OneWireDiagram.jsx'
 import SituationSchema from '../features/situation/SituationSchema.jsx'
 import SymbolEditor from '../features/symbolEditor/SymbolEditor.jsx'
 import InfoPage from '../features/info/InfoPage.jsx'
+import AuthGate from '../features/auth/AuthGate.jsx'
+import UsersPage from '../features/users/UsersPage.jsx'
+import {fetchUsers} from '../api/authApi.js'
 import {ExportDialog, IMPORT_ACCEPT, importKind} from '../features/project/ExportDialog.jsx'
 import ProjectMenu from '../features/project/ProjectMenu.jsx'
 import {FooterDialog} from '../features/footer/FooterDialog.jsx'
@@ -33,7 +37,8 @@ const TABS = [
 const ONE_WIRE_TAB = 0,
     SITUATION_TAB = 1,
     COMPONENTS_TAB = 2,
-    INFO_TAB = 3
+    INFO_TAB = 3,
+    USERS_TAB = 4
 // the project the editor opens with: the project that was open last time is not remembered
 const FIRST_PROJECT_ID = 1
 
@@ -49,12 +54,12 @@ const download = (content, type, fileName) => {
 export default function App() {
     return (
         <I18nProvider>
-            <LibraryGate />
+            <AuthGate>{({user, onLogout}) => <LibraryGate user={user} onLogout={onLogout} />}</AuthGate>
         </I18nProvider>
     )
 }
 
-function LibraryGate() {
+function LibraryGate({user, onLogout}) {
     const {t} = useTranslation()
     const library = useSymbolLibrary()
     if (library.status === 'loading')
@@ -72,10 +77,10 @@ function LibraryGate() {
                 </button>
             </div>
         )
-    return <Editor library={library} />
+    return <Editor library={library} user={user} onLogout={onLogout} />
 }
 
-function Editor({library}) {
+function Editor({library, user, onLogout}) {
     const {t, language} = useTranslation()
     const [initialProject] = useState(newProject)
     const {project, setProject, reset, undo, redo, canUndo, canRedo} = useHistory(initialProject),
@@ -93,6 +98,7 @@ function Editor({library}) {
         [focus, setFocus] = useState(null),
         [tourOpen, setTourOpen] = useState(false),
         [tourAllowed, setTourAllowed] = useState(false), // the project has been fetched and the tour may draw in it
+        [waitingUsers, setWaitingUsers] = useState(0), // accounts the administrator has not approved yet
         printArea = useRef()
     const {library: symbols, save: saveSymbol, remove: removeSymbol, restore: restoreSymbol, makeStandard, restoreAll, template} = library
     setLibrary(symbols)
@@ -197,6 +203,11 @@ function Editor({library}) {
     }, [undo, redo])
     const hasUnsavedChanges = () => JSON.stringify(project) !== savedSnapshot.current
     const confirmDiscard = () => !hasUnsavedChanges() || window.confirm(t('app.confirmUnsaved'))
+    const signOut = () => confirmDiscard() && onLogout()
+    const countWaiting = useCallback((users) => setWaitingUsers(users.filter((account) => !account.approved).length), [])
+    useEffect(() => {
+        if (user.admin) fetchUsers().then(countWaiting, () => {})
+    }, [user.admin, countWaiting])
     // the next free project number
     const nextProjectId = async () => {
         try {
@@ -399,6 +410,23 @@ function Editor({library}) {
                 <button id="tab-info" className={tab === INFO_TAB ? 'on' : ''} title={t('tabs.infoTitle')} onClick={() => setTab(INFO_TAB)}>
                     ⓘ {t('tabs.info')}
                 </button>
+                {user.admin && (
+                    <button id="tab-users" className={tab === USERS_TAB ? 'on' : ''} title={t('tabs.usersTitle')} onClick={() => setTab(USERS_TAB)}>
+                        {t('tabs.users')}
+                        {waitingUsers > 0 && (
+                            <span id="tab-users-waiting" className="badge" title={t('users.pending', {count: waitingUsers})}>
+                                {waitingUsers}
+                            </span>
+                        )}
+                    </button>
+                )}
+                <span className="sep" />
+                <span id="user-name" className="username" title={user.email}>
+                    {user.name} {user.surname}
+                </span>
+                <button id="btn-logout" title={t('auth.logoutTitle')} onClick={signOut}>
+                    {t('auth.logout')}
+                </button>
             </div>
             {exportOpen && <ExportDialog onExport={exportAs} onClose={() => setExportOpen(false)} />}
             {verifyOpen && <VerifyPanel issues={issues} onGoTo={goToIssue} onClose={() => setVerifyOpen(false)} />}
@@ -440,6 +468,7 @@ function Editor({library}) {
                     </>
                 )}
                 {tab === INFO_TAB && <InfoPage onTour={startTour} />}
+                {tab === USERS_TAB && user.admin && <UsersPage currentUser={user} onChange={countWaiting} />}
                 {tab === COMPONENTS_TAB && (
                     <SymbolEditor
                         library={symbols}

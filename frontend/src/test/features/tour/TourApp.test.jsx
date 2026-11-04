@@ -11,6 +11,11 @@ import {byId, getById} from '../../utils.jsx'
 
 const TOUR_STEPS = tourSteps()
 
+// the editor is shown to a signed-in user: the sign-in itself is tested in AuthGate.test.jsx and AppAuth.test.jsx
+vi.mock('../../../api/authApi.js', async (original) => ({
+    ...(await original()),
+    fetchAuthStatus: async () => ({setupRequired: false, adminEmail: '', user: {id: 2, name: 'Jan', surname: 'Peeters', email: 'jan@example.be', admin: false, approved: true}}),
+}))
 vi.mock('jspdf', () => ({jsPDF: class {}}))
 vi.mock('svg2pdf.js', () => ({svg2pdf: async () => {}}))
 const BOX = {left: 100, top: 60, width: 120, height: 30, right: 220, bottom: 90, x: 100, y: 60}

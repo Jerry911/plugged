@@ -73,6 +73,11 @@ public final class StandardSymbols {
         return standards;
     }
 
+    /** {@link #asStandards} for tests outside this package: a downloaded catalog read as the application would read it. */
+    public static List<SymbolDto> asStandardsForTest(List<SymbolDto> symbols) {
+        return asStandards(symbols);
+    }
+
     /** The standard symbols in catalog order. */
     public static List<SymbolDto> all() {
         return ALL;

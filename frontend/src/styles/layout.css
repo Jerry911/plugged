@@ -62,8 +62,15 @@
     padding-left: 18px
 }
 
-.rightpanel .warn, .rightpanel .ok {
+.rightpanel .warn, .rightpanel .ok, .rightpanel .neutral {
     margin-top: 34px
+}
+
+/* educational mode: the elements to place, without any judgement */
+.rightpanel .neutral {
+    background: #f4f6f9;
+    border: 1px solid #c9d2dd;
+    padding: 6px
 }
 
 .paneltoggle {

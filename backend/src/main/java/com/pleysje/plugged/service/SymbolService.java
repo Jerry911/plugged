@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 package com.pleysje.plugged.service;
 
+import com.pleysje.plugged.catalog.CatalogRules;
 import com.pleysje.plugged.catalog.StandardSymbols;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -12,6 +13,7 @@ import com.pleysje.plugged.i18n.LocalizedStatusException;
 import com.pleysje.plugged.repository.SymbolRepository;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Set;
 import java.util.Map;
 import java.util.UUID;
 import java.util.regex.Pattern;
@@ -169,9 +171,37 @@ public class SymbolService {
      */
     @Transactional(readOnly = true)
     public List<SymbolDto> catalog() {
+        Set<String> standardKeys = new java.util.HashSet<>();
+        StandardSymbols.all().forEach(symbol -> standardKeys.add(symbol.key()));
         List<SymbolDto> catalog = new java.util.ArrayList<>();
-        for (SymbolDto shipped : StandardSymbols.all()) catalog.add(standardOf(shipped.key()));
+        for (SymbolDto shipped : StandardSymbols.all()) catalog.add(forRelease(standardOf(shipped.key()), shipped, standardKeys));
         return catalog;
+    }
+
+    /**
+     * A standard as it can ship:
+     * <ul>
+     *   <li>"may hang under" keeps only standard symbols: the symbols of the users do not ship, a new installation would not know them;</li>
+     *   <li>a socket property this installation does not know (a database from before the property existed) comes from the shipped
+     *       catalog, e.g. the number of sockets of a double socket.</li>
+     * </ul>
+     */
+    private static SymbolDto forRelease(SymbolDto standard, SymbolDto shipped, Set<String> standardKeys) {
+        List<String> parents = standard.parents() == null ? List.of() : standard.parents().stream().filter(standardKeys::contains).toList();
+        Map<String, Object> socket = standard.socket();
+        if (socket != null && shipped.socket() != null) {
+            Map<String, Object> completed = new java.util.LinkedHashMap<>(shipped.socket());
+            completed.putAll(socket);
+            socket = completed;
+        }
+        return new SymbolDto(standard.key(), standard.name(), standard.category(), parents, standard.placeable(), standard.shapes(), socket,
+                standard.version(), standard.builtin(), standard.modified(), standard.details());
+    }
+
+    /** What would stop the next release: the catalog of {@link #catalog()} checked with the rules of the build (CatalogRules). */
+    @Transactional(readOnly = true)
+    public List<CatalogRules.Problem> catalogProblems() {
+        return CatalogRules.problems(catalog());
     }
 
     /** The standard symbols whose standard in this installation differs from the shipped catalog: what the next release would change. */

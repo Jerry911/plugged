@@ -311,6 +311,10 @@ export default {
         hiddenHint: 'Deze componenten tellen niet mee. Klik op de pijl om ze terug te zetten.',
         showTitle: 'Weer tonen in de lijst',
         show: 'Toon {name}',
+        elementsTitle: 'Elementen van het eendraadschema',
+        elementsOpen: 'Elementen van het eendraadschema tonen',
+        placeAllNeutral: 'Alles op dit blad plaatsen',
+        nothingToPlace: 'Geen elementen om te plaatsen.',
     },
     symbolEditor: {
         tools: {
@@ -904,6 +908,19 @@ export default {
         note: 'Bij de start neemt elke installatie de nieuwe tekeningen over voor de standaardsymbolen die niemand er aanpaste; aangepaste symbolen blijven zoals ze zijn.',
         downloaded: '{file} gedownload.',
         downloadFailed: 'Downloaden is niet gelukt.',
+        problemsTitle: 'De build zal dit weigeren ({count}). Pas de symbolen aan en kies opnieuw "Maak standaard", of gebruik "Standaard herstellen":',
+        problems: {
+            duplicateKey: 'komt meer dan één keer voor',
+            invalidKey: 'ongeldige sleutel',
+            noName: 'heeft geen naam',
+            noShapes: 'heeft geen tekening',
+            invalidShape: 'een vorm is ongeldig ({problem})',
+            unknownParent: 'mag hangen onder {parent}, dat geen standaardsymbool is',
+            notOnLine: 'raakt de lijn y = 12 niet, waarlangs het eendraadschema de symbolen verbindt',
+            socketCount: 'tekent {arches} stopcontact(en), maar de eigenschappen zeggen {sockets}',
+            missingElement: 'ontbreekt, maar is een standaardelement van een kring',
+            invalid: '{problem}',
+        },
     },
     educational: {
         badge: 'Educatieve modus',

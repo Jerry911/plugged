@@ -26,6 +26,7 @@ const backend = (accounts, groupList = []) => {
         }
         // copies, like a real server: the page must not share objects with the backend
         if (url === '/api/admin/symbols/catalog/changes') return json([])
+        if (url === '/api/admin/symbols/catalog/problems') return json([])
         if (url === '/api/admin/users') return json(structuredClone(state.users))
         if (url === '/api/admin/groups' && method === 'GET') return json(structuredClone(state.groups))
         if (url === '/api/admin/groups') {
@@ -215,9 +216,9 @@ describe('groups', () => {
         const options = () => [...getById('group-7-candidate').options].map((option) => option.value)
         // waiting accounts cannot be chosen
         expect(options()).toEqual(['', '1', '3', '4'])
-        expect(getById('group-7-add')).toBeDisabled()
+        // choosing a user adds him at once: no extra button
+        expect(byId('group-7-add')).toBeNull()
         fireEvent.change(getById('group-7-candidate'), {target: {value: '3'}})
-        clickId('group-7-add')
         await waitFor(() => getById('group-7-remove-3'))
         expect(message()).toHaveTextContent(t('groups.memberAdded', {name: 'Piet X', group: 'Team'}))
         expect(options()).toEqual(['', '1', '4'])
@@ -227,8 +228,9 @@ describe('groups', () => {
         expect(message()).toHaveTextContent(t('groups.memberRemoved', {name: 'Piet X', group: 'Team'}))
         // the users tab shows the group of a member
         fireEvent.change(getById('group-7-candidate'), {target: {value: '4'}})
-        clickId('group-7-add')
         await waitFor(() => getById('group-7-remove-4'))
+        // the first line of the list adds nobody
+        fireEvent.change(getById('group-7-candidate'), {target: {value: ''}})
         clickId('admin-tab-users')
         expect(getById('users-groups-4')).toHaveTextContent('Team')
         expect(getById('admin-tab-groups')).toHaveTextContent('1')

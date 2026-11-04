@@ -35,6 +35,36 @@ class StandardSymbolsTest {
         assertEquals(0, StandardSymbols.orderOf(StandardSymbols.all().get(0).key()));
     }
 
+    /** The catalog in the jar follows every rule of CatalogRules (the ones Beheer → Symbolen checks before a download). */
+    @Test
+    void theShippedCatalogFollowsTheRules() {
+        assertEquals(List.of(), CatalogRules.problems(StandardSymbols.all()));
+    }
+
+    @Test
+    void everyRuleIsChecked() {
+        List<Map<String, Object>> lamp = List.of(Map.of("t", "circle", "cx", 12.0, "cy", 12.0, "r", 5.0));
+        List<SymbolDto> catalog = new java.util.ArrayList<>(StandardSymbols.all());
+        catalog.add(new SymbolDto("teller", "Dubbel", "Overig", List.of(), true, lamp, null, 1, true, false, false));
+        catalog.add(new SymbolDto("Bad Key", "X", "Overig", List.of(), true, lamp, null, 1, true, false, false));
+        catalog.add(new SymbolDto("naamloos", " ", "Overig", List.of(), true, lamp, null, 1, true, false, false));
+        catalog.add(new SymbolDto("leeg", "Leeg", "Overig", List.of(), true, List.of(), null, 1, true, false, false));
+        catalog.add(new SymbolDto("vorm", "Vorm", "Overig", List.of(), true, List.of(Map.of("t", "circle", "cx", 12.0, "cy", 12.0, "r", -1.0)), null, 1, true, false, false));
+        catalog.add(new SymbolDto("wees", "Wees", "Overig", List.of("custom:eigen"), true, lamp, null, 1, true, false, false));
+        catalog.add(new SymbolDto("zwevend", "Zwevend", "Overig", List.of("kring"), true, List.of(Map.of("t", "line", "x1", 0.0, "y1", 2.0, "x2", 9.0, "y2", 2.0)), null, 1, true, false, false));
+        catalog.add(new SymbolDto("dubbel", "Dubbel", "Stopcontacten", List.of("kring"), true,
+                List.of(Map.of("t", "arc", "cx", 12.0, "cy", 12.0, "r", 5.0, "a1", 90.0, "a2", 270.0), Map.of("t", "arc", "cx", 16.0, "cy", 12.0, "r", 5.0, "a1", 90.0, "a2", 270.0)),
+                Map.of("pe", true), 1, true, false, false));
+        catalog.removeIf(symbol -> symbol.key().equals("relais"));
+        List<String> found = CatalogRules.problems(catalog).stream().map(problem -> problem.key() + " " + problem.rule()).toList();
+        assertTrue(found.containsAll(List.of("teller duplicateKey", "Bad Key invalidKey", "naamloos noName", "leeg noShapes", "vorm invalidShape",
+                "wees unknownParent", "zwevend notOnLine", "dubbel socketCount", "relais missingElement")), found.toString());
+        assertTrue(CatalogRules.problems(catalog).get(0).toString().contains("teller"));
+        // a path and an unknown kind of shape
+        assertTrue(CatalogRules.touchesLine(Map.of("t", "path", "d", "M0 0")));
+        assertFalse(CatalogRules.touchesLine(Map.of("t", "text", "x", 1.0, "y", 12.0)));
+    }
+
     @Test
     void everySymbolIsDrawnAndReferencesKnownParents() {
         Set<String> keys = new HashSet<>();

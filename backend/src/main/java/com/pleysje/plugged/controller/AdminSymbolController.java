@@ -3,6 +3,7 @@
 package com.pleysje.plugged.controller;
 
 import com.pleysje.plugged.catalog.CatalogJson;
+import com.pleysje.plugged.catalog.CatalogRules;
 import com.pleysje.plugged.dto.SymbolDto;
 import com.pleysje.plugged.logging.ApiLog;
 import com.pleysje.plugged.service.SymbolService;
@@ -22,6 +23,7 @@ import org.springframework.web.bind.annotation.RestController;
  * <ul>
  *   <li>GET /api/admin/symbols/catalog: the catalog file standard-symbols.json as this installation has it (download)</li>
  *   <li>GET /api/admin/symbols/catalog/changes: the standard symbols whose standard differs from the shipped catalog</li>
+ *   <li>GET /api/admin/symbols/catalog/problems: what in that catalog would stop the build (the rules of CatalogRules)</li>
  * </ul>
  */
 @RestController
@@ -42,6 +44,11 @@ public class AdminSymbolController {
                 .contentType(MediaType.APPLICATION_JSON)
                 .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment().filename(FILE_NAME).build().toString())
                 .body(CatalogJson.write(symbols.catalog())));
+    }
+
+    @GetMapping("/problems")
+    public List<CatalogRules.Problem> problems() {
+        return ApiLog.run(log, "GET /api/admin/symbols/catalog/problems", "", symbols::catalogProblems);
     }
 
     @GetMapping("/changes")

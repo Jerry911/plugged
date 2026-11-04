@@ -8,14 +8,12 @@ import {EducationalSwitch} from './TeacherPage.jsx'
 
 function GroupCard({group, users, busy, actions}) {
     const {t} = useTranslation()
-    const [candidate, setCandidate] = useState('')
     const memberIds = new Set(group.members.map((member) => member.id))
     const candidates = users.filter((user) => user.approved && !memberIds.has(user.id))
-    const add = async () => {
-        const user = users.find((account) => String(account.id) === candidate)
-        if (!user) return
-        await actions.addMember(group, user)
-        setCandidate('')
+    // choosing a user in the list adds him at once (the list then starts over at "Kies een gebruiker…")
+    const add = (userId) => {
+        const user = users.find((account) => String(account.id) === userId)
+        if (user) actions.addMember(group, user)
     }
     return (
         <li id={'group-' + group.id} className="groupcard">
@@ -66,17 +64,14 @@ function GroupCard({group, users, busy, actions}) {
             )}
             {candidates.length > 0 && (
                 <div className="groupadd">
-                    <select id={'group-' + group.id + '-candidate'} aria-label={t('groups.addMember')} value={candidate} onChange={(event) => setCandidate(event.target.value)}>
-                        <option value="">{t('groups.choose')}</option>
+                    <select id={'group-' + group.id + '-candidate'} aria-label={t('groups.addMember')} value="" disabled={busy} onChange={(event) => add(event.target.value)}>
+                        <option value="">+ {t('groups.addMember')}…</option>
                         {candidates.map((user) => (
                             <option key={user.id} value={user.id}>
                                 {fullName(user)} ({user.email})
                             </option>
                         ))}
                     </select>
-                    <button id={'group-' + group.id + '-add'} disabled={busy || !candidate} onClick={add}>
-                        + {t('groups.addMember')}
-                    </button>
                 </div>
             )}
         </li>

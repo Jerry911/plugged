@@ -376,7 +376,7 @@ function Editor({library, user, onLogout}) {
                 {TABS.map((entry, index) => (
                     <button key={entry.id} id={'tab-' + entry.id} className={tab === index ? 'on' : ''} onClick={() => setTab(index)}>
                         {t(entry.label)}
-                        {index === SITUATION_TAB && unplacedCount > 0 && (
+                        {index === SITUATION_TAB && unplacedCount > 0 && !restricted && (
                             <span id="tab-sit-unplaced" title={t('tabs.unplacedTitle')}>
                                 {' '}⚠{unplacedCount}
                             </span>
@@ -419,8 +419,8 @@ function Editor({library, user, onLogout}) {
                     ⓘ {t('tabs.info')}
                 </button>
                 {restricted && (
-                    <span id="educational-badge" className="edubadge" title={t('educational.badgeTitle')}>
-                        🎓 {t('educational.badge')}
+                    <span id="educational-badge" className="edubadge" role="img" title={t('educational.badge')} aria-label={t('educational.badge')}>
+                        🎓
                     </span>
                 )}
                 {!user.admin && user.ownedGroups?.length > 0 && (
@@ -478,6 +478,7 @@ function Editor({library, user, onLogout}) {
                             setProject={setProject}
                             pageIndex={shownSituationPage}
                             onFooter={openFooter}
+                            educational={restricted}
                         />
                     </>
                 )}

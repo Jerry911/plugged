@@ -195,4 +195,50 @@ class AdminSymbolControllerTest {
         assertEquals("(not configured)", com.pleysje.plugged.config.DatabaseLocationLogger.describe(null));
         new com.pleysje.plugged.config.DatabaseLocationLogger("jdbc:h2:mem:x").logLocation();
     }
+
+    @Test
+    void theDownloadOnlyRefersToStandardSymbols_aMissingSocketCountComesFromTheCatalog() throws Exception {
+        // an own symbol under which the general socket may hang, made the standard
+        mvc.perform(put("/api/symbols/custom:tweepolig").with(as(user)).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"k\":\"custom:tweepolig\",\"name\":\"Tweepolig\",\"cat\":\"Eigen\",\"parents\":[\"kring\"],\"place\":true,\"shapes\":[" + NEW_LAMP + "]}"))
+                .andExpect(status().isOk());
+        SymbolDto general = StandardSymbols.find("stopcontact_alg");
+        List<String> parents = new java.util.ArrayList<>(general.parents());
+        parents.add("custom:tweepolig");
+        SymbolEntity edited = SymbolMapper.toEntity(new SymbolDto(general.key(), general.name(), general.category(), parents, general.placeable(), general.shapes(),
+                general.socket(), general.version(), true, true, general.details()));
+        edited.setBuiltin(true);
+        edited.setModified(true);
+        edited.setStandardVersion(StandardSymbols.VERSION);
+        symbols.save(edited);
+        mvc.perform(post("/api/symbols/stopcontact_alg/standard").with(as(user))).andExpect(status().isOk());
+        // a database from before the number of sockets was stored: the double socket does not know it has two
+        SymbolEntity twice = symbols.findById("stopcontact2").orElseThrow();
+        twice.setSocketCount(null);
+        twice.setModified(true);
+        symbols.save(twice);
+        mvc.perform(post("/api/symbols/stopcontact2/standard").with(as(user))).andExpect(status().isOk());
+
+        List<SymbolDto> catalog = download();
+        SymbolDto socket = catalog.stream().filter(symbol -> symbol.key().equals("stopcontact_alg")).findFirst().orElseThrow();
+        assertFalse(socket.parents().contains("custom:tweepolig"));
+        assertEquals(general.parents(), socket.parents());
+        SymbolDto doubleSocket = catalog.stream().filter(symbol -> symbol.key().equals("stopcontact2")).findFirst().orElseThrow();
+        assertEquals(2, ((Number) doubleSocket.socket().get("n")).intValue());
+        // the build would accept it
+        mvc.perform(get("/api/admin/symbols/catalog/problems").with(as(admin))).andExpect(status().isOk()).andExpect(jsonPath("$", hasSize(0)));
+        assertEquals(List.of(), com.pleysje.plugged.catalog.CatalogRules.problems(StandardSymbols.asStandardsForTest(catalog)));
+    }
+
+    @Test
+    void aStandardThatWouldStopTheBuildIsReportedBeforeTheDownload() throws Exception {
+        // a lamp that no longer touches the line y = 12
+        draw("lichtpunt", "Lamp", "{\"t\":\"circle\",\"cx\":12,\"cy\":4,\"r\":2}");
+        mvc.perform(post("/api/symbols/lichtpunt/standard").with(as(user))).andExpect(status().isOk());
+        mvc.perform(get("/api/admin/symbols/catalog/problems").with(as(admin))).andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(1)))
+                .andExpect(jsonPath("$[0].key", is("lichtpunt")))
+                .andExpect(jsonPath("$[0].rule", is("notOnLine")));
+        mvc.perform(get("/api/admin/symbols/catalog/problems").with(as(user))).andExpect(status().isForbidden());
+    }
 }

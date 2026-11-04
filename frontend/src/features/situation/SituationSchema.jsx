@@ -38,7 +38,7 @@ const ARROW_DIRECTIONS = {ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -
 const isOpening = (item) => item.kind === 'door' || item.kind === 'window'
 const movedWall = (wall, dx, dy) => ({...wall, x1: wall.x1 + dx, y1: wall.y1 + dy, x2: wall.x2 + dx, y2: wall.y2 + dy})
 
-export default function SituationSchema({project, setProject, pageIndex, onFooter}) {
+export default function SituationSchema({project, setProject, pageIndex, onFooter, educational}) {
     const {t} = useTranslation()
     const page = project.sit[pageIndex],
         {walls, items} = page,
@@ -706,6 +706,7 @@ export default function SituationSchema({project, setProject, pageIndex, onFoote
                 onPlace={placeNode}
                 onPlaceAll={placeAllUnplaced}
                 onSetHidden={setHidden}
+                educational={educational}
             />
         </div>
     )

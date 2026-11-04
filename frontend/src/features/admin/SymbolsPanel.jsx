@@ -5,7 +5,7 @@
 // chosen with "make standard" in the Componenten tab) and shows what it would change.
 import {useCallback, useEffect, useState} from 'react'
 import {useTranslation} from '../../i18n/I18nProvider.jsx'
-import {fetchCatalogChanges, fetchCatalogFile} from '../../api/authApi.js'
+import {fetchCatalogChanges, fetchCatalogFile, fetchCatalogProblems} from '../../api/authApi.js'
 import {symbolName} from '../../symbols/symbolLibrary.js'
 
 export const CATALOG_FILE = 'standard-symbols.json'
@@ -22,12 +22,15 @@ const saveFile = (content) => {
 export default function SymbolsPanel() {
     const {t} = useTranslation()
     const [changes, setChanges] = useState(null),
+        [problems, setProblems] = useState([]),
         [failed, setFailed] = useState(false),
         [busy, setBusy] = useState(false),
         [message, setMessage] = useState({kind: '', text: ''})
     const load = useCallback(async () => {
         try {
-            setChanges(await fetchCatalogChanges())
+            const [changeList, problemList] = await Promise.all([fetchCatalogChanges(), fetchCatalogProblems()])
+            setChanges(changeList)
+            setProblems(problemList)
             setFailed(false)
         } catch {
             setFailed(true)
@@ -69,6 +72,18 @@ export default function SymbolsPanel() {
                         {t('catalog.noChanges')}
                     </p>
                 ))}
+            {problems.length > 0 && (
+                <div id="catalog-problems" className="authmsg error" role="alert">
+                    <b>{t('catalog.problemsTitle', {count: problems.length})}</b>
+                    <ul>
+                        {problems.map((problem, index) => (
+                            <li key={index} id={'catalog-problem-' + index}>
+                                <b>{problem.key}</b>: {t('catalog.problems.' + problem.rule, {...problem.details, key: problem.key})}
+                            </li>
+                        ))}
+                    </ul>
+                </div>
+            )}
             <ol className="catalogsteps">
                 <li>
                     {t('catalog.step1')}{' '}

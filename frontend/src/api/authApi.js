@@ -125,3 +125,11 @@ export const fetchOwnedGroups = async () => {
 
 /** {ok, user (= the group), error}: switches the educational mode of a group (its owners and administrators). */
 export const setGroupEducational = (id, educational) => send('/api/groups/' + encodeURIComponent(id) + '/educational', {educational}, 'PUT')
+
+/** What in the catalog to download would stop the build ([{key, rule, details}]). Throws when not available. */
+export const fetchCatalogProblems = async () => {
+    const response = await apiFetch('/api/admin/symbols/catalog/problems')
+    if (!response.ok) throw new Error('catalog problems not available')
+    const problems = await response.json()
+    return Array.isArray(problems) ? problems : []
+}

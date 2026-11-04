@@ -310,6 +310,10 @@ export default {
         hiddenHint: 'Ces composants ne sont pas comptés. Cliquez sur la flèche pour les remettre.',
         showTitle: 'Afficher à nouveau dans la liste',
         show: 'Afficher {name}',
+        elementsTitle: 'Éléments du schéma unifilaire',
+        elementsOpen: 'Afficher les éléments du schéma unifilaire',
+        placeAllNeutral: 'Tout placer sur cette feuille',
+        nothingToPlace: 'Aucun élément à placer.',
     },
     symbolEditor: {
         tools: {
@@ -900,6 +904,19 @@ export default {
         note: 'Au démarrage, chaque installation reprend les nouveaux dessins pour les symboles standard que personne n’a modifiés ; les symboles modifiés restent tels quels.',
         downloaded: '{file} téléchargé.',
         downloadFailed: 'Le téléchargement n’a pas réussi.',
+        problemsTitle: 'Le build refusera ceci ({count}). Modifiez les symboles et choisissez à nouveau « Définir comme standard », ou utilisez « Restaurer le standard » :',
+        problems: {
+            duplicateKey: 'apparaît plus d’une fois',
+            invalidKey: 'clé non valide',
+            noName: 'n’a pas de nom',
+            noShapes: 'n’a pas de dessin',
+            invalidShape: 'une forme n’est pas valide ({problem})',
+            unknownParent: 'peut être placé sous {parent}, qui n’est pas un symbole standard',
+            notOnLine: 'ne touche pas la ligne y = 12, le long de laquelle le schéma unifilaire relie les symboles',
+            socketCount: 'dessine {arches} prise(s), mais les propriétés en indiquent {sockets}',
+            missingElement: 'manque, alors que c’est un élément standard d’un circuit',
+            invalid: '{problem}',
+        },
     },
     educational: {
         badge: 'Mode éducatif',

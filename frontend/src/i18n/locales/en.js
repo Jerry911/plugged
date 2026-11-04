@@ -310,6 +310,10 @@ export default {
         hiddenHint: 'These components are not counted. Click the arrow to bring them back.',
         showTitle: 'Show in the list again',
         show: 'Show {name}',
+        elementsTitle: 'Elements of the single-line diagram',
+        elementsOpen: 'Show the elements of the single-line diagram',
+        placeAllNeutral: 'Place all on this sheet',
+        nothingToPlace: 'No elements to place.',
     },
     symbolEditor: {
         tools: {
@@ -900,6 +904,19 @@ export default {
         note: 'On start, every installation takes over the new drawings for the standard symbols nobody edited; edited symbols stay as they are.',
         downloaded: '{file} downloaded.',
         downloadFailed: 'The download did not work.',
+        problemsTitle: 'The build will refuse this ({count}). Change the symbols and choose "Make standard" again, or use "Restore standard":',
+        problems: {
+            duplicateKey: 'occurs more than once',
+            invalidKey: 'invalid key',
+            noName: 'has no name',
+            noShapes: 'has no drawing',
+            invalidShape: 'a shape is invalid ({problem})',
+            unknownParent: 'may hang under {parent}, which is not a standard symbol',
+            notOnLine: 'does not touch the line y = 12, along which the single-line diagram connects the symbols',
+            socketCount: 'draws {arches} socket(s), but its properties say {sockets}',
+            missingElement: 'is missing, but it is a standard element of a circuit',
+            invalid: '{problem}',
+        },
     },
     educational: {
         badge: 'Educational mode',

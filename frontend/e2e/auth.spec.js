@@ -96,8 +96,8 @@ test('a project is private until its owner shares it with a group; members can o
     await page.locator('#groups-create').click()
     const card = page.locator('.groupcard', {hasText: name})
     for (const member of [alice.user, bob.user]) {
+        // choosing the user adds him at once
         await card.locator('select').selectOption(String(member.id))
-        await card.locator('button', {hasText: t('groups.addMember')}).click()
         await expect(card.locator('.memberchip', {hasText: member.name})).toBeVisible()
     }
 

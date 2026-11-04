@@ -3,7 +3,7 @@
 // Beheer → Symbolen: what the next release changes, and the download of the catalog file.
 import {render, waitFor} from '@testing-library/react'
 import SymbolsPanel, {CATALOG_FILE, CATALOG_PATH} from '../../../features/admin/SymbolsPanel.jsx'
-import {fetchCatalogChanges, fetchCatalogFile} from '../../../api/authApi.js'
+import {fetchCatalogChanges, fetchCatalogFile, fetchCatalogProblems} from '../../../api/authApi.js'
 import {t} from '../../../i18n/translate.js'
 import {byId, clickId, getById} from '../../utils.jsx'
 
@@ -11,9 +11,10 @@ const json = (body, status = 200) => ({ok: status < 400, status, json: async () 
 const FILE = '[\n  {"k":"lichtpunt","name":"Lamp"}\n]\n'
 
 /** /changes answers `changes` (or `changesStatus`), the catalog answers FILE (or `fileStatus`). */
-const backend = ({changes = [], changesStatus = 200, fileStatus = 200} = {}) => {
+const backend = ({changes = [], changesStatus = 200, fileStatus = 200, problems = []} = {}) => {
     global.fetch = vi.fn(async (url) => {
         if (url === '/api/admin/symbols/catalog/changes') return json(changes, changesStatus)
+        if (url === '/api/admin/symbols/catalog/problems') return json(problems)
         if (url === '/api/admin/symbols/catalog') return json(FILE, fileStatus)
         return json(null, 404)
     })
@@ -58,9 +59,34 @@ test('the changes or the file cannot be fetched: the panel says so', async () =>
     expect(saved).toEqual([])
 })
 
+test('what would stop the build is shown before the download', async () => {
+    backend({
+        changes: [{k: 'stopcontact2', name: 'Dubbel stopcontact'}],
+        problems: [
+            {key: 'stopcontact2', rule: 'socketCount', details: {arches: 2, sockets: 1}},
+            {key: 'lichtpunt', rule: 'notOnLine', details: {}},
+        ],
+    })
+    render(<SymbolsPanel />)
+    await waitFor(() => getById('catalog-problems'))
+    expect(getById('catalog-problems')).toHaveTextContent(t('catalog.problemsTitle', {count: 2}))
+    expect(getById('catalog-problem-0')).toHaveTextContent('stopcontact2: ' + t('catalog.problems.socketCount', {arches: 2, sockets: 1}))
+    expect(getById('catalog-problem-1')).toHaveTextContent('lichtpunt: ' + t('catalog.problems.notOnLine'))
+})
+
+test('nothing wrong: no problems box', async () => {
+    backend()
+    render(<SymbolsPanel />)
+    await waitFor(() => getById('catalog-no-changes'))
+    expect(byId('catalog-problems')).toBeNull()
+})
+
 test('the api calls', async () => {
     global.fetch = vi.fn(async () => json({}))
     expect(await fetchCatalogChanges()).toEqual([])
+    expect(await fetchCatalogProblems()).toEqual([])
+    global.fetch = vi.fn(async () => json(null, 500))
+    await expect(fetchCatalogProblems()).rejects.toThrow()
     global.fetch = vi.fn(async () => Promise.reject(new Error('down')))
     expect(await fetchCatalogFile()).toBeNull()
 })

@@ -10,6 +10,7 @@
 //   {kind: 'hit', ...} / {kind: 'stem', ...}                                   click area / drag & drop latch zone of a circuit (editor only)
 // `id` links a drawn item to its element of the tree (click to select).
 import {placedShapesOf, socketStackOf} from '../symbols/symbolShapes.js'
+import {pathPoints} from '../symbols/pathPoints.js'
 import {symbolName, typeOf} from '../symbols/symbolLibrary.js'
 import {t} from '../i18n/translate.js'
 import {flatten, newId} from './tree.js'
@@ -187,12 +188,29 @@ export const connectionReach = (shapes) => {
         left = Math.min(left, from)
         right = Math.max(right, to)
     }
+    // where a polyline (a line or a path) lies on the connection line: along a stretch on it, or at the point where it crosses or touches it
+    const onLine = (y) => Math.abs(y - 12) < 1e-6
+    const coverPolyline = (points) => {
+        if (points.length === 1 && onLine(points[0][1])) cover(points[0][0], points[0][0])
+        for (let i = 1; i < points.length; i++) {
+            const [ax, ay] = points[i - 1],
+                [bx, by] = points[i]
+            if (onLine(ay) && onLine(by)) cover(Math.min(ax, bx), Math.max(ax, bx))
+            else if (onLine(ay)) cover(ax, ax)
+            else if (onLine(by)) cover(bx, bx)
+            else if ((ay - 12) * (by - 12) < 0) {
+                const crossing = ax + ((12 - ay) / (by - ay)) * (bx - ax)
+                cover(crossing, crossing)
+            }
+        }
+    }
     shapes.forEach((shape) => {
         if (shape.t === 'circle' && Math.abs(shape.cy - 12) <= shape.r) {
             const halfChord = Math.sqrt(shape.r ** 2 - (shape.cy - 12) ** 2)
             cover(shape.cx - halfChord, shape.cx + halfChord)
         } else if (shape.t === 'rect' && shape.y <= 12 && 12 <= shape.y + shape.h) cover(shape.x, shape.x + shape.w)
-        else if (shape.t === 'line' && shape.y1 === 12 && shape.y2 === 12) cover(Math.min(shape.x1, shape.x2), Math.max(shape.x1, shape.x2))
+        else if (shape.t === 'line') coverPolyline([[shape.x1, shape.y1], [shape.x2, shape.y2]])
+        else if (shape.t === 'path') coverPolyline(pathPoints(shape.d))
         else if (shape.t === 'arc' && Math.abs(12 - shape.cy) <= shape.r) {
             const dy = 12 - shape.cy,
                 halfChord = Math.sqrt(shape.r ** 2 - dy ** 2),

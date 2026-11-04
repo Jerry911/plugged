@@ -20,6 +20,7 @@ import {
     PLACEMENT_WIDTH,
     placementOf,
     isDiffCircuit,
+    connectionReach,
 } from '../../model/boardLayout.js'
 import {setLanguage} from '../../i18n/translate.js'
 import {baseProject, node} from '../utils.jsx'
@@ -436,4 +437,38 @@ test('a layoutCircuit has a latch zone along its stem, above the click area, rea
     expect(z.y + z.h).toBeLessThan(0) // stays above the breaker
     expect(z.x + z.w / 2).toBe(30) // centred on the stem
     expect(layoutCircuit(baseProject(), node('K~', 'kring', [], {p: {bescherming: 'geen'}})).items.some((i) => i.kind === 'stem')).toBe(false)
+})
+
+// the connecting line of the diagram runs up to where the drawing touches the centre line (y = 12), whatever the drawing is made of
+describe('connectionReach: any shape that touches the centre line', () => {
+    test('a lamp made of two crossing diagonal lines (no horizontal leg) reaches its centre', () => {
+        const lamp = [
+            {t: 'line', x1: 7.44, y1: 8.29, x2: 14.86, y2: 15.71, sw: 1.5},
+            {t: 'line', x1: 7.44, y1: 15.71, x2: 14.86, y2: 8.29, sw: 1.5},
+        ]
+        const [left, right] = connectionReach(lamp)
+        expect(left).toBeCloseTo(11.15, 1)
+        expect(right).toBeCloseTo(11.15, 1)
+    })
+    test('a bell made of two path arcs and a vertical line reaches from the vertical line to the points of the arcs', () => {
+        const bell = [
+            {t: 'path', d: 'M15 12 A5.25 5.25 0 0 1 8 17.25', sw: 1.5},
+            {t: 'path', d: 'M15 12 A5.25 5.25 0 0 0 8 6.75', sw: 1.5},
+            {t: 'line', x1: 8, y1: 17.25, x2: 8, y2: 6.75, sw: 1.5},
+        ]
+        expect(connectionReach(bell)).toEqual([8, 15])
+    })
+    test('a line that only touches the centre line with its end, a path that stays off it and a horizontal line are handled', () => {
+        expect(connectionReach([{t: 'line', x1: 5, y1: 12, x2: 9, y2: 4}])).toEqual([5, 5])
+        expect(connectionReach([{t: 'line', x1: 5, y1: 4, x2: 9, y2: 6}])).toBeNull()
+        expect(connectionReach([{t: 'path', d: 'M2 3 L8 3 L8 9 Z'}])).toBeNull()
+        expect(connectionReach([{t: 'line', x1: 9, y1: 12, x2: 1, y2: 12}])).toEqual([1, 9])
+    })
+    test('a path that crosses the line in the middle of a curve or an arc', () => {
+        const [left, right] = connectionReach([{t: 'path', d: 'M10 6 C14 8 14 16 10 18'}])
+        expect(left).toBeCloseTo(right, 5)
+        expect(left).toBeGreaterThan(12)
+        const [arcLeft] = connectionReach([{t: 'path', d: 'M12 6 A6 6 0 0 1 12 18'}]) // a half circle that bulges to the right: x = 18 at y = 12
+        expect(arcLeft).toBeCloseTo(18, 0)
+    })
 })

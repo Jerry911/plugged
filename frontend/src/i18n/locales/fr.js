@@ -462,7 +462,7 @@ export default {
             stopcontact: {
                 title: 'Ajoutez-y une prise de courant',
                 body: [
-                    'Le circuit étant toujours sélectionné, cliquez sur **Prise de courant** : elle se place automatiquement sous ce circuit. Vous ajoutez de la même manière des lampes, des interrupteurs et des appareils.',
+                    'Le circuit étant toujours sélectionné, cliquez sur **Prise de courant (terre)** : elle se place automatiquement sous ce circuit. Vous ajoutez de la même manière des lampes, des interrupteurs et des appareils.',
                 ],
                 done: 'La prise de courant est reliée à votre circuit.',
             },
@@ -542,7 +542,7 @@ export default {
             symbool: {
                 title: 'Placez un symbole',
                 body: [
-                    'Sous **Composants** se trouvent tous les symboles. Cliquez sur un symbole, p. ex. **Prise de courant**, puis sur la feuille pour le placer. Vous en cherchez un ? Tapez dans **Rechercher un composant général**.',
+                    'Sous **Composants** se trouvent tous les symboles. Cliquez sur un symbole, p. ex. **Prise de courant (terre)**, puis sur la feuille pour le placer. Vous en cherchez un ? Tapez dans **Rechercher un composant général**.',
                 ],
                 done: 'Symbole placé.',
             },
@@ -721,7 +721,7 @@ export default {
         kring: 'Circuit (disjoncteur)',
         zekering: 'Fusible',
         stopcontact_alg: 'Prise de courant (symbole général)',
-        stopcontact: 'Prise de courant',
+        stopcontact: 'Prise de courant (terre)',
         stopcontact_kid: 'Prise de courant (sécurité enfant)',
         stopcontact_pekid: 'Prise de courant (terre + sécurité enfant)',
         stopcontact2: 'Prise de courant double',

@@ -75,7 +75,7 @@ test('menu on the left lists every component by category and filters on search',
 test('opening a standard component shows its editor and saving keeps its key', async () => {
     const {save} = mount()
     pick('stopcontact')
-    expect(name().value).toBe('Stopcontact')
+    expect(name().value).toBe('Stopcontact (aarding)')
     expect(getById('comp-delete')).toBeEnabled()
     expect(getById('comp-restore')).toBeDisabled()
     expect(origin()).toBe(t('symbolEditor.origin.standard'))
@@ -392,15 +392,15 @@ test('"Maak standaard" is only there for standard symbols and tells when the bac
 test('in another language the menu and the name field show the translated name; saving it unchanged keeps the stored name', async () => {
     setLanguage('fr')
     const {save} = mount()
-    expect(menuItem('stopcontact')).toHaveTextContent('Prise de courant')
+    expect(menuItem('stopcontact')).toHaveTextContent('Prise de courant (terre)')
     expect(getById('comp-category-Stopcontacten')).toHaveTextContent('Prises de courant')
     pick('stopcontact')
-    expect(name().value).toBe('Prise de courant')
+    expect(name().value).toBe('Prise de courant (terre)')
     fireEvent.click(getById('comp-placeable'))
     fireEvent.click(saveButton('save'))
     await messageShows('symbolEditor.saved')
     // the backend keeps the Dutch name of the standard symbol, so it is still translated in every language
-    expect(save).toHaveBeenLastCalledWith(expect.objectContaining({k: 'stopcontact', name: 'Stopcontact', place: false}))
+    expect(save).toHaveBeenLastCalledWith(expect.objectContaining({k: 'stopcontact', name: 'Stopcontact (aarding)', place: false}))
     fireEvent.change(name(), {target: {value: 'Prise de la cuisine'}})
     fireEvent.click(saveButton('save'))
     await waitFor(() => expect(save).toHaveBeenLastCalledWith(expect.objectContaining({name: 'Prise de la cuisine'})))

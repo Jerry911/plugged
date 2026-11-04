@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import {render} from '@testing-library/react'
 import {allTypes, categoryName, setLibrary, symbolName, typeOf} from '../../symbols/symbolLibrary.js'
-import {arcPath, placedShapesOf, socketShapes, socketStackOf} from '../../symbols/symbolShapes.js'
+import {arcPath, placedShapesOf, socketShapes, socketStackOf, waterproofMark} from '../../symbols/symbolShapes.js'
 import SymbolGraphic from '../../symbols/SymbolGraphic.jsx'
 import {connectionReach} from '../../model/boardLayout.js'
 import {setLanguage} from '../../i18n/translate.js'
@@ -109,13 +109,10 @@ test('legacy project components keep working unless the library already has them
 test('placeable symbols have a connection point on the centre line', () => {
     BUILTIN.filter((t) => t.place).forEach((t) => expect(connectionReach(t.shapes), t.k).not.toBeNull())
 })
-test('switch lines touch: the supply line and the lever meet in the centre of the hinge circle, which hides their ends; a flag sits on the end of the lever', () => {
-    const [wire, lever, ...rest] = typeOf({}, 'schakelaar').shapes,
-        hinge = rest.pop(),
-        flags = rest
-    expect(hinge).toMatchObject({t: 'circle', f: 2, cy: 12}) // filled with the paper: the circle hides the ends of the wire and the lever
-    expect([wire.x2, wire.y2]).toEqual([hinge.cx, hinge.cy])
-    expect([lever.x1, lever.y1]).toEqual([hinge.cx, hinge.cy])
+test('switch lines touch: the hinge circle sits on the line, the lever starts on its edge and a flag sits on the end of the lever', () => {
+    const [hinge, lever, ...flags] = typeOf({}, 'schakelaar').shapes
+    expect(hinge).toMatchObject({t: 'circle', cy: 12})
+    expect(Math.hypot(lever.x1 - hinge.cx, lever.y1 - hinge.cy)).toBeCloseTo(hinge.r, 0)
     flags.forEach((f) => {
         expect([f.x1, f.y1]).toEqual([lever.x2, lever.y2])
         // perpendicular to the lever
@@ -131,10 +128,9 @@ test('multi-way switches have a lever with a flag on both sides of the hinge cir
     expect(levers('omschakelaar')).toHaveLength(2)
     expect(levers('kruis')).toHaveLength(4)
 })
-test('lichtpunt is a supply line that ends in the centre of a cross', () => {
-    const [wire, a, b] = typeOf({}, 'lichtpunt').shapes
-    expect(wire.y1).toBe(12)
-    expect([(a.x1 + a.x2) / 2, (b.x1 + b.x2) / 2]).toEqual([wire.x2, wire.x2])
+test('lichtpunt is a cross centred on the line', () => {
+    const [a, b] = typeOf({}, 'lichtpunt').shapes
+    expect((a.x1 + a.x2) / 2).toBeCloseTo((b.x1 + b.x2) / 2, 5)
     expect([(a.y1 + a.y2) / 2, (b.y1 + b.y2) / 2]).toEqual([12, 12])
 })
 test('filled shapes are drawn with a fill, all others without', () => {
@@ -168,23 +164,24 @@ test('socket variants: bar for the protective conductor, feet for kinderveilighe
     // an arch is the left half of its circle: it ends at cx, and all of them fit the grid
     expect(h.filter((s) => s.t === 'arc').every((a) => a.cx <= 24)).toBe(true)
     for (const n of [1, 2, 3, 4, 6]) expect(Math.max(...socketShapes({n}, true).filter((s) => s.t === 'arc').map((a) => a.cx))).toBeLessThanOrEqual(23.4)
-    // two sockets are chained a bit further apart than in the eendraadschema (24 units of 0.35, so the arches are not glued together), more of them are pressed together to fit
-    const apex = (n) => socketShapes({pe: true, n}, true).filter((s) => s.t === 'line' && s.x1 === s.x2 && s.y1 !== 12).map((s) => s.x1)
-    expect(apex(2)[1] - apex(2)[0]).toBeCloseTo(8.4, 5)
-    // the second socket starts clearly behind the end of the first arch (arch width 5.25): a visible gap of about 3 units
-    expect(apex(2)[1] - apex(2)[0] - 5.25).toBeGreaterThan(3)
-    expect(apex(4)[1] - apex(4)[0]).toBeLessThan(7)
+    // stacked sockets are chained every 6 units, longer stacks are pressed together to fit; the bar of a socket crosses the line, the ticks do not
+    const apex = (n) => socketShapes({pe: true, n}, true).filter((s) => s.t === 'line' && s.x1 === s.x2 && s.y1 < 12 && s.y2 > 12).map((s) => s.x1)
+    expect(apex(2)[1] - apex(2)[0]).toBeCloseTo(6, 5)
+    // the second socket starts behind the end of the first arch: a visible gap
+    expect(apex(2)[1] - socketShapes({n: 2}, true).find((s) => s.t === 'arc').cx).toBeGreaterThan(1.5)
+    expect(apex(4)[1] - apex(4)[0]).toBeLessThan(6)
     // double, triple, quadruple, ...: every stack keeps the same proportion between the gap and the width of an arch, and stays inside the grid
     for (const n of [2, 3, 4, 6]) {
         const sh = socketShapes({pe: true, n}, true),
             ap = apex(n),
             arcs = sh.filter((h) => h.t === 'arc'),
-            width = arcs[0].r,
             gap = ap[1] - arcs[0].cx
-        expect(gap / width, 'gap ' + n).toBeGreaterThan(0.55)
-        expect(gap / width, 'gap ' + n).toBeLessThan(0.65)
+        expect(ap, 'bars ' + n).toHaveLength(n)
+        expect(gap / arcs[0].r, 'gap ' + n).toBeCloseTo(0.5, 1)
         arcs.forEach((a, k) => k && expect(ap[k] - arcs[k - 1].cx, 'even ' + n).toBeCloseTo(gap, 1))
         expect(Math.max(...arcs.map((a) => a.cx))).toBeLessThanOrEqual(23.4)
+        // a tick above and below every arch
+        expect(sh.filter((h) => h.t === 'line' && h.x1 === h.x2 && (h.y2 <= 12 - arcs[0].r || h.y1 >= 12 + arcs[0].r)), 'ticks ' + n).toHaveLength(2 * n)
     }
     expect(socketShapes({h: true}, true)).toContainEqual(expect.objectContaining({s: 'h'}))
     expect(socketShapes({h: true})).toContainEqual(expect.objectContaining({s: 'h'}))
@@ -203,22 +200,50 @@ test('symbols are drawn with round joins so lever and flag touch', () => {
 })
 
 const sockets = () => BUILTIN.filter((t) => t.sock)
-test('the sockets of the catalog are drawn like the generator draws them (frontend and backend agree)', () => {
-    expect(sockets().length).toBeGreaterThanOrEqual(6)
-    sockets().forEach((t) => expect(socketShapes(t.sock), t.k).toEqual(t.shapes))
+// the parts of a horizontal socket drawing: arches, bars (vertical lines through the line y = 12), ticks (other vertical lines) and how far the
+// supply line (horizontal lines on y = 12) reaches
+const socketParts = (shapes) => {
+    const sorted = (list) => list.map((shape) => JSON.stringify(shape)).sort(),
+        vertical = shapes.filter((h) => h.t === 'line' && h.x1 === h.x2).map((h) => ({x: h.x1, from: Math.min(h.y1, h.y2), to: Math.max(h.y1, h.y2)})),
+        supply = shapes.filter((h) => h.t === 'line' && h.y1 === 12 && h.y2 === 12)
+    return {
+        arcs: sorted(shapes.filter((h) => h.t === 'arc').map(({cx, cy, r, a1, a2}) => ({cx, cy, r, a1, a2}))),
+        bars: sorted(vertical.filter((v) => v.from < 12 && v.to > 12)),
+        ticks: sorted(vertical.filter((v) => !(v.from < 12 && v.to > 12))),
+        supply: [Math.min(...supply.flatMap((h) => [h.x1, h.x2])), Math.max(...supply.flatMap((h) => [h.x1, h.x2]))],
+    }
+}
+test('stacked sockets are drawn like the double and triple socket of the catalog: the same arches, bars, ticks and supply line', () => {
+    for (const k of ['stopcontact2', 'stopcontact3']) {
+        const t = typeOf({}, k)
+        expect(socketParts(socketShapes(t.sock)), k).toEqual(socketParts(t.shapes))
+    }
 })
-test('sockets lie in the line: the supply enters the apex of an arch that opens away from it, nothing hangs below the line', () => {
+test('sockets lie in the line: the supply reaches the apex of the arches, which open away from it; nothing hangs below the line', () => {
+    expect(sockets().length).toBeGreaterThanOrEqual(6)
     sockets().forEach((t) => {
-        const arcs = t.shapes.filter((h) => h.t === 'arc')
-        expect(arcs.length).toBe(t.sock.n || 1)
+        const arcs = t.shapes.filter((h) => h.t === 'arc'),
+            {supply} = socketParts(t.shapes),
+            apexes = arcs.map((a) => a.cx - a.r)
+        expect(arcs.length, t.k).toBe(t.sock.n || 1)
         arcs.forEach((a) => expect([a.cy, a.a1, a.a2], t.k).toEqual([12, 90, 270]))
-        // the supply line runs from the left to the apex of the last arch (the apex of an arch is r to the left of its centre)
-        expect(t.shapes[0], t.k).toMatchObject({t: 'line', x1: 1, y1: 12, y2: 12})
-        expect(t.shapes[0].x2, t.k).toBeCloseTo(arcs[arcs.length - 1].cx - arcs[0].r, 5)
+        expect(supply[0], t.k).toBe(1)
+        expect(supply[1], t.k).toBeGreaterThanOrEqual(Math.min(...apexes) - 0.01)
         // symmetric around the line y = 12 (apart from the little 'h' of the waterproof socket)
         const ys = t.shapes.filter((h) => h.t !== 'text').flatMap((h) => (h.t === 'line' ? [h.y1, h.y2] : [h.cy - h.r, h.cy + h.r]))
         expect(Math.min(...ys) + Math.max(...ys), t.k).toBeCloseTo(24, 5)
     })
+})
+test('a waterproof socket keeps its own drawing: the h comes above the apex of its first arch, clear of the highest line', () => {
+    const pe = typeOf({}, 'stopcontact')
+    expect(waterproofMark(pe.shapes)).toEqual(socketShapes({pe: true, h: true}).find((h) => h.t === 'text'))
+    expect(waterproofMark(pe.shapes)).toEqual({t: 'text', x: 4, y: 5, s: 'h', fs: 4.5})
+    // a drawing that already has its h gets no second one
+    const marked = {...pe, sock: {...pe.sock, h: true}, shapes: [...pe.shapes, waterproofMark(pe.shapes)]}
+    expect(placedShapesOf(marked)).toBe(marked.shapes)
+    // the h follows the first (leftmost) arch, also when the arches are listed in another order
+    const arches = [{t: 'arc', cx: 14, cy: 12, r: 4, a1: 90, a2: 270}, {t: 'arc', cx: 8, cy: 12, r: 4, a1: 90, a2: 270}]
+    expect(waterproofMark(arches)).toMatchObject({x: 4, y: 6.2})
 })
 test('a socket is drawn as stored, stacked when there are more, and vertically (hanging) on request', () => {
     const sc = typeOf({}, 'stopcontact')
@@ -231,13 +256,13 @@ test('a socket is drawn as stored, stacked when there are more, and vertically (
     const lp = typeOf({}, 'lichtpunt')
     expect(placedShapesOf(lp, {aantal: 3})).toBe(lp.shapes)
 })
-test('switches lean like in the eendraadschema (10 to the side for 20 up), with the supply entering the hinge from the left', () => {
+test('switches lean like in the eendraadschema (10 to the side for 20 up), with the hinge on the line', () => {
     for (const k of ['schakelaar', 'schakelaar2', 'schakelaar3', 'verklikker']) {
         const t = typeOf({}, k),
             lever = t.shapes.find((h) => h.t === 'line' && h.x1 !== h.x2 && Math.abs(h.y2 - h.y1) > 6)
         const deg = (Math.atan2(lever.x2 - lever.x1, lever.y1 - lever.y2) * 180) / Math.PI
         expect(deg, k).toBeCloseTo(26.57, 1)
-        expect(t.shapes[0], k).toMatchObject({t: 'line', x1: 1, y1: 12, y2: 12})
+        expect(t.shapes.find((h) => h.t === 'circle'), k).toMatchObject({cy: 12})
     }
 })
 test('Sym draws paths, line weights relative to the drawing, shapes filled with the paper and bold text', () => {
@@ -278,7 +303,7 @@ test('standard symbols are drawn like the eendraadschema: the same weights, fill
     expect(find('motor', (h) => h.t === 'text')[0]).toMatchObject({s: 'M', b: 1})
     expect(find('dimmer', (h) => h.t === 'path')[0]).toMatchObject({f: 1}) // the filled triangle of the dimmer
     expect(find('omvormer', (h) => h.t === 'path')).toHaveLength(1) // the sine wave
-    expect(find('stopcontact', (h) => h.t === 'arc')[0].sw).toBe(1.5)
+    expect(find('lichtpunt', (h) => h.t === 'line')[0].sw).toBe(1.5) // the heavier cross
     expect(find('kring', (h) => h.t === 'path')[0]).toMatchObject({f: 1}) // the block on the lever
     // a path touches the connection line like any other shape (a bell made of arcs needs it); one that stays off the line does not count
     expect(connectionReach([{t: 'path', d: 'M0 12 L24 12'}])).toEqual([0, 24])
@@ -310,14 +335,14 @@ test('Sym keeps texts upright when the symbol is rotated', () => {
 })
 test('standard symbols and categories are shown in the active language; names the user typed are not translated', () => {
     const socket = typeOf({}, 'stopcontact')
-    expect(symbolName(socket)).toBe('Stopcontact')
+    expect(symbolName(socket)).toBe('Stopcontact (aarding)')
     expect(categoryName('Stopcontacten')).toBe('Stopcontacten')
     setLanguage('fr')
-    expect(symbolName(socket)).toBe('Prise de courant')
+    expect(symbolName(socket)).toBe('Prise de courant (terre)')
     expect(categoryName('Stopcontacten')).toBe('Prises de courant')
     expect(symbolName(typeOf({}, 'aansluiting'))).toBe('Raccordement au réseau')
     setLanguage('en')
-    expect(symbolName(socket)).toBe('Socket outlet')
+    expect(symbolName(socket)).toBe('Socket outlet (earth)')
     expect(categoryName('Verlichting & bediening')).toBe('Lighting & controls')
     // a renamed standard symbol and an own category keep the name the user gave them
     expect(symbolName({...socket, name: 'Keukenstopcontact'})).toBe('Keukenstopcontact')

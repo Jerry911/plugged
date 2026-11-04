@@ -446,7 +446,9 @@ test('differentials under a circuit, under a differentieel and a differential in
             row(5, 4, 'Bord', {naam: 'Veranda'}),
             dk(6, 5, {naam: 'D2'}),
             dk(7, 6, {naam: 'D3'}),
-            row(8, 7, 'Contactdoos'),
+            // an element hangs under a circuit, also behind a differential
+            row(8, 7, 'Kring', {naam: 'K'}),
+            row(10, 8, 'Contactdoos'),
             row(9, 6, 'Bord', {naam: 'Sub'}),
         ],
     }

@@ -17,9 +17,10 @@ test.describe('building the schema', () => {
         expect(circuits(saved1).map((circuit) => circuit.label)).toEqual(['A', 'B'])
         // the new circuit is selected; elements go into the selected circuit
         await app.add('stopcontact')
-        await app.add('lichtpunt')
+        // (a lichtpunt hangs behind a switch, not directly under a circuit: a wall lamp does)
+        await app.add('wandlamp')
         const saved = await app.save(backend)
-        expect(circuits(saved)[1].children.map((n) => n.type)).toEqual(['stopcontact', 'lichtpunt'])
+        expect(circuits(saved)[1].children.map((n) => n.type)).toEqual(['stopcontact', 'wandlamp'])
         expect(circuits(saved)[0].children).toHaveLength(0)
     })
     test('an element that does not fit under the selection is refused, unless the hierarchy is free', async ({page, app, backend, dialogs}) => {
@@ -208,7 +209,7 @@ test.describe('arranging elements', () => {
         await expect(type).toHaveValue('leeg')
         await expect(type.locator('option').first()).toHaveText(t('oneWire.chooseSymbol'))
         const options = await type.locator('option').allTextContents()
-        expect(options).toContain('Stopcontact')
+        expect(options).toContain('Stopcontact (aarding)')
         expect(options).not.toContain('Verdeelbord') // a board does not hang under a switch
         // an empty symbol cannot be extended until it has a type
         await expect(btn(page, 'eds-insert-after')).toBeDisabled()

@@ -13,13 +13,17 @@ import org.springframework.stereotype.Component;
 @Component
 public class SymbolSeeder implements SmartInitializingSingleton {
     private final SymbolService service;
+    private final LegacySocketColumns legacySocketColumns;
 
-    public SymbolSeeder(SymbolService service) {
+    public SymbolSeeder(SymbolService service, LegacySocketColumns legacySocketColumns) {
         this.service = service;
+        this.legacySocketColumns = legacySocketColumns;
     }
 
     @Override
     public void afterSingletonsInstantiated() {
+        // first the socket values of an older database, so seeding compares the stored symbols as they really are
+        legacySocketColumns.migrate();
         service.seed();
     }
 }

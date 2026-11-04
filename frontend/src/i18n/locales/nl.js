@@ -463,7 +463,7 @@ export default {
             stopcontact: {
                 title: 'Hang er een stopcontact aan',
                 body: [
-                    'Met de kring nog geselecteerd klik je op **Stopcontact**: het komt automatisch onder die kring. Op dezelfde manier voeg je lampen, schakelaars en toestellen toe.',
+                    'Met de kring nog geselecteerd klik je op **Stopcontact (aarding)**: het komt automatisch onder die kring. Op dezelfde manier voeg je lampen, schakelaars en toestellen toe.',
                 ],
                 done: 'Het stopcontact hangt aan je kring.',
             },
@@ -543,7 +543,7 @@ export default {
             symbool: {
                 title: 'Plaats een symbool',
                 body: [
-                    'Onder **Componenten** staan alle symbolen. Klik op een symbool, bv. **Stopcontact**, en klik daarna op het blad om het te plaatsen. Zoek je er een? Typ in **Zoek een algemeen component**.',
+                    'Onder **Componenten** staan alle symbolen. Klik op een symbool, bv. **Stopcontact (aarding)**, en klik daarna op het blad om het te plaatsen. Zoek je er een? Typ in **Zoek een algemeen component**.',
                 ],
                 done: 'Symbool geplaatst.',
             },
@@ -724,7 +724,7 @@ export default {
         kring: 'Kring (automaat)',
         zekering: 'Smeltveiligheid',
         stopcontact_alg: 'Stopcontact (algemeen symbool)',
-        stopcontact: 'Stopcontact',
+        stopcontact: 'Stopcontact (aarding)',
         stopcontact_kid: 'Stopcontact (kinderveiligheid)',
         stopcontact_pekid: 'Stopcontact (aarding + kinderveiligheid)',
         stopcontact2: 'Dubbel stopcontact',

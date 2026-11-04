@@ -462,7 +462,7 @@ export default {
             stopcontact: {
                 title: 'Hang a socket outlet on it',
                 body: [
-                    'With the circuit still selected, click **Socket outlet**: it goes under that circuit automatically. You add lights, switches and appliances the same way.',
+                    'With the circuit still selected, click **Socket outlet (earth)**: it goes under that circuit automatically. You add lights, switches and appliances the same way.',
                 ],
                 done: 'The socket outlet hangs on your circuit.',
             },
@@ -542,7 +542,7 @@ export default {
             symbool: {
                 title: 'Place a symbol',
                 body: [
-                    'Under **Components** are all the symbols. Click a symbol, e.g. **Socket outlet**, and then click the sheet to place it. Looking for one? Type in **Search a general component**.',
+                    'Under **Components** are all the symbols. Click a symbol, e.g. **Socket outlet (earth)**, and then click the sheet to place it. Looking for one? Type in **Search a general component**.',
                 ],
                 done: 'Symbol placed.',
             },
@@ -721,7 +721,7 @@ export default {
         kring: 'Circuit (breaker)',
         zekering: 'Fuse',
         stopcontact_alg: 'Socket outlet (general symbol)',
-        stopcontact: 'Socket outlet',
+        stopcontact: 'Socket outlet (earth)',
         stopcontact_kid: 'Socket outlet (child protection)',
         stopcontact_pekid: 'Socket outlet (earth + child protection)',
         stopcontact2: 'Double socket outlet',

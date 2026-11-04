@@ -137,3 +137,35 @@ test('a project is private until its owner shares it with a group; members can o
     expect((await backend.saved(id)).name).toBe('Woning Alice')
     for (const person of [alice, bob]) await person.page.context().close()
 })
+
+test('educational mode: the teacher switches it on, the student can no longer validate, import or export; the teacher still can', async ({browser, playwright, baseURL, request, page, app, backend}) => {
+    const teacher = await coworker({browser, playwright, baseURL, request}, 'Leraar'),
+        student = await coworker({browser, playwright, baseURL, request}, 'Student')
+    // the administrator makes the group, with the teacher as owner (★) and the student as member
+    const group = await (await request.post('/api/admin/groups', {data: {name: 'Klas ' + Date.now()}})).json()
+    expect((await request.put(`/api/admin/groups/${group.id}/owners/${teacher.user.id}`)).ok()).toBeTruthy()
+    expect((await request.put(`/api/admin/groups/${group.id}/members/${student.user.id}`)).ok()).toBeTruthy()
+    await expect(student.page.locator('#btn-verify')).toBeVisible()
+
+    // the teacher: Mijn groepen → educational mode on
+    await teacher.page.reload()
+    await teacher.page.locator('#tab-teacher').click()
+    await teacher.page.locator(`#group-${group.id}-educational`).check()
+    await expect(teacher.page.locator('#teacher-message')).toHaveText(t('educational.switchedOn', {group: group.name}))
+
+    // the student: as soon as the window gets the focus again, validation, import and export are gone
+    await student.page.evaluate(() => window.dispatchEvent(new Event('focus')))
+    await expect(student.page.locator('#educational-badge')).toBeVisible()
+    await expect(student.page.locator('#btn-verify')).toHaveCount(0)
+    await student.page.locator('#tab-project').click()
+    await expect(student.page.locator('#btn-import')).toBeDisabled()
+    await expect(student.page.locator('#btn-export')).toBeDisabled()
+
+    // the teacher and the administrator are not restricted
+    await teacher.page.locator('#tab-een').click()
+    await expect(teacher.page.locator('#btn-verify')).toBeVisible()
+    await app.open(backend)
+    await expect(page.locator('#educational-badge')).toHaveCount(0)
+    await expect(page.locator('#btn-verify')).toBeVisible()
+    for (const person of [teacher, student]) await person.page.context().close()
+})

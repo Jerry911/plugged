@@ -10,6 +10,7 @@ import {onUnauthorized} from '../../api/http.js'
 import {LoginForm, LoginScreen, RegisterScreen, SetupScreen} from './AuthScreens.jsx'
 
 const REGISTER_HASH = '#register'
+export const STATUS_REFRESH_MS = 60_000
 const screenOfHash = () => (window.location.hash === REGISTER_HASH ? 'register' : 'login')
 
 /** `children({user, onLogout})` renders the application for the signed-in user. */
@@ -36,6 +37,26 @@ export default function AuthGate({children}) {
         return () => removeEventListener('hashchange', onHashChange)
     }, [])
     useEffect(() => onUnauthorized(() => setSessionLost(true)), [])
+    // what the user may do can change while he works (a teacher switches the educational mode, an administrator changes his role): the
+    // status is fetched again when the window gets the focus and every minute
+    const signedInId = state.user?.id
+    useEffect(() => {
+        if (signedInId == null) return
+        const refresh = async () => {
+            try {
+                const status = await fetchAuthStatus()
+                if (status.user?.id === signedInId) setState((current) => (current.user ? {...current, user: status.user} : current))
+            } catch {
+                // offline for a moment: the next refresh tries again
+            }
+        }
+        const timer = setInterval(refresh, STATUS_REFRESH_MS)
+        addEventListener('focus', refresh)
+        return () => {
+            clearInterval(timer)
+            removeEventListener('focus', refresh)
+        }
+    }, [signedInId])
     const go = (target) => (event) => {
         event?.preventDefault()
         history.replaceState(null, '', target === 'register' ? REGISTER_HASH : window.location.pathname + window.location.search)

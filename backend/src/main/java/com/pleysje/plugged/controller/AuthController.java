@@ -11,6 +11,7 @@ import com.pleysje.plugged.logging.UserMdcFilter;
 import com.pleysje.plugged.security.Authentications;
 import com.pleysje.plugged.security.PluggedPrincipal;
 import com.pleysje.plugged.security.UserService;
+import com.pleysje.plugged.service.GroupService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
@@ -44,18 +45,25 @@ public class AuthController {
     private static final Logger log = LoggerFactory.getLogger(AuthController.class);
 
     private final UserService userService;
+    private final GroupService groups;
     private final SecurityContextRepository contexts;
 
-    public AuthController(UserService userService, SecurityContextRepository contexts) {
+    public AuthController(UserService userService, GroupService groups, SecurityContextRepository contexts) {
         this.userService = userService;
+        this.groups = groups;
         this.contexts = contexts;
+    }
+
+    /** The user as the editor needs him: with what educational mode allows him (see GroupService#isRestricted) and the groups he owns. */
+    private UserDto forEditor(AppUser user) {
+        return UserDto.of(user).forEditor(groups.isRestricted(user), groups.ownedGroupIds(user.getId()));
     }
 
     @GetMapping("/status")
     public AuthStatusDto status(Authentication authentication) {
         return ApiLog.run(log, "GET /api/auth/status", "", () -> {
             AppUser user = authentication != null && authentication.getPrincipal() instanceof PluggedPrincipal principal ? userService.activeUser(principal.id()) : null;
-            return new AuthStatusDto(userService.setupRequired(), userService.adminEmail(), user == null ? null : UserDto.of(user));
+            return new AuthStatusDto(userService.setupRequired(), userService.adminEmail(), user == null ? null : forEditor(user));
         });
     }
 
@@ -94,6 +102,6 @@ public class AuthController {
         if (request.getSession(false) != null) request.changeSessionId();
         contexts.saveContext(context, request, response);
         log.info("User {} signed in (sign-in number {})", user.getId(), user.getLoginCount());
-        return UserDto.of(user);
+        return forEditor(user);
     }
 }

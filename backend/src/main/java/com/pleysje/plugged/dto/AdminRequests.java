@@ -16,6 +16,10 @@ public final class AdminRequests {
     public record GroupName(String name) {
     }
 
+    /** Educational mode of a group on (true) or off. */
+    public record Educational(boolean educational) {
+    }
+
     /** The groups a project is shared with. */
     public record Sharing(List<Long> groupIds) {
     }

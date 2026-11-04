@@ -221,7 +221,7 @@ export function ProjectList({currentId, refreshKey, onLoad, onDelete}) {
 
 const SUBMENU_WIDTH = 480 // room the project list needs next to the menu
 
-export default function ProjectMenu({name, onNameChange, projectId, refreshKey, onSave, onSaveAs, onNew, onLoad, onDelete, onImport, onExport}) {
+export default function ProjectMenu({name, onNameChange, projectId, refreshKey, locked, onSave, onSaveAs, onNew, onLoad, onDelete, onImport, onExport}) {
     const {t} = useTranslation()
     const [open, setOpen] = useState(false),
         [listOpen, setListOpen] = useState(false), // the nested "Laden" flyout
@@ -341,8 +341,9 @@ export default function ProjectMenu({name, onNameChange, projectId, refreshKey, 
                             )}
                         </li>
                         <li role="separator" className="pm-sepline" />
-                        {menuItem('btn-import', 'import', t('projects.import'), closeAndRun(onImport), {title: t('projects.importTitle')})}
-                        {menuItem('btn-export', 'export', t('projects.export'), closeAndRun(onExport), {title: t('projects.exportTitle')})}
+                        {/* educational mode: a student cannot import or export (see App.jsx) */}
+                        {menuItem('btn-import', 'import', t('projects.import'), closeAndRun(onImport), {title: locked ? t('educational.locked') : t('projects.importTitle'), disabled: !!locked})}
+                        {menuItem('btn-export', 'export', t('projects.export'), closeAndRun(onExport), {title: locked ? t('educational.locked') : t('projects.exportTitle'), disabled: !!locked})}
                     </ul>
                 </div>
             )}

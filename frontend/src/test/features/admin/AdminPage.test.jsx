@@ -14,7 +14,7 @@ const ME = account(1, 'Jeroen', {admin: true, primary: true, lastLogin: '2026-11
 const backend = (accounts, groupList = []) => {
     const state = {users: accounts.map((user) => ({...user})), groups: groupList.map((group) => ({...group})), fail: null, down: false}
     let nextGroupId = 100
-    const member = (user) => ({id: user.id, name: user.name, surname: user.surname, email: user.email})
+    const member = (user) => ({id: user.id, name: user.name, surname: user.surname, email: user.email, owner: false})
     global.fetch = vi.fn(async (url, options = {}) => {
         const method = options.method || 'GET',
             body = options.body ? JSON.parse(options.body) : null
@@ -41,6 +41,18 @@ const backend = (accounts, groupList = []) => {
             else if (m[2] === '/admin') Object.assign(user, {admin: body.admin, approved: user.approved || body.admin})
             else if (method === 'DELETE') state.users = state.users.filter((candidate) => candidate.id !== id)
             return method === 'DELETE' ? {ok: true, status: 204} : json(user)
+        }
+        const educational = /^\/api\/groups\/(\d+)\/educational$/.exec(url)
+        if (educational) {
+            const group = state.groups.find((candidate) => candidate.id === Number(educational[1]))
+            group.educational = body.educational
+            return json(group)
+        }
+        const owner = /^\/api\/admin\/groups\/(\d+)\/owners\/(\d+)$/.exec(url)
+        if (owner) {
+            const group = state.groups.find((candidate) => candidate.id === Number(owner[1]))
+            group.members = group.members.map((candidate) => (candidate.id === Number(owner[2]) ? {...candidate, owner: method === 'PUT'} : candidate))
+            return json(group)
         }
         m = /^\/api\/admin\/groups\/(\d+)(?:\/members\/(\d+))?$/.exec(url)
         if (m) {
@@ -238,4 +250,21 @@ test('Symbolen: the standard symbols for the next release', async () => {
     expect(getById('admin-tab-symbols')).toHaveClass('on')
     await waitFor(() => getById('catalog-no-changes'))
     expect(byId('admin-users')).toBeNull()
+})
+
+test('Groepen: an owner (teacher) per member and the educational mode per group', async () => {
+    backend([ME, account(3, 'Piet')], [{id: 7, name: 'Klas 5', created: null, educational: false, members: [{id: 3, name: 'Piet', surname: 'X', email: 'piet@example.be', owner: false}]}])
+    await mount()
+    clickId('admin-tab-groups')
+    expect(getById('group-7-owner-3')).toHaveAttribute('aria-pressed', 'false')
+    clickId('group-7-owner-3')
+    await waitFor(() => expect(getById('group-7-owner-3')).toHaveAttribute('aria-pressed', 'true'))
+    expect(message()).toHaveTextContent(t('groups.ownerAdded', {name: 'Piet X', group: 'Klas 5'}))
+    clickId('group-7-owner-3')
+    await waitFor(() => expect(message()).toHaveTextContent(t('groups.ownerRemoved', {name: 'Piet X', group: 'Klas 5'})))
+    fireEvent.click(getById('group-7-educational'))
+    await waitFor(() => expect(getById('group-7-educational')).toBeChecked())
+    expect(message()).toHaveTextContent(t('educational.switchedOn', {group: 'Klas 5'}))
+    fireEvent.click(getById('group-7-educational'))
+    await waitFor(() => expect(message()).toHaveTextContent(t('educational.switchedOff', {group: 'Klas 5'})))
 })

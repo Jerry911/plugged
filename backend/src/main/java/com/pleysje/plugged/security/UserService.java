@@ -193,6 +193,7 @@ public class UserService {
         AppUser user = find(id);
         if (user.isAdmin()) throw new LocalizedStatusException(HttpStatus.CONFLICT, "user.adminCannotBeDeleted");
         int moved = projects.changeOwner(id, actingAdminId);
+        groups.removeOwnerEverywhere(id);
         groups.removeMemberEverywhere(id);
         users.delete(user);
         log.info("User {} deleted; {} project(s) now belong to user {}", id, moved, actingAdminId);

@@ -26,6 +26,7 @@ import org.springframework.web.bind.annotation.RestController;
  *   <li>GET /api/admin/groups: every group with its members</li>
  *   <li>POST /api/admin/groups {name} (201), PUT /api/admin/groups/{id} {name}, DELETE /api/admin/groups/{id}</li>
  *   <li>PUT / DELETE /api/admin/groups/{id}/members/{userId}: add or remove a member; both answer the group</li>
+ *   <li>PUT / DELETE /api/admin/groups/{id}/owners/{userId}: make a member owner (a teacher: he switches the educational mode) or not</li>
  * </ul>
  */
 @RestController
@@ -64,6 +65,16 @@ public class AdminGroupController {
     @PutMapping("/{id}/members/{userId}")
     public GroupDto addMember(@PathVariable long id, @PathVariable long userId) {
         return ApiLog.run(log, "PUT /api/admin/groups/{id}/members/{userId}", "id=" + id + ", userId=" + userId, () -> groups.addMember(id, userId));
+    }
+
+    @PutMapping("/{id}/owners/{userId}")
+    public GroupDto addOwner(@PathVariable long id, @PathVariable long userId) {
+        return ApiLog.run(log, "PUT /api/admin/groups/{id}/owners/{userId}", "id=" + id + ", userId=" + userId, () -> groups.setOwner(id, userId, true));
+    }
+
+    @DeleteMapping("/{id}/owners/{userId}")
+    public GroupDto removeOwner(@PathVariable long id, @PathVariable long userId) {
+        return ApiLog.run(log, "DELETE /api/admin/groups/{id}/owners/{userId}", "id=" + id + ", userId=" + userId, () -> groups.setOwner(id, userId, false));
     }
 
     @DeleteMapping("/{id}/members/{userId}")

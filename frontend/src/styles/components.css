@@ -812,3 +812,10 @@
     border: 1px solid #e0b400;
     font-weight: 700
 }
+
+/* a menu item that is switched off (educational mode: import and export) */
+.pm-menu .pm-item:disabled {
+    opacity: .45;
+    cursor: not-allowed;
+    background: transparent
+}

@@ -21,9 +21,22 @@ public interface UserGroupRepository extends JpaRepository<UserGroup, Long> {
 
     boolean existsByNameIgnoreCaseAndIdNot(String name, long id);
 
-    /** A removed account is no member of any group any more. */
+    /** A removed account is no member (nor owner) of any group any more. */
     @Modifying
     @Transactional
     @Query(value = "delete from group_members where user_id = :userId", nativeQuery = true)
     int removeMemberEverywhere(@Param("userId") long userId);
+
+    @Modifying
+    @Transactional
+    @Query(value = "delete from group_owners where user_id = :userId", nativeQuery = true)
+    int removeOwnerEverywhere(@Param("userId") long userId);
+
+    /** The groups this user owns. */
+    List<UserGroup> findByOwners_IdOrderByNameAsc(long userId);
+
+    /** True when the user is a member, but no owner, of a group in educational mode: a student. */
+    @Query("select count(g) > 0 from UserGroup g join g.members m where g.educational = true and m.id = :userId"
+            + " and not exists (select o from UserGroup g2 join g2.owners o where g2 = g and o.id = :userId)")
+    boolean isStudent(@Param("userId") long userId);
 }

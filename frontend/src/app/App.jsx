@@ -9,6 +9,7 @@ import SymbolEditor from '../features/symbolEditor/SymbolEditor.jsx'
 import InfoPage from '../features/info/InfoPage.jsx'
 import AuthGate from '../features/auth/AuthGate.jsx'
 import AdminPage from '../features/admin/AdminPage.jsx'
+import TeacherPage from '../features/admin/TeacherPage.jsx'
 import {fetchUsers} from '../api/authApi.js'
 import {ExportDialog, IMPORT_ACCEPT, importKind} from '../features/project/ExportDialog.jsx'
 import ProjectMenu from '../features/project/ProjectMenu.jsx'
@@ -38,7 +39,8 @@ const ONE_WIRE_TAB = 0,
     SITUATION_TAB = 1,
     COMPONENTS_TAB = 2,
     INFO_TAB = 3,
-    ADMIN_TAB = 4
+    ADMIN_TAB = 4,
+    TEACHER_TAB = 5
 // the editor opens with the most recently saved project of the user (null: none yet, a new project)
 const latestOwnProject = (summaries) => summaries.filter((summary) => summary.mine).sort((a, b) => (b.updated || '').localeCompare(a.updated || ''))[0] || null
 
@@ -103,7 +105,9 @@ function Editor({library, user, onLogout}) {
     const {library: symbols, save: saveSymbol, remove: removeSymbol, restore: restoreSymbol, makeStandard, restoreAll, template} = library
     setLibrary(symbols)
     // the messages are in the active language: check again when it changes
-    const issues = useMemo(() => verify(project), [project, symbols, language]),
+    // educational mode (see GroupService#isRestricted): a student gets no validation at all, and cannot import or export
+    const restricted = !!user.restricted
+    const issues = useMemo(() => (restricted ? [] : verify(project)), [project, symbols, language, restricted]),
         errorCount = issues.filter((issue) => issue.level === 'error').length,
         warningCount = issues.filter((issue) => issue.level === 'warn').length
     const openFooter = (field) => {
@@ -310,7 +314,7 @@ function Editor({library, user, onLogout}) {
     const importFile = async (event) => {
         const file = event.target.files[0]
         event.target.value = ''
-        if (!file) return
+        if (!file || restricted) return
         const text = await file.text()
         if (importKind(file.name, text) === 'eds') importEdsText(text)
         else importJsonText(text)
@@ -341,6 +345,7 @@ function Editor({library, user, onLogout}) {
     }
     const exportAs = (type) => {
         setExportOpen(false)
+        if (restricted) return
         if (type === 'eds') exportEdsFile()
         else exportJson()
     }
@@ -360,6 +365,7 @@ function Editor({library, user, onLogout}) {
                     onNew={startNewProject}
                     onLoad={loadProject}
                     onDelete={removeProject}
+                    locked={restricted}
                     onImport={() => document.getElementById('import-input').click()}
                     onExport={() => {
                         setFooterDialog(null)
@@ -412,6 +418,16 @@ function Editor({library, user, onLogout}) {
                 <button id="tab-info" className={tab === INFO_TAB ? 'on' : ''} title={t('tabs.infoTitle')} onClick={() => setTab(INFO_TAB)}>
                     ⓘ {t('tabs.info')}
                 </button>
+                {restricted && (
+                    <span id="educational-badge" className="edubadge" title={t('educational.badgeTitle')}>
+                        🎓 {t('educational.badge')}
+                    </span>
+                )}
+                {!user.admin && user.ownedGroups?.length > 0 && (
+                    <button id="tab-teacher" className={tab === TEACHER_TAB ? 'on' : ''} title={t('teacher.tabTitle')} onClick={() => setTab(TEACHER_TAB)}>
+                        🎓 {t('teacher.tab')}
+                    </button>
+                )}
                 {user.admin && (
                     <button id="tab-admin" className={tab === ADMIN_TAB ? 'on' : ''} title={t('tabs.adminTitle')} onClick={() => setTab(ADMIN_TAB)}>
                         ⚙ {t('tabs.admin')}
@@ -426,8 +442,8 @@ function Editor({library, user, onLogout}) {
                     {t('auth.logout')}
                 </button>
             </div>
-            {exportOpen && <ExportDialog onExport={exportAs} onClose={() => setExportOpen(false)} />}
-            {verifyOpen && <VerifyPanel issues={issues} onGoTo={goToIssue} onClose={() => setVerifyOpen(false)} />}
+            {exportOpen && !restricted && <ExportDialog onExport={exportAs} onClose={() => setExportOpen(false)} />}
+            {verifyOpen && !restricted && <VerifyPanel issues={issues} onGoTo={goToIssue} onClose={() => setVerifyOpen(false)} />}
             {footerDialog && (
                 <FooterDialog key={footerDialog.openedAt} project={project} setProject={setProject} focus={footerDialog.field} onClose={() => setFooterDialog(null)} />
             )}
@@ -440,7 +456,7 @@ function Editor({library, user, onLogout}) {
                             listKey="een"
                             pageIndex={shownOneWirePage}
                             setPageIndex={setOneWirePage}
-                            verify={{errorCount, warningCount, onToggle: () => setVerifyOpen((open) => !open)}}
+                            verify={restricted ? null : {errorCount, warningCount, onToggle: () => setVerifyOpen((open) => !open)}}
                         />
                         <OneWireDiagram
                             key={project.een[shownOneWirePage].id}
@@ -467,6 +483,7 @@ function Editor({library, user, onLogout}) {
                 )}
                 {tab === INFO_TAB && <InfoPage onTour={startTour} />}
                 {tab === ADMIN_TAB && user.admin && <AdminPage currentUser={user} onUsersChange={countWaiting} />}
+                {tab === TEACHER_TAB && !user.admin && <TeacherPage />}
                 {tab === COMPONENTS_TAB && (
                     <SymbolEditor
                         library={symbols}

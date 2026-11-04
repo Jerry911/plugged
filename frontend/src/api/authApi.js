@@ -111,3 +111,17 @@ export const fetchCatalogFile = async () => {
         return null
     }
 }
+
+/** {ok, user (= the group), error}: makes a member owner of the group (a teacher) or takes the ownership away (administrators). */
+export const setGroupOwner = (id, userId, owner) => send(groupUrl(id) + '/owners/' + encodeURIComponent(userId), undefined, owner ? 'PUT' : 'DELETE')
+
+/** The groups whose educational mode the user may switch, with their members (the groups he owns). Throws when not available. */
+export const fetchOwnedGroups = async () => {
+    const response = await apiFetch('/api/groups/owned')
+    if (!response.ok) throw new Error('groups not available')
+    const groups = await response.json()
+    return Array.isArray(groups) ? groups : []
+}
+
+/** {ok, user (= the group), error}: switches the educational mode of a group (its owners and administrators). */
+export const setGroupEducational = (id, educational) => send('/api/groups/' + encodeURIComponent(id) + '/educational', {educational}, 'PUT')

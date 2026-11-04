@@ -4,6 +4,7 @@
 import {useState} from 'react'
 import {useTranslation} from '../../i18n/I18nProvider.jsx'
 import {fullName} from './names.js'
+import {EducationalSwitch} from './TeacherPage.jsx'
 
 function GroupCard({group, users, busy, actions}) {
     const {t} = useTranslation()
@@ -24,6 +25,7 @@ function GroupCard({group, users, busy, actions}) {
                     {group.members.length}
                 </span>
                 <span style={{flex: 1}} />
+                <EducationalSwitch group={group} disabled={busy} onChange={(on) => actions.setEducational(group, on)} />
                 <button id={'group-rename-' + group.id} disabled={busy} onClick={() => actions.renameGroup(group)}>
                     ✎ {t('groups.rename')}
                 </button>
@@ -34,7 +36,18 @@ function GroupCard({group, users, busy, actions}) {
             {group.members.length ? (
                 <ul className="groupmembers" aria-label={t('groups.members')}>
                     {group.members.map((member) => (
-                        <li key={member.id} className="memberchip" title={member.email}>
+                        <li key={member.id} className={'memberchip' + (member.owner ? ' owner' : '')} title={member.email}>
+                            <button
+                                id={'group-' + group.id + '-owner-' + member.id}
+                                className="ownertoggle"
+                                aria-pressed={!!member.owner}
+                                aria-label={t(member.owner ? 'groups.removeOwner' : 'groups.makeOwner', {name: fullName(member)})}
+                                title={t(member.owner ? 'groups.removeOwner' : 'groups.makeOwner', {name: fullName(member)})}
+                                disabled={busy}
+                                onClick={() => actions.setOwner(group, member, !member.owner)}
+                            >
+                                {member.owner ? '★' : '☆'}
+                            </button>
                             {fullName(member)}
                             <button
                                 id={'group-' + group.id + '-remove-' + member.id}

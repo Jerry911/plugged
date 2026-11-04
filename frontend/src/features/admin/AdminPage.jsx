@@ -15,6 +15,8 @@ import {
     fetchUsers,
     removeGroupMember,
     renameGroup,
+    setGroupEducational,
+    setGroupOwner,
     setUserAdmin,
 } from '../../api/authApi.js'
 import UsersPanel from './UsersPanel.jsx'
@@ -72,6 +74,8 @@ export default function AdminPage({currentUser, onUsersChange}) {
         },
         addMember: (group, user) => run(() => addGroupMember(group.id, user.id), 'groups.memberAdded', {name: fullName(user), group: group.name}),
         removeMember: (group, user) => run(() => removeGroupMember(group.id, user.id), 'groups.memberRemoved', {name: fullName(user), group: group.name}),
+        setOwner: (group, user, owner) => run(() => setGroupOwner(group.id, user.id, owner), owner ? 'groups.ownerAdded' : 'groups.ownerRemoved', {name: fullName(user), group: group.name}),
+        setEducational: (group, on) => run(() => setGroupEducational(group.id, on), on ? 'educational.switchedOn' : 'educational.switchedOff', {group: group.name}),
     }
     return (
         <div id="admin-page" className="adminpage">

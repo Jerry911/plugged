@@ -98,6 +98,7 @@ Everything under `/api/` needs a signed-in user (401 otherwise), except `/api/au
 
 ## Situatieschema: placing symbols
 - The left list holds the components that can be placed; filter it with the search box. The *Nergens geplaatst* panel right of the drawing lists the eendraadschema elements that are not on the plan yet; collapse it with the `>` button.
+- The marking of a placed symbol (its circuit and number, e.g. A1, F5) is written on the first free spot around the symbol: right (the default), then top-right, bottom-right, left, top-left, bottom-left, above and below. A spot is free when it does not touch a wall, another symbol, a door, a window, a text, the length of a wall or the marking of another symbol, and stays on the drawing area; when no spot is free the one that hides the least wins. It is recalculated on every change, so moving a symbol or placing one next to it moves the marking along (model/labelPlacement.js; the PDF uses the same placement).
 
 ## Situatieschema drawing
 - Drawing and dragging snap to the grid points (grid size selectable bottom right; a blue marker shows the snapped point, with a preview for walls and rooms). Tick **Vrij tekenen** (bottom right, off by default) to draw at any position.

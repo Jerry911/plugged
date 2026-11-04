@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import {fireEvent, render} from '@testing-library/react'
 import SituationSchema from '../../../features/situation/SituationSchema.jsx'
-import {SituationSheet} from '../../../features/situation/SituationSheet.jsx'
+import {SituationSheet, lengthLabelBox} from '../../../features/situation/SituationSheet.jsx'
 import {ZOOM_LEVELS as ZOOMS} from '../../../components/ZoomControls.jsx'
 import {circuitMarks as marksOf} from '../../../model/project.js'
 import {setLanguage, t} from '../../../i18n/translate.js'
@@ -1075,4 +1075,43 @@ test('tools, panels and lengths follow the language (English writes lengths with
     expect(getById('sit-unplaced-title')).toHaveTextContent(t('situation.unplacedTitle', {count: 1}))
     expect(t('situation.unplacedTitle', {count: 1})).toBe('Not placed anywhere (1):')
     expect([...container.querySelectorAll('.length-label')].map((label) => label.textContent)).toEqual(['2.00 m'])
+})
+
+test('the marking of a symbol moves to a free spot: away from a wall, from another symbol and from the marking of a neighbour', () => {
+    const p = P()
+    const marks = (page) => [...render(<SituationSheet project={p} page={page} number={1} total={1} />).container.querySelectorAll('text.symbol-mark')]
+    const at = (text) => [text.textContent, text.getAttribute('data-side')]
+    // nothing around: right of the symbol, as always
+    expect(marks({id: 's', name: 'X', walls: [], items: [{id: 'a', kind: 'sym', type: 'lichtpunt', x: 100, y: 100, mark: 'A1'}]}).map(at)).toEqual([['A1', 'right']])
+    // a wall just right of the symbol: the marking goes left, where it can be read
+    const [beside] = marks({id: 's', name: 'X', walls: [wall('w', 106, 50, 106, 150)], items: [{id: 'a', kind: 'sym', type: 'lichtpunt', x: 100, y: 100, mark: 'A1'}]})
+    expect(at(beside)).toEqual(['A1', 'left'])
+    expect(Number(beside.getAttribute('x'))).toBeLessThan(100)
+    // a symbol placed right next to it: the marking makes way, the neighbour keeps its own on the right
+    const pair = marks({
+        id: 's',
+        name: 'X',
+        walls: [],
+        items: [
+            {id: 'a', kind: 'sym', type: 'lichtpunt', x: 100, y: 100, mark: 'F5'},
+            {id: 'b', kind: 'sym', type: 'lichtpunt', x: 110, y: 100, mark: 'F6'},
+        ],
+    })
+    expect(pair.map(at)).toEqual([
+        ['F5', 'left'],
+        ['F6', 'right'],
+    ])
+    // no marking: nothing is written
+    expect(marks({id: 's', name: 'X', walls: [], items: [{id: 'a', kind: 'sym', type: 'lichtpunt', x: 100, y: 100, mark: ''}]})).toHaveLength(0)
+})
+
+test('the length written next to a wall is not covered by a marking; without lengths the spot is free again', () => {
+    const p = P()
+    // a wall below the symbol: its length (3 mm above the wall) lands right of the symbol
+    const page = {id: 's', name: 'X', walls: [wall('w', 95, 104, 115, 104)], items: [{id: 'a', kind: 'sym', type: 'lichtpunt', x: 100, y: 100, mark: 'A1'}]}
+    const side = (pg) => render(<SituationSheet project={p} page={pg} number={1} total={1} />).container.querySelector('text.symbol-mark').getAttribute('data-side')
+    expect(lengthLabelBox(page.walls[0], 50)).not.toBeNull()
+    expect(lengthLabelBox(wall('x', 0, 0, 1, 0), 50)).toBeNull()
+    expect(side(page)).not.toBe('right')
+    expect(side({...page, dims: false})).toBe('right')
 })

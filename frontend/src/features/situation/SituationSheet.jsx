@@ -8,6 +8,7 @@ import {placedShapesOf} from '../../symbols/symbolShapes.js'
 import Sheet from '../../components/Sheet.jsx'
 import {circuitMarks, placeableNodes} from '../../model/project.js'
 import {formatLength, scaleOf} from '../../model/geometry.js'
+import {LABEL_FONT_SIZE, centredTextBox, placeLabels} from '../../model/labelPlacement.js'
 import {useTranslation} from '../../i18n/I18nProvider.jsx'
 
 /** The default size (mm on the sheet) of each kind of item. */
@@ -16,29 +17,47 @@ export const SELECTION_COLOUR = '#0a6cff'
 // line weight of the symbols on the drawing (in the 24 grid of a symbol: it scales with the size of the symbol, the default of SymbolGraphic is 1.5)
 const SYMBOL_STROKE_WIDTH = 1
 
-/** The real length of a segment as a label next to it (always upright, left of the direction of travel). */
-export const LengthLabel = ({from, to, scale, colour = '#555', offset = 3}) => {
+const LENGTH_FONT_SIZE = 2.4
+
+/** Where the length of a segment is written: {x, y, angle, text}, or null for a segment too short to label. */
+const lengthLabelOf = (from, to, scale, offset = 3) => {
     const flipped = to.x < from.x || (to.x === from.x && to.y < from.y),
         [start, end] = flipped ? [to, from] : [from, to],
         dx = end.x - start.x,
         dy = end.y - start.y,
         length = Math.hypot(dx, dy)
     if (length < 2) return null
-    const labelX = (start.x + end.x) / 2 + (dy / length) * offset,
-        labelY = (start.y + end.y) / 2 - (dx / length) * offset
+    return {
+        x: (start.x + end.x) / 2 + (dy / length) * offset,
+        y: (start.y + end.y) / 2 - (dx / length) * offset,
+        angle: (Math.atan2(dy, dx) * 180) / Math.PI,
+        text: formatLength(length, scale),
+    }
+}
+
+/** The box the length of a wall takes on the sheet (null for a wall too short to label). */
+export const lengthLabelBox = (wall, scale) => {
+    const label = lengthLabelOf({x: wall.x1, y: wall.y1}, {x: wall.x2, y: wall.y2}, scale)
+    return label && centredTextBox(label.x, label.y, label.angle, label.text.length * LENGTH_FONT_SIZE * 0.55, LENGTH_FONT_SIZE)
+}
+
+/** The real length of a segment as a label next to it (always upright, left of the direction of travel). */
+export const LengthLabel = ({from, to, scale, colour = '#555', offset = 3}) => {
+    const label = lengthLabelOf(from, to, scale, offset)
+    if (!label) return null
     return (
         <text
             className="length-label"
-            x={labelX}
-            y={labelY}
-            fontSize="2.4"
+            x={label.x}
+            y={label.y}
+            fontSize={LENGTH_FONT_SIZE}
             textAnchor="middle"
             dominantBaseline="middle"
             fill={colour}
-            transform={`rotate(${(Math.atan2(dy, dx) * 180) / Math.PI} ${labelX} ${labelY})`}
+            transform={`rotate(${label.angle} ${label.x} ${label.y})`}
             pointerEvents="none"
         >
-            {formatLength(length, scale)}
+            {label.text}
         </text>
     )
 }
@@ -101,6 +120,16 @@ export function SituationSheet({project, page, number, total, editor, onFooter})
         scale = scaleOf(project.footer),
         showLengths = page.dims !== false,
         isSelected = (id) => !!editor && editor.selection.some((entry) => entry.id === id),
+        sizeOf = (item) => item.s || item.w || DEFAULT_ITEM_SIZE[item.kind],
+        // text next to a symbol: the marking of the eendraadschema element (A5), unless the user typed their own
+        labelOf = (item) => item.mark ?? (item.node && nodes.some((node) => node.id === item.node) ? marks.get(item.node) || '' : ''),
+        // every marking goes to a free spot around its symbol: not behind a wall, another symbol or another marking
+        labelSpots = placeLabels(
+            walls,
+            items.map((item) => ({item, size: sizeOf(item)})),
+            items.filter((item) => item.kind === 'sym' && labelOf(item)).map((item) => ({item, size: sizeOf(item), text: labelOf(item)})),
+            showLengths ? walls.map((wall) => lengthLabelBox(wall, scale)).filter(Boolean) : [],
+        ),
         interaction = (kind, id, part) => (editor ? editor.interactionProps(kind, id, part) : {})
     return (
         <Sheet
@@ -159,7 +188,7 @@ export function SituationSheet({project, page, number, total, editor, onFooter})
             {showLengths &&
                 walls.map((wall) => <LengthLabel key={'d' + wall.id} from={{x: wall.x1, y: wall.y1}} to={{x: wall.x2, y: wall.y2}} scale={scale} />)}
             {items.map((item) => {
-                const size = item.s || item.w || DEFAULT_ITEM_SIZE[item.kind],
+                const size = sizeOf(item),
                     selected = isSelected(item.id),
                     itemProps = editor ? {id: 'sit-item-' + item.id, ...interaction('item', item.id)} : {}
                 if (item.kind === 'sym') {
@@ -169,8 +198,8 @@ export function SituationSheet({project, page, number, total, editor, onFooter})
                         // a socket is drawn with the 'h' when it is waterproof: the property of the element of the eendraadschema (so it follows
                         // there), else of the loose symbol
                         shapes = node ? placedShapesOf(typeOf(project, node.type), node.p) : looseType && placedShapesOf(looseType, {h: item.h}),
-                        // text next to the symbol: the marking of the eendraadschema element (A5), unless the user typed their own
-                        label = item.mark ?? (node ? marks.get(node.id) || '' : '')
+                        label = labelOf(item),
+                        spot = labelSpots.get(item.id)
                     return (
                         <g key={item.id} {...itemProps}>
                             <g transform={`translate(${item.x},${item.y})`}>
@@ -190,7 +219,16 @@ export function SituationSheet({project, page, number, total, editor, onFooter})
                                 </text>
                             )}
                             {label && (
-                                <text x={item.x + size / 2 + 1} y={item.y} fontSize="2.6" fontWeight="bold" dominantBaseline="middle">
+                                <text
+                                    className="symbol-mark"
+                                    data-side={spot.side}
+                                    x={spot.x}
+                                    y={spot.y}
+                                    fontSize={LABEL_FONT_SIZE}
+                                    fontWeight="bold"
+                                    textAnchor="middle"
+                                    dominantBaseline="middle"
+                                >
                                     {label}
                                 </text>
                             )}

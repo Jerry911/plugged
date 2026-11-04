@@ -1,14 +1,14 @@
 // Copyright 2026 Pleysier Jeroen
 // SPDX-License-Identifier: AGPL-3.0-only
 // The application: signing in first (AuthGate), then the top bar (project menu, tabs, undo/redo, Kaderinfo, PDF, print, language, Info,
-// Gebruikers for the administrator, the user and Afmelden) and the tab that is open.
+// Beheer (users and groups) for an administrator, Afmelden) and the tab that is open.
 import {useCallback, useEffect, useMemo, useRef, useState} from 'react'
 import OneWireDiagram from '../features/oneWire/OneWireDiagram.jsx'
 import SituationSchema from '../features/situation/SituationSchema.jsx'
 import SymbolEditor from '../features/symbolEditor/SymbolEditor.jsx'
 import InfoPage from '../features/info/InfoPage.jsx'
 import AuthGate from '../features/auth/AuthGate.jsx'
-import UsersPage from '../features/users/UsersPage.jsx'
+import AdminPage from '../features/admin/AdminPage.jsx'
 import {fetchUsers} from '../api/authApi.js'
 import {ExportDialog, IMPORT_ACCEPT, importKind} from '../features/project/ExportDialog.jsx'
 import ProjectMenu from '../features/project/ProjectMenu.jsx'
@@ -18,7 +18,7 @@ import {AllSheets, makePdf} from '../features/project/pdfExport.jsx'
 import Tour, {markTourSeen, tourSeen} from '../features/tour/Tour.jsx'
 import {tourSteps} from '../features/tour/tourSteps.jsx'
 import {useSymbolLibrary} from '../api/useSymbolLibrary.js'
-import {deleteProject, fetchProject, fetchProjectIds, saveProject} from '../api/projectApi.js'
+import {createProject, deleteProject, fetchProject, fetchProjectSummaries, saveProject} from '../api/projectApi.js'
 import {useHistory} from '../hooks/useHistory.js'
 import {exportEds, importEds} from '../model/eds.js'
 import {verify} from '../model/rules.js'
@@ -38,9 +38,9 @@ const ONE_WIRE_TAB = 0,
     SITUATION_TAB = 1,
     COMPONENTS_TAB = 2,
     INFO_TAB = 3,
-    USERS_TAB = 4
-// the project the editor opens with: the project that was open last time is not remembered
-const FIRST_PROJECT_ID = 1
+    ADMIN_TAB = 4
+// the editor opens with the most recently saved project of the user (null: none yet, a new project)
+const latestOwnProject = (summaries) => summaries.filter((summary) => summary.mine).sort((a, b) => (b.updated || '').localeCompare(a.updated || ''))[0] || null
 
 /** Starts a download of `content` as a file. */
 const download = (content, type, fileName) => {
@@ -90,7 +90,7 @@ function Editor({library, user, onLogout}) {
         [statusMessage, setStatusMessage] = useState(''),
         [oneWirePage, setOneWirePage] = useState(0),
         [situationPage, setSituationPage] = useState(0),
-        [projectId, setProjectId] = useState(FIRST_PROJECT_ID),
+        [projectId, setProjectId] = useState(null), // null: a new project that was never saved (the server gives it a number)
         [projectListKey, setProjectListKey] = useState(0), // bumped after a save or delete so an open project list reloads
         [printJob, setPrintJob] = useState(null),
         [verifyOpen, setVerifyOpen] = useState(false),
@@ -146,19 +146,24 @@ function Editor({library, user, onLogout}) {
         setTab(ONE_WIRE_TAB)
     }
     useEffect(() => {
-        fetchProject(FIRST_PROJECT_ID)
-            .then((document) => {
+        ;(async () => {
+            try {
+                const latest = latestOwnProject(await fetchProjectSummaries())
+                const document = latest && (await fetchProject(latest.id))
                 if (document) {
                     const loaded = normalizeProject(document)
                     reset(loaded)
                     markSaved(loaded)
+                    setProjectId(latest.id)
                     setOneWirePage(0)
                     setSituationPage(0)
-                    // a new browser that finds real work on the server is not a beginner: the tour does not draw in it by itself
+                    // somebody who finds real work on the server is not a beginner: the tour does not draw in it by itself
                     setTourAllowed(isProjectEmpty(loaded))
                 } else setTourAllowed(true)
-            })
-            .catch(() => setTourAllowed(true))
+            } catch {
+                setTourAllowed(true)
+            }
+        })()
     }, [])
     // first visit: the browser has not seen the tour yet (see Tour.jsx) and the project is fetched, so the tour does not jump around
     useEffect(() => {
@@ -208,30 +213,26 @@ function Editor({library, user, onLogout}) {
     useEffect(() => {
         if (user.admin) fetchUsers().then(countWaiting, () => {})
     }, [user.admin, countWaiting])
-    // the next free project number
-    const nextProjectId = async () => {
-        try {
-            const ids = await fetchProjectIds()
-            return Math.max(0, ...ids.map(Number).filter(Number.isFinite)) + 1
-        } catch {
-            return projectId + 1
-        }
-    }
+    // stores the document under `id`, or as a new project when `id` is null (the server gives the number); resolves to the number or null
     const store = async (id, document) => {
-        const stored = await saveProject(id, document)
-        if (stored) {
+        const storedId = id == null ? await createProject(document) : (await saveProject(id, document)) ? id : null
+        if (storedId != null) {
             markSaved(document)
             setProjectListKey((key) => key + 1)
         }
-        return stored
+        return storedId
     }
-    const save = async () => setStatusMessage((await store(projectId, project)) ? t('app.saved') : t('app.saveFailed'))
+    const save = async () => {
+        const id = await store(projectId, project)
+        if (id != null) setProjectId(id)
+        setStatusMessage(id != null ? t('app.saved') : t('app.saveFailed'))
+    }
     const saveAs = async () => {
         const name = window.prompt(t('app.saveAsPrompt'), (project.name || project.footer?.titel || '').trim())
         if (name === null) return
-        const id = await nextProjectId(),
-            document = {...project, name: name.trim()}
-        if (await store(id, document)) {
+        const document = {...project, name: name.trim()},
+            id = await store(null, document)
+        if (id != null) {
             setProject(document)
             setProjectId(id)
             setStatusMessage(t('app.savedAs', {number: id}))
@@ -240,9 +241,8 @@ function Editor({library, user, onLogout}) {
     }
     const startNewProject = async () => {
         if (!confirmDiscard()) return
-        const id = await nextProjectId()
-        openProject(newProject(), id)
-        setStatusMessage(t('app.newProject', {number: id}))
+        openProject(newProject(), null)
+        setStatusMessage(t('app.newProject'))
     }
     const loadProject = async (id) => {
         if (!confirmDiscard()) return
@@ -258,6 +258,8 @@ function Editor({library, user, onLogout}) {
     const removeProject = async (summary) => {
         if (!window.confirm(t('app.confirmDelete', {name: summary.name || t('projects.defaultName', {number: summary.id})}))) return
         const deleted = await deleteProject(summary.id)
+        // the open project was deleted: saving it again makes a new project
+        if (deleted && summary.id === projectId) setProjectId(null)
         setStatusMessage(deleted ? t('app.projectDeleted', {number: summary.id}) : t('app.deleteFailed'))
         setProjectListKey((key) => key + 1)
     }
@@ -411,20 +413,16 @@ function Editor({library, user, onLogout}) {
                     ⓘ {t('tabs.info')}
                 </button>
                 {user.admin && (
-                    <button id="tab-users" className={tab === USERS_TAB ? 'on' : ''} title={t('tabs.usersTitle')} onClick={() => setTab(USERS_TAB)}>
-                        {t('tabs.users')}
+                    <button id="tab-admin" className={tab === ADMIN_TAB ? 'on' : ''} title={t('tabs.adminTitle')} onClick={() => setTab(ADMIN_TAB)}>
+                        ⚙ {t('tabs.admin')}
                         {waitingUsers > 0 && (
-                            <span id="tab-users-waiting" className="badge" title={t('users.pending', {count: waitingUsers})}>
+                            <span id="tab-admin-waiting" className="badge" title={t('users.pending', {count: waitingUsers})}>
                                 {waitingUsers}
                             </span>
                         )}
                     </button>
                 )}
-                <span className="sep" />
-                <span id="user-name" className="username" title={user.email}>
-                    {user.name} {user.surname}
-                </span>
-                <button id="btn-logout" title={t('auth.logoutTitle')} onClick={signOut}>
+                <button id="btn-logout" title={t('auth.logoutTitle', {name: `${user.name} ${user.surname}`})} onClick={signOut}>
                     {t('auth.logout')}
                 </button>
             </div>
@@ -468,7 +466,7 @@ function Editor({library, user, onLogout}) {
                     </>
                 )}
                 {tab === INFO_TAB && <InfoPage onTour={startTour} />}
-                {tab === USERS_TAB && user.admin && <UsersPage currentUser={user} onChange={countWaiting} />}
+                {tab === ADMIN_TAB && user.admin && <AdminPage currentUser={user} onUsersChange={countWaiting} />}
                 {tab === COMPONENTS_TAB && (
                     <SymbolEditor
                         library={symbols}

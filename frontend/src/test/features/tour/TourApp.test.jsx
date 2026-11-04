@@ -63,7 +63,7 @@ test('a returning visitor does not get the tour', async () => {
 
 test('the tour waits until the project has been fetched', async () => {
     let release
-    global.fetch = vi.fn((url) => (url === '/api/symbols' ? Promise.resolve({ok: true, json: async () => standard}) : url === '/api/projects/1' ? new Promise((r) => (release = r)) : Promise.resolve({ok: false})))
+    global.fetch = vi.fn((url) => (url === '/api/symbols' ? Promise.resolve({ok: true, json: async () => standard}) : url === '/api/projects/summaries' ? new Promise((r) => (release = r)) : Promise.resolve({ok: false})))
     await mount()
     await act(async () => {})
     expect(card()).toBeNull()
@@ -144,5 +144,6 @@ test('the last step can start with an empty project', async () => {
     }
     fireEvent.click(await waitFor(() => getById('tour-extra')))
     expect(card()).toBeNull()
-    await waitFor(() => expect(global.fetch.mock.calls.some((c) => c[0] === '/api/projects')).toBe(true))
+    // a new, empty project (it gets a number from the server when it is saved)
+    await waitFor(() => expect(getById('status-message')).toHaveTextContent(t('app.newProject')))
 })

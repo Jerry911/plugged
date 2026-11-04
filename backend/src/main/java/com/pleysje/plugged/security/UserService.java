@@ -5,6 +5,8 @@ package com.pleysje.plugged.security;
 import com.pleysje.plugged.dto.AuthRequests;
 import com.pleysje.plugged.entity.AppUser;
 import com.pleysje.plugged.i18n.LocalizedStatusException;
+import com.pleysje.plugged.repository.ProjectRepository;
+import com.pleysje.plugged.repository.UserGroupRepository;
 import com.pleysje.plugged.repository.UserRepository;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
@@ -13,6 +15,8 @@ import java.util.regex.Pattern;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.context.event.EventListener;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -24,6 +28,10 @@ import org.springframework.transaction.annotation.Transactional;
  *   <li>As long as there is no administrator, only {@link #setup} is possible: it creates the administrator with the address of
  *       plugged.admin.email (which cannot be chosen or changed), approved from the start.</li>
  *   <li>Anyone can {@link #register}; the account cannot sign in until an administrator has {@link #approve approved} it.</li>
+ *   <li>An administrator can make another account administrator, or an ordinary user again ({@link #setAdmin}). The administrator of
+ *       plugged.admin.email (the primary administrator) always stays one, and nobody takes the role away from himself.</li>
+ *   <li>Projects saved before accounts existed belong to the primary administrator; the projects of a removed account go to the
+ *       administrator who removed it.</li>
  * </ul>
  */
 @Service
@@ -37,13 +45,18 @@ public class UserService {
     private static final Pattern EMAIL = Pattern.compile("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$");
 
     private final UserRepository users;
+    private final ProjectRepository projects;
+    private final UserGroupRepository groups;
     private final PasswordEncoder passwordEncoder;
     private final String adminEmail;
     /** Compared with when the email address is unknown, so a wrong address takes as long as a wrong password. */
     private final String dummyHash;
 
-    public UserService(UserRepository users, PasswordEncoder passwordEncoder, @Value("${plugged.admin.email:}") String adminEmail) {
+    public UserService(UserRepository users, ProjectRepository projects, UserGroupRepository groups, PasswordEncoder passwordEncoder,
+                       @Value("${plugged.admin.email:}") String adminEmail) {
         this.users = users;
+        this.projects = projects;
+        this.groups = groups;
         this.passwordEncoder = passwordEncoder;
         this.adminEmail = normalizeEmail(adminEmail);
         this.dummyHash = passwordEncoder.encode("not-a-password-of-anyone");
@@ -73,7 +86,41 @@ public class UserService {
         admin.setApproved(true);
         admin = users.save(admin);
         log.info("Administrator account created (user {})", admin.getId());
+        giveOwnerlessProjectsTo(admin);
         return admin;
+    }
+
+    /** At start-up: projects saved before accounts existed go to the primary administrator (once there is one). */
+    @EventListener(ApplicationReadyEvent.class)
+    public void claimOwnerlessProjects() {
+        users.findByEmail(adminEmail).filter(AppUser::isAdmin).ifPresent(this::giveOwnerlessProjectsTo);
+    }
+
+    private void giveOwnerlessProjectsTo(AppUser admin) {
+        int count = projects.assignOwnerless(admin.getId());
+        if (count > 0) log.info("{} project(s) saved before accounts existed now belong to the administrator (user {})", count, admin.getId());
+    }
+
+    /** True for the administrator of plugged.admin.email: that account always stays administrator and cannot be removed. */
+    public boolean isPrimaryAdmin(AppUser user) {
+        return user.isAdmin() && user.getEmail().equals(adminEmail);
+    }
+
+    /**
+     * Makes an account administrator (also approving it) or an ordinary user again. {@code actingAdminId} is the administrator who asks: he
+     * cannot take the role away from himself, and nobody takes it away from the primary administrator.
+     */
+    @Transactional
+    public AppUser setAdmin(long actingAdminId, long id, boolean admin) {
+        AppUser user = find(id);
+        if (!admin && user.isAdmin()) {
+            if (isPrimaryAdmin(user)) throw new LocalizedStatusException(HttpStatus.CONFLICT, "user.primaryAdmin");
+            if (user.getId() == actingAdminId) throw new LocalizedStatusException(HttpStatus.CONFLICT, "user.cannotDemoteSelf");
+        }
+        if (user.isAdmin() != admin) log.info("User {} is {} now (by user {})", id, admin ? "administrator" : "an ordinary user", actingAdminId);
+        user.setAdmin(admin);
+        if (admin) user.setApproved(true);
+        return user;
     }
 
     /** A new account, waiting for the approval of an administrator. */
@@ -109,9 +156,13 @@ public class UserService {
         return users.findAllByOrderByApprovedAscIdAsc();
     }
 
+    private AppUser find(long id) {
+        return users.findById(id).orElseThrow(() -> new LocalizedStatusException(HttpStatus.NOT_FOUND, "user.notFound", id));
+    }
+
     @Transactional
     public AppUser approve(long id) {
-        AppUser user = users.findById(id).orElseThrow(() -> new LocalizedStatusException(HttpStatus.NOT_FOUND, "user.notFound", id));
+        AppUser user = find(id);
         if (!user.isApproved()) {
             user.setApproved(true);
             log.info("User {} approved", id);
@@ -119,13 +170,18 @@ public class UserService {
         return user;
     }
 
-    /** Removes an account (also to turn down a registration). The administrator account cannot be removed. */
+    /**
+     * Removes an account (also to turn down a registration). An administrator cannot be removed (make him an ordinary user first). The
+     * projects of the account go to {@code actingAdminId}, the administrator who removes it; its group memberships end.
+     */
     @Transactional
-    public void delete(long id) {
-        AppUser user = users.findById(id).orElseThrow(() -> new LocalizedStatusException(HttpStatus.NOT_FOUND, "user.notFound", id));
+    public void delete(long actingAdminId, long id) {
+        AppUser user = find(id);
         if (user.isAdmin()) throw new LocalizedStatusException(HttpStatus.CONFLICT, "user.adminCannotBeDeleted");
+        int moved = projects.changeOwner(id, actingAdminId);
+        groups.removeMemberEverywhere(id);
         users.delete(user);
-        log.info("User {} deleted", id);
+        log.info("User {} deleted; {} project(s) now belong to user {}", id, moved, actingAdminId);
     }
 
     private AppUser newUser(String name, String surname, String email, String password) {

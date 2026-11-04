@@ -7,20 +7,15 @@ import com.pleysje.plugged.dto.AuthStatusDto;
 import com.pleysje.plugged.dto.UserDto;
 import com.pleysje.plugged.entity.AppUser;
 import com.pleysje.plugged.logging.ApiLog;
+import com.pleysje.plugged.security.Authentications;
 import com.pleysje.plugged.security.PluggedPrincipal;
-import com.pleysje.plugged.security.SecurityConfig;
 import com.pleysje.plugged.security.UserService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import java.util.ArrayList;
-import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.logout.SecurityContextLogoutHandler;
@@ -87,10 +82,8 @@ public class AuthController {
 
     /** Puts the user in a new session (a new session id, so an id that was known before signing in is worthless). */
     private UserDto signIn(AppUser user, HttpServletRequest request, HttpServletResponse response) {
-        List<GrantedAuthority> roles = new ArrayList<>(List.of(new SimpleGrantedAuthority("ROLE_" + SecurityConfig.ROLE_USER)));
-        if (user.isAdmin()) roles.add(new SimpleGrantedAuthority("ROLE_" + SecurityConfig.ROLE_ADMIN));
         SecurityContext context = SecurityContextHolder.createEmptyContext();
-        context.setAuthentication(UsernamePasswordAuthenticationToken.authenticated(new PluggedPrincipal(user.getId(), user.getEmail()), null, roles));
+        context.setAuthentication(Authentications.of(user));
         SecurityContextHolder.setContext(context);
         if (request.getSession(false) != null) request.changeSessionId();
         contexts.saveContext(context, request, response);

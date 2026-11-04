@@ -31,6 +31,13 @@ export class FakeBackend {
     fake = true
     projects = new Map()
     names = new Map() // id -> name given with ?name= on save
+    updated = new Map() // id -> moment of the last save (the editor opens the most recent own project)
+    clock = Date.now()
+    /** a moment later than every earlier save, even within the same millisecond */
+    now() {
+        this.clock = Math.max(this.clock + 1, Date.now())
+        return new Date(this.clock).toISOString()
+    }
     symbols = clone(standard)
     puts = [] // every project save: {id, body}
     failSave = false // PUT /api/projects/:id answers 500
@@ -50,15 +57,37 @@ export class FakeBackend {
             empty = (status = 204) => route.fulfill({status})
         if (path.startsWith('/api/projects')) {
             const id = Number(path.split('/')[3])
+            // a new project: the server gives the next number
+            if (!path.split('/')[3] && m === 'POST') {
+                if (this.failSave) return empty(500)
+                const newId = Math.max(0, ...this.projects.keys()) + 1,
+                    body = JSON.parse(req.postData())
+                this.projects.set(newId, body)
+                this.names.set(newId, new URL(req.url()).searchParams.get('name'))
+                this.updated.set(newId, this.now())
+                this.puts.push({id: newId, body})
+                return json({id: newId}, 201)
+            }
             if (!path.split('/')[3]) return json([...this.projects.keys()])
             if (path === '/api/projects/summaries')
-                return json([...this.projects].map(([pid, d]) => ({id: pid, name: this.names.get(pid) ?? d.name ?? null, updated: null})))
+                return json(
+                    [...this.projects].map(([pid, d]) => ({
+                        id: pid,
+                        name: this.names.get(pid) ?? d.name ?? null,
+                        updated: this.updated.get(pid) ?? null,
+                        owner: {id: FAKE_USER.id, name: FAKE_USER.name + ' ' + FAKE_USER.surname},
+                        groups: [],
+                        mine: true,
+                        canManage: true,
+                    })),
+                )
             if (m === 'GET') return this.projects.has(id) ? json(this.projects.get(id)) : empty(404)
             if (m === 'PUT') {
                 if (this.failSave) return empty(500)
                 const body = JSON.parse(req.postData())
                 this.projects.set(id, body)
                 this.names.set(id, new URL(req.url()).searchParams.get('name'))
+                this.updated.set(id, this.now())
                 this.puts.push({id, body})
                 return empty()
             }
@@ -91,6 +120,7 @@ export class FakeBackend {
             }
         }
         if (path === '/api/auth/status') return json({setupRequired: false, adminEmail: testInfo.contactEmail, user: FAKE_USER})
+        if (path === '/api/groups') return json([])
         if (path === '/api/info') return json(this.info)
         if (path.startsWith('/api/components')) return m === 'GET' ? json([]) : empty()
         return empty(404)
@@ -99,6 +129,7 @@ export class FakeBackend {
     async init() {}
     async seed(id, doc) {
         this.projects.set(id, clone(doc))
+        this.updated.set(id, this.now())
     }
     async saved(id = 1) {
         return this.projects.get(id)
@@ -123,7 +154,7 @@ class RealBackend {
     fake = false
     // The same switches as the fake has. A backend that breaks on purpose is simulated in the browser: the requests of the page are answered
     // here instead of by the application (the requests of the tests themselves, through `request`, always reach the real one).
-    failSave = false // PUT /api/projects/:id answers 500
+    failSave = false // saving a project (PUT /api/projects/:id, POST /api/projects) answers 500
     symbolsDown = false // /api/symbols answers 503
     gate = null // a promise every /api/symbols request waits for (to look at the loading state)
     info = null // GET /api/info answers this instead of the settings of the application
@@ -139,7 +170,8 @@ class RealBackend {
                 if (this.gate) await this.gate
                 if (this.symbolsDown) return route.fulfill({status: 503})
             }
-            if (path.startsWith('/api/projects/') && req.method() === 'PUT' && this.failSave) return route.fulfill({status: 500})
+            const saving = (path.startsWith('/api/projects/') && req.method() === 'PUT') || (path === '/api/projects' && req.method() === 'POST')
+            if (saving && this.failSave) return route.fulfill({status: 500})
             return route.continue()
         })
     }
@@ -284,7 +316,12 @@ export class App {
     /** saves with Ctrl+S and answers what the backend stored; `language` = the language the application is in (the status message is checked) */
     async save(backend, id = 1, language = 'nl') {
         // wait for the PUT itself: the "Opgeslagen ✓" message stays on screen after a first save, so on a second save it proves nothing
-        const put = this.page.waitForResponse((r) => r.request().method() === 'PUT' && new RegExp('/api/projects/' + id + '(\\?|$)').test(r.url()))
+        // a stored project is saved with PUT /api/projects/{id}; a new one with POST /api/projects (the server gives it its number)
+        const put = this.page.waitForResponse(
+            (r) =>
+                (r.request().method() === 'PUT' && new RegExp('/api/projects/' + id + '(\\?|$)').test(r.url())) ||
+                (r.request().method() === 'POST' && new URL(r.url()).pathname === '/api/projects'),
+        )
         await this.page.keyboard.press('Control+s')
         await put
         await expect(this.status()).toHaveText(t('app.saved', {}, language))

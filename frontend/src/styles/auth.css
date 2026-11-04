@@ -143,38 +143,182 @@
     background: rgba(16, 32, 56, .45)
 }
 
-/* the user and Afmelden at the right of the top bar */
-.bar .username {
-    font-size: 13px;
-    opacity: .9;
-    max-width: 200px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap
-}
-
-/* Gebruikers (administrator) */
-.userspage {
-    max-width: 960px;
+/* Beheer (administrators): users and groups */
+.adminpage {
+    max-width: 1040px;
     margin: 0 auto;
     padding: 16px 20px 60px
 }
 
-.usershead {
+.adminhead {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 12px
 }
 
-.usershead h1 {
+.adminhead h1 {
     margin: 0;
     color: #1f3a5f
 }
 
-.usershead button, .usersactions button {
+.adminhead button, .usersactions button, .grouphead button, .groupadd button, .groupcreate button {
     padding: 5px 10px;
     cursor: pointer
+}
+
+.admintabs {
+    display: flex;
+    gap: 2px;
+    margin: 14px 0 12px;
+    border-bottom: 2px solid #1f3a5f
+}
+
+.admintabs button {
+    padding: 7px 16px;
+    border: 1px solid #c9d2dd;
+    border-bottom: 0;
+    border-radius: 5px 5px 0 0;
+    background: #eef2f7;
+    font: inherit;
+    cursor: pointer
+}
+
+.admintabs button.on {
+    background: #1f3a5f;
+    border-color: #1f3a5f;
+    color: #fff;
+    font-weight: 700
+}
+
+.admincount {
+    margin-left: 6px;
+    padding: 0 6px;
+    border-radius: 8px;
+    background: #dde3ea;
+    color: #333;
+    font-size: 11px;
+    font-weight: 600
+}
+
+.admintabs button.on .admincount {
+    background: rgba(255, 255, 255, .25);
+    color: #fff
+}
+
+.adminsection > p:first-child {
+    margin-top: 0
+}
+
+.adminpage .authmsg {
+    margin-bottom: 10px
+}
+
+.usersgroups {
+    color: #555;
+    font-size: 13px
+}
+
+.groupcreate {
+    display: flex;
+    gap: 6px;
+    margin: 0 0 14px
+}
+
+.groupcreate input {
+    flex: 1;
+    max-width: 360px;
+    font: inherit;
+    padding: 6px 8px;
+    border: 1px solid #b8c2cf;
+    border-radius: 4px
+}
+
+.groupcreate .accent, .groupadd .accent {
+    background: #ffd54a;
+    border: 1px solid #e0b400;
+    font-weight: 700
+}
+
+.grouplist {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 10px
+}
+
+.groupcard {
+    padding: 10px 12px;
+    border: 1px solid #dde3ea;
+    border-left: 4px solid #1f3a5f;
+    border-radius: 5px;
+    background: #fff
+}
+
+.grouphead {
+    display: flex;
+    align-items: center;
+    gap: 6px
+}
+
+.grouphead h3 {
+    margin: 0;
+    font-size: 16px;
+    color: #1f3a5f
+}
+
+.groupmembers {
+    list-style: none;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: 10px 0 0;
+    padding: 0
+}
+
+.memberchip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 4px 2px 10px;
+    border-radius: 14px;
+    background: #eef2f7;
+    font-size: 13px
+}
+
+.memberchip button {
+    border: 0;
+    background: transparent;
+    font-size: 16px;
+    line-height: 1;
+    padding: 0 5px;
+    cursor: pointer;
+    color: #555;
+    border-radius: 50%
+}
+
+.memberchip button:hover {
+    background: #c62828;
+    color: #fff
+}
+
+.groupempty {
+    margin: 8px 0 0;
+    color: #666;
+    font-style: italic
+}
+
+.groupadd {
+    display: flex;
+    gap: 6px;
+    margin-top: 10px
+}
+
+.groupadd select {
+    font: inherit;
+    padding: 4px;
+    max-width: 360px
 }
 
 .userspending {
@@ -264,5 +408,9 @@
 
     .usersactions {
         text-align: left
+    }
+
+    .grouphead {
+        flex-wrap: wrap
     }
 }

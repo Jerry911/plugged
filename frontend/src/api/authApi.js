@@ -1,6 +1,7 @@
 // Copyright 2026 Pleysier Jeroen
 // SPDX-License-Identifier: AGPL-3.0-only
-// Signing in and out, registration, the first start (/api/auth) and the accounts for the administrator (/api/admin/users).
+// Signing in and out, registration, the first start (/api/auth) and, for administrators, the accounts (/api/admin/users) and the groups
+// (/api/admin/groups).
 import {apiFetch, JSON_HEADERS} from './http.js'
 import {t} from '../i18n/translate.js'
 
@@ -25,10 +26,10 @@ const problem = async (response) => {
     }
 }
 
-/** POSTs `body` and answers {ok: true, user} or {ok: false, error}; never throws. */
-const send = async (url, body) => {
+/** Sends `body` (POST unless `method` says otherwise) and answers {ok: true, user} (the answer of the server) or {ok: false, error}; never throws. */
+const send = async (url, body, method = 'POST') => {
     try {
-        const response = await apiFetch(url, {method: 'POST', headers: JSON_HEADERS, body: JSON.stringify(body)})
+        const response = await apiFetch(url, {method, headers: JSON_HEADERS, body: JSON.stringify(body)})
         if (!response.ok) return {ok: false, status: response.status, error: await problem(response)}
         return {ok: true, user: response.status === 204 ? null : await response.json()}
     } catch {
@@ -60,6 +61,33 @@ export const approveUser = (id) => send(userUrl(id) + '/approve')
 export const deleteUser = async (id) => {
     try {
         const response = await apiFetch(userUrl(id), {method: 'DELETE'})
+        return response.ok ? {ok: true} : {ok: false, error: await problem(response)}
+    } catch {
+        return {ok: false, error: t('auth.unreachable')}
+    }
+}
+
+/** {ok, user, error}: makes the account an administrator (`admin` true, which also approves it) or an ordinary user again. */
+export const setUserAdmin = (id, admin) => send(userUrl(id) + '/admin', {admin}, 'PUT')
+
+/** Every group with its members ([{id, name, created, members: [{id, name, surname, email}]}]). Throws when not available. */
+export const fetchGroups = async () => {
+    const response = await apiFetch('/api/admin/groups')
+    if (!response.ok) throw new Error('groups not available')
+    const groups = await response.json()
+    return Array.isArray(groups) ? groups : []
+}
+
+const groupUrl = (id) => '/api/admin/groups/' + encodeURIComponent(id)
+
+/** The group calls answer {ok, user (= the group), error}. */
+export const createGroup = (name) => send('/api/admin/groups', {name})
+export const renameGroup = (id, name) => send(groupUrl(id), {name}, 'PUT')
+export const addGroupMember = (id, userId) => send(groupUrl(id) + '/members/' + encodeURIComponent(userId), undefined, 'PUT')
+export const removeGroupMember = (id, userId) => send(groupUrl(id) + '/members/' + encodeURIComponent(userId), undefined, 'DELETE')
+export const deleteGroup = async (id) => {
+    try {
+        const response = await apiFetch(groupUrl(id), {method: 'DELETE'})
         return response.ok ? {ok: true} : {ok: false, error: await problem(response)}
     } catch {
         return {ok: false, error: t('auth.unreachable')}

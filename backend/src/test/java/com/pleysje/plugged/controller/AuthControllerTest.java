@@ -33,10 +33,14 @@ class AuthControllerTest {
     MockMvc mvc;
     @Autowired
     UserRepository users;
+    @Autowired
+    com.pleysje.plugged.repository.UserGroupRepository groups;
+    @Autowired
+    com.pleysje.plugged.repository.ProjectRepository projects;
 
     @BeforeEach
     void clean() {
-        users.deleteAll();
+        com.pleysje.plugged.TestAccounts.clean(groups, projects, users);
     }
 
     private ResultActions send(MockHttpServletRequestBuilder request, MockHttpSession session, String json) throws Exception {
@@ -90,6 +94,14 @@ class AuthControllerTest {
                 .andExpect(jsonPath("$.user.name", is("Jeroen")));
         assertTrue(users.findByEmail("other@example.be").isEmpty());
         mvc.perform(get("/api/projects").session(session)).andExpect(status().isOk());
+    }
+
+    @Test
+    void setupGivesTheProjectsFromBeforeAccountsToTheAdministrator() throws Exception {
+        projects.save(new com.pleysje.plugged.entity.ProjectDoc(3L, "{}", "Oud"));
+        MockHttpSession session = new MockHttpSession();
+        setupAdmin(session).andExpect(status().isOk());
+        mvc.perform(get("/api/projects/summaries").session(session)).andExpect(jsonPath("$[0].mine", is(true)));
     }
 
     @Test

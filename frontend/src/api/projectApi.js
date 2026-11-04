@@ -1,6 +1,7 @@
 // Copyright 2026 Pleysier Jeroen
 // SPDX-License-Identifier: AGPL-3.0-only
-// The REST API of the stored projects (/api/projects) and of the installation settings (/api/info).
+// The REST API of the stored projects (/api/projects), the groups a project can be shared with (/api/groups) and the installation settings
+// (/api/info). The server decides which projects the user sees: his own, those shared with one of his groups, and every one for an admin.
 import {apiFetch, JSON_HEADERS} from './http.js'
 
 const projectUrl = (id) => '/api/projects/' + id
@@ -9,6 +10,21 @@ const projectUrl = (id) => '/api/projects/' + id
 export const fetchProject = async (id) => {
     const response = await apiFetch(projectUrl(id))
     return response.ok ? response.json() : null
+}
+
+const withName = (url, project) => {
+    const name = (project.name || '').trim()
+    return url + (name ? '?name=' + encodeURIComponent(name) : '')
+}
+
+/** Stores a new project; the server gives it the next free number. Resolves to that number, or null when it was not stored. */
+export const createProject = async (project) => {
+    try {
+        const response = await apiFetch(withName('/api/projects', project), {method: 'POST', headers: JSON_HEADERS, body: JSON.stringify(project)})
+        return response.ok ? (await response.json()).id : null
+    } catch {
+        return null
+    }
 }
 
 /** Stores the project document under `id` (its name also goes along as ?name=, for the project list). Resolves to true when it was stored. */
@@ -30,12 +46,35 @@ export const fetchProjectIds = async () => {
     return Array.isArray(ids) ? ids : []
 }
 
-/** [{id, name, updated}] of the stored projects. Throws when the list cannot be loaded. */
+/**
+ * [{id, name, updated, owner: {id, name}, groups: [{id, name}], mine, canManage}] of the projects the user may see. Throws when the list
+ * cannot be loaded.
+ */
 export const fetchProjectSummaries = async () => {
     const response = await apiFetch('/api/projects/summaries')
     if (!response.ok) throw new Error('project list not available')
     const summaries = await response.json()
     return Array.isArray(summaries) ? summaries : []
+}
+
+/** The groups the user can share a project with ([{id, name}]: his own groups, every group for an admin). Throws when not available. */
+export const fetchShareableGroups = async () => {
+    const response = await apiFetch('/api/groups')
+    if (!response.ok) throw new Error('groups not available')
+    const groups = await response.json()
+    return Array.isArray(groups) ? groups : []
+}
+
+/** Shares project `id` with exactly these groups. Resolves to {ok: true, summary} or {ok: false, error}. */
+export const shareProject = async (id, groupIds) => {
+    try {
+        const response = await apiFetch(projectUrl(id) + '/groups', {method: 'PUT', headers: JSON_HEADERS, body: JSON.stringify({groupIds})})
+        if (response.ok) return {ok: true, summary: await response.json()}
+        const problem = await response.json().catch(() => null)
+        return {ok: false, error: problem?.detail || ''}
+    } catch {
+        return {ok: false, error: ''}
+    }
 }
 
 /** {donateUrl, contactEmail} of this installation (empty strings when not configured or not reachable). */

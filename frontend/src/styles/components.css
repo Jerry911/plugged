@@ -757,3 +757,58 @@
 .plist .pm-del:hover {
     background: #fdecea
 }
+
+/* project list: owner and sharing under the name, and the group picker of "Delen" */
+.plist .pm-meta {
+    display: block;
+    color: #5b6675;
+    font-size: 11px;
+    font-weight: 400
+}
+
+.plist .pm-acts .pm-ico {
+    width: 15px;
+    height: 15px;
+    vertical-align: -3px
+}
+
+.plist .pm-acts button.on {
+    background: #ffd54a
+}
+
+.pm-share {
+    display: grid;
+    gap: 4px;
+    padding: 8px 10px;
+    margin: 2px 0 4px;
+    background: #f4f7fb;
+    border-left: 3px solid #1f3a5f;
+    border-radius: 3px
+}
+
+.pm-share .pm-check {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer
+}
+
+.pm-share .pm-note {
+    margin: 0
+}
+
+.pm-share .pm-note.error {
+    color: #7a1c1c
+}
+
+.pm-share-acts {
+    display: flex;
+    gap: 6px;
+    margin-top: 4px
+}
+
+.pm-share-acts .accent {
+    background: #ffd54a;
+    border: 1px solid #e0b400;
+    font-weight: 700
+}

@@ -3,7 +3,7 @@
 // The "Project" menu in the top bar: a flyout with name, save, save as, new, load (a nested flyout with the projects stored on the
 // server), import and export. Clicking "Project" opens the menu, clicking it again (or outside it, or Escape) closes it.
 import {useEffect, useLayoutEffect, useRef, useState} from 'react'
-import {fetchProjectSummaries} from '../../api/projectApi.js'
+import {fetchProjectSummaries, fetchShareableGroups, shareProject} from '../../api/projectApi.js'
 import {useTranslation} from '../../i18n/I18nProvider.jsx'
 
 const formatSaveMoment = (isoMoment, locale) => {
@@ -23,6 +23,7 @@ const MENU_ICONS = {
     import: ['M12 3v12M7 10l5 5 5-5', 'M4 19h16'],
     export: ['M12 15V3M7 8l5-5 5 5', 'M4 19h16'],
     chevron: ['M9 6l6 6-6 6'],
+    share: ['M16 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6z', 'M8 13a3 3 0 1 0 0-6 3 3 0 0 0 0 6z', 'M2 20c0-3 3-5 6-5s6 2 6 5', 'M14 15.5c.6-.3 1.3-.5 2-.5 3 0 6 2 6 5'],
     caret: ['M6 9l6 6 6-6'],
 }
 const MenuIcon = ({name}) => (
@@ -33,11 +34,94 @@ const MenuIcon = ({name}) => (
     </svg>
 )
 
-/** The table of stored projects (reloaded whenever `refreshKey` changes). */
+/**
+ * Who owns a project and who it is shared with, under its name: "van Alice · gedeeld met Team, Bureau". Nothing for an own project that is not
+ * shared.
+ */
+function ProjectMeta({summary}) {
+    const {t} = useTranslation()
+    const parts = []
+    if (!summary.mine && summary.owner) parts.push(t('projects.ownedBy', {name: summary.owner.name}))
+    if (summary.groups?.length) parts.push(t('projects.sharedWith', {groups: summary.groups.map((group) => group.name).join(', ')}))
+    return parts.length ? (
+        <small id={'project-meta-' + summary.id} className="pm-meta">
+            {parts.join(' · ')}
+        </small>
+    ) : null
+}
+
+/** The groups a project is shared with, to tick on and off. `onDone(summary)` after saving, `onClose()` to stop without saving. */
+function SharePanel({summary, onDone, onClose}) {
+    const {t} = useTranslation()
+    const [groups, setGroups] = useState(null),
+        [chosen, setChosen] = useState(() => new Set((summary.groups || []).map((group) => group.id))),
+        [error, setError] = useState(''),
+        [busy, setBusy] = useState(false)
+    useEffect(() => {
+        let live = true
+        fetchShareableGroups()
+            .then((list) => {
+                // groups an admin shared it with stay visible (and stay ticked) even when the owner is no member of them
+                const known = new Set(list.map((group) => group.id))
+                live && setGroups([...list, ...(summary.groups || []).filter((group) => !known.has(group.id)).map((group) => ({...group, locked: true}))])
+            })
+            .catch(() => live && setError(t('projects.shareGroupsFailed')))
+        return () => {
+            live = false
+        }
+    }, [])
+    const toggle = (id) =>
+        setChosen((current) => {
+            const next = new Set(current)
+            next.has(id) ? next.delete(id) : next.add(id)
+            return next
+        })
+    const save = async () => {
+        setBusy(true)
+        const result = await shareProject(summary.id, [...chosen])
+        setBusy(false)
+        if (result.ok) onDone(result.summary)
+        else setError(result.error || t('projects.shareFailed'))
+    }
+    return (
+        <div id={'project-share-' + summary.id} className="pm-share">
+            <b>{t('projects.shareIntro', {name: summary.name || t('projects.defaultName', {number: summary.id})})}</b>
+            {groups && !groups.length && <p className="pm-note">{t('projects.shareNoGroups')}</p>}
+            {groups?.map((group) => (
+                <label key={group.id} className="pm-check">
+                    <input
+                        type="checkbox"
+                        id={'project-share-group-' + group.id}
+                        checked={chosen.has(group.id)}
+                        disabled={group.locked}
+                        onChange={() => toggle(group.id)}
+                    />
+                    {group.name}
+                </label>
+            ))}
+            {error && (
+                <p id="project-share-error" className="pm-note error" role="alert">
+                    {error}
+                </p>
+            )}
+            <div className="pm-share-acts">
+                <button id="project-share-save" className="accent" disabled={busy || !groups} onClick={save}>
+                    {t('common.save')}
+                </button>
+                <button id="project-share-cancel" onClick={onClose}>
+                    {t('common.cancel')}
+                </button>
+            </div>
+        </div>
+    )
+}
+
+/** The table of the projects the user may see (reloaded whenever `refreshKey` changes). */
 export function ProjectList({currentId, refreshKey, onLoad, onDelete}) {
     const {t, locale} = useTranslation()
     const [summaries, setSummaries] = useState(null),
-        [failed, setFailed] = useState(false)
+        [failed, setFailed] = useState(false),
+        [sharing, setSharing] = useState(null) // id of the project whose groups are being chosen
     useEffect(() => {
         let live = true
         setFailed(false)
@@ -77,11 +161,12 @@ export function ProjectList({currentId, refreshKey, onLoad, onDelete}) {
                 </tr>
             </thead>
             <tbody>
-                {summaries.map((summary) => (
+                {summaries.map((summary) => [
                     <tr key={summary.id} id={'project-row-' + summary.id} className={summary.id === currentId ? 'cur' : ''}>
                         <td className="pm-name">
                             {summary.name || <i>{t('projects.defaultName', {number: summary.id})}</i>}
                             {summary.id === currentId && <small> {t('projects.current')}</small>}
+                            <ProjectMeta summary={summary} />
                         </td>
                         <td>{summary.id}</td>
                         <td className="pm-when">{formatSaveMoment(summary.updated, locale)}</td>
@@ -89,18 +174,46 @@ export function ProjectList({currentId, refreshKey, onLoad, onDelete}) {
                             <button id={'project-load-' + summary.id} title={t('projects.loadTitle', {number: summary.id})} onClick={() => onLoad(summary.id)}>
                                 {t('projects.load')}
                             </button>
-                            <button
-                                id={'project-delete-' + summary.id}
-                                title={t('projects.deleteTitle', {number: summary.id})}
-                                aria-label={t('projects.deleteLabel', {name: summary.name || t('projects.defaultName', {number: summary.id})})}
-                                className="pm-del"
-                                onClick={() => onDelete(summary)}
-                            >
-                                🗑
-                            </button>
+                            {summary.canManage && (
+                                <button
+                                    id={'project-sharebtn-' + summary.id}
+                                    title={t('projects.shareTitle')}
+                                    aria-label={t('projects.shareTitle')}
+                                    aria-expanded={sharing === summary.id}
+                                    className={sharing === summary.id ? 'on' : ''}
+                                    onClick={() => setSharing((id) => (id === summary.id ? null : summary.id))}
+                                >
+                                    <MenuIcon name="share" />
+                                </button>
+                            )}
+                            {summary.canManage && (
+                                <button
+                                    id={'project-delete-' + summary.id}
+                                    title={t('projects.deleteTitle', {number: summary.id})}
+                                    aria-label={t('projects.deleteLabel', {name: summary.name || t('projects.defaultName', {number: summary.id})})}
+                                    className="pm-del"
+                                    onClick={() => onDelete(summary)}
+                                >
+                                    🗑
+                                </button>
+                            )}
                         </td>
-                    </tr>
-                ))}
+                    </tr>,
+                    sharing === summary.id && (
+                        <tr key={summary.id + '-share'} className="pm-share-row">
+                            <td colSpan={4}>
+                                <SharePanel
+                                    summary={summary}
+                                    onClose={() => setSharing(null)}
+                                    onDone={(updated) => {
+                                        setSharing(null)
+                                        setSummaries((list) => list.map((item) => (item.id === updated.id ? updated : item)))
+                                    }}
+                                />
+                            </td>
+                        </tr>
+                    ),
+                ])}
             </tbody>
         </table>
     )
@@ -195,12 +308,12 @@ export default function ProjectMenu({name, onNameChange, projectId, refreshKey, 
                         <input
                             id="project-name"
                             value={name || ''}
-                            placeholder={t('projects.defaultName', {number: projectId})}
+                            placeholder={projectId ? t('projects.defaultName', {number: projectId}) : t('projects.newName')}
                             maxLength={255}
                             onChange={(event) => onNameChange(event.target.value)}
                             onKeyDown={(event) => event.key === 'Enter' && closeAndRun(onSave)()}
                         />
-                        <small id="project-number">{t('projects.number', {number: projectId})}</small>
+                        <small id="project-number">{projectId ? t('projects.number', {number: projectId}) : t('projects.notSaved')}</small>
                     </div>
                     <ul className="pm-list" role="menu" aria-label={t('projects.menu')}>
                         {menuItem('btn-save', 'save', t('projects.save'), closeAndRun(onSave), {title: t('projects.saveTitle'), hint: 'Ctrl+S'})}

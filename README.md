@@ -45,7 +45,7 @@ To make a port permanent without environment variables:
 - Docker without Compose: the container listens on `PORT` (8080 by default); either map another host port (`-p 9090:8080`) or change both (`-e PORT=9090 -p 9090:9090`).
 
 ## Data
-The project is saved as one JSON document (id 1) in a file-based H2 database: `backend/data/plugged` when you run from `backend/`, the `plugged-data` volume (`/data`) in Docker. Override the location with `SPRING_DATASOURCE_URL` (e.g. `jdbc:h2:file:/some/dir/plugged`). The symbol library is stored in the same database and shared by all projects. Use **JSON ↑ / JSON ↓** in the header to export and import a project file.
+Every project is saved as one JSON document (with its owner and the groups it is shared with) in a file-based H2 database: `backend/data/plugged` when you run from `backend/`, the `plugged-data` volume (`/data`) in Docker. Override the location with `SPRING_DATASOURCE_URL` (e.g. `jdbc:h2:file:/some/dir/plugged`). The symbol library is stored in the same database and shared by all projects. Use **JSON ↑ / JSON ↓** in the header to export and import a project file.
 
 ## Accounts and signing in
 Everybody signs in before the editor opens (Spring Security, session cookie, CSRF token in the `XSRF-TOKEN` cookie / `X-XSRF-TOKEN` header).
@@ -57,11 +57,20 @@ Everybody signs in before the editor opens (Spring Security, session cookie, CSR
 
 - **First start**: as long as there is no administrator, the page shows *Welkom bij Plugged* and asks for the first name, surname and password of the administrator. The email address is the one of `PLUGGED_ADMIN_EMAIL`, shown read-only: it cannot be chosen or changed. The administrator account is approved from the start and is signed in at once. Without `PLUGGED_ADMIN_EMAIL` the page says how to set it and nobody can sign in.
 - **Registering**: the sign-in page links to *Registreren* (`/#register`): first name, surname, email address and password (at least 8 characters). A new account is **not approved** and cannot sign in until the administrator approves it.
-- **Approving**: the administrator has a **Gebruikers** tab in the top bar (a badge counts the accounts waiting). *Goedkeuren* approves an account; *Weigeren* / *Verwijderen* removes it (the administrator account cannot be removed). A removed account is signed out on its next request.
+- **Beheer** (administrators only) is one item in the top bar with two tabs; a badge counts the accounts waiting for approval.
+  - *Gebruikers*: *Goedkeuren* approves an account; *Maak beheerder* makes an approved account an administrator, *Maak gewone gebruiker* takes the role away again; *Weigeren* / *Verwijderen* removes an ordinary account. The primary administrator (the account of `PLUGGED_ADMIN_EMAIL`) always stays administrator, nobody takes the role away from himself, and an administrator cannot be removed (make him an ordinary user first). A change of role applies on the next request of that user, without signing in again; a removed account is signed out on its next request and its projects go to the administrator who removed it.
+  - *Groepen*: create, rename and remove groups and choose their members (approved accounts). A user can be in several groups. Only administrators manage groups.
 - **Signing out**: *Afmelden* in the top bar (it asks first when the open project has unsaved changes). When a session ends during the work (timeout, restart of the server), the sign-in form opens on top of the editor, so the open project is not lost.
+- **Projects and sharing**: every project has an owner, the user who saved it first. A user sees his own projects and the projects shared with one of his groups; an administrator sees and can do everything. In *Project → Laden* the owner (or an administrator) shares a project with groups (the 👥 button) and deletes it; members of those groups can open and save it, but not delete or share it. The list shows under each name whose project it is and who it is shared with. The server gives new projects their number (`POST /api/projects`), so two users never pick the same one; the editor opens with the user's most recently saved project, or a new one. Projects saved before accounts existed belong to the primary administrator. The symbol library is shared by everybody.
 - Accounts live in the `users` table (name, surname, email, bcrypt password hash, `admin` default false, `approved`). Email addresses are stored in lower case.
 
-REST API: `GET /api/auth/status`, `POST /api/auth/setup | register | login | logout`; for the administrator `GET /api/admin/users`, `POST /api/admin/users/{id}/approve`, `DELETE /api/admin/users/{id}`. Everything else under `/api/` needs a signed-in user (401 otherwise), except `/api/info`.
+REST API:
+- `GET /api/auth/status`, `POST /api/auth/setup | register | login | logout`
+- projects: `GET /api/projects`, `GET /api/projects/summaries` (`{id, name, updated, owner, groups, mine, canManage}`), `POST /api/projects?name=` (answers `{id}`), `GET | PUT | DELETE /api/projects/{id}`, `PUT /api/projects/{id}/groups {groupIds}`; a project the user may not see answers 404
+- `GET /api/groups`: the groups the user can share with (his own; every group for an administrator)
+- administrators: `GET /api/admin/users`, `POST /api/admin/users/{id}/approve`, `PUT /api/admin/users/{id}/admin {admin}`, `DELETE /api/admin/users/{id}`; `GET | POST /api/admin/groups`, `PUT | DELETE /api/admin/groups/{id}`, `PUT | DELETE /api/admin/groups/{id}/members/{userId}`
+
+Everything under `/api/` needs a signed-in user (401 otherwise), except `/api/auth/**` and `/api/info`.
 
 ## Features
 - **Eendraadschema**: multi-sheet A4 diagram with a bus, kWh meter, main differential and circuits; palette, properties panel and a collapsible tree (*Opbouw*).
@@ -143,16 +152,16 @@ frontend/src
   symbols/        symbol shapes, library helpers, SymbolGraphic
   components/     shared UI: Sheet, ZoomPane, ZoomControls, domId
   features/       oneWire (eendraadschema), situation (situatieschema), symbolEditor, verify, footer, info, tour, project (load/export/PDF),
-                  auth (first start, sign in, register, AuthGate), users (Gebruikers, for the administrator)
+                  auth (first start, sign in, register, AuthGate), admin (Beheer: users and groups)
   styles/
   test/           Vitest tests, mirroring the folders above
 backend/src/main/java/com/pleysje/plugged
   PluggedApplication
-  controller/     REST controllers (projects, symbols, info, auth, admin/users, legacy components)
-  service/        SymbolService (catalog rules), SymbolMapper, SymbolSeeder
+  controller/     REST controllers (projects, groups, symbols, info, auth, admin users and groups, legacy components)
+  service/        SymbolService (catalog rules), SymbolMapper, SymbolSeeder, ProjectService (who may see and change which project), GroupService
   repository/     Spring Data repositories
-  entity/         JPA entities (ProjectDoc, SymbolEntity, ShapeRow, ComponentDoc, AppUser)
-  dto/            API records (SymbolDto, ProjectSummary, InfoDto, UserDto, AuthStatusDto, AuthRequests)
+  entity/         JPA entities (ProjectDoc, SymbolEntity, ShapeRow, ComponentDoc, AppUser, UserGroup)
+  dto/            API records (SymbolDto, ProjectSummary, InfoDto, UserDto, AuthStatusDto, AuthRequests, GroupDto, AdminRequests, ProjectRow)
   security/       SecurityConfig (who may call what, CSRF, session), UserService (accounts), ActiveUserFilter, CsrfCookieFilter
   catalog/        the standard symbols and their drawing primitives
   i18n/, config/  localized errors and the locale/message configuration
@@ -160,7 +169,7 @@ backend/src/main/java/com/pleysje/plugged
 ```
 
 ## Test conventions
-Tests find elements by their **id**, never by the text on a button: texts change with the language. Every interactive element has a stable id, prefixed by the part of the screen it belongs to (`tab-*`, `btn-*`, `eds-*` eendraadschema, `sit-*` situatieschema, `comp-*` symbol editor, `verify-*`, `footer-*`, `tour-*`, `project-*`, `export-*`, `auth-*` sign-in / registration / first start, `users-*` Gebruikers). Ids built from data go through `toDomId` (`custom:1` becomes `custom_1`), e.g. `#eds-palette-stopcontact`, `#eds-tree-<node id>`, `#comp-item-<symbol key>`. Where a test does check a text, it compares it with the dictionary (`t('app.saved')` in unit tests, `t()` of `e2e/texts.js` in Playwright), so a rewording of a text never breaks a test. Unit tests run in Dutch (`src/test/setup.js`), the browser tests in a Dutch browser (`locale: 'nl-BE'`); `i18n.test.jsx` and `e2e/i18n.spec.js` cover the switching.
+Tests find elements by their **id**, never by the text on a button: texts change with the language. Every interactive element has a stable id, prefixed by the part of the screen it belongs to (`tab-*`, `btn-*`, `eds-*` eendraadschema, `sit-*` situatieschema, `comp-*` symbol editor, `verify-*`, `footer-*`, `tour-*`, `project-*`, `export-*`, `auth-*` sign-in / registration / first start, `admin-*`, `users-*`, `group-*` Beheer). Ids built from data go through `toDomId` (`custom:1` becomes `custom_1`), e.g. `#eds-palette-stopcontact`, `#eds-tree-<node id>`, `#comp-item-<symbol key>`. Where a test does check a text, it compares it with the dictionary (`t('app.saved')` in unit tests, `t()` of `e2e/texts.js` in Playwright), so a rewording of a text never breaks a test. Unit tests run in Dutch (`src/test/setup.js`), the browser tests in a Dutch browser (`locale: 'nl-BE'`); `i18n.test.jsx` and `e2e/i18n.spec.js` cover the switching.
 
 ## Build, tests and Docker
 - `cd backend && mvn clean install` builds everything: it installs Node 22 locally (into `frontend/node`), runs `npm ci`, builds the React app into the jar, runs the backend tests **and the frontend tests** (`npm test`), then enforces the JaCoCo gate.

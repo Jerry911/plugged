@@ -30,17 +30,16 @@ test('a new user registers, cannot sign in until the administrator approves, the
     await expect(visitor.locator('#auth-error')).toBeVisible()
     await expect(visitor.locator('#tab-comp')).toHaveCount(0)
 
-    // the administrator approves the account on the Gebruikers tab
+    // the administrator approves the account under Beheer → Gebruikers
     await app.open(backend)
-    await page.locator('#tab-users').click()
-    const row = page.locator('#users-page tr', {hasText: email})
+    await page.locator('#tab-admin').click()
+    const row = page.locator('#admin-users tr', {hasText: email})
     await row.locator('button.accent').click()
-    await expect(page.locator('#users-message')).toHaveText(t('users.approved', {name: 'Jan Peeters'}))
+    await expect(page.locator('#admin-message')).toHaveText(t('users.approved', {name: 'Jan Peeters'}))
 
     await visitor.locator('#auth-submit').click()
     await expect(visitor.locator('#tab-comp')).toBeVisible()
-    await expect(visitor.locator('#user-name')).toHaveText('Jan Peeters')
-    await expect(visitor.locator('#tab-users')).toHaveCount(0)
+    await expect(visitor.locator('#tab-admin')).toHaveCount(0)
     await visitor.locator('#btn-logout').click()
     await expect(visitor.locator('#auth-notice')).toHaveText(t('auth.signedOut'))
     await visitor.context().close()
@@ -58,4 +57,79 @@ test('without signing in the API answers 401 and the administrator cannot be cre
     // a change without the CSRF token is refused
     expect((await anonymous.post('/api/auth/login', {data: {email: ADMIN.email, password: ADMIN.password}})).status()).toBe(403)
     await anonymous.dispose()
+})
+
+/** An approved account (registered through the API, approved by the administrator of `request`) and a browser signed in with it. */
+const coworker = async ({browser, playwright, baseURL, request}, name) => {
+    const email = uniqueEmail(),
+        anonymous = await playwright.request.newContext({baseURL})
+    await anonymous.get('/api/auth/status')
+    const token = (await anonymous.storageState()).cookies.find((cookie) => cookie.name === 'XSRF-TOKEN').value
+    const registered = await anonymous.post('/api/auth/register', {data: {name, surname: 'Test', email, password: 'geheim123'}, headers: {'X-XSRF-TOKEN': token}})
+    const user = await registered.json()
+    await anonymous.dispose()
+    expect((await request.post(`/api/admin/users/${user.id}/approve`)).ok()).toBeTruthy()
+    const context = await browser.newContext({locale: 'nl-BE'})
+    await context.addInitScript(() => localStorage.setItem('plugged.tour', JSON.stringify({v: 99, how: 'e2e'})))
+    const page = await context.newPage()
+    await page.goto('/')
+    await page.locator('#auth-email').fill(email)
+    await page.locator('#auth-password').fill('geheim123')
+    await page.locator('#auth-submit').click()
+    await expect(page.locator('#tab-comp')).toBeVisible()
+    return {user, page}
+}
+
+test('a project is private until its owner shares it with a group; members can open and save it, only the owner deletes it', async ({browser, playwright, baseURL, request, page, app, backend}) => {
+    const alice = await coworker({browser, playwright, baseURL, request}, 'Alice'),
+        bob = await coworker({browser, playwright, baseURL, request}, 'Bob')
+    // the administrator makes a group with both of them, under Beheer → Groepen
+    await app.open(backend)
+    await page.locator('#tab-admin').click()
+    await page.locator('#admin-tab-groups').click()
+    const name = 'Team ' + Date.now()
+    await page.locator('#groups-new-name').fill(name)
+    await page.locator('#groups-create').click()
+    const card = page.locator('.groupcard', {hasText: name})
+    for (const member of [alice.user, bob.user]) {
+        await card.locator('select').selectOption(String(member.id))
+        await card.locator('button', {hasText: t('groups.addMember')}).click()
+        await expect(card.locator('.memberchip', {hasText: member.name})).toBeVisible()
+    }
+
+    // Alice saves a project: Bob does not see it
+    await alice.page.locator('#tab-project').click()
+    await alice.page.locator('#project-name').fill('Woning Alice')
+    await alice.page.locator('#btn-save').click()
+    await expect(alice.page.locator('#status-message')).toHaveText(t('app.saved'))
+    await alice.page.locator('#tab-project').click()
+    const id = Number((await alice.page.locator('#project-number').textContent()).replace(/\D/g, ''))
+    const bobList = async () => {
+        await bob.page.locator('#tab-project').click()
+        await bob.page.locator('#btn-load').click()
+    }
+    await bobList()
+    await expect(bob.page.locator('#project-row-' + id)).toHaveCount(0)
+    await bob.page.keyboard.press('Escape')
+
+    // she shares it with the group
+    await alice.page.locator('#btn-load').click()
+    await alice.page.locator('#project-sharebtn-' + id).click()
+    await alice.page.locator('#project-share-1, .pm-share label', {hasText: name}).locator('input').check()
+    await alice.page.locator('#project-share-save').click()
+    await expect(alice.page.locator('#project-meta-' + id)).toHaveText(t('projects.sharedWith', {groups: name}))
+
+    // Bob opens it, sees whose it is, saves it; he cannot delete or share it
+    await bobList()
+    await expect(bob.page.locator('#project-meta-' + id)).toContainText(t('projects.ownedBy', {name: 'Alice Test'}))
+    await expect(bob.page.locator('#project-delete-' + id)).toHaveCount(0)
+    await expect(bob.page.locator('#project-sharebtn-' + id)).toHaveCount(0)
+    await bob.page.locator('#project-load-' + id).click()
+    await expect(bob.page.locator('#status-message')).toHaveText(t('app.projectLoaded', {number: id}))
+    await bob.page.keyboard.press('Control+s')
+    await expect(bob.page.locator('#status-message')).toHaveText(t('app.saved'))
+
+    // the administrator sees it too
+    expect((await backend.saved(id)).name).toBe('Woning Alice')
+    for (const person of [alice, bob]) await person.page.context().close()
 })

@@ -31,13 +31,28 @@ const symbols = (extra = []) => (url, o) =>
           : url.startsWith('/api/symbols/') && o?.method === 'PUT'
             ? {ok: true, json: async () => ({cat: 'Eigen', parents: ['kring'], place: true, ...JSON.parse(o.body), builtin: false, modified: false})}
             : null
+// the projects of the signed-in user: with `data`, project 1 is his (the editor opens his most recent project); a new project gets the next number
+const summary = (id, extra = {}) => ({id, name: null, updated: '2026-01-01T10:00:00Z', owner: {id: 2, name: 'Jan Peeters'}, groups: [], mine: true, canManage: true, ...extra})
+const projects = (data, ok) => {
+    let lastId = data ? 1 : 0
+    return (url, o) =>
+        url === '/api/projects/summaries'
+            ? {ok: true, json: async () => (data ? [summary(1)] : [])}
+            : url.startsWith('/api/projects') && o?.method === 'POST'
+              ? ok
+                  ? {ok: true, json: async () => ({id: ++lastId})}
+                  : {ok: false}
+              : null
+}
 const setup = (data = null, ok = true, extra = []) => {
+    const answerProjects = projects(data, ok)
     global.fetch = vi.fn(
-        async (url, o) => symbols(extra)(url, o) ?? (o?.method === 'PUT' ? {ok} : data ? {ok: true, json: async () => data} : {ok: false}),
+        async (url, o) =>
+            symbols(extra)(url, o) ?? answerProjects(url, o) ?? (o?.method === 'PUT' ? {ok} : data ? {ok: true, json: async () => data} : {ok: false}),
     )
 }
-// project saves only (not the symbols)
-const puts = () => global.fetch.mock.calls.filter((c) => c[1]?.method === 'PUT' && c[0].startsWith('/api/projects'))
+// project saves only (not the symbols): PUT of a stored project, POST of a new one
+const puts = () => global.fetch.mock.calls.filter((c) => ['PUT', 'POST'].includes(c[1]?.method) && c[0].startsWith('/api/projects'))
 // import / export go through the buttons with these ids: one file picker (json and eds) and one export dialog with a file type choice
 const toProject = () => fireEvent.click(byId('tab-project'))
 const clickSave = () => {
@@ -112,14 +127,22 @@ test('migrates old format on load', async () => {
     expect(getById('tab-sit-unplaced')).toHaveAttribute('title', t('tabs.unplacedTitle'))
 })
 // an in-memory /api/projects: id -> document (names travel in the document and as ?name= on save)
+// the projects of the user on the server (all his own; project 1 was saved last, so the editor opens it); a new project gets the next number
 const projectsApi = (store) => {
     const names = new Map()
     global.fetch = vi.fn(async (url, o) => {
         const sym = symbols()(url, o)
         if (sym) return sym
         if (url === '/api/projects/summaries')
-            return {ok: true, json: async () => [...store].map(([id, d]) => ({id, name: names.get(id) ?? d.name ?? null, updated: '2026-03-0' + id + 'T10:00:00Z'}))}
+            return {ok: true, json: async () => [...store].map(([id, d]) => summary(id, {name: names.get(id) ?? d.name ?? null, updated: '2026-03-' + String(30 - id).padStart(2, '0') + 'T10:00:00Z'}))}
         if (url === '/api/projects') return {ok: true, json: async () => [...store.keys()]}
+        const created = /^\/api\/projects(?:\?name=(.*))?$/.exec(url)
+        if (created && o?.method === 'POST') {
+            const id = Math.max(0, ...store.keys()) + 1
+            store.set(id, JSON.parse(o.body))
+            names.set(id, created[1] ? decodeURIComponent(created[1]) : null)
+            return {ok: true, json: async () => ({id})}
+        }
         const m = /^\/api\/projects\/(\d+)(?:\?name=(.*))?$/.exec(url)
         if (!m) return {ok: false}
         const id = +m[1]
@@ -198,10 +221,16 @@ test('a project is saved with its name (in the document and as ?name=) and Ctrl+
     fireEvent.change(byId('project-name'), {target: {value: 'Woning Jan'}})
     fireEvent.click(byId('btn-save'))
     await statusIs(t('app.saved'))
-    expect(puts()[0][0]).toBe('/api/projects/1?name=Woning%20Jan')
+    // a new project: the server gives it its number
+    expect(puts()[0][0]).toBe('/api/projects?name=Woning%20Jan')
+    expect(puts()[0][1].method).toBe('POST')
     expect(JSON.parse(puts()[0][1].body).name).toBe('Woning Jan')
+    toProject()
+    expect(getById('project-number')).toHaveTextContent(t('projects.number', {number: 1}))
     fireEvent.keyDown(window, {key: 's', ctrlKey: true})
     await waitFor(() => expect(puts()).toHaveLength(2))
+    expect(puts()[1][0]).toBe('/api/projects/1?name=Woning%20Jan')
+    expect(puts()[1][1].method).toBe('PUT')
 })
 test('Laden lists the stored projects by name and loads the chosen one; saving then goes to that project', async () => {
     projectsApi(new Map([[1, doc('Eerste', 'T1')], [2, doc('Tweede', 'T2')]]))
@@ -245,17 +274,19 @@ test('loading another project asks first when there are unsaved changes', async 
     await statusIs(t('app.projectLoaded', {number: 1}))
     expect(ask).toHaveBeenCalledTimes(2)
 })
-test('Nieuw starts an empty project under the next free number, Opslaan als stores a copy under a new number', async () => {
+test('Nieuw starts an empty project that gets its number from the server when it is saved, Opslaan als stores a copy under a new number', async () => {
     const store = new Map([[1, doc('Eerste', 'T1')], [4, doc('Vierde', 'T4')]])
     projectsApi(store)
     await mount()
     await pageNamed('Blad Eerste')
     toProject()
     fireEvent.click(byId('btn-new'))
-    await statusIs(t('app.newProject', {number: 5}))
+    await statusIs(t('app.newProject'))
     expect(pageButton(1)).not.toHaveTextContent('Blad Eerste')
     toProject()
     expect(byId('project-name').value).toBe('')
+    expect(getById('project-number')).toHaveTextContent(t('projects.notSaved'))
+    expect(byId('project-name')).toHaveAttribute('placeholder', t('projects.newName'))
     fireEvent.change(byId('project-name'), {target: {value: 'Garage'}})
     fireEvent.click(byId('btn-save'))
     await waitFor(() => expect(store.has(5)).toBe(true))
@@ -270,6 +301,54 @@ test('Nieuw starts an empty project under the next free number, Opslaan als stor
     fireEvent.click(byId('btn-saveas'))
     await act(async () => {})
     expect(store.size).toBe(4)
+})
+test('the editor opens the most recently saved own project, not a newer one of a coworker', async () => {
+    const store = new Map([[1, doc('Eerste', 'T1')], [2, doc('Tweede', 'T2')], [3, doc('Derde', 'T3')]])
+    projectsApi(store)
+    const answer = global.fetch.getMockImplementation()
+    global.fetch = vi.fn(async (url, o) => {
+        if (url !== '/api/projects/summaries') return answer(url, o)
+        // 1: a coworker's project saved today; 2: own, saved yesterday; 3: own, older
+        return {
+            ok: true,
+            json: async () => [
+                summary(1, {mine: false, canManage: false, updated: '2026-11-04T10:00:00Z'}),
+                summary(2, {updated: '2026-11-03T10:00:00Z'}),
+                summary(3, {updated: '2026-11-01T10:00:00Z'}),
+            ],
+        }
+    })
+    await mount()
+    await pageNamed('Blad Tweede')
+    toProject()
+    expect(getById('project-number')).toHaveTextContent(t('projects.number', {number: 2}))
+})
+test('without own projects, or when the list cannot be loaded, the editor opens a new project', async () => {
+    global.fetch = vi.fn(async (url, o) =>
+        symbols()(url, o) ?? (url === '/api/projects/summaries' ? {ok: true, json: async () => [summary(1, {mine: false, canManage: false})]} : {ok: false}),
+    )
+    await mount()
+    await act(async () => {})
+    expect(global.fetch.mock.calls.some((call) => call[0] === '/api/projects/1')).toBe(false)
+    toProject()
+    expect(getById('project-number')).toHaveTextContent(t('projects.notSaved'))
+})
+test('deleting the open project: saving it again makes a new project', async () => {
+    const store = new Map([[1, doc('Eerste', 'T1')], [2, doc('Tweede', 'T2')]])
+    projectsApi(store)
+    await mount()
+    await pageNamed('Blad Eerste')
+    toProject()
+    fireEvent.click(byId('btn-load'))
+    await waitFor(() => getById('project-list'))
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+    fireEvent.click(getById('project-delete-1'))
+    await waitFor(() => expect(store.has(1)).toBe(false))
+    // (the menu is still open)
+    expect(getById('project-number')).toHaveTextContent(t('projects.notSaved'))
+    fireEvent.click(byId('btn-save'))
+    await waitFor(() => expect(store.has(3)).toBe(true))
+    expect(store.get(3).name).toBe('Eerste')
 })
 test('a project can be deleted from the list after confirming', async () => {
     const store = new Map([[1, doc('Eerste', 'T1')], [2, doc('Tweede', 'T2')]])

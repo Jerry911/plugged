@@ -80,7 +80,7 @@ same session cookies.
 | `tour.spec.js` | the guided tour, step by step, and its cards in small windows |
 | `i18n.spec.js` | switching between Dutch, French and English, the language of the browser, `Accept-Language` on the requests |
 | `api.spec.js` | contract of the REST API (real backend only) |
-| `auth.spec.js` | registering, approval by the administrator, signing in and out, 401 without a session, CSRF (real backend only) |
+| `auth.spec.js` | registering, approval by the administrator, signing in and out, 401 without a session, CSRF, groups and sharing a project (real backend only) |
 
 `mode.js` decides between the fake and the real backend and reads `application-test.properties`; `fixtures.js` has the fake and the real backend, the dialog handling (`alert`/`confirm`/`prompt`) and the helpers for the drawing sheets;
 `data.js` has the project documents the tests start from; `texts.js` gives the texts of the application (`t('app.saved')`).

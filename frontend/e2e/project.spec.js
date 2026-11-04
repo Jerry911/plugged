@@ -68,7 +68,7 @@ test('Nieuw starts an empty project that is saved under a new number with its na
     await app.open(backend, project({name: 'Eerste woning'}))
     await app.project()
     await page.locator('#btn-new').click()
-    await expect(app.status()).toHaveText(t('app.newProject', {number: 2}))
+    await expect(app.status()).toHaveText(t('app.newProject'))
     await app.project()
     await page.locator('#project-name').fill('Garage')
     await page.locator('#btn-save').click()

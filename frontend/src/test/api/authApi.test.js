@@ -56,3 +56,33 @@ test('the accounts for the administrator', async () => {
     global.fetch = vi.fn(async () => Promise.reject(new Error('down')))
     expect(await deleteUser(1)).toEqual({ok: false, error: t('auth.unreachable')})
 })
+
+test('roles and groups for the administrator', async () => {
+    const {setUserAdmin, fetchGroups, createGroup, renameGroup, addGroupMember, removeGroupMember, deleteGroup} = await import('../../api/authApi.js')
+    const group = {id: 7, name: 'Team', members: []}
+    global.fetch = vi.fn(async () => json(group))
+    expect((await setUserAdmin(3, true)).ok).toBe(true)
+    expect(await createGroup('Team')).toEqual({ok: true, user: group})
+    await renameGroup(7, 'Bureau')
+    await addGroupMember(7, 3)
+    await removeGroupMember(7, 3)
+    expect(global.fetch.mock.calls.map((call) => [call[0], call[1].method, call[1].body])).toEqual([
+        ['/api/admin/users/3/admin', 'PUT', '{"admin":true}'],
+        ['/api/admin/groups', 'POST', '{"name":"Team"}'],
+        ['/api/admin/groups/7', 'PUT', '{"name":"Bureau"}'],
+        ['/api/admin/groups/7/members/3', 'PUT', undefined],
+        ['/api/admin/groups/7/members/3', 'DELETE', undefined],
+    ])
+    global.fetch = vi.fn(async () => json([group]))
+    expect(await fetchGroups()).toEqual([group])
+    global.fetch = vi.fn(async () => json({}))
+    expect(await fetchGroups()).toEqual([])
+    global.fetch = vi.fn(async () => json(null, 403))
+    await expect(fetchGroups()).rejects.toThrow()
+    global.fetch = vi.fn(async () => ({ok: true, status: 204}))
+    expect(await deleteGroup(7)).toEqual({ok: true})
+    global.fetch = vi.fn(async () => json({detail: 'Groep niet gevonden'}, 404))
+    expect(await deleteGroup(7)).toEqual({ok: false, error: 'Groep niet gevonden'})
+    global.fetch = vi.fn(async () => Promise.reject(new Error('down')))
+    expect(await deleteGroup(7)).toEqual({ok: false, error: t('auth.unreachable')})
+})

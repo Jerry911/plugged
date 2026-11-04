@@ -315,7 +315,7 @@ test('Leeg project starten ends the tour and begins a new, empty project', async
     await expect(card(page)).toHaveCount(0)
     // the circuit made during the tour is unsaved work: the application asks before throwing it away
     expect(dialogs.messages.join('\n')).toContain('niet-opgeslagen')
-    await expect(page.locator('#status-message')).toContainText(t('app.newProject', {number: 1}).split(' (')[0])
+    await expect(page.locator('#status-message')).toContainText(t('app.newProject'))
     await expect(page.locator('#btn-undo')).toBeDisabled()
     expect(await page.evaluate(() => JSON.parse(localStorage.getItem('plugged.tour')).how)).toBe('done')
 })

@@ -28,7 +28,7 @@ import com.pleysje.plugged.repository.UserRepository;
  *   <li>/api/auth/** : status, first start, registration, sign in and out</li>
  *   <li>/api/info : the donate link and contact address of the Info page</li>
  * </ul>
- * /api/admin/** is for the administrator only. The session is a cookie (JSESSIONID); requests that change something carry the CSRF token of
+ * /api/admin/** is for administrators only. Which projects a user may see and change is decided by ProjectService. The session is a cookie (JSESSIONID); requests that change something carry the CSRF token of
  * the XSRF-TOKEN cookie in the X-XSRF-TOKEN header (see frontend/src/api/http.js). Without a session the API answers 401, not a redirect.
  */
 @Configuration
@@ -48,7 +48,7 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.spa())
                 .securityContext(context -> context.securityContextRepository(contexts))
                 .exceptionHandling(exceptions -> exceptions.authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
-                .addFilterAfter(new ActiveUserFilter(userService), SecurityContextHolderFilter.class)
+                .addFilterAfter(new ActiveUserFilter(userService, contexts), SecurityContextHolderFilter.class)
                 .addFilterAfter(new CsrfCookieFilter(), CsrfFilter.class)
                 .formLogin(AbstractHttpConfigurer::disable)
                 .httpBasic(AbstractHttpConfigurer::disable)

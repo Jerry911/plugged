@@ -858,6 +858,9 @@ export default {
         makeUserTitle: 'Retirer le rôle d’administrateur',
         madeAdmin: '{name} est maintenant administrateur.',
         madeUser: '{name} est maintenant un utilisateur ordinaire.',
+        lastLogin: 'Dernière connexion',
+        neverSignedIn: 'jamais',
+        loginCount: 'Connecté {count} fois',
     },
     groups: {
         intro: 'Les membres d’un groupe peuvent ouvrir et enregistrer les projets partagés avec ce groupe. Le propriétaire d’un projet le partage via Projet → Charger.',

@@ -6,14 +6,17 @@ import com.pleysje.plugged.entity.AppUser;
 
 /**
  * A user account as the API shows it (never the password hash). {@code primary}: the administrator of plugged.admin.email, who always stays
- * administrator (only filled in for the administrators' list).
+ * administrator (only filled in for the administrators' list). {@code lastLogin} (ISO-8601, null = never) and {@code loginCount}: when the
+ * account last signed in and how many times.
  */
-public record UserDto(long id, String name, String surname, String email, boolean admin, boolean approved, String created, boolean primary) {
+public record UserDto(long id, String name, String surname, String email, boolean admin, boolean approved, String created, boolean primary,
+                      String lastLogin, int loginCount) {
     public static UserDto of(AppUser user) {
         return of(user, false);
     }
 
     public static UserDto of(AppUser user, boolean primary) {
-        return new UserDto(user.getId(), user.getName(), user.getSurname(), user.getEmail(), user.isAdmin(), user.isApproved(), user.getCreated(), primary);
+        return new UserDto(user.getId(), user.getName(), user.getSurname(), user.getEmail(), user.isAdmin(), user.isApproved(), user.getCreated(), primary,
+                user.getLastLogin(), user.getLoginCount());
     }
 }

@@ -104,12 +104,14 @@ class StandardSymbolsTest {
     /** The frontend tests use the standard symbols as their library; keep that file in step with the catalog. */
     @Test
     void frontendFixtureMatchesTheCatalog() throws IOException {
-        Path fixture = Path.of(StandardSymbolsJson.FIXTURE);
+        Path fixture = StandardSymbolsJson.fixture();
         assumeTrue(Files.isDirectory(fixture.getParent().getParent()), "no frontend next to the backend");
         assertTrue(Files.exists(fixture), "missing " + fixture + ": run StandardSymbolsJson");
         // compare the content, not the file's line endings (git autocrlf on Windows) or a missing final newline (editors)
         assertEquals(normalized(StandardSymbolsJson.json(StandardSymbols.all())), normalized(Files.readString(fixture, StandardCharsets.UTF_8)),
-                fixture + " is out of date: run StandardSymbolsJson");
+                fixture + " does not match StandardSymbols.java. The Java catalog is what the application uses: change a drawing there"
+                        + " (and raise StandardSymbols.VERSION), then regenerate this file with StandardSymbolsJson. Regenerating overwrites"
+                        + " changes made by hand in the JSON.");
     }
 
     private static String normalized(String text) {

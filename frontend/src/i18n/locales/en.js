@@ -858,6 +858,9 @@ export default {
         makeUserTitle: 'Take the administrator role away again',
         madeAdmin: '{name} is an administrator now.',
         madeUser: '{name} is an ordinary user now.',
+        lastLogin: 'Last signed in',
+        neverSignedIn: 'never',
+        loginCount: 'Signed in {count} times',
     },
     groups: {
         intro: 'Members of a group can open and save the projects shared with that group. The owner of a project shares it through Project → Load.',

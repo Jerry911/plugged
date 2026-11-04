@@ -7,6 +7,7 @@ import {fullName} from './names.js'
 export default function UsersPanel({users, groups, currentUser, busy, actions}) {
     const {t, locale} = useTranslation()
     const date = (iso) => (iso ? new Date(iso).toLocaleDateString(locale) : '')
+    const moment = (iso) => new Date(iso).toLocaleString(locale, {dateStyle: 'short', timeStyle: 'short'})
     const groupsOf = (user) => groups.filter((group) => group.members.some((member) => member.id === user.id)).map((group) => group.name)
     const waiting = users.filter((user) => !user.approved).length
     return (
@@ -22,6 +23,7 @@ export default function UsersPanel({users, groups, currentUser, busy, actions}) 
                         <th>{t('users.email')}</th>
                         <th>{t('users.groups')}</th>
                         <th>{t('users.registered')}</th>
+                        <th>{t('users.lastLogin')}</th>
                         <th>{t('users.status')}</th>
                         <th />
                     </tr>
@@ -40,6 +42,16 @@ export default function UsersPanel({users, groups, currentUser, busy, actions}) 
                                     {groupsOf(user).join(', ') || '—'}
                                 </td>
                                 <td>{date(user.created)}</td>
+                                <td id={'users-login-' + user.id} className="userslogin" title={t('users.loginCount', {count: user.loginCount || 0})}>
+                                    {user.lastLogin ? (
+                                        <>
+                                            {moment(user.lastLogin)}
+                                            <small> · {user.loginCount}×</small>
+                                        </>
+                                    ) : (
+                                        <i>{t('users.neverSignedIn')}</i>
+                                    )}
+                                </td>
                                 <td>
                                     <span id={'users-status-' + user.id} className={'userstag ' + (user.admin ? 'admin' : user.approved ? 'approved' : 'waiting')}>
                                         {t(user.admin ? (user.primary ? 'users.statusPrimary' : 'users.statusAdmin') : user.approved ? 'users.statusApproved' : 'users.statusWaiting')}

@@ -19,6 +19,7 @@ import org.springframework.security.web.context.HttpSessionSecurityContextReposi
 import org.springframework.security.web.context.SecurityContextHolderFilter;
 import org.springframework.security.web.context.SecurityContextRepository;
 import org.springframework.security.web.csrf.CsrfFilter;
+import com.pleysje.plugged.logging.UserMdcFilter;
 import com.pleysje.plugged.repository.UserRepository;
 
 /**
@@ -49,6 +50,8 @@ public class SecurityConfig {
                 .securityContext(context -> context.securityContextRepository(contexts))
                 .exceptionHandling(exceptions -> exceptions.authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
                 .addFilterAfter(new ActiveUserFilter(userService, contexts), SecurityContextHolderFilter.class)
+                // after ActiveUserFilter: a removed account is anonymous by then
+                .addFilterAfter(new UserMdcFilter(), ActiveUserFilter.class)
                 .addFilterAfter(new CsrfCookieFilter(), CsrfFilter.class)
                 .formLogin(AbstractHttpConfigurer::disable)
                 .httpBasic(AbstractHttpConfigurer::disable)

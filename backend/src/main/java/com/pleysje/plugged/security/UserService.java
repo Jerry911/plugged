@@ -142,8 +142,22 @@ public class UserService {
         String email = normalizeEmail(request.email()), password = request.password() == null ? "" : request.password();
         AppUser user = users.findByEmail(email).orElse(null);
         boolean matches = passwordEncoder.matches(password, user == null ? dummyHash : user.getPasswordHash());
-        if (user == null || !matches) throw new LocalizedStatusException(HttpStatus.UNAUTHORIZED, "auth.badCredentials");
-        if (!user.isApproved()) throw new LocalizedStatusException(HttpStatus.FORBIDDEN, "auth.notApproved");
+        if (user == null || !matches) {
+            log.info("Sign-in refused for {}: {}", forLog(email), user == null ? "unknown address" : "wrong password");
+            throw new LocalizedStatusException(HttpStatus.UNAUTHORIZED, "auth.badCredentials");
+        }
+        if (!user.isApproved()) {
+            log.info("Sign-in refused for {}: not approved yet", forLog(email));
+            throw new LocalizedStatusException(HttpStatus.FORBIDDEN, "auth.notApproved");
+        }
+        return user;
+    }
+
+    /** A successful sign-in of the account: its last sign-in is now and its count goes up. Answers the account as it is now. */
+    @Transactional
+    public AppUser recordLogin(long id) {
+        AppUser user = find(id);
+        user.recordLogin();
         return user;
     }
 
@@ -207,6 +221,12 @@ public class UserService {
         if (password.getBytes(StandardCharsets.UTF_8).length > MAX_PASSWORD_BYTES)
             throw new LocalizedStatusException(HttpStatus.BAD_REQUEST, "auth.passwordTooLong", MAX_PASSWORD_BYTES);
         return password;
+    }
+
+    /** An address someone typed, safe to put in a log line: no line breaks (that could fake log lines), not endlessly long. */
+    static String forLog(String text) {
+        String clean = text.replaceAll("[\\p{Cntrl}]", "_");
+        return clean.length() > MAX_EMAIL_LENGTH ? clean.substring(0, MAX_EMAIL_LENGTH) + "..." : clean;
     }
 
     static String normalizeEmail(String email) {

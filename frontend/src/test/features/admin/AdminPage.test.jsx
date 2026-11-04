@@ -8,7 +8,7 @@ import {byId, clickId, getById, typeInto} from '../../utils.jsx'
 
 const json = (body, status = 200) => ({ok: status < 400, status, json: async () => body})
 const account = (id, name, extra = {}) => ({id, name, surname: 'X', email: name.toLowerCase() + '@example.be', admin: false, approved: true, created: '2026-11-03T10:00:00Z', primary: false, ...extra})
-const ME = account(1, 'Jeroen', {admin: true, primary: true})
+const ME = account(1, 'Jeroen', {admin: true, primary: true, lastLogin: '2026-11-04T14:11:00Z', loginCount: 3})
 
 /** A backend with these accounts and groups; approving, roles, removing and the group calls change them. `fail` answers the next change with 409. */
 const backend = (accounts, groupList = []) => {
@@ -73,6 +73,12 @@ describe('users', () => {
         expect(getById('users-groups-3')).toHaveTextContent('Team')
         expect(getById('users-groups-2')).toHaveTextContent('—')
         expect(getById('users-row-1')).toHaveTextContent(t('users.you'))
+        // when each account last signed in, and how many times
+        expect(getById('users-login-1')).toHaveTextContent('3×')
+        expect(getById('users-login-1')).toHaveAttribute('title', t('users.loginCount', {count: 3}))
+        expect(getById('users-login-1')).toHaveTextContent(new Date('2026-11-04T14:11:00Z').toLocaleString('nl-BE', {dateStyle: 'short', timeStyle: 'short'}))
+        expect(getById('users-login-2')).toHaveTextContent(t('users.neverSignedIn'))
+        expect(getById('users-login-2')).toHaveAttribute('title', t('users.loginCount', {count: 0}))
         expect(getById('admin-tab-users').querySelector('.badge')).toHaveTextContent('1')
         // the administrator himself: no buttons at all
         for (const id of ['users-approve-1', 'users-promote-1', 'users-demote-1', 'users-delete-1']) expect(byId(id)).toBeNull()

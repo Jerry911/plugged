@@ -20,6 +20,15 @@ import java.util.Map;
 public final class StandardSymbolsJson {
     public static final String FIXTURE = "frontend/src/test/fixtures/standard-symbols.json";
 
+    /**
+     * The fixture, from the working directory Maven and the IDE use (backend: ../frontend/...) or from the root of the project
+     * (frontend/...). Before, only the second was tried, so under Maven the check of StandardSymbolsTest was always skipped.
+     */
+    public static Path fixture() {
+        Path fromBackend = Path.of("..").resolve(FIXTURE);
+        return Files.isDirectory(fromBackend.getParent().getParent().getParent()) ? fromBackend.normalize() : Path.of(FIXTURE);
+    }
+
     private StandardSymbolsJson() {
     }
 
@@ -77,7 +86,7 @@ public final class StandardSymbolsJson {
     }
 
     public static void main(String[] arguments) throws IOException {
-        Path target = Path.of(arguments.length > 0 ? arguments[0] : FIXTURE);
+        Path target = arguments.length > 0 ? Path.of(arguments[0]) : fixture();
         Files.createDirectories(target.getParent());
         Files.writeString(target, json(StandardSymbols.all()), StandardCharsets.UTF_8);
         System.out.println("written " + target.toAbsolutePath());

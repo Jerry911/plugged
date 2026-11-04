@@ -7,6 +7,7 @@ import com.pleysje.plugged.dto.AuthStatusDto;
 import com.pleysje.plugged.dto.UserDto;
 import com.pleysje.plugged.entity.AppUser;
 import com.pleysje.plugged.logging.ApiLog;
+import com.pleysje.plugged.logging.UserMdcFilter;
 import com.pleysje.plugged.security.Authentications;
 import com.pleysje.plugged.security.PluggedPrincipal;
 import com.pleysje.plugged.security.UserService;
@@ -80,14 +81,19 @@ public class AuthController {
         ApiLog.runVoid(log, "POST /api/auth/logout", "", () -> new SecurityContextLogoutHandler().logout(request, response, authentication));
     }
 
-    /** Puts the user in a new session (a new session id, so an id that was known before signing in is worthless). */
-    private UserDto signIn(AppUser user, HttpServletRequest request, HttpServletResponse response) {
+    /**
+     * Puts the user in a new session (a new session id, so an id that was known before signing in is worthless), counts the sign-in and
+     * from now on writes him in the log lines of this request.
+     */
+    private UserDto signIn(AppUser account, HttpServletRequest request, HttpServletResponse response) {
+        AppUser user = userService.recordLogin(account.getId());
+        UserMdcFilter.setUser(user.getEmail());
         SecurityContext context = SecurityContextHolder.createEmptyContext();
         context.setAuthentication(Authentications.of(user));
         SecurityContextHolder.setContext(context);
         if (request.getSession(false) != null) request.changeSessionId();
         contexts.saveContext(context, request, response);
-        log.info("User {} signed in", user.getId());
+        log.info("User {} signed in (sign-in number {})", user.getId(), user.getLoginCount());
         return UserDto.of(user);
     }
 }

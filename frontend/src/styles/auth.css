@@ -214,6 +214,15 @@
     margin-bottom: 10px
 }
 
+.userslogin {
+    white-space: nowrap;
+    font-size: 13px
+}
+
+.userslogin small, .userslogin i {
+    color: #666
+}
+
 .usersgroups {
     color: #555;
     font-size: 13px

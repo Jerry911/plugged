@@ -3,6 +3,8 @@
   Logback configuration of Plugged (read by Spring Boot instead of its default).
   - Console: always.
   - File logs/plugged.log (rolled daily and at 10 MB, 30 days kept): only with the Spring profile "file" (spring.profiles.active=file).
+  - Every line carries the signed-in user who caused it ([%X{user}], his email address; "-" without one: start-up, sign-in pages),
+    see logging/UserMdcFilter.
   - Levels: logging.level.* in application.properties / environment, e.g. PLUGGED_LOG_LEVEL=TRACE also logs the (truncated) request bodies.
   - logging.threshold.console (Spring Boot): the lowest level that reaches the console, OFF = nothing. The tests use it to keep the
     output of `mvn install` and of Playwright clean (src/test/resources/application.properties, frontend/e2e/application-test.properties);
@@ -13,7 +15,7 @@
     <springProperty scope="context" name="LOG_DIR" source="plugged.log.dir" defaultValue="logs"/>
 
     <property name="PLUGGED_PATTERN"
-              value="%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [%thread] %-28.28logger{27} : %msg%n%wEx"/>
+              value="%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [%thread] [%X{user:--}] %-28.28logger{27} : %msg%n%wEx"/>
 
     <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
         <filter class="ch.qos.logback.classic.filter.ThresholdFilter">

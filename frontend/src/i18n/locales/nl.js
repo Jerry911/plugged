@@ -862,6 +862,9 @@ export default {
         makeUserTitle: 'Neem de rol van beheerder weer af',
         madeAdmin: '{name} is nu beheerder.',
         madeUser: '{name} is nu een gewone gebruiker.',
+        lastLogin: 'Laatst aangemeld',
+        neverSignedIn: 'nog nooit',
+        loginCount: '{count} keer aangemeld',
     },
     groups: {
         intro: 'Leden van een groep kunnen de projecten openen en opslaan die met die groep gedeeld zijn. Delen doet de eigenaar van een project via Project → Laden.',

@@ -220,4 +220,72 @@ class AuthControllerTest {
         mvc.perform(delete("/api/admin/users/99999").session(admin).with(csrf())).andExpect(status().isNotFound());
         mvc.perform(post("/api/admin/users/99999/approve").session(admin).with(csrf())).andExpect(status().isNotFound());
     }
+
+    @Test
+    void signingInIsCountedWithItsMoment() throws Exception {
+        java.time.Instant before = java.time.Instant.now();
+        MockHttpSession admin = signedInAdmin();
+        AppUser stored = users.findByEmail(ADMIN).orElseThrow();
+        // the first start signs the administrator in: that is his first sign-in
+        org.junit.jupiter.api.Assertions.assertEquals(1, stored.getLoginCount());
+        assertFalse(java.time.Instant.parse(stored.getLastLogin()).isBefore(before));
+        login(null, ADMIN, "verkeerd!!").andExpect(status().isUnauthorized());
+        login(null, ADMIN, PASSWORD).andExpect(status().isOk()).andExpect(jsonPath("$.loginCount", is(2))).andExpect(jsonPath("$.lastLogin", notNullValue()));
+        // an account that never signed in, and one that is not approved yet, are not counted
+        register("jan@example.be", PASSWORD);
+        login(null, "jan@example.be", PASSWORD).andExpect(status().isForbidden());
+        mvc.perform(get("/api/admin/users").session(admin))
+                .andExpect(jsonPath("$[0].email", is("jan@example.be")))
+                .andExpect(jsonPath("$[0].loginCount", is(0)))
+                .andExpect(jsonPath("$[0].lastLogin", nullValue()))
+                .andExpect(jsonPath("$[1].loginCount", is(2)));
+        mvc.perform(get("/api/auth/status").session(admin)).andExpect(jsonPath("$.user.loginCount", is(2)));
+    }
+
+    /** The log lines of the application while `requests` run: [logger, message, user of the line]. */
+    private java.util.List<String[]> logLines(org.junit.jupiter.api.function.Executable requests) throws Throwable {
+        java.util.List<String[]> lines = new java.util.concurrent.CopyOnWriteArrayList<>();
+        ch.qos.logback.core.AppenderBase<ch.qos.logback.classic.spi.ILoggingEvent> appender = new ch.qos.logback.core.AppenderBase<>() {
+            @Override
+            protected void append(ch.qos.logback.classic.spi.ILoggingEvent event) {
+                lines.add(new String[] {event.getLoggerName(), event.getFormattedMessage(), event.getMDCPropertyMap().get(com.pleysje.plugged.logging.UserMdcFilter.KEY)});
+            }
+        };
+        appender.start();
+        ch.qos.logback.classic.Logger root = (ch.qos.logback.classic.Logger) org.slf4j.LoggerFactory.getLogger("com.pleysje.plugged");
+        root.addAppender(appender);
+        try {
+            requests.execute();
+        } finally {
+            root.detachAppender(appender);
+        }
+        return lines;
+    }
+
+    private static String userOf(java.util.List<String[]> lines, String messageStart) {
+        return lines.stream().filter(line -> line[1].startsWith(messageStart)).findFirst().map(line -> line[2] == null ? "-" : line[2])
+                .orElseThrow(() -> new AssertionError("no log line " + messageStart));
+    }
+
+    @Test
+    void everyLogLineOfARequestSaysWhichUserCausedIt() throws Throwable {
+        MockHttpSession admin = new MockHttpSession();
+        java.util.List<String[]> lines = logLines(() -> {
+            setupAdmin(admin).andExpect(status().isOk());
+            mvc.perform(put("/api/projects/5").session(admin).with(csrf()).contentType(MediaType.APPLICATION_JSON).content("{}")).andExpect(status().isNoContent());
+            mvc.perform(get("/api/auth/status")).andExpect(status().isOk());
+            login(null, "Nobody@Example.be\\nINFO fake line", PASSWORD).andExpect(status().isUnauthorized());
+        });
+        // before the first start nobody is signed in; from the moment he is, the lines carry him
+        org.junit.jupiter.api.Assertions.assertEquals("-", userOf(lines, "--> POST /api/auth/setup"));
+        org.junit.jupiter.api.Assertions.assertEquals(ADMIN, userOf(lines, "User "));
+        org.junit.jupiter.api.Assertions.assertEquals(ADMIN, userOf(lines, "<-- POST /api/auth/setup"));
+        org.junit.jupiter.api.Assertions.assertEquals(ADMIN, userOf(lines, "--> PUT /api/projects/{id}"));
+        org.junit.jupiter.api.Assertions.assertEquals(ADMIN, userOf(lines, "Created project 5 of user"));
+        org.junit.jupiter.api.Assertions.assertEquals("-", userOf(lines, "--> GET /api/auth/status"));
+        // a refused sign-in says which address was tried, without the line break it was given
+        org.junit.jupiter.api.Assertions.assertEquals("-", userOf(lines, "Sign-in refused for nobody@example.be_info fake line: unknown address"));
+        // the request is over: the thread no longer carries anybody
+        org.junit.jupiter.api.Assertions.assertNull(org.slf4j.MDC.get(com.pleysje.plugged.logging.UserMdcFilter.KEY));
+    }
 }

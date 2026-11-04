@@ -2,14 +2,22 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // The Componenten tab: menu with all symbols on the left, the selected symbol (name, category, allowed parents, drawing) on the right.
 // The symbols come from the backend: standard ones (can be edited, deleted and restored to the standard drawing) and the user's own ones.
-import {useEffect, useState} from 'react'
+import {useEffect, useRef, useState} from 'react'
 import SymbolGraphic from '../../symbols/SymbolGraphic.jsx'
+import {shapesInBox, unionBounds} from '../../symbols/shapeHit.js'
+import {shapeAnchor, translateShape} from '../../symbols/shapeEdit.js'
 import {categoryName, OWN_CATEGORY, symbolName} from '../../symbols/symbolLibrary.js'
 import {newId} from '../../model/tree.js'
 import {useTranslation} from '../../i18n/I18nProvider.jsx'
 import {toDomId} from '../../components/domId.js'
 
-const DRAWING_TOOLS = ['line', 'circle', 'rect', 'arc', 'text']
+const DRAWING_TOOLS = ['select', 'line', 'circle', 'rect', 'arc', 'text']
+// width (in grid units) of the invisible outline that makes a thin line easy to click when selecting
+// the colour of the selection, as on the situatieschema
+const SELECTION_COLOUR = '#0a6cff'
+const HIT_WIDTH = 1.4
+// a drag shorter than this (grid units) is a click, not a selection box
+const MIN_DRAG = 0.3
 const GRID_SIZES = [0.5, 1, 2, 4]
 const PREVIEW_SIZES = [20, 32, 46]
 
@@ -32,6 +40,12 @@ export default function SymbolEditor({library, onSave, onRemove, onRestore, onRe
         [gridSize, setGridSize] = useState(1),
         // the first click of the shape being drawn
         [anchor, setAnchor] = useState(null),
+        // select tool: the indexes (in draft.shapes) of the selected shapes, and the one under the mouse
+        [selected, setSelected] = useState([]),
+        [hovered, setHovered] = useState(null),
+        // the selection box that is being dragged: {from: {x, y}, to: {x, y}, add} in grid units (not snapped)
+        [box, setBox] = useState(null),
+        [moving, setMoving] = useState(false),
         [hover, setHover] = useState(null),
         [message, setMessage] = useState('')
     const dirty = !!draft && JSON.stringify(draft) !== JSON.stringify(original),
@@ -46,20 +60,30 @@ export default function SymbolEditor({library, onSave, onRemove, onRestore, onRe
         setDraft({...copy, name: shownName(copy)})
         setOriginal(isNew ? null : {...copy, name: shownName(copy)})
         setAnchor(null)
+        setSelected([])
         setMessage('')
     }
     const change = (patch) => {
+        if (patch.shapes) setSelected([]) // the indexes of the selection no longer point at the same shapes
         setDraft({...draft, ...patch})
         setMessage('')
     }
+    const svgRef = useRef(null),
+        boxRef = useRef(null),
+        // the shapes that are being dragged: {start (grid units, not snapped), grab (the anchor of the shape that was grabbed), originals (draft.shapes before the drag), moved}
+        moveRef = useRef(null),
+        // the click that ends a drag must not select or deselect anything
+        afterDrag = useRef(false)
     const snap = (value) => Math.round(Math.round(value / gridSize) * gridSize * 100) / 100
     // mouse position on the drawing, snapped to the grid
+    const localPointOf = (svg, clientX, clientY) => {
+        const point = svg.createSVGPoint()
+        point.x = clientX
+        point.y = clientY
+        return point.matrixTransform(svg.getScreenCTM().inverse())
+    }
     const gridPointOf = (event) => {
-        const svg = event.currentTarget,
-            point = svg.createSVGPoint()
-        point.x = event.clientX
-        point.y = event.clientY
-        const local = point.matrixTransform(svg.getScreenCTM().inverse())
+        const local = localPointOf(event.currentTarget, event.clientX, event.clientY)
         return {x: snap(local.x), y: snap(local.y)}
     }
     // the shape of the active tool from the first click (anchor) to the point (x, y): used for the preview and for the final shape
@@ -77,7 +101,31 @@ export default function SymbolEditor({library, onSave, onRemove, onRestore, onRe
                 return {t: 'rect', x: Math.min(anchor.x, x), y: Math.min(anchor.y, y), w: Math.abs(x - anchor.x) || gridSize, h: Math.abs(y - anchor.y) || gridSize}
         }
     }
+    // select tool: a click on a shape selects it (shift = add to / remove from the selection), a click next to the shapes clears the selection
+    // pressing a shape: shift adds it to / removes it from the selection, a shape of the selection is dragged together with the rest of the
+    // selection, any other shape becomes the selection and can be dragged straight away
+    const pressShape = (event, index) => {
+        if (event.button !== 0) return
+        event.stopPropagation()
+        if (event.shiftKey) return setSelected((current) => (current.includes(index) ? current.filter((i) => i !== index) : [...current, index]))
+        const local = localPointOf(svgRef.current, event.clientX, event.clientY)
+        if (!selected.includes(index)) setSelected([index])
+        moveRef.current = {
+            start: {x: local.x, y: local.y},
+            grab: shapeAnchor(draft.shapes[index]),
+            originals: draft.shapes,
+            selection: selected.includes(index) ? selected : [index],
+            moved: false,
+        }
+        setMoving(true)
+    }
+    const deleteSelected = () => {
+        if (!selected.length) return
+        change({shapes: draft.shapes.filter((_, index) => !selected.includes(index))})
+        setHovered(null)
+    }
     const onDrawingClick = (event) => {
+        if (tool === 'select') return afterDrag.current ? undefined : setSelected([])
         const {x, y} = gridPointOf(event)
         if (tool === 'text') {
             const text = prompt(t('symbolEditor.textPrompt'))
@@ -88,16 +136,81 @@ export default function SymbolEditor({library, onSave, onRemove, onRestore, onRe
         change({shapes: [...draft.shapes, shapeTo(x, y)]}) // second click: finalize it on the grid
         setAnchor(null)
     }
+    // select tool: dragging on empty space draws a selection box (shapes inside it or touching it)
+    const onDrawingDown = (event) => {
+        if (tool !== 'select' || event.button !== 0) return
+        const local = localPointOf(event.currentTarget, event.clientX, event.clientY),
+            start = {x: local.x, y: local.y}
+        boxRef.current = {from: start, to: start, add: event.shiftKey}
+        setBox(boxRef.current)
+    }
+    const dragging = !!box || moving
+    useEffect(() => {
+        if (!dragging) return
+        const pointOf = (event) => localPointOf(svgRef.current, event.clientX, event.clientY)
+        const onMove = (event) => {
+            if (!svgRef.current) return
+            const local = pointOf(event)
+            if (boxRef.current) {
+                boxRef.current = {...boxRef.current, to: {x: local.x, y: local.y}}
+                return setBox(boxRef.current)
+            }
+            const drag = moveRef.current
+            if (!drag) return
+            if (!drag.moved && Math.hypot(local.x - drag.start.x, local.y - drag.start.y) < MIN_DRAG) return
+            drag.moved = true
+            // the grabbed shape follows the grid, the others of the selection move along by the same distance
+            const dx = snap(drag.grab.x + local.x - drag.start.x) - drag.grab.x,
+                dy = snap(drag.grab.y + local.y - drag.start.y) - drag.grab.y
+            setDraft((current) => ({...current, shapes: drag.originals.map((shape, index) => (drag.selection.includes(index) ? translateShape(shape, dx, dy) : shape))}))
+        }
+        const onUp = () => {
+            const finishedBox = boxRef.current,
+                drag = moveRef.current
+            boxRef.current = null
+            moveRef.current = null
+            setBox(null)
+            setMoving(false)
+            if (drag?.moved) {
+                afterDrag.current = true
+                setTimeout(() => (afterDrag.current = false), 0)
+            }
+            if (!finishedBox || Math.hypot(finishedBox.to.x - finishedBox.from.x, finishedBox.to.y - finishedBox.from.y) < MIN_DRAG) return
+            afterDrag.current = true
+            setTimeout(() => (afterDrag.current = false), 0)
+            const taken = shapesInBox(draft.shapes, finishedBox.from, finishedBox.to)
+            setSelected((current) => (finishedBox.add ? [...new Set([...current, ...taken])] : taken))
+        }
+        addEventListener('mousemove', onMove)
+        addEventListener('mouseup', onUp)
+        return () => {
+            removeEventListener('mousemove', onMove)
+            removeEventListener('mouseup', onUp)
+        }
+    }, [dragging])
     const onDrawingMove = (event) => {
         const point = gridPointOf(event)
         setHover((current) => (current && current.x === point.x && current.y === point.y ? current : point))
     }
-    // Escape cancels the shape that is being drawn
+    // Escape cancels the shape that is being drawn (or the selection); Delete / Backspace removes the selected shapes
     useEffect(() => {
-        const onKeyDown = (event) => event.key === 'Escape' && setAnchor(null)
+        const onKeyDown = (event) => {
+            if (event.key === 'Escape') {
+                setAnchor(null)
+                setSelected([])
+                boxRef.current = null
+                setBox(null)
+                if (moveRef.current) setDraft((current) => ({...current, shapes: moveRef.current.originals})) // cancels a drag
+                moveRef.current = null
+                setMoving(false)
+            } else if ((event.key === 'Delete' || event.key === 'Backspace') && selected.length && !/^(INPUT|TEXTAREA|SELECT)$/.test(event.target.tagName)) {
+                event.preventDefault()
+                deleteSelected()
+            }
+        }
         addEventListener('keydown', onKeyDown)
         return () => removeEventListener('keydown', onKeyDown)
-    }, [])
+    })
     const createNew = async () => {
         const template = await onTemplate()
         if (!template) return alert(t('symbolEditor.newNotPossible'))
@@ -159,6 +272,9 @@ export default function SymbolEditor({library, onSave, onRemove, onRestore, onRe
     }
     const duplicate = () =>
         open({...draft, k: 'custom:' + newId(), name: t('common.copyOf', {name: draft.name}), builtin: false, modified: false, v: 0}, true)
+    // the selected shapes and the frame around them (indexes that no longer exist are left out)
+    const chosen = draft ? selected.map((i) => draft.shapes[i]).filter(Boolean) : [],
+        bounds = unionBounds(chosen)
     const categories = [...new Set(library.map((symbol) => symbol.cat))],
         searchText = search.toLowerCase()
     return (
@@ -251,11 +367,15 @@ export default function SymbolEditor({library, onSave, onRemove, onRestore, onRe
                                             onClick={() => {
                                                 setTool(name)
                                                 setAnchor(null)
+                                                setSelected([])
                                             }}
                                         >
                                             {t('symbolEditor.tools.' + name)}
                                         </button>
                                     ))}
+                                    <button id="comp-delete-selected" disabled={!selected.length} title={t('symbolEditor.deleteSelectedTitle')} onClick={deleteSelected}>
+                                        {t('symbolEditor.deleteSelected', {count: selected.length})}
+                                    </button>
                                 </div>
                                 {(isStandard || isStored) && (
                                     <div className="cgroup">
@@ -289,7 +409,7 @@ export default function SymbolEditor({library, onSave, onRemove, onRestore, onRe
                                 )}
                             </div>
                             <div className="cdraw">
-                                <svg id="comp-drawing" viewBox="0 0 24 24" onClick={onDrawingClick} onMouseMove={onDrawingMove} onMouseLeave={() => setHover(null)}>
+                                <svg id="comp-drawing" ref={svgRef} onMouseDown={onDrawingDown} className={tool === 'select' ? 'selecting' : undefined} viewBox="0 0 24 24" onClick={onDrawingClick} onMouseMove={onDrawingMove} onMouseLeave={() => setHover(null)}>
                                     <defs>
                                         <pattern id="cgrid" width={gridSize} height={gridSize} patternUnits="userSpaceOnUse">
                                             <path d={`M${gridSize} 0H0V${gridSize}`} fill="none" stroke="#bbb" strokeWidth=".04" />
@@ -302,12 +422,95 @@ export default function SymbolEditor({library, onSave, onRemove, onRestore, onRe
                                     <rect x="0" y="0" width="24" height="24" fill="url(#cgridmajor)" />
                                     <line x1="0" y1="12" x2="24" y2="12" stroke="#f9b" strokeWidth=".1" />
                                     <SymbolGraphic shapes={draft.shapes} x={12} y={12} size={24} strokeWidth={0.6} />
-                                    {anchor && hover && tool !== 'text' && (
+                                    {tool === 'select' && (
+                                        <>
+                                            {/* the selection like on the situatieschema: blue marking over the shapes, a dashed frame around them and a trash button */}
+                                            {chosen.length > 0 && (
+                                                <g id="comp-selection" pointerEvents="none">
+                                                    <g opacity=".4">
+                                                        <SymbolGraphic shapes={chosen} x={12} y={12} size={24} strokeWidth={1.4} stroke={SELECTION_COLOUR} />
+                                                    </g>
+                                                    <rect
+                                                        x={bounds.x1 - 0.8}
+                                                        y={bounds.y1 - 0.8}
+                                                        width={bounds.x2 - bounds.x1 + 1.6}
+                                                        height={bounds.y2 - bounds.y1 + 1.6}
+                                                        fill="none"
+                                                        stroke={SELECTION_COLOUR}
+                                                        strokeWidth=".1"
+                                                        strokeDasharray=".5 .4"
+                                                    />
+                                                </g>
+                                            )}
+                                            {hovered !== null && !selected.includes(hovered) && draft.shapes[hovered] && !moving && (
+                                                <g pointerEvents="none" opacity=".25">
+                                                    <SymbolGraphic shapes={[draft.shapes[hovered]]} x={12} y={12} size={24} strokeWidth={1.4} stroke={SELECTION_COLOUR} />
+                                                </g>
+                                            )}
+                                            {/* invisible, wider copies of the shapes: the click targets (last drawn on top) */}
+                                            <g id="comp-hit">
+                                                {draft.shapes.map((shape, index) => (
+                                                    <g
+                                                        key={index}
+                                                        data-shape={index}
+                                                        style={{cursor: 'move'}}
+                                                        onMouseDown={(event) => pressShape(event, index)}
+                                                        onClick={(event) => event.stopPropagation()}
+                                                        onMouseEnter={() => setHovered(index)}
+                                                        onMouseLeave={() => setHovered(null)}
+                                                    >
+                                                        <SymbolGraphic shapes={[{...shape, sw: undefined}]} x={12} y={12} size={24} strokeWidth={HIT_WIDTH} stroke="transparent" />
+                                                    </g>
+                                                ))}
+                                            </g>
+                                            {box && (
+                                                <rect
+                                                    id="comp-box"
+                                                    x={Math.min(box.from.x, box.to.x)}
+                                                    y={Math.min(box.from.y, box.to.y)}
+                                                    width={Math.abs(box.to.x - box.from.x)}
+                                                    height={Math.abs(box.to.y - box.from.y)}
+                                                    fill={SELECTION_COLOUR}
+                                                    fillOpacity=".08"
+                                                    stroke={SELECTION_COLOUR}
+                                                    strokeWidth=".1"
+                                                    strokeDasharray=".5 .4"
+                                                    pointerEvents="none"
+                                                />
+                                            )}
+                                            {chosen.length > 0 && !dragging && (
+                                                <g
+                                                    id="comp-delete-selection"
+                                                    role="button"
+                                                    aria-label={t('symbolEditor.deleteSelectedTitle')}
+                                                    transform={`translate(${Math.min(22.6, bounds.x2 + 2)},${Math.max(1.4, bounds.y1 - 2)}) scale(.34)`}
+                                                    style={{cursor: 'pointer'}}
+                                                    onMouseDown={(event) => event.stopPropagation()}
+                                                    onClick={(event) => {
+                                                        event.stopPropagation()
+                                                        deleteSelected()
+                                                    }}
+                                                >
+                                                    <title>{t('symbolEditor.deleteSelectedTitle')}</title>
+                                                    <circle r="3.2" fill="#fff" stroke="#c62828" strokeWidth=".5" />
+                                                    <path
+                                                        d="M-1.5,-1.3 H1.5 M-.7,-1.3 V-2 H.7 V-1.3 M-1.2,-.7 L-.95,2.1 H.95 L1.2,-.7"
+                                                        fill="none"
+                                                        stroke="#c62828"
+                                                        strokeWidth=".35"
+                                                        strokeLinecap="round"
+                                                        strokeLinejoin="round"
+                                                    />
+                                                </g>
+                                            )}
+                                        </>
+                                    )}
+                                    {anchor && hover && tool !== 'text' && tool !== 'select' && (
                                         <g id="comp-shape-preview" opacity=".75" strokeDasharray=".6 .4" pointerEvents="none">
                                             <SymbolGraphic shapes={[shapeTo(hover.x, hover.y)]} x={12} y={12} size={24} strokeWidth={0.5} stroke="#0a6cff" />
                                         </g>
                                     )}
-                                    {hover && <circle id="comp-hover-point" cx={hover.x} cy={hover.y} r=".25" fill="#0a6cff" pointerEvents="none" />}
+                                    {hover && tool !== 'select' && <circle id="comp-hover-point" cx={hover.x} cy={hover.y} r=".25" fill="#0a6cff" pointerEvents="none" />}
                                     {anchor && <circle id="comp-anchor" cx={anchor.x} cy={anchor.y} r=".4" fill="red" />}
                                 </svg>
                                 <div className="ui gridsel">

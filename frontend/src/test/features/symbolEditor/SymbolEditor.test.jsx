@@ -405,3 +405,137 @@ test('in another language the menu and the name field show the translated name; 
     fireEvent.click(saveButton('save'))
     await waitFor(() => expect(save).toHaveBeenLastCalledWith(expect.objectContaining({name: 'Prise de la cuisine'})))
 })
+
+// select tool: change a part of a symbol without redrawing it. A press on a shape selects it (and starts a drag), a drag on empty space draws a box
+const hit = (index) => svg().querySelector(`#comp-hit [data-shape="${index}"]`)
+const press = (element, x, y, extra = {}) => fireEvent.mouseDown(element, {clientX: x, clientY: y, button: 0, ...extra})
+const release = (x, y) => fireEvent.mouseUp(window, {clientX: x, clientY: y})
+const dragTo = (x, y) => fireEvent.mouseMove(window, {clientX: x, clientY: y})
+const dragBox = (from, to, extra = {}) => {
+    press(svg(), ...from, extra)
+    dragTo(...to)
+    release(...to)
+}
+const selectedCount = () => getById('comp-delete-selected').textContent
+// the first coordinates of the shapes of the drawing (a line: x1, a circle: cx, ...)
+const lines = () => [...svg().querySelector('g').children].map((e) => e.getAttribute('x1') + ',' + e.getAttribute('y1'))
+const trySelect = () => {
+    fireEvent.click(getById('comp-tool-select'))
+}
+test('select tool: pressing a shape selects it and the button removes only that shape', () => {
+    mount()
+    pick('hoofdschakelaar')
+    const before = nOf('hoofdschakelaar')
+    expect(getById('comp-delete-selected')).toBeDisabled()
+    trySelect()
+    expect(svg().querySelectorAll('#comp-hit > g')).toHaveLength(before)
+    press(hit(0), 13, 3)
+    release(13, 3)
+    expect(getById('comp-delete-selected')).toBeEnabled()
+    expect(selectedCount()).toContain('(1)')
+    expect(count()).toBe(before)
+    fireEvent.click(getById('comp-delete-selected'))
+    expect(count()).toBe(before - 1)
+    expect(getById('comp-delete-selected')).toBeDisabled()
+    getById('comp-dirty')
+})
+test('select tool: shift selects several shapes, Delete or the trash button on the drawing removes them, Escape and a click beside deselect', () => {
+    mount()
+    pick('hoofdschakelaar')
+    const before = nOf('hoofdschakelaar')
+    trySelect()
+    press(hit(0), 13, 3)
+    release(13, 3)
+    press(hit(1), 13, 18, {shiftKey: true})
+    release(13, 18)
+    expect(selectedCount()).toContain('(2)')
+    press(hit(1), 13, 18, {shiftKey: true}) // shift again takes it out
+    release(13, 18)
+    expect(selectedCount()).toContain('(1)')
+    fireEvent.keyDown(window, {key: 'Escape'})
+    expect(getById('comp-delete-selected')).toBeDisabled()
+    press(hit(0), 13, 3)
+    release(13, 3)
+    fireEvent.click(svg(), {clientX: 100, clientY: 100}) // beside the shapes
+    expect(getById('comp-delete-selected')).toBeDisabled()
+    press(hit(0), 13, 3)
+    release(13, 3)
+    press(hit(1), 13, 18, {shiftKey: true})
+    release(13, 18)
+    fireEvent.click(getById('comp-delete-selection')) // the trash button next to the selection
+    expect(count()).toBe(before - 2)
+    press(hit(0), 13, 18)
+    release(13, 18)
+    fireEvent.keyDown(window, {key: 'Delete'})
+    expect(count()).toBe(before - 3)
+})
+test('select tool: Delete in a text field does not remove shapes, and selecting never adds shapes', () => {
+    mount()
+    pick('hoofdschakelaar')
+    const before = nOf('hoofdschakelaar')
+    trySelect()
+    press(hit(0), 13, 3)
+    release(13, 3)
+    fireEvent.keyDown(name(), {key: 'Backspace'})
+    expect(count()).toBe(before)
+    fireEvent.click(svg(), {clientX: 5, clientY: 5})
+    fireEvent.click(svg(), {clientX: 9, clientY: 9})
+    expect(count()).toBe(before)
+})
+test('select tool: a box selects the shapes inside it or touching it', () => {
+    const {container} = mount()
+    pick('hoofdschakelaar') // line 13,2-13,5 / line 13,14-13,22 / line 9.41,4.13-13,14
+    trySelect()
+    dragBox([11, 1], [16, 3]) // touches only the first line
+    expect(selectedCount()).toContain('(1)')
+    expect(container.querySelector('#comp-box')).toBeNull() // the box is gone after the drop
+    fireEvent.click(svg()) // the click that follows a drag does not clear the selection
+    expect(selectedCount()).toContain('(1)')
+    dragBox([16, 24], [8, 1]) // a box over everything
+    expect(selectedCount()).toContain('(3)')
+})
+test('select tool: shift + box adds to the selection, a tiny drag is a click and Escape cancels a box', () => {
+    const {container} = mount()
+    pick('hoofdschakelaar')
+    trySelect()
+    dragBox([11, 1], [16, 3])
+    expect(selectedCount()).toContain('(1)')
+    press(svg(), 11, 18, {shiftKey: true}) // a box that only touches the second line (13,14-13,22)
+    dragTo(16, 23)
+    expect(container.querySelector('#comp-box')).not.toBeNull()
+    release(16, 23)
+    expect(selectedCount()).toContain('(2)')
+    dragBox([5, 5], [5.1, 5.1]) // too small to be a box
+    expect(selectedCount()).toContain('(2)')
+    press(svg(), 1, 1)
+    dragTo(20, 20)
+    fireEvent.keyDown(window, {key: 'Escape'})
+    release(20, 20)
+    expect(container.querySelector('#comp-box')).toBeNull()
+    expect(getById('comp-delete-selected')).toBeDisabled()
+})
+test('select tool: dragging a selected shape moves the whole selection on the grid, Escape puts it back, a plain drag moves one shape', () => {
+    mount()
+    pick('hoofdschakelaar') // line 13,2-13,5 / line 13,14-13,22 / line 9.41,4.13-13,14
+    const [, second, third] = lines()
+    trySelect()
+    dragBox([11, 1], [16, 3]) // only the first line (13,2-13,5) is selected
+    press(hit(0), 13, 3)
+    dragTo(16, 5)
+    dragTo(16.2, 5.1) // follows the grid: 3 to the right, 2 down
+    release(16.2, 5.1)
+    expect(lines()).toEqual(['16,4', second, third])
+    getById('comp-dirty')
+    // Escape during a drag puts the shapes back where they were
+    press(hit(0), 16, 4)
+    dragTo(10, 4)
+    expect(lines()[0]).not.toBe('16,4')
+    fireEvent.keyDown(window, {key: 'Escape'})
+    release(10, 4)
+    expect(lines()).toEqual(['16,4', second, third])
+    // a shape that is not selected is selected by the press and moved on its own
+    press(hit(1), 13, 18)
+    dragTo(13, 20)
+    release(13, 20)
+    expect(lines()).toEqual(['16,4', '13,16', third])
+})

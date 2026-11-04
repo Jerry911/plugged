@@ -302,6 +302,7 @@ export default {
     },
     symbolEditor: {
         tools: {
+            select: 'Sélectionner',
             line: 'Ligne',
             circle: 'Cercle (centre, bord)',
             rect: 'Rectangle',
@@ -332,9 +333,11 @@ export default {
         restoreAllTitle: 'Ramener tous les symboles standard à leur dessin standard, y compris ceux qui ont été supprimés (vos propres symboles sont conservés)',
         intro: 'Choisissez à gauche un composant à consulter ou à modifier, ou créez un nouveau composant. Tous les composants apparaissent dans la palette du schéma unifilaire et sur le plan de position.',
         drawingHint:
-            'Dessinez sur la grille de 24×24 (choisissez la taille de la grille en bas à droite du dessin). La ligne de raccordement du schéma passe par la ligne médiane (y = 12, en rouge) : faites-la croiser par au moins une forme. (Échap = annuler).',
+            'Dessinez sur la grille de 24×24 (choisissez la taille de la grille en bas à droite du dessin). La ligne de raccordement du schéma passe par la ligne médiane (y = 12, en rouge) : faites-la croiser par au moins une forme. (Échap = annuler). Pour modifier une partie d\'un symbole : choisissez Sélectionner, cliquez sur une forme (Maj + clic ou cadre pour plusieurs), faites glisser la sélection pour la déplacer et appuyez sur Suppr pour la supprimer.',
         add: 'Ajouter',
         duplicate: 'Dupliquer',
+        deleteSelected: 'Supprimer la sélection ({count})',
+        deleteSelectedTitle: 'Supprimer les formes sélectionnées (Suppr)',
         undoShape: 'Annuler la dernière forme',
         clear: 'Tout effacer',
         unsaved: 'non enregistré',

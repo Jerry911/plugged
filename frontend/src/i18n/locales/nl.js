@@ -303,6 +303,7 @@ export default {
     },
     symbolEditor: {
         tools: {
+            select: 'Selecteren',
             line: 'Lijn',
             circle: 'Cirkel (midden, rand)',
             rect: 'Rechthoek',
@@ -333,9 +334,11 @@ export default {
         restoreAllTitle: 'Zet alle standaardsymbolen terug naar de standaardtekening, ook de verwijderde (eigen symbolen blijven)',
         intro: 'Kies links een component om te bekijken of aan te passen, of maak een nieuw component. Alle componenten verschijnen in het palet van het eendraadschema en op het situatieschema.',
         drawingHint:
-            'Teken op het raster van 24×24 (kies de rastergrootte rechtsonder in de tekening). De aansluitlijn van het schema komt op de middenlijn (y = 12, rood): laat minstens één vorm die lijn snijden. (Esc = annuleren).',
+            'Teken op het raster van 24×24 (kies de rastergrootte rechtsonder in de tekening). De aansluitlijn van het schema komt op de middenlijn (y = 12, rood): laat minstens één vorm die lijn snijden. (Esc = annuleren). Een deel van een symbool aanpassen: kies Selecteren, klik op een vorm (shift-klik of sleep een kader voor meerdere), sleep de selectie om ze te verplaatsen en druk op Del om ze te verwijderen.',
         add: 'Toevoegen',
         duplicate: 'Dupliceer',
+        deleteSelected: 'Selectie verwijderen ({count})',
+        deleteSelectedTitle: 'Geselecteerde vormen verwijderen (Del)',
         undoShape: 'Laatste vorm ongedaan maken',
         clear: 'Leegmaken',
         unsaved: 'niet opgeslagen',

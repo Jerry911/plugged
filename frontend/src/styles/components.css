@@ -358,6 +358,24 @@
     cursor: crosshair
 }
 
+.cdraw svg.selecting {
+    cursor: default;
+    user-select: none
+}
+
+#comp-box {
+    fill: rgba(10, 108, 255, 0.1);
+    stroke: #0a6cff;
+    stroke-width: 0.1;
+    stroke-dasharray: none
+}
+
+#comp-box.crossing {
+    fill: rgba(16, 150, 72, 0.12);
+    stroke: #109648;
+    stroke-dasharray: 0.4 0.3
+}
+
 .cdraw .gridsel {
     right: 6px;
     bottom: 6px

@@ -302,6 +302,7 @@ export default {
     },
     symbolEditor: {
         tools: {
+            select: 'Select',
             line: 'Line',
             circle: 'Circle (centre, edge)',
             rect: 'Rectangle',
@@ -332,9 +333,11 @@ export default {
         restoreAllTitle: 'Bring all standard symbols back to their standard drawing, also the deleted ones (your own symbols stay)',
         intro: 'Choose a component on the left to view or change it, or make a new component. All components appear in the palette of the single-line diagram and on the site plan.',
         drawingHint:
-            'Draw on the 24×24 grid (choose the grid size at the bottom right of the drawing). The connection line of the diagram runs along the centre line (y = 12, red): let at least one shape cross that line. (Esc = cancel).',
+            'Draw on the 24×24 grid (choose the grid size at the bottom right of the drawing). The connection line of the diagram runs along the centre line (y = 12, red): let at least one shape cross that line. (Esc = cancel). To change part of a symbol: choose Select, click a shape (shift-click or drag a box for several), drag the selection to move it and press Del to remove it.',
         add: 'Add',
         duplicate: 'Duplicate',
+        deleteSelected: 'Delete selection ({count})',
+        deleteSelectedTitle: 'Delete the selected shapes (Del)',
         undoShape: 'Undo the last shape',
         clear: 'Clear',
         unsaved: 'not saved',

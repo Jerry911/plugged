@@ -1,0 +1,514 @@
+// Copyright 2026 Pleysier Jeroen
+// SPDX-License-Identifier: AGPL-3.0-only
+package com.pleysje.plugged.catalog;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+
+import static com.pleysje.plugged.catalog.SymbolShapes.*;
+
+/**
+ * Symbols of the catalog that are drawn like the ones of the AREI,
+ * src/SVGSymbols.ts and the drawing code of src/List_Item, GPL-3.0-or-later; AGPL-3.0 may be combined with it, see NOTICE).
+ * <p>
+ * GENERATED: do not edit by hand.
+ * Upstream units are scaled by {@link #U} (a 40 x 40 box becomes 14 x 14 on the 24 grid), the centre line y = 0 lies on y = 12 and
+ * upstream x = 1, where the supply starts, on x = 1. A symbol that would not fit the grid has a shorter supply line. Stroke widths of
+ * 2 and 3 become the relative weights {@link #W2} and {@link #W3}, white fills are {@code paper}, dashed lines are short dashes.
+ */
+final class UpstreamSymbols {
+    /**
+     * grid units per upstream unit
+     */
+    static final double U = 0.35;
+    /**
+     * relative line weight of upstream stroke widths 2 and 3
+     */
+    static final double W2 = 1.5, W3 = 2;
+
+    private UpstreamSymbols() {
+    }
+
+    /**
+     * the grid x of an upstream x
+     */
+    static double gridX(double upstreamX) {
+        return SymbolShapes.round2(1 - U + U * upstreamX);
+    }
+
+    /**
+     * the grid y of an upstream y (the centre line is y = 0)
+     */
+    static double gridY(double upstreamY) {
+        return SymbolShapes.round2(12 + U * upstreamY);
+    }
+
+    @SafeVarargs
+    private static List<Map<String, Object>> of(Map<String, Object>... shapes) {
+        return new ArrayList<>(List.of(shapes));
+    }
+
+    static List<Map<String, Object>> teller() {
+        return of(line(1, 12, 8, 12),
+                rect(8, 5, 14, 14),
+                line(8, 9.9, 22, 9.9),
+                bold(text(15, 15.5, "kWh", 4.2)));
+    }
+
+    static List<Map<String, Object>> overspanning() {
+        return of(line(1, 12, 8, 12),
+                rect(8, 6.75, 5.25, 10.5),
+                line(10.62, 5.7, 10.62, 10.25),
+                line(10.62, 10.25, 9.57, 8.85),
+                line(10.62, 10.25, 11.68, 8.85),
+                line(10.62, 18.3, 10.62, 13.75),
+                line(10.62, 13.75, 9.57, 15.15),
+                line(10.62, 13.75, 11.68, 15.15));
+    }
+
+    static List<Map<String, Object>> thermostaat() {
+        return of(line(1, 12, 8, 12),
+                rect(8, 7.45, 14, 9.1),
+                circle(15, 12, 2.8),
+                line(12.2, 12, 17.8, 12));
+    }
+
+    static List<Map<String, Object>> klok() {
+        return of(line(1, 12, 8, 12),
+                rect(8, 7.45, 14, 9.1),
+                circle(11.85, 12, 2.8),
+                line(11.5, 12, 13.95, 12),
+                line(11.85, 9.9, 11.85, 12.35),
+                line(15.35, 12, 16.75, 12),
+                line(16.75, 12, 18.85, 10.25),
+                line(18.85, 12, 20.6, 12));
+    }
+
+    static List<Map<String, Object>> motor() {
+        return of(line(1, 12, 8, 12),
+                circle(15, 12, 7),
+                bold(text(15, 14.1, "M", 5.6)));
+    }
+
+    static List<Map<String, Object>> verwarming() {
+        return of(line(1, 12, 5.9, 12),
+                rect(5.9, 6.75, 17.5, 10.5),
+                line(7.65, 6.75, 7.65, 17.25),
+                line(9.4, 6.75, 9.4, 17.25),
+                line(11.15, 6.75, 11.15, 17.25),
+                line(12.9, 6.75, 12.9, 17.25),
+                line(14.65, 6.75, 14.65, 17.25),
+                line(16.4, 6.75, 16.4, 17.25),
+                line(18.15, 6.75, 18.15, 17.25),
+                line(19.9, 6.75, 19.9, 17.25),
+                line(21.65, 6.75, 21.65, 17.25));
+    }
+
+    static List<Map<String, Object>> boiler() {
+        return of(line(1, 12, 8, 12),
+                circle(15, 12, 7),
+                line(9.75, 7.37, 9.75, 16.63),
+                line(11.5, 5.94, 11.5, 18.06),
+                line(13.25, 5.22, 13.25, 18.78),
+                line(15, 5, 15, 19),
+                line(16.75, 5.22, 16.75, 18.78),
+                line(18.5, 5.94, 18.5, 18.06),
+                line(20.25, 7.37, 20.25, 16.63));
+    }
+
+    static List<Map<String, Object>> kookplaat() {
+        return of(line(1, 12, 8, 12),
+                rect(8, 5, 14, 14),
+                dot(11.5, 15.5, 1.05),
+                dot(18.5, 15.5, 1.05),
+                dot(18.5, 8.5, 1.05));
+    }
+
+    static List<Map<String, Object>> oven() {
+        return of(line(1, 12, 8, 12),
+                rect(8, 5, 14, 14),
+                line(8, 10.25, 22, 10.25),
+                dot(15, 14.62, 1.05));
+    }
+
+    static List<Map<String, Object>> wasmachine() {
+        return of(line(1, 12, 8, 12),
+                rect(8, 5, 14, 14),
+                dot(15, 12, 1.05),
+                circle(15, 12, 5.25));
+    }
+
+    static List<Map<String, Object>> droogkast() {
+        return of(line(1, 12, 8, 12),
+                rect(8, 5, 14, 14),
+                circle(13.25, 9.38, 1.75),
+                circle(16.75, 9.38, 1.75),
+                dot(15, 14.62, 1.05));
+    }
+
+    static List<Map<String, Object>> vaatwas() {
+        return of(line(1, 12, 8, 12),
+                rect(8, 5, 14, 14),
+                line(8, 5, 13.02, 10.02),
+                line(22, 19, 16.98, 13.98),
+                line(8, 19, 13.02, 13.98),
+                line(22, 5, 16.98, 10.02),
+                circle(15, 12, 2.8));
+    }
+
+    static List<Map<String, Object>> koelkast() {
+        return of(line(1, 12, 8, 12),
+                rect(8, 5, 14, 14),
+                line(15, 10.25, 15, 13.75),
+                line(13.48, 11.12, 16.52, 12.88),
+                line(13.37, 12.88, 16.52, 11.12));
+    }
+
+    static List<Map<String, Object>> diepvries() {
+        return of(line(1, 12, 8, 12),
+                rect(8, 5, 14, 14),
+                line(11.5, 10.25, 11.5, 13.75),
+                line(9.98, 11.12, 13.02, 12.88),
+                line(9.87, 12.88, 13.02, 11.12),
+                line(15, 10.25, 15, 13.75),
+                line(13.48, 11.12, 16.52, 12.88),
+                line(13.37, 12.88, 16.52, 11.12),
+                line(18.5, 10.25, 18.5, 13.75),
+                line(16.98, 11.12, 20.02, 12.88),
+                line(16.87, 12.88, 20.02, 11.12));
+    }
+
+    static List<Map<String, Object>> ventilatie() {
+        return of(line(1, 12, 8, 12),
+                rect(8, 6.75, 10.5, 10.5),
+                circle(11.5, 12, 1.75),
+                circle(15, 12, 1.75));
+    }
+
+    static List<Map<String, Object>> microgolf() {
+        return of(line(1, 12, 8, 12),
+                rect(8, 5, 14, 14),
+                path("M11.5 8.5 C12.2 6.75 14.3 6.75 15 8.5 S17.8 10.25 18.5 8.5"),
+                path("M11.5 12 C12.2 10.25 14.3 10.25 15 12 S17.8 13.75 18.5 12"),
+                path("M11.5 15.5 C12.2 13.75 14.3 13.75 15 15.5 S17.8 17.25 18.5 15.5"));
+    }
+
+    static List<Map<String, Object>> laadpaal() {
+        return of(line(1, 12, 8, 12),
+                rect(8, 16.55, 14, 2.45),
+                line(8, 12, 10.45, 12),
+                line(10.45, 5, 10.45, 16.55),
+                line(19.55, 5, 19.55, 16.55),
+                line(10.45, 5, 19.55, 5),
+                rect(11.5, 6.05, 7, 2.8),
+                line(15, 9.9, 15, 15.5),
+                line(19.55, 9.9, 20.6, 9.9),
+                line(20.6, 9.9, 20.6, 13.4),
+                line(20.6, 13.4, 21.65, 13.4),
+                line(21.65, 13.4, 21.65, 6.75),
+                weight(line(21.65, 9.9, 21.65, 6.75), W2),
+                bold(text(13.25, 12.35, "V", 2.1)),
+                bold(text(16.75, 12.35, "E", 2.1)),
+                bold(text(13.25, 15.15, "E", 2.1)),
+                bold(text(16.75, 15.15, "V", 2.1)));
+    }
+
+    static List<Map<String, Object>> zonnepanelen() {
+        return of(line(1, 12, 5.9, 12),
+                rect(5.9, 5, 17.5, 14),
+                line(5.9, 12, 23.4, 12),
+                line(8.14, 8.01, 10.12, 9.98),
+                line(10.12, 9.98, 9.63, 8.99),
+                line(10.12, 9.98, 9.13, 9.49),
+                line(9.4, 7.1, 11.38, 9.08),
+                line(11.38, 9.08, 10.88, 8.09),
+                line(11.38, 9.08, 10.39, 8.58));
+    }
+
+    static List<Map<String, Object>> omvormer() {
+        return of(line(1, 12, 8, 12),
+                rect(8, 5, 14, 14),
+                line(8, 19, 22, 5),
+                path("M9.75 7.8 C10.45 6.05 12.55 6.05 13.25 7.8 S16.05 9.55 16.75 7.8"),
+                line(15, 15.5, 20.25, 15.5),
+                line(15, 16.55, 15.25, 16.55),
+                line(17.1, 16.55, 17.35, 16.55),
+                line(19.2, 16.55, 19.45, 16.55));
+    }
+
+    static List<Map<String, Object>> batterij() {
+        return of(line(1, 12, 8, 12),
+                line(8, 6.75, 8, 17.25),
+                weight(line(10.45, 9.2, 10.45, 14.8), W3),
+                line(10.98, 12, 11.22, 12),
+                line(13.08, 12, 13.32, 12),
+                line(15.18, 12, 15.42, 12),
+                line(15.7, 6.75, 15.7, 17.25),
+                weight(line(18.15, 9.2, 18.15, 14.8), W3));
+    }
+
+    static List<Map<String, Object>> trafo() {
+        return of(line(1, 12, 8, 12),
+                circle(10.8, 12, 2.8),
+                circle(15, 12, 2.8));
+    }
+
+    static List<Map<String, Object>> aftakdoos() {
+        return of(line(1, 12, 8, 12),
+                circle(13.25, 12, 5.25),
+                dot(13.25, 12, 2.62));
+    }
+
+    static List<Map<String, Object>> zekering() {
+        return of(line(1, 12, 8, 12),
+                rect(8, 10.6, 10.5, 2.8),
+                line(8, 12, 18.5, 12));
+    }
+
+    static List<Map<String, Object>> drukknop() {
+        return of(line(1, 12, 8, 12),
+                circle(12.2, 12, 4.2),
+                circle(12.2, 12, 2.45));
+    }
+
+    static List<Map<String, Object>> bel() {
+        return of(line(1, 12, 8, 12),
+                weight(path("M15 12 A5.25 5.25 0 0 1 8 17.25"), W2),
+                weight(path("M15 12 A5.25 5.25 0 0 0 8 6.75"), W2),
+                weight(line(8, 17.25, 8, 6.75), W2));
+    }
+
+    static List<Map<String, Object>> schakelaar() {
+        return of(line(1, 12, 11.5, 12),
+                line(11.5, 12, 15, 5),
+                line(15, 5, 16.75, 5.88),
+                paper(circle(11.5, 12, 1.75)));
+    }
+
+    static List<Map<String, Object>> schakelaar2() {
+        return of(line(1, 12, 11.5, 12),
+                line(11.5, 12, 15, 5),
+                line(15, 5, 16.75, 5.88),
+                line(14.3, 6.4, 16.05, 7.28),
+                paper(circle(11.5, 12, 1.75)));
+    }
+
+    static List<Map<String, Object>> schakelaar3() {
+        return of(line(1, 12, 11.5, 12),
+                line(11.5, 12, 15, 5),
+                line(15, 5, 16.75, 5.88),
+                line(14.3, 6.4, 16.05, 7.28),
+                line(13.6, 7.8, 15.35, 8.68),
+                paper(circle(11.5, 12, 1.75)));
+    }
+
+    static List<Map<String, Object>> wissel() {
+        return of(line(1, 12, 11.5, 12),
+                line(11.5, 12, 15, 5),
+                line(15, 5, 16.75, 5.88),
+                line(11.5, 12, 8, 19),
+                line(8, 19, 6.25, 18.12),
+                paper(circle(11.5, 12, 1.75)));
+    }
+
+    static List<Map<String, Object>> omschakelaar() {
+        return of(line(1, 12, 11.5, 12),
+                line(11.5, 12, 8, 5),
+                line(8, 5, 6.25, 5.88),
+                line(11.5, 12, 15, 5),
+                line(15, 5, 16.75, 5.88),
+                paper(circle(11.5, 12, 1.75)));
+    }
+
+    static List<Map<String, Object>> kruis() {
+        return of(line(1, 12, 11.5, 12),
+                line(11.5, 12, 15, 5),
+                line(15, 5, 16.75, 5.88),
+                line(11.5, 12, 8, 19),
+                line(8, 19, 6.25, 18.12),
+                line(11.5, 12, 8, 5),
+                line(8, 5, 6.25, 5.88),
+                line(11.5, 12, 15, 19),
+                line(15, 19, 16.75, 18.12),
+                paper(circle(11.5, 12, 1.75)));
+    }
+
+    static List<Map<String, Object>> dimmer() {
+        return of(line(1, 12, 11.5, 12),
+                line(11.5, 12, 15, 5),
+                line(15, 5, 16.75, 5.88),
+                paper(circle(11.5, 12, 1.75)),
+                filled(path("M11.15 9.2 L15.35 9.2 L15.35 6.75 Z")));
+    }
+
+    static List<Map<String, Object>> verklikker() {
+        return of(line(1, 12, 11.5, 12),
+                line(11.5, 12, 15, 5),
+                line(15, 5, 16.75, 5.88),
+                paper(circle(11.5, 12, 1.75)),
+                line(10.45, 10.95, 12.55, 13.05),
+                line(10.45, 13.05, 12.55, 10.95));
+    }
+
+    static List<Map<String, Object>> lichtpunt() {
+        return of(line(1, 12, 11.15, 12),
+                weight(line(7.44, 8.29, 14.86, 15.71), W2),
+                weight(line(7.44, 15.71, 14.86, 8.29), W2));
+    }
+
+    static List<Map<String, Object>> wandlamp() {
+        return of(line(1, 12, 11.15, 12),
+                weight(line(7.44, 8.29, 14.86, 15.71), W2),
+                weight(line(7.44, 15.71, 14.86, 8.29), W2),
+                line(7.65, 17.25, 14.65, 17.25));
+    }
+
+    /**
+     * spot (SVGSymbols 'spot'): a lamp circle with a cross and two quarter arcs towards the supply; origin at upstream x = 30 like the lamp
+     */
+    static List<Map<String, Object>> spot() {
+        return of(line(1, 12, gridX(30), 12),
+                path("M" + gridX(30) + " " + gridY(0) + " A3.5 3.5 0 0 1 " + gridX(40) + " " + gridY(-10)),
+                path("M" + gridX(30) + " " + gridY(0) + " A3.5 3.5 0 0 0 " + gridX(40) + " " + gridY(10)),
+                circle(gridX(40), 12, 2.1),
+                line(gridX(35.76), gridY(-4.24), gridX(44.24), gridY(4.24)),
+                line(gridX(35.76), gridY(4.24), gridX(44.24), gridY(-4.24)));
+    }
+
+    /**
+     * led (SVGSymbols 'led'): a diode (triangle against a bar) with two small arrows of light
+     */
+    static List<Map<String, Object>> led() {
+        return of(line(1, 12, gridX(30), 12),
+                weight(line(gridX(30), gridY(-7), gridX(30), gridY(7)), W2),
+                weight(line(gridX(30), gridY(-7), gridX(42), 12), W2),
+                weight(line(gridX(30), gridY(7), gridX(42), 12), W2),
+                weight(line(gridX(42), gridY(-7), gridX(42), gridY(7)), W2),
+                line(gridX(36), gridY(-6), gridX(37), gridY(-11)),
+                line(gridX(37), gridY(-11), gridX(38.11), gridY(-9.34)),
+                line(gridX(37), gridY(-11), gridX(35.34), gridY(-9.9)),
+                line(gridX(39), gridY(-6), gridX(40), gridY(-11)),
+                line(gridX(40), gridY(-11), gridX(41.11), gridY(-9.34)),
+                line(gridX(40), gridY(-11), gridX(38.34), gridY(-9.9)));
+    }
+
+    /**
+     * dubbele wisselschakelaar (SVGSymbols 'schakelaar_wissel_dubbel'): wissel with two flags on each lever
+     */
+    static List<Map<String, Object>> wissel2() {
+        return of(line(1, 12, 11.5, 12),
+                line(11.5, 12, 15, 5),
+                line(15, 5, 16.75, 5.88),
+                line(14.3, 6.4, 16.05, 7.28),
+                line(11.5, 12, 8, 19),
+                line(8, 19, 6.25, 18.12),
+                line(8.7, 17.6, 6.95, 16.72),
+                paper(circle(11.5, 12, 1.75)));
+    }
+
+    /**
+     * rolluikschakelaar (SVGSymbols 'schakelaar_rolluik'): two levers up, flags outwards, a square with an S on the hinge
+     */
+    static List<Map<String, Object>> rolluik() {
+        return of(line(1, 12, 11.5, 12),
+                line(11.5, 12, 15, 5),
+                line(15, 5, 16.75, 5.88),
+                line(11.5, 12, 8, 5),
+                line(8, 5, 6.25, 5.88),
+                paper(rect(8.7, 9.2, 5.6, 5.6)),
+                bold(text(11.5, 14.1, "S", 5.6)));
+    }
+
+    /**
+     * bewegingsschakelaar (SVGSymbols 'bewegingsschakelaar'): detector box with a diagonal, a pulse symbol and PIR
+     */
+    static List<Map<String, Object>> bewegingsschakelaar() {
+        return of(line(1, 12, 8, 12),
+                rect(8, 7.45, 3.5, 9.1),
+                rect(11.5, 7.45, 10.5, 9.1),
+                line(11.5, 16.55, 22, 7.45),
+                line(13.25, 10.25, 15, 10.25),
+                line(15, 8.5, 15, 10.25),
+                line(15, 8.5, 16.75, 8.5),
+                bold(text(18.5, 15.8, "PIR", 3.5)));
+    }
+
+    /**
+     * modulaire schakelaars (SVGSymbols 'teleruptor', 'dimmer', 'relais', 'minuterie'): a 40 x 26 box like the thermostat; the time switch is klok()
+     */
+    static List<Map<String, Object>> teleruptor() {
+        return of(line(1, 12, 8, 12),
+                rect(8, 7.45, 14, 9.1),
+                line(10.8, 14.1, 13.6, 14.1),
+                line(16.4, 14.1, 19.2, 14.1),
+                line(13.6, 9.9, 13.6, 14.1),
+                line(16.4, 9.9, 16.4, 14.1));
+    }
+
+    static List<Map<String, Object>> dimmerModule() {
+        return of(line(1, 12, 8, 12),
+                rect(8, 7.45, 14, 9.1),
+                line(11.5, 13.75, 18.5, 13.75),
+                line(11.5, 13.75, 11.5, 10.25),
+                line(11.5, 10.25, 18.5, 13.75));
+    }
+
+    static List<Map<String, Object>> relais() {
+        return of(line(1, 12, 8, 12),
+                rect(8, 7.45, 14, 9.1),
+                line(11.5, 7.45, 18.5, 16.55));
+    }
+
+    static List<Map<String, Object>> minuterie() {
+        return of(line(1, 12, 8, 12),
+                rect(8, 7.45, 14, 9.1),
+                text(15, 14.1, "t", 5.6));
+    }
+
+    static List<Map<String, Object>> noodlicht() {
+        return of(line(1, 12, 11.15, 12),
+                paper(rect(7.44, 8.29, 7.43, 7.43)),
+                dot(11.15, 12, 1.75),
+                weight(line(8.7, 9.55, 13.6, 14.45), W2),
+                weight(line(8.7, 14.45, 13.6, 9.55), W2));
+    }
+
+    static List<Map<String, Object>> tl() {
+        return of(line(1, 12, 2.4, 12),
+                weight(line(2.4, 10.78, 2.4, 13.22), W2),
+                weight(line(23.4, 10.78, 23.4, 13.22), W2),
+                weight(line(2.4, 12, 23.4, 12), W2));
+    }
+
+    static List<Map<String, Object>> airco() {
+        return of(line(1, 12, 8, 12),
+                rect(8, 5, 14, 14),
+                line(9.75, 3.25, 9.75, 5),
+                line(20.25, 3.25, 20.25, 5),
+                line(9.75, 5, 12.38, 11.3),
+                line(20.25, 5, 17.62, 11.3),
+                line(12.38, 11.3, 15, 8.15),
+                line(17.62, 11.3, 15, 8.15),
+                line(15, 13.68, 13.95, 15.5),
+                line(13.95, 15.5, 16.05, 15.5),
+                line(16.05, 15.5, 15, 17.32),
+                line(15, 17.32, 15, 16.27),
+                line(15, 17.32, 15.91, 16.8));
+    }
+
+    /**
+     * lever of a circuit breaker (zekering_automatisch) with its pivot at (13, 14)
+     */
+    static List<Map<String, Object>> lever() {
+        return of(line(9.41, 4.13, 13, 14));
+    }
+
+    /**
+     * lever of a circuit breaker (zekering_automatisch) with the filled block at its end, pivot at (13, 14)
+     */
+    static List<Map<String, Object>> leverWithBlock() {
+        return of(line(9.41, 4.13, 13, 14),
+                filled(path("M8.09 4.61 L9.41 4.13 L10.61 7.42 L9.29 7.9 Z")));
+    }
+}

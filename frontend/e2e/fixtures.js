@@ -9,6 +9,10 @@ import {fileURLToPath} from 'node:url'
 import {test as base, expect} from '@playwright/test'
 import {REAL, testInfo} from './mode.js'
 
+// the requests to the REST API: only paths that start with /api/ (not the source modules under /src/api/ the Vite dev server serves)
+const API_REQUEST = (url) => url.pathname.startsWith('/api/')
+import {t} from './texts.js'
+
 export {REAL, testInfo}
 // the standard symbols of the backend catalog (generated from StandardSymbols.java), the same ones the unit tests use
 const standard = JSON.parse(readFileSync(fileURLToPath(new URL('../src/test/fixtures/standard-symbols.json', import.meta.url)), 'utf8'))
@@ -28,7 +32,7 @@ export class FakeBackend {
     info = {...testInfo} // GET /api/info: what the "test" profile of the real application says
 
     async install(page) {
-        await page.route('**/api/**', (route) => this.handle(route))
+        await page.route(API_REQUEST, (route) => this.handle(route))
     }
 
     async handle(route) {
@@ -119,7 +123,7 @@ class RealBackend {
         this.request = request
     }
     async install(page) {
-        await page.route('**/api/**', async (route) => {
+        await page.route(API_REQUEST, async (route) => {
             const req = route.request(),
                 path = new URL(req.url()).pathname
             if (path === '/api/info' && this.info) return route.fulfill({status: 200, contentType: 'application/json', body: JSON.stringify(this.info)})
@@ -200,6 +204,7 @@ export const test = base.extend({
     },
 })
 export {expect}
+export {t, textPattern} from './texts.js'
 
 export class App {
     constructor(page) {
@@ -211,11 +216,16 @@ export class App {
         // subscribe before navigating: the project is fetched right after the page has started
         const loaded = doc ? this.page.waitForResponse((r) => r.url().endsWith('/api/projects/' + id) && r.request().method() === 'GET') : null
         await this.page.goto('/')
-        await expect(this.page.getByRole('button', {name: 'Components'})).toBeVisible()
+        await expect(this.page.locator('#tab-comp')).toBeVisible()
         await loaded
     }
-    tab(name) {
-        return this.page.locator('.bar').getByRole('button', {name, exact: false}).first().click()
+    /** opens a tab of the top bar: 'een' (eendraadschema), 'sit' (situatieschema), 'comp' (componenten) or 'info' */
+    tab(id) {
+        return this.page.locator('#tab-' + id).click()
+    }
+    /** the message in the top bar */
+    status() {
+        return this.page.locator('#status-message')
     }
     /** opens (or closes again) the Project menu: Opslaan, Laden, Importeren, Exporteren */
     project() {
@@ -225,27 +235,36 @@ export class App {
     async load(id) {
         await this.project()
         await this.page.locator('#btn-load').click()
-        await this.page.getByRole('table', {name: 'Opgeslagen projecten'}).getByTitle('Laad project ' + id).click()
+        await this.page.locator('#project-load-' + id).click()
     }
     /** saves with Ctrl+S (works on every tab) and returns the saved project document */
-    async save(backend, id = 1) {
+    /** saves with Ctrl+S and answers what the backend stored; `language` = the language the application is in (the status message is checked) */
+    async save(backend, id = 1, language = 'nl') {
         // wait for the PUT itself: the "Opgeslagen ✓" message stays on screen after a first save, so on a second save it proves nothing
         const put = this.page.waitForResponse((r) => r.request().method() === 'PUT' && new RegExp('/api/projects/' + id + '(\\?|$)').test(r.url()))
         await this.page.keyboard.press('Control+s')
         await put
-        await expect(this.page.getByText('Opgeslagen ✓')).toBeVisible()
+        await expect(this.status()).toHaveText(t('app.saved', {}, language))
         return backend.saved(id)
     }
-    /** a row in the "Opbouw" list of the eendraadschema */
-    treeRow(label) {
-        return this.page.locator('.tree > div').filter({hasText: label}).first()
+    /** the row of the element with this id in the "Opbouw" list of the eendraadschema */
+    treeRowById(id) {
+        return this.page.locator('#eds-tree-' + id)
     }
-    /** adds an element from the component palette (left of the eendraadschema) to the schema */
-    async add(name) {
-        const search = this.page.getByPlaceholder('Zoek element…')
-        await search.fill(name)
-        await this.page.locator('.pal details button').filter({hasText: new RegExp('^\\s*' + name.replace(/[()]/g, '\\$&') + '\\s*$')}).first().click()
-        await search.fill('')
+    /** the row in the "Opbouw" list of the element that carries this label (a label the test typed, or a default label of the application) */
+    treeRow(label) {
+        return this.page.locator('#eds-tree > div').filter({has: this.page.locator('.tree-name', {hasText: new RegExp('^' + label.replace(/[()]/g, '\\$&') + '$')})}).first()
+    }
+    /** a symbol of the palette of the eendraadschema, by its symbol key */
+    paletteButton(key) {
+        return this.page.locator('#eds-palette-' + key.replace(/[^A-Za-z0-9_-]/g, '_'))
+    }
+    /** adds an element from the component palette (left of the eendraadschema) to the schema, by its symbol key */
+    async add(key) {
+        const button = this.paletteButton(key)
+        // the categories are folded: open the one of this symbol first
+        await button.evaluate((element) => (element.closest('details').open = true))
+        await button.click()
     }
     /** the drawn element (circuit letter or symbol) with this id in the schema */
     drawn(id) {

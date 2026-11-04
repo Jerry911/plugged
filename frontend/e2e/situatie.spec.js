@@ -2,10 +2,12 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // The situatieschema: drawing walls and rooms, placing doors, windows, symbols and text, selecting and editing, and the list of
 // components that are not placed yet. Everything is done with the real mouse on the drawing; the result is checked in the saved project.
-import {test, expect} from './fixtures.js'
+import {test, expect, t} from './fixtures.js'
 import {node, project, withCircuit} from './data.js'
 
-const tool = (page, name) => page.getByRole('button', {name, exact: true})
+const SIT_TOOLS = {Selecteer: 'select', Muur: 'wall', Kamer: 'room', Deur: 'door', Raam: 'window', Symbool: 'sym', Tekst: 'text', Wis: 'erase'}
+// a tool of the situatieschema by its Dutch name (the tests read like the user guide), found by its id
+const tool = (page, name) => page.locator('#sit-tool-' + SIT_TOOLS[name])
 const sit = async (app, backend) => (await app.save(backend)).sit[0]
 const wall = (id, x1, y1, x2, y2) => ({id, x1, y1, x2, y2})
 const withItems = (items, walls = [], base = withCircuit()) => ({...base, sit: [{id: 's1', name: 'Plattegrond 1', walls, items}]})
@@ -14,10 +16,10 @@ const everything = () => [placed('B', 200, 60), placed('S', 80, 60), placed('L',
 const placed = (id, x, y, extra = {}) => ({id: 'i' + id, kind: 'sym', node: id, x, y, r: 0, s: 7, ...extra})
 const goto = async (page, app, backend, doc) => {
     await app.open(backend, doc)
-    await app.tab('Situatieschema')
+    await app.tab('sit')
     await expect(tool(page, 'Selecteer')).toBeVisible()
 }
-const unplaced = (page) => page.getByText(/Nergens geplaatst \(\d+\)/)
+const unplaced = (page) => page.locator('#sit-unplaced-title')
 
 test.describe('walls and rooms', () => {
     test('walls are drawn as a chain; clicking the last point again stops; right click goes back to Selecteer', async ({page, app, backend}) => {
@@ -69,7 +71,7 @@ test.describe('walls and rooms', () => {
         await tool(page, 'Muur').click()
         await app.clickSheet(40, 40)
         await app.moveSheet(120, 40)
-        const input = page.getByPlaceholder('bv. 3,5 of 350cm')
+        const input = page.locator('#sit-dimension-input')
         await expect(input).toBeVisible()
         await input.fill('3,5')
         await input.press('Enter')
@@ -87,7 +89,7 @@ test.describe('walls and rooms', () => {
         await tool(page, 'Kamer').click()
         await app.clickSheet(40, 40)
         await app.moveSheet(150, 110)
-        const input = page.getByPlaceholder('bv. 4x3,5 (m)')
+        const input = page.locator('#sit-dimension-input')
         await input.fill('4x3')
         await input.press('Enter')
         const s = await sit(app, backend)
@@ -101,15 +103,15 @@ test.describe('walls and rooms', () => {
         await goto(page, app, backend, project({sit: [{id: 's1', name: 'P', walls: [wall('w', 40, 40, 140, 40)], items: []}]}))
         const sheet = page.locator('svg.sheet').first()
         await expect(sheet).toContainText('5,00 m') // 100 mm at 1:50
-        await page.getByTitle('Maten tonen/verbergen').click()
+        await page.locator('#sit-toggle-lengths').click()
         await expect(sheet).not.toContainText('5,00 m')
-        await page.getByTitle('Maten tonen/verbergen').click()
+        await page.locator('#sit-toggle-lengths').click()
         await expect(sheet).toContainText('5,00 m')
     })
     test('the length of a wall can be typed in the inspector', async ({page, app, backend}) => {
         await goto(page, app, backend, project({sit: [{id: 's1', name: 'P', walls: [wall('w', 40, 40, 140, 40)], items: []}]}))
         await app.clickSheet(90, 40)
-        const len = page.getByLabel(/Lengte/)
+        const len = page.locator('#sit-wall-length')
         await expect(len).toHaveValue('5,00 m')
         await len.fill('3')
         await len.press('Enter')
@@ -161,10 +163,10 @@ test.describe('doors, windows, symbols and text', () => {
         const list = page.locator('.compbtn[id^="comp-"]')
         const all = await list.count()
         expect(all).toBeGreaterThan(10)
-        await page.getByLabel('Zoek component').fill('oven')
+        await page.locator('#comp-filter').fill('oven')
         expect(await list.count()).toBeLessThan(all)
         expect(await list.count()).toBeGreaterThan(0)
-        await page.getByLabel('Zoek component').fill('zzzz')
+        await page.locator('#comp-filter').fill('zzzz')
         await expect(list).toHaveCount(0)
     })
 })
@@ -173,25 +175,25 @@ test.describe('components of the eendraadschema that are not placed yet', () => 
     test('they are listed with their marking; clicking one places it and removes it from the list', async ({page, app, backend}) => {
         await goto(page, app, backend, withCircuit())
         await expect(unplaced(page)).toContainText('(3)')
-        await expect(page.getByTitle('Niet geplaatst op situatieschema').first()).toBeVisible() // the badge on the tab
+        await expect(page.locator('#tab-sit-unplaced').first()).toBeVisible() // the badge on the tab
         await page.locator('#unplaced-S').click()
         await expect(unplaced(page)).toContainText('(2)')
         await page.locator('#unplaced-L').click()
         await page.locator('#unplaced-B').click()
-        await expect(page.getByText('✓ Alle componenten geplaatst')).toBeVisible()
+        await expect(page.locator('#sit-all-placed')).toBeVisible()
         const s = await sit(app, backend)
         expect(s.items.map((i) => i.node).sort()).toEqual(['B', 'L', 'S'])
         expect(new Set(s.items.map((i) => i.x + ',' + i.y)).size).toBe(3) // successive clicks do not stack them on one spot
     })
     test('"Plaats ontbrekende op dit blad" places them all', async ({page, app, backend}) => {
         await goto(page, app, backend, withCircuit())
-        await page.getByText('Plaats ontbrekende op dit blad').click()
-        await expect(page.getByText('✓ Alle componenten geplaatst')).toBeVisible()
+        await page.locator('#sit-place-all').click()
+        await expect(page.locator('#sit-all-placed')).toBeVisible()
         expect((await sit(app, backend)).items.map((i) => i.node).sort()).toEqual(['B', 'L', 'S'])
     })
     test('deleting a placed symbol puts it back in the list', async ({page, app, backend}) => {
         await goto(page, app, backend, withItems(everything()))
-        await expect(page.getByText('✓ Alle componenten geplaatst')).toBeVisible()
+        await expect(page.locator('#sit-all-placed')).toBeVisible()
         await app.clickSheet(80, 60)
         await page.keyboard.press('Delete')
         await expect(unplaced(page)).toContainText('(1)')
@@ -212,7 +214,7 @@ test.describe('components of the eendraadschema that are not placed yet', () => 
         // the choice is part of the project: it survives saving and reloading
         await app.save(backend)
         await page.reload()
-        await app.tab('Situatieschema')
+        await app.tab('sit')
         await expect(page.locator('#unplaced-S')).toHaveCount(0)
         await page.locator('#toggle-hidden').click()
         await page.locator('#unhide-S').click()
@@ -222,18 +224,18 @@ test.describe('components of the eendraadschema that are not placed yet', () => 
     test('"Plaats ontbrekende" skips hidden components; hiding everything shows the all-placed message', async ({page, app, backend}) => {
         await goto(page, app, backend, withCircuit())
         await page.locator('#hide-S').click()
-        await page.getByText('Plaats ontbrekende op dit blad').click()
+        await page.locator('#sit-place-all').click()
         expect((await sit(app, backend)).items.map((i) => i.node).sort()).toEqual(['B', 'L'])
-        await expect(page.getByText('✓ Alle componenten geplaatst')).toBeVisible()
+        await expect(page.locator('#sit-all-placed')).toBeVisible()
     })
     test('the panel can be collapsed so the drawing grows', async ({page, app, backend}) => {
         await goto(page, app, backend, withCircuit())
         const sheet = page.locator('svg.sheet').first()
         const before = (await sheet.boundingBox()).width
-        await page.getByLabel('Nergens geplaatst inklappen').click()
-        await expect(page.getByLabel('Nergens geplaatst openen')).toBeVisible()
+        await page.locator('#sit-unplaced-toggle').click()
+        await expect(page.locator('#sit-unplaced-toggle')).toBeVisible()
         await expect.poll(async () => (await sheet.boundingBox()).width).toBeGreaterThan(before)
-        await page.getByLabel('Nergens geplaatst openen').click()
+        await page.locator('#sit-unplaced-toggle').click()
         await expect(unplaced(page)).toBeVisible()
     })
 })
@@ -243,7 +245,7 @@ test.describe('selecting and editing items', () => {
     test('clicking an item selects it; dragging moves it; arrow keys, R and Delete work', async ({page, app, backend}) => {
         await goto(page, app, backend, one())
         await app.clickSheet(100, 100)
-        await expect(page.getByText('Geselecteerd: sym')).toBeVisible()
+        await expect(page.locator('#sit-props-title', {hasText: t('situation.selected', {kind: t('situation.kinds.sym')})})).toBeVisible()
         await app.dragSheet([100, 100], [130, 120])
         let it = (await sit(app, backend)).items[0]
         expect(it.x).toBeGreaterThan(115)
@@ -261,29 +263,29 @@ test.describe('selecting and editing items', () => {
     test('the inspector rotates, resizes, duplicates and deletes the selected item', async ({page, app, backend}) => {
         await goto(page, app, backend, one())
         await app.clickSheet(100, 100)
-        await page.getByText('⟳90°').click()
-        await page.locator('input[type=range]').fill('12')
-        await page.locator('.warn', {hasText: 'Geselecteerd'}).getByText('⧉').click()
+        await page.locator('#sit-rotate-90').click()
+        await page.locator('#sit-size').fill('12')
+        await page.locator('#sit-duplicate').click()
         let s = await sit(app, backend)
         expect(s.items).toHaveLength(2)
         expect(s.items[0]).toMatchObject({r: 90, s: 12})
-        await page.getByRole('button', {name: 'Verwijder selectie'}).click()
+        await page.locator('#sit-delete-selection').click()
         s = await sit(app, backend)
         expect(s.items).toHaveLength(1)
-        await expect(page.getByText(/Geselecteerd/)).toHaveCount(0)
+        await expect(page.locator('#sit-props')).toHaveCount(0)
     })
     test('clicking an empty spot clears the selection', async ({page, app, backend}) => {
         await goto(page, app, backend, one())
         await app.clickSheet(100, 100)
-        await expect(page.getByText('Geselecteerd: sym')).toBeVisible()
+        await expect(page.locator('#sit-props-title', {hasText: t('situation.selected', {kind: t('situation.kinds.sym')})})).toBeVisible()
         await app.clickSheet(200, 60)
-        await expect(page.getByText(/Geselecteerd/)).toHaveCount(0)
+        await expect(page.locator('#sit-props')).toHaveCount(0)
     })
     test('dragging a box selects everything it touches; Shift adds; a group moves and is deleted together', async ({page, app, backend}) => {
         const doc = withItems([placed('S', 60, 60), placed('L', 100, 60)], [wall('w', 200, 150, 260, 150)])
         await goto(page, app, backend, doc)
         await app.dragSheet([40, 40], [120, 90])
-        await expect(page.getByText(/2 elementen geselecteerd/)).toBeVisible()
+        await expect(page.locator('#sit-multi-title', {hasText: t('situation.multipleSelected', {count: 2})})).toBeVisible()
         await app.dragSheet([60, 60], [60, 80])
         const s = await sit(app, backend)
         expect(s.items[0].y).toBeGreaterThan(70)
@@ -298,11 +300,11 @@ test.describe('selecting and editing items', () => {
         await page.keyboard.down('Shift')
         await app.clickSheet(120, 60)
         await page.keyboard.up('Shift')
-        await expect(page.getByText(/2 elementen geselecteerd/)).toBeVisible()
+        await expect(page.locator('#sit-multi-title', {hasText: t('situation.multipleSelected', {count: 2})})).toBeVisible()
         await page.keyboard.down('Shift')
         await app.clickSheet(120, 60)
         await page.keyboard.up('Shift')
-        await expect(page.getByText('Geselecteerd: sym')).toBeVisible()
+        await expect(page.locator('#sit-props-title', {hasText: t('situation.selected', {kind: t('situation.kinds.sym')})})).toBeVisible()
     })
     test('the Wis tool erases walls and items', async ({page, app, backend}) => {
         await goto(page, app, backend, withItems([placed('S', 100, 100)], [wall('w', 40, 40, 140, 40)]))
@@ -316,7 +318,7 @@ test.describe('selecting and editing items', () => {
     test('a wall can be selected, its end point dragged and deleted', async ({page, app, backend}) => {
         await goto(page, app, backend, project({sit: [{id: 's1', name: 'P', walls: [wall('w', 40, 40, 140, 40)], items: []}]}))
         await app.clickSheet(90, 40)
-        await expect(page.getByLabel(/Lengte/)).toBeVisible()
+        await expect(page.locator('#sit-wall-length')).toBeVisible()
         await app.dragSheet([140, 40], [140, 90])
         const w = (await sit(app, backend)).walls[0]
         expect(w.y2).toBeGreaterThan(80)
@@ -327,9 +329,9 @@ test.describe('selecting and editing items', () => {
     test('a door can be flipped in the inspector', async ({page, app, backend}) => {
         await goto(page, app, backend, project({sit: [{id: 's1', name: 'P', walls: [wall('w', 40, 40, 140, 40)], items: [{id: 'd', kind: 'door', x: 90, y: 40, r: 0, a: 30}]}]}))
         await app.clickSheet(90, 40)
-        await expect(page.getByText('Geselecteerd: door')).toBeVisible()
+        await expect(page.locator('#sit-props-title', {hasText: t('situation.selected', {kind: t('situation.kinds.door')})})).toBeVisible()
         const before = (await sit(app, backend)).items[0]
-        await page.getByRole('button', {name: /spiegel|Spiegel|⇄|Draai om/}).first().click()
+        await page.locator('#sit-mirror').click()
         const after = (await sit(app, backend)).items[0]
         expect(JSON.stringify(after)).not.toBe(JSON.stringify(before))
     })
@@ -354,7 +356,7 @@ test.describe('placed symbols follow the eendraadschema', () => {
         await page.locator('#sym-waterproof').check()
         const saved = await app.save(backend)
         expect(saved.een[0].tree[0].children[0].children[0].children[0].p.h).toBe(true)
-        await app.tab('Eendraadschema')
+        await app.tab('een')
         await app.treeRow('Keuken stopcontact').click()
         await expect(page.locator('#eds-waterproof')).toBeChecked()
     })
@@ -372,7 +374,7 @@ test.describe('placed symbols follow the eendraadschema', () => {
         await goto(page, app, backend, single)
         const a = await page.locator('svg.sheet g[style*="move"]').first().innerHTML()
         await app.open(backend, double)
-        await app.tab('Situatieschema')
+        await app.tab('sit')
         const b = await page.locator('svg.sheet g[style*="move"]').first().innerHTML()
         expect(b).not.toBe(a)
     })
@@ -381,19 +383,18 @@ test.describe('placed symbols follow the eendraadschema', () => {
 test.describe('the drawing area', () => {
     test('zoom buttons in the drawing', async ({page, app, backend}) => {
         await goto(page, app, backend, project())
-        const zoom = page.locator('.zoomctl').first()
         const sheet = page.locator('svg.sheet').first()
         const w0 = (await sheet.boundingBox()).width
-        await zoom.getByTitle('Inzoomen').click()
+        await page.locator('#sit-zoom-in').click()
         await expect.poll(async () => (await sheet.boundingBox()).width).toBeGreaterThan(w0)
-        await zoom.getByTitle(/Zoom terugzetten/).click()
-        await expect(zoom.getByTitle(/Zoom terugzetten/)).toHaveText('100%')
-        await zoom.getByTitle('Uitzoomen').click()
+        await page.locator('#sit-zoom-reset').click()
+        await expect(page.locator('#sit-zoom-reset')).toHaveText('100%')
+        await page.locator('#sit-zoom-out').click()
         await expect.poll(async () => (await sheet.boundingBox()).width).toBeLessThan(w0)
     })
     test('drawing still works while zoomed in', async ({page, app, backend}) => {
         await goto(page, app, backend, project())
-        await page.locator('.zoomctl').first().getByTitle('Inzoomen').click()
+        await page.locator('#sit-zoom-in').click()
         await tool(page, 'Kamer').click()
         await app.clickSheet(40, 40)
         await app.clickSheet(100, 80)
@@ -401,7 +402,7 @@ test.describe('the drawing area', () => {
     })
     test('grid snapping is on by default; "Vrij tekenen" turns it off', async ({page, app, backend}) => {
         await goto(page, app, backend, project())
-        const free = page.getByLabel('Vrij tekenen')
+        const free = page.locator('#sit-free-drawing')
         await expect(free).not.toBeChecked()
         await tool(page, 'Muur').click()
         await app.clickSheet(41.3, 40.2)

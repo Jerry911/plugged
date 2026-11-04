@@ -35,11 +35,13 @@ export default defineConfig({
     use: {
         baseURL: `http://localhost:${port}`,
         viewport: {width: 1500, height: 1000},
+        // the application picks its language from the browser: the tests start in Dutch (i18n.spec.js switches the language itself)
+        locale: 'nl-BE',
         acceptDownloads: true,
         trace: 'on-first-retry',
         screenshot: 'only-on-failure',
     },
-    projects: [{name: 'chromium', use: {...devices['Desktop Chrome'], viewport: {width: 1500, height: 1000}}}],
+    projects: [{name: 'chromium', use: {...devices['Desktop Chrome'], viewport: {width: 1500, height: 1000}, locale: 'nl-BE'}}],
     webServer: REAL
         ? {
               command: `"${java}" -jar "${jar}" --server.port=${port} --spring.profiles.active=test --spring.config.additional-location=optional:file:./e2e/`,

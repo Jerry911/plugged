@@ -87,3 +87,10 @@
     border: 1px solid #888;
     background: #fafafa
 }
+/* language picker in the top bar */
+.bar .langsel {
+    font: inherit;
+    padding: 3px 4px;
+    margin-right: 4px;
+    border-radius: 4px;
+}

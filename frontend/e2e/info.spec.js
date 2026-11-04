@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // The Info tab (about, how to, faq, contact, donate) and the combined import / export buttons of the top bar.
 import {readFileSync} from 'node:fs'
-import {test, expect, testInfo} from './fixtures.js'
+import {test, expect, testInfo, t} from './fixtures.js'
 import {edsFile, project, withCircuit} from './data.js'
 
 test.describe('Info page', () => {
@@ -10,7 +10,7 @@ test.describe('Info page', () => {
         await app.open(backend)
         await page.locator('#tab-info').click()
         await expect(page.locator('#info-page')).toBeVisible()
-        await expect(page.getByRole('heading', {name: 'Hoe gebruik je Plugged?'})).toBeVisible()
+        await expect(page.locator('#info-gebruik h2')).toBeVisible()
         await page.locator('#tab-een').click()
         await expect(page.locator('#info-page')).toHaveCount(0)
         await expect(page.locator('svg.sheet').first()).toBeVisible()
@@ -45,7 +45,7 @@ test.describe('Info page', () => {
         await page.locator('#contact-send').click()
         const [href] = await page.evaluate(() => window.__mailto)
         expect(href).toBe(`mailto:${testInfo.contactEmail}?subject=Plugged%20-%20Jan&body=Dit%20is%20een%20testbericht%0A%0AJan`)
-        await expect(page.locator('#contact-hint')).toContainText('zou nu moeten openen')
+        await expect(page.locator('#contact-hint')).toContainText(t('info.contact.opened'))
         await expect(page.locator('#contact-address')).toHaveAttribute('href', 'mailto:' + testInfo.contactEmail)
         expect(posted).toEqual([])
     })
@@ -64,14 +64,14 @@ test.describe('import and export buttons', () => {
         await app.open(backend, withCircuit({footer: {titel: 'Villa'}}))
         await app.project()
         await page.locator('#btn-export').click()
-        await expect(page.getByRole('dialog', {name: 'Exporteren'})).toBeVisible()
+        await expect(page.locator('#export-dialog')).toBeVisible()
         await expect(page.locator('#export-type-json')).toBeChecked()
         await page.locator('#export-type-eds').check()
         const [download] = await Promise.all([page.waitForEvent('download'), page.locator('#export-confirm').click()])
         expect(download.suggestedFilename()).toBe('Villa.eds')
         expect(readFileSync(await download.path(), 'utf8').startsWith('EDS')).toBe(true)
-        await expect(page.getByRole('dialog', {name: 'Exporteren'})).toHaveCount(0)
-        await expect(page.getByText(/EDS geëxporteerd/)).toBeVisible()
+        await expect(page.locator('#export-dialog')).toHaveCount(0)
+        await expect(page.locator('#status-message', {hasText: t('app.edsExported', {circuits: 0, nodes: 0}).split(':')[0]})).toBeVisible()
     })
     test('the default choice is the project file; Escape closes the dialog without a download', async ({page, app, backend}) => {
         await app.open(backend, withCircuit({footer: {titel: 'Villa'}}))
@@ -82,15 +82,15 @@ test.describe('import and export buttons', () => {
         await app.project()
         await page.locator('#btn-export').click()
         await page.keyboard.press('Escape')
-        await expect(page.getByRole('dialog', {name: 'Exporteren'})).toHaveCount(0)
+        await expect(page.locator('#export-dialog')).toHaveCount(0)
     })
     test('one Importeren button takes both json and eds files', async ({page, app, backend}) => {
         await app.open(backend)
         await expect(page.locator('#import-input')).toHaveAttribute('accept', '.json,.eds')
         await page.locator('#import-input').setInputFiles({name: 'huis.eds', mimeType: 'application/octet-stream', buffer: Buffer.from(edsFile())})
-        await expect(page.getByText(/EDS geïmporteerd/)).toBeVisible()
+        await expect(page.locator('#status-message', {hasText: t('app.edsImported', {circuits: 1, nodes: 5}).split(':')[0]})).toBeVisible()
         await page.locator('#import-input').setInputFiles({name: 'p.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(project({footer: {titel: 'Uit json'}})))})
-        await expect(page.getByText('Project geïmporteerd')).toBeVisible()
+        await expect(page.locator('#status-message', {hasText: t('app.projectImported')})).toBeVisible()
     })
     test('Importeren opens the file chooser', async ({page, app, backend}) => {
         await app.open(backend)
@@ -101,6 +101,6 @@ test.describe('import and export buttons', () => {
     test('an invalid project file is refused with a message', async ({page, app, backend, dialogs}) => {
         await app.open(backend)
         await page.locator('#import-input').setInputFiles({name: 'kapot.json', mimeType: 'application/json', buffer: Buffer.from('geen json')})
-        await expect.poll(() => dialogs.messages.at(-1)).toBe('Dit is geen geldig projectbestand (.json).')
+        await expect.poll(() => dialogs.messages.at(-1)).toBe(t('app.invalidProjectFile'))
     })
 })

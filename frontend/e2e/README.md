@@ -72,7 +72,11 @@ original back afterwards (`backend.resetStandard`), because the application keep
 | `components.spec.js` | the symbol editor, and a new component used in both schemas |
 | `import-export.spec.js` | PDF, printing, `.eds` import |
 | `info.spec.js` | the Info tab (FAQ, donate button, contact form that opens the mail program) and the Importeren / Exporteren buttons |
+| `tour.spec.js` | the guided tour, step by step, and its cards in small windows |
+| `i18n.spec.js` | switching between Dutch, French and English, the language of the browser, `Accept-Language` on the requests |
 | `api.spec.js` | contract of the REST API (real backend only) |
 
 `mode.js` decides between the fake and the real backend and reads `application-test.properties`; `fixtures.js` has the fake and the real backend, the dialog handling (`alert`/`confirm`/`prompt`) and the helpers for the drawing sheets;
-`data.js` has the project documents the tests start from.
+`data.js` has the project documents the tests start from; `texts.js` gives the texts of the application (`t('app.saved')`).
+
+The tests find elements by id (`page.locator('#eds-delete')`, `app.paletteButton('stopcontact')`, `app.treeRowById('K1')`), not by their text; a text is only checked against the dictionary with `t()`. See "Test conventions" in the main README.

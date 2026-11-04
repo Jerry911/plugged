@@ -200,7 +200,8 @@ export default function SymbolEditor({library, onSave, onRemove, onRestore, onRe
                 setSelected([])
                 boxRef.current = null
                 setBox(null)
-                if (moveRef.current) setDraft((current) => ({...current, shapes: moveRef.current.originals})) // cancels a drag
+                const originals = moveRef.current?.originals // (read now: the updater below runs after the ref is cleared)
+                if (originals) setDraft((current) => ({...current, shapes: originals})) // cancels a drag
                 moveRef.current = null
                 setMoving(false)
             } else if ((event.key === 'Delete' || event.key === 'Backspace') && selected.length && !/^(INPUT|TEXTAREA|SELECT)$/.test(event.target.tagName)) {

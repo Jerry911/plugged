@@ -280,8 +280,9 @@ test('standard symbols are drawn like the eendraadschema: the same weights, fill
     expect(find('omvormer', (h) => h.t === 'path')).toHaveLength(1) // the sine wave
     expect(find('stopcontact', (h) => h.t === 'arc')[0].sw).toBe(1.5)
     expect(find('kring', (h) => h.t === 'path')[0]).toMatchObject({f: 1}) // the block on the lever
-    // paths never hide the connection point: connectionReach only follows the line, circle, rect and arc that cross the centre line
-    expect(connectionReach([{t: 'path', d: 'M0 12 L24 12'}])).toBeNull()
+    // a path touches the connection line like any other shape (a bell made of arcs needs it); one that stays off the line does not count
+    expect(connectionReach([{t: 'path', d: 'M0 12 L24 12'}])).toEqual([0, 24])
+    expect(connectionReach([{t: 'path', d: 'M0 3 L24 3'}])).toBeNull()
 })
 test('there is no waterproof socket symbol: waterproof is a property that draws the little h next to any socket', () => {
     expect(typeOf({}, 'stopcontact_h').k).toBe('?')

@@ -18,7 +18,7 @@ import java.util.Map;
  * or simply run this class from the IDE (working directory: backend).
  */
 public final class StandardSymbolsJson {
-    public static final String FIXTURE = "../frontend/src/test/fixtures/standard-symbols.json";
+    public static final String FIXTURE = "frontend/src/test/fixtures/standard-symbols.json";
 
     private StandardSymbolsJson() {
     }

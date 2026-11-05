@@ -11,6 +11,7 @@ import com.pleysje.plugged.i18n.LocalizedStatusException;
 import com.pleysje.plugged.repository.ProjectRepository;
 import com.pleysje.plugged.repository.UserGroupRepository;
 import com.pleysje.plugged.repository.UserRepository;
+import com.pleysje.plugged.security.UserService;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
@@ -27,10 +28,13 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * Who may do what with a project:
  * <ul>
- *   <li>see, open and save it: its owner, the members of a group it is shared with, and administrators;</li>
- *   <li>delete it and choose the groups it is shared with: its owner and administrators. An owner shares only with his own groups;
- *       an administrator with any group.</li>
+ *   <li>see, open and save it: its owner, the members of a group it is shared with, and the primary administrator (the Hoofdbeheerder,
+ *       plugged.admin.email), who sees the projects of everyone;</li>
+ *   <li>delete it and choose the groups it is shared with: its owner and the primary administrator. An owner shares only with his own
+ *       groups; an administrator with any group.</li>
  * </ul>
+ * Other administrators manage users, groups and symbols, but for projects they are users like any other: their own projects and those
+ * shared with their groups.
  * A project the user may not see answers 404, as if it did not exist: project numbers of others are not given away. New projects get the
  * next free number from the server ({@link #create}), so two users never pick the same one.
  */
@@ -41,11 +45,18 @@ public class ProjectService {
     private final ProjectRepository projects;
     private final UserRepository users;
     private final UserGroupRepository groups;
+    private final UserService userService;
 
-    public ProjectService(ProjectRepository projects, UserRepository users, UserGroupRepository groups) {
+    public ProjectService(ProjectRepository projects, UserRepository users, UserGroupRepository groups, UserService userService) {
         this.projects = projects;
         this.users = users;
         this.groups = groups;
+        this.userService = userService;
+    }
+
+    /** Does the user see and manage the projects of everyone? Only the primary administrator (the Hoofdbeheerder). */
+    private boolean seesAll(AppUser user) {
+        return userService.isPrimaryAdmin(user);
     }
 
     /** The signed-in user (401 when the account is gone). */
@@ -61,8 +72,8 @@ public class ProjectService {
         return user.getId().equals(project.getOwnerId());
     }
 
-    private static boolean canManage(AppUser user, ProjectDoc project) {
-        return user.isAdmin() || owns(user, project);
+    private boolean canManage(AppUser user, ProjectDoc project) {
+        return seesAll(user) || owns(user, project);
     }
 
     private boolean canOpen(AppUser user, ProjectDoc project) {
@@ -78,11 +89,11 @@ public class ProjectService {
         return project;
     }
 
-    /** The projects the user may see (an administrator: all of them), with owner and groups. */
+    /** The projects the user may see (the primary administrator: all of them), with owner and groups. */
     @Transactional(readOnly = true)
     public List<ProjectSummary> summaries(long userId) {
         AppUser user = user(userId);
-        List<ProjectRow> rows = user.isAdmin() ? projects.rows() : projects.rowsVisibleTo(user.getId());
+        List<ProjectRow> rows = seesAll(user) ? projects.rows() : projects.rowsVisibleTo(user.getId());
         Map<Long, List<ProjectSummary.Ref>> sharedWith = new HashMap<>();
         if (!rows.isEmpty())
             for (Object[] link : projects.groupsOf(rows.stream().map(ProjectRow::id).toList()))
@@ -93,7 +104,7 @@ public class ProjectService {
         return rows.stream().map(row -> {
             boolean mine = user.getId().equals(row.ownerId());
             return new ProjectSummary(row.id(), row.name(), row.updated(), owners.get(row.ownerId()), sharedWith.getOrDefault(row.id(), List.of()),
-                    mine, mine || user.isAdmin());
+                    mine, mine || seesAll(user));
         }).toList();
     }
 

@@ -857,7 +857,7 @@ export default {
         groups: 'Groupes',
         statusPrimary: 'Administrateur principal',
         makeAdmin: 'Nommer administrateur',
-        makeAdminTitle: 'Un administrateur voit tous les projets et gère les utilisateurs et les groupes',
+        makeAdminTitle: 'Un administrateur gère les utilisateurs, les groupes et les symboles ; seul l’administrateur principal voit les projets de tous',
         makeUser: 'Rendre utilisateur ordinaire',
         makeUserTitle: 'Retirer le rôle d’administrateur',
         madeAdmin: '{name} est maintenant administrateur.',

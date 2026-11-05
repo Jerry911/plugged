@@ -26,7 +26,8 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@SpringBootTest
+// admin@example.be is the primary administrator (the Hoofdbeheerder); "Beheer" is an administrator as well, but not the primary one
+@SpringBootTest(properties = "plugged.admin.email=admin@example.be")
 @AutoConfigureMockMvc
 class ProjectControllerTest {
     @Autowired
@@ -38,7 +39,7 @@ class ProjectControllerTest {
     @Autowired
     UserGroupRepository groups;
 
-    AppUser alice, bob, carol, admin;
+    AppUser alice, bob, carol, admin, otherAdmin;
 
     @BeforeEach
     void clean() {
@@ -47,6 +48,7 @@ class ProjectControllerTest {
         bob = account(users, "Bob", false);
         carol = account(users, "Carol", false);
         admin = account(users, "Admin", true);
+        otherAdmin = account(users, "Beheer", true);
     }
 
     private ResultActions putProject(AppUser user, long id, String json) throws Exception {
@@ -192,6 +194,29 @@ class ProjectControllerTest {
         share(alice, id, mine.getId(), other.getId()).andExpect(status().isOk()).andExpect(jsonPath("$.groups", hasSize(2)));
         share(alice, id, mine.getId()).andExpect(status().isOk()).andExpect(jsonPath("$.groups[*].name", contains("Ander team", "Mijn team")));
         mvc.perform(get("/api/projects/" + id).with(as(carol))).andExpect(status().isOk());
+    }
+
+    @Test
+    void anotherAdministratorSeesOnlyHisOwnProjectsAndThoseSharedWithHisGroups() throws Exception {
+        long secret = create(alice, "{\"v\":1}"),
+                shared = create(bob, "{\"v\":2}"),
+                own = create(otherAdmin, "{\"v\":3}");
+        UserGroup team = group("Team", bob, otherAdmin);
+        share(bob, shared, team.getId()).andExpect(status().isOk());
+        mvc.perform(get("/api/projects/summaries").with(as(otherAdmin)))
+                .andExpect(jsonPath("$[*].id", containsInAnyOrder((int) shared, (int) own)))
+                .andExpect(jsonPath("$[?(@.id == " + shared + ")].canManage", contains(false)));
+        // a project of someone else that is not shared with him does not exist for him: not to open, save, delete or share
+        mvc.perform(get("/api/projects/" + secret).with(as(otherAdmin))).andExpect(status().isNotFound());
+        putProject(otherAdmin, secret, "{\"v\":9}").andExpect(status().isNotFound());
+        mvc.perform(delete("/api/projects/" + secret).with(as(otherAdmin))).andExpect(status().isNotFound());
+        share(otherAdmin, secret, team.getId()).andExpect(status().isNotFound());
+        mvc.perform(get("/api/projects/" + secret).with(as(alice))).andExpect(jsonPath("$.v", is(1)));
+        // the shared one he opens and saves (like any member), but only the owner deletes or shares it
+        putProject(otherAdmin, shared, "{\"v\":5}").andExpect(status().isNoContent());
+        mvc.perform(delete("/api/projects/" + shared).with(as(otherAdmin))).andExpect(status().isForbidden());
+        // the Hoofdbeheerder sees all three
+        mvc.perform(get("/api/projects/summaries").with(as(admin))).andExpect(jsonPath("$[*].id", containsInAnyOrder((int) secret, (int) shared, (int) own)));
     }
 
     @Test

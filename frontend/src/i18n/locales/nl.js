@@ -861,7 +861,7 @@ export default {
         groups: 'Groepen',
         statusPrimary: 'Hoofdbeheerder',
         makeAdmin: 'Maak beheerder',
-        makeAdminTitle: 'Een beheerder kan alle projecten zien en gebruikers en groepen beheren',
+        makeAdminTitle: 'Een beheerder beheert gebruikers, groepen en symbolen; alle projecten van iedereen ziet alleen de hoofdbeheerder',
         makeUser: 'Maak gewone gebruiker',
         makeUserTitle: 'Neem de rol van beheerder weer af',
         madeAdmin: '{name} is nu beheerder.',

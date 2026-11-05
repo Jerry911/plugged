@@ -1,7 +1,7 @@
 // Copyright 2026 Pleysier Jeroen
 // SPDX-License-Identifier: AGPL-3.0-only
 // The eendraadschema tab: the palette, the Eigenschappen panel and the Opbouw list on the left, the drawn sheets of the page on the right.
-import {useEffect, useRef, useState} from 'react'
+import {useEffect, useLayoutEffect, useRef, useState} from 'react'
 import {allTypes, EMPTY_TYPE, symbolName, typeOf} from '../../symbols/symbolLibrary.js'
 import {circuitInfo, defaultProperties, nextCircuitLetter, sheetPlan} from '../../model/boardLayout.js'
 import {
@@ -57,6 +57,45 @@ function centerInView(element) {
     scrollBy({top: elementBox.top + elementBox.height / 2 - visibleMiddle, behavior: 'smooth'})
 }
 
+// room (px) kept above a zoomed sheet that is scrolled to the top of the screen
+const ZOOM_TOP_MARGIN = 10
+
+/**
+ * Where the zoom of a sheet is aimed at: the middle of the part of the sheet that is on the screen, as fractions of the drawing (fx, fy), and
+ * where that point is on the screen (y). The drawing is the first child of the scroll pane of the sheet.
+ */
+export function zoomAnchorOf(sheetElement) {
+    const content = sheetElement?.querySelector('.zoomscroll')?.firstElementChild
+    if (!content) return null
+    const pane = content.parentElement.getBoundingClientRect(),
+        box = content.getBoundingClientRect(),
+        top = Math.max(pane.top, 0),
+        bottom = Math.min(pane.bottom, innerHeight),
+        x = (pane.left + pane.right) / 2,
+        y = bottom > top ? (top + bottom) / 2 : (pane.top + pane.bottom) / 2,
+        fraction = (value, start, size) => (size > 0 ? Math.min(1, Math.max(0, (value - start) / size)) : 0.5)
+    return {fx: fraction(x, box.left, box.width), fy: fraction(y, box.top, box.height), y}
+}
+
+/**
+ * After a zoom: keeps the sheet that was zoomed on the screen. Zoomed in, the sheet is scrolled to the top of the screen (its pane is as high as
+ * the screen, so exactly one sheet is visible) and its pane scrolls so that the point that was in the middle is in the middle again; at 100% or
+ * less the same point stays where it was on the screen.
+ */
+export function keepZoomAnchor(sheetElement, anchor, zoom) {
+    const pane = sheetElement?.querySelector('.zoomscroll'),
+        content = pane?.firstElementChild
+    if (!content || !anchor) return
+    if (zoom > 1) {
+        scrollBy({top: sheetElement.getBoundingClientRect().top - ZOOM_TOP_MARGIN, behavior: 'instant'})
+        pane.scrollLeft = anchor.fx * content.scrollWidth - pane.clientWidth / 2
+        pane.scrollTop = anchor.fy * content.scrollHeight - pane.clientHeight / 2
+        return
+    }
+    const box = content.getBoundingClientRect()
+    scrollBy({top: box.top + anchor.fy * box.height - anchor.y, behavior: 'instant'})
+}
+
 /**
  * pageIndex = the eendraadschema page that is shown. focus = {id} of an element to select and scroll to (e.g. from a check message),
  * onFocused() is called once it is handled. onFooter(field) opens the Kaderinfo.
@@ -70,6 +109,8 @@ export default function OneWireDiagram({project, setProject, pageIndex, focus, o
         [free, setFree] = useState(false),
         [search, setSearch] = useState(''),
         [zoom, setZoom] = useState(1),
+        // the sheet a zoom was asked on and the point of it that was in view, so it stays in view after the zoom (see keepZoomAnchor)
+        zoomAnchor = useRef(null),
         [folded, setFolded] = useState(() => new Set()),
         // drag & drop from the palette: the symbol type that is being dragged and where it would land ({id, mode, zone, sheetNumber})
         [draggedType, setDraggedType] = useState(null),
@@ -101,6 +142,16 @@ export default function OneWireDiagram({project, setProject, pageIndex, focus, o
     }, [selectedId])
     const setTree = (newTree) => setProject({...project, een: project.een.map((existing, index) => (index === pageIndex ? {...existing, tree: newTree} : existing))}),
         selected = selectedId && findNode(tree, selectedId)
+    // zoom asked on a sheet: remember which part of that sheet is in view, the layout effect below brings it back after the new size is drawn
+    const zoomOn = (sheetNumber, level) => {
+        zoomAnchor.current = {sheetNumber, ...zoomAnchorOf(document.getElementById(`eds-sheet-${sheetNumber}`))}
+        setZoom(level)
+    }
+    useLayoutEffect(() => {
+        const anchor = zoomAnchor.current
+        zoomAnchor.current = null
+        if (anchor) keepZoomAnchor(document.getElementById(`eds-sheet-${anchor.sheetNumber}`), anchor, zoom)
+    }, [zoom])
     const removeSelected = () => {
         if (!selected) return
         setTree(removeNode(tree, selected.id))
@@ -379,7 +430,7 @@ export default function OneWireDiagram({project, setProject, pageIndex, focus, o
                         onDragLeave={onDragLeave}
                         onDrop={onDrop}
                     >
-                        <ZoomPane zoom={zoom} always>
+                        <ZoomPane zoom={zoom} always style={zoom > 1 ? {maxHeight: `calc(100vh - ${2 * ZOOM_TOP_MARGIN}px)`} : undefined}>
                             <div style={{width: `${Math.max(zoom, 1) * 100}%`, position: 'relative'}}>
                                 <BoardSheet
                                     project={project}
@@ -411,7 +462,12 @@ export default function OneWireDiagram({project, setProject, pageIndex, focus, o
                                 )}
                             </div>
                         </ZoomPane>
-                        <ZoomControls zoom={zoom} setZoom={setZoom} idPrefix={`eds-zoom-${sheet.number}`} className="ui zoomctl inset" />
+                        <ZoomControls
+                            zoom={zoom}
+                            setZoom={(level) => zoomOn(sheet.number, level)}
+                            idPrefix={`eds-zoom-${sheet.number}`}
+                            className="ui zoomctl inset"
+                        />
                     </div>
                 ))}
             </div>

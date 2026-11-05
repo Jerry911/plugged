@@ -1,7 +1,7 @@
 // Copyright 2026 Pleysier Jeroen
 // SPDX-License-Identifier: AGPL-3.0-only
 import {createEvent, fireEvent} from '@testing-library/react'
-import OneWireDiagram from '../../../features/oneWire/OneWireDiagram.jsx'
+import OneWireDiagram, {keepZoomAnchor, zoomAnchorOf} from '../../../features/oneWire/OneWireDiagram.jsx'
 import {findNode as find, rotateNode as rotate} from '../../../model/tree.js'
 import {defaultTree} from '../../../model/boardLayout.js'
 import {setLanguage, t as translate} from '../../../i18n/translate.js'
@@ -677,4 +677,51 @@ test('the palette, the properties and the structure list follow the language', (
     expect(getById('eds-tree-title')).toHaveTextContent('Structure')
     // the default labels of a new page are made in the active language
     expect(row(spy.project.een[0].tree[0].id)).toHaveTextContent('Raccordement au réseau')
+})
+
+// a sheet with a scroll pane and a drawing at the given places on the screen (jsdom has no layout)
+const zoomSheet = ({sheet, pane, drawing, size = {width: 1000, height: 700}}) => {
+    const sheetElement = document.createElement('div'),
+        paneElement = document.createElement('div'),
+        content = document.createElement('div')
+    paneElement.className = 'zoomscroll'
+    paneElement.appendChild(content)
+    sheetElement.appendChild(paneElement)
+    const rect = ({x = 0, y = 0, width = 0, height = 0}) => () => ({left: x, top: y, right: x + width, bottom: y + height, width, height})
+    sheetElement.getBoundingClientRect = rect(sheet)
+    paneElement.getBoundingClientRect = rect(pane)
+    content.getBoundingClientRect = rect(drawing)
+    Object.defineProperties(paneElement, {clientWidth: {value: pane.width}, clientHeight: {value: pane.height}})
+    Object.defineProperties(content, {scrollWidth: {value: size.width}, scrollHeight: {value: size.height}})
+    return {sheetElement, paneElement}
+}
+test('zooming aims at the middle of the part of the sheet that is on the screen', () => {
+    expect(zoomAnchorOf(null)).toBeNull()
+    expect(zoomAnchorOf(document.createElement('div'))).toBeNull()
+    // a sheet of 400 high whose top 100 are above the screen: the middle of the visible part (y 0..300) is y 150
+    const {sheetElement} = zoomSheet({sheet: {y: -100, width: 800, height: 400}, pane: {y: -100, width: 800, height: 400}, drawing: {y: -100, width: 800, height: 400}})
+    expect(zoomAnchorOf(sheetElement)).toEqual({fx: 0.5, fy: 250 / 400, y: 150})
+    // a sheet that is not on the screen at all: its own middle; an empty drawing: the middle
+    const below = zoomSheet({sheet: {y: 5000, width: 800, height: 400}, pane: {y: 5000, width: 800, height: 400}, drawing: {y: 5000, width: 0, height: 0}})
+    expect(zoomAnchorOf(below.sheetElement)).toEqual({fx: 0.5, fy: 0.5, y: 5200})
+})
+test('after a zoom the sheet stays on the screen: zoomed in at the top with the same point in the middle, at 100% where it was', () => {
+    const scroll = vi.fn()
+    vi.stubGlobal('scrollBy', scroll)
+    try {
+        const {sheetElement, paneElement} = zoomSheet({sheet: {y: 300, width: 800, height: 600}, pane: {y: 300, width: 800, height: 600}, drawing: {y: 300, width: 1000, height: 700}})
+        keepZoomAnchor(sheetElement, {fx: 0.5, fy: 0.75, y: 400}, 1.5)
+        expect(scroll).toHaveBeenLastCalledWith({top: 290, behavior: 'instant'})
+        // the point at 3/4 of the drawing (525 of 700) in the middle of the pane (600 high)
+        expect([paneElement.scrollLeft, paneElement.scrollTop]).toEqual([100, 225])
+        keepZoomAnchor(sheetElement, {fx: 0.5, fy: 0.5, y: 400}, 1)
+        // the point at half of the drawing (y 300 + 350) goes back to y 400
+        expect(scroll).toHaveBeenLastCalledWith({top: 250, behavior: 'instant'})
+        scroll.mockClear()
+        keepZoomAnchor(sheetElement, null, 2)
+        keepZoomAnchor(null, {fx: 0, fy: 0, y: 0}, 2)
+        expect(scroll).not.toHaveBeenCalled()
+    } finally {
+        vi.unstubAllGlobals()
+    }
 })

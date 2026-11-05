@@ -275,6 +275,35 @@ test.describe('the drawing', () => {
         await page.locator('#eds-zoom-1-out').click()
         await expect(page.locator('#eds-zoom-1-reset')).not.toHaveText('100%')
     })
+    test('zooming keeps the sheet you zoomed on in view: zoomed in it fills the screen, the next sheet stays below it', async ({page, app, backend}) => {
+        // a board with so many circuits that the schema takes several sheets
+        const circuits = Array.from({length: 40}, (_, index) => node('K' + index, 'kring', [node('S' + index, 'stopcontact')], {p: {}}))
+        await app.open(backend, project({een: [{id: 'e1', name: 'Groot', tree: [node('A', 'aansluiting', [node('B', 'bord', circuits)])]}]}))
+        const sheets = page.locator('[id^="eds-sheet-"][id$="-drawing"]')
+        expect(await sheets.count()).toBeGreaterThanOrEqual(3)
+        const viewport = page.viewportSize(),
+            sheet = (n) => page.locator('#eds-sheet-' + n)
+        await sheet(2).scrollIntoViewIfNeeded()
+        await page.locator('#eds-zoom-2-in').click()
+        await expect(page.locator('#eds-zoom-2-reset')).toHaveText('150%')
+        // the zoomed sheet is at the top of the screen and its drawing is as high as the screen: no half of another sheet
+        const zoomed = await sheet(2).boundingBox()
+        expect(zoomed.y).toBeGreaterThanOrEqual(0)
+        expect(zoomed.y).toBeLessThan(30)
+        const pane = await sheet(2).locator('.zoomscroll').boundingBox()
+        expect(pane.height).toBeGreaterThan(viewport.height - 40)
+        expect((await sheet(3).boundingBox()).y).toBeGreaterThanOrEqual(viewport.height - 20)
+        expect((await sheet(1).boundingBox()).y + (await sheet(1).boundingBox()).height).toBeLessThanOrEqual(5)
+        // zooming further stays on the same sheet
+        await page.locator('#eds-zoom-2-in').click()
+        expect((await sheet(2).boundingBox()).y).toBeLessThan(30)
+        // back to 100%: the sheet is still on the screen
+        await page.locator('#eds-zoom-2-reset').click()
+        await expect(page.locator('#eds-zoom-2-reset')).toHaveText('100%')
+        const back = await sheet(2).boundingBox()
+        expect(back.y).toBeLessThan(viewport.height)
+        expect(back.y + back.height).toBeGreaterThan(0)
+    })
     test('dragging a symbol from the palette onto the drawing inserts it: right half after, left half before', async ({page, app, backend}) => {
         await app.open(backend, withCircuit())
         await page.locator('#eds-palette-search').fill('Wandlamp')

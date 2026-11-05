@@ -12,6 +12,12 @@ import {
     sheetPlan,
     pageNumbering,
     MAX_SHEET_WIDTH,
+    MM_PER_UNIT,
+    DRAWING_HEIGHT,
+    sheetScale,
+    MAX_SHEET_HEIGHT,
+    HEAD_DEPTH,
+    DETAIL_FONT_SIZE,
     CIRCUIT_SPACING,
     SYMBOL_SIZE,
     BUS_START_X,
@@ -23,6 +29,7 @@ import {
     connectionReach,
 } from '../../model/boardLayout.js'
 import {setLanguage} from '../../i18n/translate.js'
+import {FOOTER_TITLE_FONT_SIZE} from '../../components/Sheet.jsx'
 import {baseProject, node} from '../utils.jsx'
 
 const kring = (id, kids = [], p = {}, extra = {}) =>
@@ -288,6 +295,46 @@ test('an oversized single layoutCircuit still gets its own slice; empty boards g
     expect(e[0]).toMatchObject({first: true, last: true, from: 0, to: 0})
     expect(e[0].x1).toBeGreaterThanOrEqual(260)
 })
+test('a high sheet is drawn smaller anyway: circuits that fit at that size join it instead of starting a nearly empty sheet', () => {
+    // one element with a long stack under it is too high for a sheet and cannot go on in a next column: the sheet is drawn smaller
+    const high = kring('H', [node('h', 'stopcontact', Array.from({length: 14}, (_, i) => node('h' + i, 'stopcontact')))]),
+        narrow = Array.from({length: 14}, (_, i) => kring('K' + i, chain(1))),
+        p = proj(tree([high, ...narrow])),
+        b = layoutBoard(p, p.een[0]),
+        s = sheetSlices(b),
+        scaleOf = (slice) => sheetScale(slice.x1 - slice.x0, -slice.minY)
+    expect((-s[0].minY + HEAD_DEPTH) * MM_PER_UNIT).toBeGreaterThan(DRAWING_HEIGHT)
+    // the first sheet is wider than a full-size sheet, but every circuit on it is drawn at the size the high circuit needs anyway
+    expect(s[0].x1 - s[0].x0).toBeGreaterThan(MAX_SHEET_WIDTH)
+    expect(scaleOf(s[0])).toBeCloseTo(DRAWING_HEIGHT / (-s[0].minY + HEAD_DEPTH), 9)
+    // the circuit that starts the next sheet would have made the first one smaller
+    if (s.length > 1) {
+        const next = b.circuits[s[1].from]
+        expect(sheetScale(next.x + next.w + CIRCUIT_SPACING - s[0].x0, -s[0].minY)).toBeLessThan(scaleOf(s[0]))
+    }
+    // the same circuits without the high one: a full-size sheet, split at MAX_SHEET_WIDTH as before
+    const low = proj(tree(narrow)),
+        lowSlices = sheetSlices(layoutBoard(low, low.een[0]))
+    lowSlices.forEach((slice) => expect(slice.x1 - slice.x0).toBeLessThanOrEqual(MAX_SHEET_WIDTH + CIRCUIT_SPACING + 260))
+})
+test('a high circuit does not join a sheet that it would make smaller', () => {
+    // a full sheet of full size (as many narrow circuits as fit on one), then a high circuit: it would shrink the sheet, so it gets a sheet
+    // of its own
+    const narrowCircuits = (n) => Array.from({length: n}, (_, i) => kring('K' + i, chain(1))),
+        sheetsOf = (circuits) => {
+            const board = proj(tree(circuits))
+            return sheetSlices(layoutBoard(board, board.een[0])).length
+        }
+    let count = 1
+    while (sheetsOf(narrowCircuits(count + 1)) === 1) count++
+    const narrow = narrowCircuits(count),
+        high = kring('H', [node('h', 'stopcontact', Array.from({length: 14}, (_, i) => node('h' + i, 'stopcontact')))]),
+        p = proj(tree([...narrow, high])),
+        b = layoutBoard(p, p.een[0]),
+        s = sheetSlices(b)
+    expect(b.circuits.at(-1).newSheet).toBe(true)
+    expect(sheetScale(s[0].x1 - s[0].x0, -s[0].minY)).toBe(MM_PER_UNIT)
+})
 test('sheetPlan numbers every printed sheet, een first then situatie', () => {
     const p = proj(tree(Array.from({length: 40}, (_, i) => kring('K' + i, chain(1)))))
     p.een.push({id: 'e2', name: '2', tree: []})
@@ -319,9 +366,10 @@ test('scoped sheetPlan numbers eendraad sheets and situatie pages separately', (
 })
 const symBoxes = (c) => c.items.filter((i) => i.kind === 'sym').map((i) => [c.x + i.x - SYMBOL_SIZE / 2, i.y - SYMBOL_SIZE / 2, c.x + i.x + SYMBOL_SIZE / 2, i.y + SYMBOL_SIZE / 2]),
     overlap = (a, b) => a[0] < b[2] && b[0] < a[2] && a[1] < b[3] && b[1] < a[3]
+// (low enough to stay in one column: a higher circuit goes on in a second column, see drawColumns)
 const tallWide = () =>
     kring('M', [
-        ...['a', 'b', 'c', 'd', 'e', 'f'].map((id) => node(id, 'stopcontact')),
+        ...['a', 'b', 'c', 'd', 'e'].map((id) => node(id, 'stopcontact')),
         node('g', 'stopcontact', chain(5)),
     ])
 test('a lower layoutCircuit slides left underneath the overhang of the previous one', () => {
@@ -471,4 +519,102 @@ describe('connectionReach: any shape that touches the centre line', () => {
         const [arcLeft] = connectionReach([{t: 'path', d: 'M12 6 A6 6 0 0 1 12 18'}]) // a half circle that bulges to the right: x = 18 at y = 12
         expect(arcLeft).toBeCloseTo(18, 0)
     })
+})
+
+// ---- readable when printed: never smaller than full size, long circuits in columns, big sub boards on sheets of their own ----
+
+const textsOf = (circuits) => circuits.flatMap((circuit) => circuit.items.filter((item) => item.kind === 'text'))
+test('printed at full size the smallest text of the drawing is as large as the titles of the footer', () => {
+    expect(DETAIL_FONT_SIZE * MM_PER_UNIT).toBeGreaterThanOrEqual(FOOTER_TITLE_FONT_SIZE - 1e-9)
+    const p = proj(tree(Array.from({length: 30}, (_, i) => kring('K' + i, [node('s' + i, 'stopcontact', [], {label: 'Keuken', p: {aantal: 2, details: 'Merk: X\nType: Y'}})], {kabel: 'XVB 3G2,5', amp: 16, curve: 'C', kortsl: 3}))))
+    const slices = sheetSlices(layoutBoard(p, p.een[0]))
+    expect(slices.length).toBeGreaterThan(1)
+    slices.forEach((slice) => expect(sheetScale(slice.x1 - slice.x0, -slice.minY)).toBe(MM_PER_UNIT))
+    const sizes = textsOf(layoutBoard(p, p.een[0]).circuits).map((item) => item.fontSize || 13)
+    expect(Math.min(...sizes) * MM_PER_UNIT).toBeGreaterThanOrEqual(FOOTER_TITLE_FONT_SIZE - 1e-9)
+})
+test('a circuit holds at most 8 points: 8 of any symbol, each with a name or a count, always fit straight on a sheet at full size', () => {
+    const library = baseProject().symbols ?? []
+    const keys = (library.length ? library.map((symbol) => symbol.k) : ['stopcontact', 'lichtpunt', 'schakelaar', 'wissel', 'tl', 'motor', 'kookplaat', 'laadpaal']).filter(
+        (key) => !['kring', 'diff', 'bord', 'subbord', 'domotica', 'aansluiting', 'teller', 'hoofdschakelaar', 'aarding', 'zekering', 'leeg', 'overspanning'].includes(key),
+    )
+    expect(keys.length).toBeGreaterThan(5)
+    for (const key of keys)
+        for (const extra of [{label: 'Slaapkamer 2'}, {label: '', p: {aantal: 4}}, {label: '', p: {aantal: 1}}]) {
+            const points = Array.from({length: 8}, (_, i) => node(key + i, key, [], extra))
+            const p = proj(tree([kring('K', points, {kabel: 'XVB Cca 5G2,5', kortsl: 10, polen: 4, amp: 20, curve: 'C'})])),
+                [circuit] = layoutBoard(p, p.een[0]).circuits
+            expect(-circuit.minY, key).toBeLessThanOrEqual(MAX_SHEET_HEIGHT)
+            expect(sheetScale(circuit.w, -circuit.minY), key).toBe(MM_PER_UNIT)
+            // in one column: no bend
+            expect(new Set(textsOf([circuit]).filter((item) => item.anchor === 'end').map((item) => item.x)).size, key).toBe(1)
+        }
+    // a switch with lamps behind it on every point (8 horizontal lines with a chain each) fits as well
+    const chained = Array.from({length: 8}, (_, i) => node('w' + i, 'schakelaar', [node('l' + i, 'lichtpunt', [], {label: '', p: {aantal: 3}})], {label: 'Gang'}))
+    const p = proj(tree([kring('K', chained)]))
+    expect(-layoutBoard(p, p.een[0]).circuits[0].minY).toBeLessThanOrEqual(MAX_SHEET_HEIGHT)
+})
+test('the specs and short-circuit rating stand next to each other right of the stem, a bit above the bus; the cable stands above them', () => {
+    const p = proj(tree([kring('K', [node('s', 'stopcontact')], {kabel: 'XVB Cca 3G2,5', kortsl: 3, polen: 2, amp: 16, curve: 'C'})])),
+        [circuit] = layoutBoard(p, p.een[0]).circuits,
+        vertical = textsOf([circuit]).filter((item) => item.vertical),
+        drawnTop = (item) => item.y - item.text.length * 13 * 0.6
+    expect(vertical.map((item) => item.text)).toEqual(['2P - 16A', 'Curve C', '3000', 'XVB Cca 3G2,5'])
+    const [rating, curve, shortCircuit, cable] = vertical,
+        stem = circuit.items.find((item) => item.kind === 'line' && item.x1 === item.x2 && item.y1 === 0).x1
+    // the specs: on one height a bit above the bus, the first column clear of the stem (text stands left of its x when vertical)
+    expect(new Set([rating, curve, shortCircuit].map((item) => item.y))).toEqual(new Set([-30]))
+    expect(rating.x - 11).toBeGreaterThan(stem + 3)
+    expect(curve.x).toBeGreaterThan(rating.x + 10)
+    // the cable: along the stem above the specs
+    expect(cable.x).toBe(rating.x)
+    expect(cable.y).toBeLessThan(Math.min(drawnTop(rating), drawnTop(curve), drawnTop(shortCircuit)))
+    // the first point is above all of them, with its name (48 below its line) clear of the cable
+    const first = circuit.items.find((item) => item.kind === 'sym' && !item.breaker)
+    expect(first.y + 48).toBeLessThan(drawnTop(cable) - 6)
+    // without a breaker only the cable stands there
+    const bare = proj(tree([kring('K', [node('s', 'stopcontact')], {bescherming: 'geen', kabel: 'XVB Cca 3G2,5'})]))
+    expect(textsOf(layoutBoard(bare, bare.een[0]).circuits).filter((item) => item.vertical).map((item) => item.text)).toEqual(['XVB Cca 3G2,5'])
+})
+test('the head below the bus stays within HEAD_DEPTH, so the bus can go down to just above the footer', () => {
+    const p = proj(tree([kring('K')], {kabel: '4x16'})),
+        head = layoutBoard(p, p.een[0]).head
+    expect(head.kwh && head.main).toBeTruthy()
+    head.items.forEach((item) => {
+        const bottom = item.kind === 'line' ? Math.max(item.y1, item.y2) : item.kind === 'sym' ? item.y + 25 : item.y + 4
+        expect(bottom).toBeLessThanOrEqual(HEAD_DEPTH)
+    })
+})
+
+test('the long name of a circuit (and its extra text) left of the stem stays below the number of the first point', () => {
+    const p = proj(tree([kring('K', [node('s', 'stopcontact')], {tekst: 'Zolder en badkamer boven'}, {label: 'Verlichting garage achteraan'})])),
+        [circuit] = layoutBoard(p, p.een[0]).circuits,
+        name = textsOf([circuit]).filter((item) => item.vertical && item.x < 30),
+        number = textsOf([circuit]).find((item) => item.anchor === 'end' && item.text === '1')
+    expect(name.map((item) => item.text)).toEqual(['Verlichting garage achteraan', 'Zolder en badkamer boven'])
+    const nameTop = Math.min(...name.map((item) => item.y - item.text.length * 13 * 0.6))
+    expect(number.y + 3).toBeLessThan(nameTop)
+})
+
+test('more points than fit with the bus at its lowest: the line bends over the top into a next column, where the numbering goes on upwards', () => {
+    const points = Array.from({length: 13}, (_, i) => node('s' + i, 'lichtpunt', [], {label: 'Gang', p: {aantal: 2}})),
+        p = proj(tree([kring('K', points)])),
+        [circuit] = layoutBoard(p, p.een[0]).circuits,
+        numbers = textsOf([circuit]).filter((item) => item.anchor === 'end'),
+        stems = [...new Set(numbers.map((item) => item.x))]
+    expect(-circuit.minY).toBeLessThanOrEqual(MAX_SHEET_HEIGHT)
+    expect(numbers.map((item) => item.text)).toEqual(Array.from({length: 13}, (_, i) => String(i + 1)))
+    expect(stems).toHaveLength(2)
+    const first = numbers.filter((item) => item.x === stems[0]),
+        second = numbers.filter((item) => item.x === stems[1])
+    // the first column is as full as a sheet allows (one more point would not fit), the second one starts at the bottom again and goes up
+    expect(first.length).toBeGreaterThanOrEqual(7)
+    expect(first.at(-1).y + 10 - 96 - 28).toBeLessThan(-MAX_SHEET_HEIGHT)
+    expect(second[0].y).toBe(first[0].y)
+    second.forEach((item, index) => index && expect(item.y).toBeLessThan(second[index - 1].y))
+    // the bend: up the first stem, over the top of both columns, down the second stem
+    const top = Math.min(...numbers.map((item) => item.y))
+    const over = circuit.items.find((item) => item.kind === 'line' && item.y1 === item.y2 && item.x1 < stems[1] && item.x2 > stems[1] - 10 && item.y1 < top)
+    expect(over).toBeDefined()
+    expect(circuit.items.some((item) => item.kind === 'line' && item.x1 === item.x2 && item.y1 === over.y1 && item.y2 > item.y1 && item.x1 > stems[0])).toBe(true)
 })

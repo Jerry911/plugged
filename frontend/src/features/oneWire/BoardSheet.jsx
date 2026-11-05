@@ -4,7 +4,7 @@
 // board layout (see model/boardLayout.js for the drawn items).
 import SymbolGraphic from '../../symbols/SymbolGraphic.jsx'
 import Sheet from '../../components/Sheet.jsx'
-import {BUS_START_X, MM_PER_UNIT} from '../../model/boardLayout.js'
+import {BUS_START_X, DRAWING_WIDTH, busPosition, sheetScale} from '../../model/boardLayout.js'
 import {useTranslation} from '../../i18n/I18nProvider.jsx'
 
 const SELECTED_COLOUR = '#0a6cff'
@@ -186,9 +186,6 @@ const BoardHead = ({head, selected, onSelect}) => {
 
 // Width of the head (kWh meter, earth, main differential) in drawing units; it is repeated at the left of every sheet.
 const HEAD_WIDTH = 262
-// the drawing area of a sheet in mm (the frame is 10 mm from the edges, the footer starts at y 185)
-const DRAWING_WIDTH = 277,
-    DRAWING_HEIGHT = 135
 
 /**
  * board = the layout of the page, slice = the part of it on this sheet. In the editor: selected / onSelect (select an element), onDelete
@@ -197,8 +194,9 @@ const DRAWING_WIDTH = 277,
 export function BoardSheet({project, board, slice, number, total, selected, ghost, busHighlighted, onSelect, onFooter, onDelete, sheetId}) {
     const {t} = useTranslation()
     const sliceWidth = Math.max(1, slice.x1 - slice.x0),
-        scale = Math.min(MM_PER_UNIT, DRAWING_WIDTH / sliceWidth, DRAWING_HEIGHT / Math.max(1, -slice.minY)),
-        busY = Math.min(147, 12 + -slice.minY * scale),
+        scale = sheetScale(sliceWidth, -slice.minY),
+        // around the middle of the page, lower for higher circuits, down to just above the footer (the head below it)
+        busY = busPosition(-slice.minY, scale),
         // when the board continues on another sheet the bus runs to the page margin (10..287 mm) so the markers get room
         busLeft = slice.first ? BUS_START_X : slice.x0,
         busRight = slice.last ? slice.x1 : slice.x0 + DRAWING_WIDTH / scale,

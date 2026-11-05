@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import {fireEvent, render} from '@testing-library/react'
 import {BoardSheet} from '../../../features/oneWire/BoardSheet.jsx'
-import {BUS_START_X, layoutBoard, sheetSlices} from '../../../model/boardLayout.js'
+import {BUS_MIDDLE, BUS_START_X, DRAWING_BOTTOM, HEAD_DEPTH, MM_PER_UNIT, layoutBoard, sheetSlices} from '../../../model/boardLayout.js'
 import {setLanguage, t} from '../../../i18n/translate.js'
 import {baseProject, node} from '../../utils.jsx'
 
@@ -131,4 +131,20 @@ test('the texts of the sheet follow the language; the ids of the footer cells ar
     expect(drawnTexts(r[0].container)).toContain('Courbe B')
     expect(r[0].container.querySelector('#sheet-x-number').textContent).toBe(`Feuille 1/${r.length}`)
     expect(r[0].container.querySelector('#sheet-x-footer-titel')).toBeTruthy()
+})
+
+// where the bus lies on the sheet: the y of the drawing's translate (mm)
+const busYOf = (container) => Number(container.querySelector('svg.sheet > g[transform^="translate(10,"]')?.getAttribute('transform').match(/translate\(10,([\d.]+)\)/)[1])
+test('the bus lies around the middle of the page for low circuits and goes down as points are added, until the head just stays above the footer', () => {
+    const points = (n) => Array.from({length: n}, (_, i) => node('s' + i, 'stopcontact', [], {label: 'Keuken', p: {aantal: 2}}))
+    const at = (n) => busYOf(sheets(tree([kring('K', points(n))]))[0].container)
+    expect(at(1)).toBe(BUS_MIDDLE)
+    const ys = [1, 2, 3, 4, 5, 6, 7, 8].map(at)
+    ys.forEach((y, index) => index && expect(y).toBeGreaterThanOrEqual(ys[index - 1]))
+    expect(ys[4]).toBeGreaterThan(BUS_MIDDLE)
+    // at 8 points (the most a circuit holds) the bus is at its lowest: the head below it ends just above the footer (at 185 mm)
+    const lowest = DRAWING_BOTTOM - HEAD_DEPTH * MM_PER_UNIT
+    expect(ys[7]).toBeGreaterThan(lowest - 1)
+    expect(ys[7]).toBeLessThanOrEqual(lowest + 1e-9)
+    expect(185 - (lowest + HEAD_DEPTH * MM_PER_UNIT)).toBeLessThanOrEqual(1.5)
 })

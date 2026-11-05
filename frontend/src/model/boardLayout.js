@@ -15,27 +15,59 @@ import {symbolName, typeOf} from '../symbols/symbolLibrary.js'
 import {t} from '../i18n/translate.js'
 import {flatten, newId} from './tree.js'
 
-export const MM_PER_UNIT = 0.16,
-    // a sheet holds at most this width of circuits; the next circuit starts a new sheet
-    MAX_SHEET_WIDTH = 1700,
-    BUS_START_X = 20,
+// The full size of the drawing, which is also its smallest: its smallest text (13 units, also the details) is then as large as the titles of
+// the footer (2.2 mm), so a printed sheet stays readable. At this size a circuit with the maximum of 8 points (each with a name and a count)
+// always fits on a sheet (see the tests). Sheets are never drawn smaller, except for a single circuit that is too high for a sheet even on its
+// own (many detail lines under its points).
+export const MM_PER_UNIT = 0.17,
+    // the drawing area of a sheet in mm: inside the frame (10 mm from the edges) and above the footer (which starts at y 185)
+    DRAWING_WIDTH = 277,
+    DRAWING_TOP = 12,
+    DRAWING_BOTTOM = 184,
+    DRAWING_HEIGHT = DRAWING_BOTTOM - DRAWING_TOP,
+    // the head below the bus (earth, main breaker, kWh meter with its cable) in drawing units: the bus goes as low as this leaves room for
+    HEAD_DEPTH = 124,
+    // a sheet holds this width of circuits at full size; a wider circuit starts a new sheet, unless the sheet is drawn smaller anyway (a
+    // circuit that is too high) and the circuit fits at that size, see sheetScale
+    MAX_SHEET_WIDTH = 1600,
+    // the height of circuits (above the bus) a sheet holds at full size
+    MAX_SHEET_HEIGHT = DRAWING_HEIGHT / MM_PER_UNIT - HEAD_DEPTH,
+    // a sheet is at least this high (drawing units above the bus)
+    MIN_SHEET_HEIGHT = 120,
+    // where the bus and the first circuit start (left of it: room for the name of the first circuit, clear of the frame)
+    BUS_START_X = 40,
     // horizontal space between two circuits
     CIRCUIT_SPACING = 24,
     // length of the line from the stem of a circuit to an element on it
     BRANCH_STUB = 24,
+    // where the specs of the breaker and its short-circuit rating start above the bus, and how far right of the stem their first column stands
+    SPEC_BOTTOM = 10,
+    SPEC_OFFSET = 20,
     SYMBOL_SIZE = 46,
     ELEMENT_GAP = 20,
     // drag & drop latch zone along the stem of a circuit: half its width, and how far it reaches above the top branch (room for the next one)
     STEM_ZONE_HALF_WIDTH = 16,
     STEM_ZONE_REACH = 150
+/** The scale (mm per unit) a sheet with the given width and height (units above the bus) is drawn at: full size, or smaller to fit. */
+// Where the bus lies on a sheet (mm from the top), for circuits of the given height (drawing units above the bus) at the given scale: around the
+// middle of the page while the circuits are low, lower as they get higher (keeping some room above the highest one), down to where the head
+// below the bus just stays above the footer.
+export const BUS_MIDDLE = 100,
+    BUS_TOP_ROOM = 15
+export const busPosition = (height, scale) =>
+    Math.min(DRAWING_BOTTOM - HEAD_DEPTH * scale, Math.max(BUS_MIDDLE, DRAWING_TOP + height * scale + BUS_TOP_ROOM))
+
+export const sheetScale = (width, height) =>
+    Math.min(MM_PER_UNIT, DRAWING_WIDTH / Math.max(1, width), DRAWING_HEIGHT / Math.max(1, height + HEAD_DEPTH))
+
 /** Elements drawn as a box with their own circuits inside (a domotics cabinet, a sub board). */
 export const BOX_TYPES = new Set(['domotica', 'subbord'])
 const textWidth = (text) => String(text || '').length * 6.6
 
 // Details of an element (brand, type, serial number, Pmax, Umax, ...): one line per entry. Lines are separated by Enter (a real new line)
 // or by '|' (how the eendraadschema stores them), so both a typed text area and an imported file give the same lines.
-export const DETAIL_FONT_SIZE = 11,
-    DETAIL_LINE_HEIGHT = 13
+export const DETAIL_FONT_SIZE = 13,
+    DETAIL_LINE_HEIGHT = 15
 export const detailLines = (details) =>
     String(details ?? '')
         .split(/\r?\n|\|/)
@@ -89,7 +121,9 @@ export const defaultTree = () => [
 export const BREAKER_SIZE = (24 * 30) / Math.hypot(13 - 9.41, 14 - 4.13),
     BREAKER_TIP = ((14 - 4.13) * BREAKER_SIZE) / 24,
     // the box of the kWh meter symbol is 14 grid units wide: 50 drawing units
-    METER_SIZE = (24 * 50) / 14
+    METER_SIZE = (24 * 50) / 14,
+    // the line of the kWh meter below the bus: low enough for a clear bend up to the lower contact (y 66) of the main breaker
+    METER_Y = 96
 
 /** The drawn item of the breaker symbol `typeKey` with its pivot on (x, y). */
 export const breakerItem = (project, typeKey, x, y, extra = {}) => ({
@@ -225,7 +259,16 @@ export const connectionReach = (shapes) => {
 }
 
 // vertical room of an element in a stack: the symbol, its count (x3), its label and one line per detail
-const ownHeight = (node) => (node.label ? 100 : Number(node.p?.aantal) > 1 ? 80 : 66) + detailLines(node.p?.details).length * DETAIL_LINE_HEIGHT
+// how far the texts under a point (count, name, details) reach below its line: see drawNode
+const textBelow = (node) => {
+    const counted = Number(node.p?.aantal) > 1
+    return (node.label ? (counted ? 62 : 48) : counted ? 46 : 30) + detailLines(node.p?.details).length * DETAIL_LINE_HEIGHT
+}
+// (the symbol reaches 28 above its line; below it the count, the name or both: see drawNode; a few units between two points)
+const ownHeight = (node) => {
+    const counted = Number(node.p?.aantal) > 1
+    return (node.label ? (counted ? 96 : 84) : counted ? 80 : 66) + detailLines(node.p?.details).length * DETAIL_LINE_HEIGHT
+}
 // A sub board needs the room of its circuits, which are drawn like the circuits on the bus: measure them (at least 300 for a board with circuits)
 const elementHeight = (project, node) =>
     BOX_TYPES.has(node.type)
@@ -238,7 +281,7 @@ const elementHeight = (project, node) =>
           )
 
 // The elements under one point, stacked upwards from (stemX, y): a stub to each, numbered when `numbered` (the points of a circuit).
-function drawStack(project, children, stemX, y, out, stubLength, numbered) {
+function drawStack(project, children, stemX, y, out, stubLength, numbered, firstNumber = 1) {
     let used = 0,
         right = stemX,
         top = y - 30,
@@ -249,7 +292,7 @@ function drawStack(project, children, stemX, y, out, stubLength, numbered) {
         used += elementHeight(project, child)
         lastY = childY
         out.push(lineItem(stemX, childY, stemX + stubLength, childY))
-        if (numbered) out.push(textItem(stemX - 4, childY - 10, child.p?.nr || String(index + 1), {fontSize: 13, anchor: 'end'}))
+        if (numbered) out.push(textItem(stemX - 4, childY - 10, child.p?.nr || String(firstNumber + index), {fontSize: 13, anchor: 'end'}))
         const extent = drawNode(project, child, stemX + stubLength, childY, out)
         right = Math.max(right, extent.right)
         top = Math.min(top, extent.top)
@@ -257,6 +300,59 @@ function drawStack(project, children, stemX, y, out, stubLength, numbered) {
     })
     if (lastY !== y) out.push(lineItem(stemX, y, stemX, lastY))
     return {right, top, bottom}
+}
+
+// gap between two columns of the points of a circuit, how far a point reaches above its line (the symbol) and the room the line over the
+// top of a bend takes above the highest point
+const COLUMN_GAP = 40,
+    POINT_TOP = 28,
+    BEND_ROOM = 2
+
+// The points of a circuit, stacked upwards from (stemX, topY). Only when they are higher than a sheet holds with the bus at its lowest (a
+// circuit holds at most 8 points, which always fit: see the tests) they go on in a next column to the right: the line bends over the top of
+// the previous column and comes down along the new stem, where the points go up again from the bottom and the numbering carries on.
+function drawColumns(project, children, stemX, topY, out) {
+    // the points in columns that each stay below `room` (a point lies `used` above the first one and reaches POINT_TOP above its line)
+    const split = (room) => {
+        const columns = []
+        let used = 0
+        children.forEach((child) => {
+            if (!columns.length || (columns.at(-1).length && used + POINT_TOP > room)) {
+                columns.push([])
+                used = 0
+            }
+            columns.at(-1).push(child)
+            used += elementHeight(project, child)
+        })
+        return columns
+    }
+    let columns = split(MAX_SHEET_HEIGHT + topY)
+    // a bend needs room for the line over the top
+    if (columns.length > 1) columns = split(MAX_SHEET_HEIGHT + topY - BEND_ROOM)
+    if (columns.length < 2) return drawStack(project, children, stemX, topY, out, BRANCH_STUB, true)
+    let x = stemX,
+        number = 1,
+        extent = null
+    columns.forEach((column, index) => {
+        const drawn = []
+        const stack = drawStack(project, column, x, topY, drawn, BRANCH_STUB, true, number)
+        if (index) {
+            // up from the highest point of the previous column, over the top of both columns and down along the new stem to its lowest point
+            const overY = Math.min(extent.top, stack.top) - BEND_ROOM
+            out.push(lineItem(extent.stemX, extent.lastY, extent.stemX, overY), lineItem(extent.stemX, overY, x, overY), lineItem(x, overY, x, topY))
+        }
+        out.push(...drawn)
+        extent = {
+            stemX: x,
+            lastY: topY - column.slice(0, -1).reduce((sum, child) => sum + elementHeight(project, child), 0),
+            right: Math.max(extent?.right ?? x, stack.right),
+            top: Math.min(extent?.top ?? topY, stack.top),
+            bottom: Math.max(extent?.bottom ?? topY, stack.bottom),
+        }
+        number += column.length
+        x = extent.right + COLUMN_GAP
+    })
+    return {right: extent.right, top: extent.top - BEND_ROOM, bottom: extent.bottom}
 }
 
 // room of a breaker that lies on the line between two elements (a circuit or differentieel under another one: AC -> breaker -> Veranda board)
@@ -438,8 +534,28 @@ export function layoutCircuit(project, node) {
         nameX = stemX - 14 - (withPlacement ? PLACEMENT_WIDTH : 0),
         unprotected = properties.bescherming === 'geen',
         cable = properties.kabel || '',
-        topY = -Math.max(215, 150 + textWidth(cable) + 40)
-    const stack = drawStack(project, node.children, stemX, topY, out, BRANCH_STUB, true)
+        // the specs of the breaker and its short-circuit rating stand next to each other right of the stem, a bit above the bus; the cable
+        // stands above them along the stem
+        specs = unprotected
+            ? []
+            : node.diff
+              ? differentialSpecs(properties, node.info)
+              : properties.amp
+                ? [ratingText(properties.polen, properties.amp), properties.curve ? curveText(properties.curve) : null]
+                : [node.info || null],
+        specLines = specs.filter(Boolean),
+        shortCircuitText = !unprotected && properties.kortsl && !node.diff ? `${properties.kortsl}000` : null,
+        columnX = (index) => stemX + SPEC_OFFSET + 13 * index,
+        shortCircuitX = columnX(specLines.length) + 7,
+        // (textWidth estimates short for these vertical texts: 20% extra so they never run into each other or into the first point)
+        specsTop = SPEC_BOTTOM + 1.2 * Math.max(0, ...specLines.map(textWidth), shortCircuitText ? textWidth(shortCircuitText) + 8 : 0),
+        cableBottom = specLines.length || shortCircuitText ? specsTop + 10 : SPEC_BOTTOM,
+        cableTop = cable ? cableBottom + 1.2 * textWidth(cable) : specsTop,
+        // the long name of the circuit and its extra text stand left of the stem, below the number of the first point
+        nameColumn = (node.label || '').length > 3 ? 12 + textWidth(node.label) + 8 + (properties.tekst ? textWidth(properties.tekst) : 0) : properties.tekst ? 72 + textWidth(properties.tekst) : 0,
+        // the first point: above the breaker, and with what hangs under it (count, name, details) clear of the texts along the stem
+        topY = -Math.max(140, cableTop + 12 + (node.children[0] ? textBelow(node.children[0]) : 0), nameColumn * 1.2 + 34)
+    const stack = drawColumns(project, node.children, stemX, topY, out)
     if (unprotected) out.push(lineItem(stemX, 0, stemX, topY))
     else {
         // the line does not run through the breaker: it stops at the lower contact, the lever swings up and to the left
@@ -458,21 +574,13 @@ export function layoutCircuit(project, node) {
     )
     if (properties.tekst)
         out.push(textItem(nameX, longName ? -12 - textWidth(node.label) - 8 : -72, properties.tekst, {bold: 1, fontSize: 14, vertical: 1, id: node.id}))
-    if (!unprotected) {
-        const specs = node.diff
-                ? differentialSpecs(properties, node.info)
-                : properties.amp
-                  ? [ratingText(properties.polen, properties.amp), properties.curve ? curveText(properties.curve) : null]
-                  : [node.info || null],
-            shortCircuitText = properties.kortsl && !node.diff ? `${properties.kortsl}000` : null
-        specs.filter(Boolean).forEach((line, index) => out.push(textItem(stemX + 13 + 13 * index, -62, line, {vertical: 1})))
-        if (shortCircuitText)
-            out.push(
-                {kind: 'rect', x: stemX + 33, y: -66 - textWidth(shortCircuitText) - 4, w: 15, h: textWidth(shortCircuitText) + 8},
-                textItem(stemX + 44, -66, shortCircuitText, {vertical: 1}),
-            )
-    }
-    if (cable) out.push(textItem(stemX + 13, -150, cable, {vertical: 1}))
+    specLines.forEach((line, index) => out.push(textItem(columnX(index), -SPEC_BOTTOM, line, {vertical: 1})))
+    if (shortCircuitText)
+        out.push(
+            {kind: 'rect', x: shortCircuitX - 11, y: -SPEC_BOTTOM - textWidth(shortCircuitText) - 4, w: 15, h: textWidth(shortCircuitText) + 8},
+            textItem(shortCircuitX, -SPEC_BOTTOM, shortCircuitText, {vertical: 1}),
+        )
+    if (cable) out.push(textItem(columnX(0), -cableBottom, cable, {vertical: 1}))
     out.push(...placementItems(properties, stemX))
     // A click anywhere on the stem selects the circuit (not only on its letter): a transparent area over the whole stem, drawn first so the
     // elements of the circuit and their own clicks stay on top. (The invisible circuit around a sub board has no properties: no area.)
@@ -484,7 +592,7 @@ export function layoutCircuit(project, node) {
         out.unshift({kind: 'stem', x: stemX - STEM_ZONE_HALF_WIDTH, y: zoneTop, w: 2 * STEM_ZONE_HALF_WIDTH, h: -60 - zoneTop, id: node.id})
         out.unshift({kind: 'hit', x: areaLeft, y: topY, w: stemX + 52 - areaLeft, h: -topY + 6, id: node.id})
     }
-    return {node, w: Math.max(stack.right + 14, stemX + 56), items: out, minY: Math.min(stack.top, topY - 60)}
+    return {node, w: Math.max(stack.right + 14, shortCircuitText ? shortCircuitX + 14 : columnX(specLines.length), stemX + 56), items: out, minY: Math.min(stack.top, topY - 60)}
 }
 
 /**
@@ -497,10 +605,11 @@ export const headItems = (project, head) => {
         meterUnit = METER_SIZE / 24
     if (head.kwh) {
         // the symbol's box runs from x 35 to 85 and its supply line starts at x 10, the line carries on to the main breaker (or the end of the head)
-        out.push({kind: 'sym', shapes: typeOf(project, 'teller').shapes, x: 35 + 4 * meterUnit, y: 96, size: METER_SIZE, id})
-        out.push(lineItem(85, 96, head.main ? 197 : 130, 96))
-        if (head.main) out.push(lineItem(197, 96, 197, 66))
-        if (head.properties?.kabel) out.push(textItem(110, 114, head.properties.kabel, {fontSize: 13}))
+        // (the head stays within HEAD_DEPTH below the bus, so the bus can go low on the sheet)
+        out.push({kind: 'sym', shapes: typeOf(project, 'teller').shapes, x: 35 + 4 * meterUnit, y: METER_Y, size: METER_SIZE, id})
+        out.push(lineItem(85, METER_Y, head.main ? 197 : 130, METER_Y))
+        if (head.main) out.push(lineItem(197, METER_Y, 197, 66))
+        if (head.properties?.kabel) out.push(textItem(110, METER_Y + 18, head.properties.kabel, {fontSize: 13}))
     }
     if (head.main) {
         // the supply comes from the meter below: the line stops at the lower contact (y 66), the lever swings up and to the left towards the
@@ -524,28 +633,18 @@ export const headItems = (project, head) => {
 // the elements between the connection and the bus that the bus may hang under
 const MAIN_LINE_TYPES = ['teller', 'hoofdschakelaar', 'diff', 'bord']
 
-/** The layout of one eendraadschema page: {circuits: [{...layoutCircuit, x, newSheet}], end, bus, head}. */
-export function layoutBoard(project, page) {
-    const tree = page.tree,
-        root = tree.find((node) => node.type === 'aansluiting') || null
-    const findBus = (node) => {
-        if (node.type === 'bord') return node
-        for (const child of node.children)
-            if (MAIN_LINE_TYPES.includes(child.type)) {
-                const bus = findBus(child)
-                if (bus) return bus
-            }
-        return null
-    }
-    const bus = (root && findBus(root)) || flatten(tree).find((node) => node.type === 'bord') || null
-    const busCircuits = bus ? circuitsOf(bus) : []
-    // Circuits are placed left to right. A circuit that is lower than the overhang of earlier circuits on the same sheet
-    // (their wide rows sit higher up) slides left underneath that overhang, which saves width (and sometimes a whole sheet).
-    // Without such an overhang the spacing is exactly `previous width + CIRCUIT_SPACING`. `newSheet` marks the first circuit of a new sheet.
+// Lays the circuits out left to right along a bus: [{...layoutCircuit, x, newSheet}] and where the bus ends.
+// Circuits are placed left to right. A circuit that is lower than the overhang of earlier circuits on the same sheet
+// (their wide rows sit higher up) slides left underneath that overhang, which saves width (and sometimes a whole sheet).
+// Without such an overhang the spacing is exactly `previous width + CIRCUIT_SPACING`. `newSheet` marks the first circuit of a new sheet.
+// A circuit that makes the sheet wider than MAX_SHEET_WIDTH still joins it when the sheet does not get smaller for it: a sheet with a
+// circuit that is too high is drawn smaller anyway and has room left at its end (no sheet with a single small circuit after it).
+function layoutBus(project, circuitNodes) {
     let sheetStartX = 0,
         right = 0,
+        sheetHeight = MIN_SHEET_HEIGHT,
         placedOnSheet = []
-    const circuits = busCircuits.map((circuitNode, index) => {
+    const circuits = circuitNodes.map((circuitNode, index) => {
         const layout = layoutCircuit(project, circuitNode),
             bounds = layout.items.map(itemBounds).filter(Boolean),
             drawnRight = bounds.reduce((max, box) => Math.max(max, box[2]), 0),
@@ -560,20 +659,43 @@ export function layoutBoard(project, page) {
                 if (overhang > -Infinity) lowest = Math.max(lowest, earlier.x + overhang + earlier.padding + CIRCUIT_SPACING)
             }
             x = Math.min(x, lowest)
-            if (Math.max(right, x + layout.w) - sheetStartX > MAX_SHEET_WIDTH) {
+            const width = Math.max(right, x + layout.w) - sheetStartX,
+                // the bus runs CIRCUIT_SPACING past the last circuit
+                scaleNow = sheetScale(right + CIRCUIT_SPACING - sheetStartX, sheetHeight),
+                scaleWith = sheetScale(width + CIRCUIT_SPACING, Math.max(sheetHeight, -layout.minY))
+            if (width > MAX_SHEET_WIDTH && scaleWith < scaleNow - 1e-9) {
                 x = right + CIRCUIT_SPACING
                 sheetStartX = x - 10
+                sheetHeight = MIN_SHEET_HEIGHT
                 placedOnSheet = []
                 newSheet = true
             }
         }
+        sheetHeight = Math.max(sheetHeight, -layout.minY)
         placement.x = x
         placedOnSheet.push(placement)
         right = newSheet || index === 0 ? x + layout.w : Math.max(right, x + layout.w)
         return {...layout, x, newSheet}
     })
-    const end = busCircuits.length ? right + CIRCUIT_SPACING : BUS_START_X,
-        rootProperties = root?.p
+    return {circuits, end: circuitNodes.length ? right + CIRCUIT_SPACING : BUS_START_X}
+}
+
+/** The layout of one eendraadschema page: {circuits: [{...layoutCircuit, x, newSheet}], end, bus, head}. */
+export function layoutBoard(project, page) {
+    const tree = page.tree,
+        root = tree.find((node) => node.type === 'aansluiting') || null
+    const findBus = (node) => {
+        if (node.type === 'bord') return node
+        for (const child of node.children)
+            if (MAIN_LINE_TYPES.includes(child.type)) {
+                const bus = findBus(child)
+                if (bus) return bus
+            }
+        return null
+    }
+    const bus = (root && findBus(root)) || flatten(tree).find((node) => node.type === 'bord') || null
+    const board = {...layoutBus(project, bus ? circuitsOf(bus) : []), bus}
+    const rootProperties = root?.p
     const head = {
         id: root?.id,
         properties: rootProperties,
@@ -584,7 +706,8 @@ export function layoutBoard(project, page) {
         // the earth belongs to the distribution board
         groundId: bus?.id,
     }
-    return {circuits, end, bus, head: {...head, items: headItems(project, head)}}
+    board.head = {...head, items: headItems(project, head)}
+    return board
 }
 
 /** The board cut into printed sheets: [{from, to (circuit indexes), x0, x1, minY, first, last}]. */
@@ -593,14 +716,14 @@ export function sheetSlices(board) {
     let current = null
     board.circuits.forEach((circuit, index) => {
         if (!current || circuit.newSheet) {
-            current = {from: index, to: index, x0: current ? circuit.x - 10 : 0, x1: 0, minY: -120}
+            current = {from: index, to: index, x0: current ? circuit.x - 10 : 0, x1: 0, minY: -MIN_SHEET_HEIGHT}
             slices.push(current)
         }
         current.to = index + 1
         current.x1 = Math.max(current.x1, circuit.x + circuit.w)
         current.minY = Math.min(current.minY, circuit.minY)
     })
-    if (!slices.length) slices.push({from: 0, to: 0, x0: 0, x1: 0, minY: -120})
+    if (!slices.length) slices.push({from: 0, to: 0, x0: 0, x1: 0, minY: -MIN_SHEET_HEIGHT})
     slices.forEach((slice, index) => {
         slice.first = index === 0
         slice.last = index === slices.length - 1
@@ -629,6 +752,7 @@ export function sheetPlan(project, perTab = false) {
     plan.forEach((sheet) => (totals[sheet.kind] = (totals[sheet.kind] || 0) + 1))
     return plan.map((sheet) => ({...sheet, number: (counted[sheet.kind] = (counted[sheet.kind] || 0) + 1), total: totals[sheet.kind]}))
 }
+
 
 /** The numbering {number, total} of a page within its own tab. */
 export const pageNumbering = (project, page) => {

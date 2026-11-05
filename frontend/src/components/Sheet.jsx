@@ -2,6 +2,9 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import {useTranslation} from '../i18n/I18nProvider.jsx'
 
+/** Font size (mm) of the titles of the footer (Titel, Adres, ...): the eendraadschema is never drawn with smaller text (see MM_PER_UNIT). */
+export const FOOTER_TITLE_FONT_SIZE = 2.2
+
 const joinFilled = (parts, separator = ' ') => parts.filter((part) => part && String(part).trim()).join(separator)
 
 /**
@@ -30,7 +33,7 @@ export default function Sheet({project, number, total = 2, children, svgRef, onF
                 {cells.map(([x, width, field, label, value]) => (
                     <g key={field}>
                         <line x1={x} y1="185" x2={x} y2="205" />
-                        <text x={x + 1} y="188.5" fontSize="2.2" fill="#666" stroke="none">
+                        <text x={x + 1} y="188.5" fontSize={FOOTER_TITLE_FONT_SIZE} fill="#666" stroke="none">
                             {label}
                         </text>
                         {value ? (

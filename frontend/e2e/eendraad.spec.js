@@ -280,7 +280,8 @@ test.describe('the drawing', () => {
         const circuits = Array.from({length: 40}, (_, index) => node('K' + index, 'kring', [node('S' + index, 'stopcontact')], {p: {}}))
         await app.open(backend, project({een: [{id: 'e1', name: 'Groot', tree: [node('A', 'aansluiting', [node('B', 'bord', circuits)])]}]}))
         const sheets = page.locator('[id^="eds-sheet-"][id$="-drawing"]')
-        expect(await sheets.count()).toBeGreaterThanOrEqual(3)
+        // (wait until the drawing is there: the project loads asynchronously)
+        await expect(sheets.nth(2)).toBeVisible()
         const viewport = page.viewportSize(),
             sheet = (n) => page.locator('#eds-sheet-' + n)
         await sheet(2).scrollIntoViewIfNeeded()

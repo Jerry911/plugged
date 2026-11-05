@@ -33,7 +33,10 @@ test('Sheet draws footer info, page numbers and forwards props', () => {
         tekenaar: 'Piet',
         stelsel: '230V TT',
         dossier: 'D1',
+        schaal: '1:50',
+        // no longer on the sheet (an older project can still hold them)
         keurder: 'Vinçotte',
+        titel: 'Oude titel',
     }
     const onClick = vi.fn()
     const {container} = render(
@@ -44,8 +47,15 @@ test('Sheet draws footer info, page numbers and forwards props', () => {
     expect(getById('s-number')).toHaveTextContent(t('sheet.pageOf', {number: 3, total: 5}))
     const text = container.textContent
     expect(text).toContain('Dorp 5, 9000 Gent')
-    expect(text).toContain('Jan 541')
-    expect(text).toContain('230V TT - ' + t('sheet.dossier', {number: 'D1'}) + ' - Vinçotte')
+    // EAN in the first box, the owner in his own
+    expect(text).toContain(t('sheet.cells.ean') + '541')
+    expect(text).toContain(t('sheet.cells.owner') + 'Jan')
+    expect(text).toContain('230V TT - ' + t('sheet.dossier', {number: 'D1'}))
+    expect(text).not.toContain('Vinçotte')
+    expect(text).not.toContain('Oude titel')
+    // the scale in its own box, in the lower row under the date
+    expect(getById('s-scale')).toHaveTextContent(t('sheet.cells.scale') + ' 1:50')
+    expect(Number(getById('s-scale').getAttribute('x'))).toBe(236)
     expect(text).toContain('Piet')
     fireEvent.click(container.querySelector('svg'))
     expect(onClick).toHaveBeenCalled()
@@ -55,7 +65,7 @@ test('Sheet copes with empty footer', () => {
     expect(getById('s-number')).toHaveTextContent(t('sheet.pageOf', {number: 1, total: 2}))
 })
 
-const CLICKABLE_CELLS = ['titel', 'straat', 'eigenaar', 'tekenaar', 'datum', 'rev', 'dossier']
+const CLICKABLE_CELLS = ['ean', 'straat', 'eigenaar', 'tekenaar', 'datum', 'rev', 'dossier', 'schaal']
 test('footer cells are clickable when onFooter is given and show hints for empty values', () => {
     const onFooter = vi.fn(),
         project = baseProject()
@@ -70,12 +80,13 @@ test('no clickable cells or hints without onFooter (export/print)', () => {
     const project = baseProject()
     project.footer = {}
     const {container} = render(<Sheet project={project} number={1} sheetId="s" />)
-    expect(byId('s-footer-titel')).toBeNull()
+    expect(byId('s-footer-ean')).toBeNull()
+    expect(byId('s-footer-schaal')).toBeNull()
     expect(container.textContent).not.toContain(t('sheet.clickToFill'))
 })
 test('filled cells show their value instead of the hint', () => {
     const project = baseProject()
-    project.footer = {titel: 'Villa'}
+    project.footer = {ean: 'Villa'}
     const {container} = render(<Sheet project={project} number={1} onFooter={() => {}} />)
     expect(container.textContent).toContain('Villa')
     expect(container.textContent.split(t('sheet.clickToFill')).length - 1).toBe(5)

@@ -120,7 +120,6 @@ export default {
         title: 'Cartouche',
         heading: 'Cartouche (en bas de chaque feuille)',
         fields: {
-            titel: 'Titre',
             straat: 'Rue',
             nr: 'N°',
             postcode: 'Code postal',
@@ -133,16 +132,16 @@ export default {
             rev: 'Révision',
             dossier: 'N° de dossier',
             stelsel: 'Schéma de liaison (p. ex. 230V TT)',
-            keurder: 'Organisme de contrôle',
         },
     },
     sheet: {
         cells: {
-            title: 'Titre',
+            ean: 'EAN',
             address: 'Adresse',
-            owner: 'Propriétaire / EAN',
+            owner: 'Propriétaire',
             drawnBy: 'Dessiné par',
-            dateScale: 'Date / Échelle',
+            date: 'Date',
+            scale: 'Échelle',
             revision: 'Rév.',
         },
         clickToFill: 'cliquez pour compléter',
@@ -381,7 +380,7 @@ export default {
         summary: '{errors} erreurs · {warnings} avertissements · {notes} remarques',
         disclaimer: 'Outil basé sur des valeurs indicatives ; il ne remplace pas le contrôle par un organisme agréé.',
         or: ' ou ',
-        footerFields: {titel: 'titre', gemeente: 'commune', eigenaar: 'propriétaire', tekenaar: 'dessiné par', datum: 'date'},
+        footerFields: {gemeente: 'commune', eigenaar: 'propriétaire', tekenaar: 'dessiné par', datum: 'date'},
         rules: {
             treeEmpty: 'Le schéma unifilaire est vide.',
             noConnection: 'Le schéma ne contient pas de raccordement au réseau.',
@@ -521,7 +520,7 @@ export default {
             kaderinfo: {
                 title: 'Où se trouve l’échelle ?',
                 body: [
-                    'L’échelle figure en bas de chaque feuille, dans la case **Date / Échelle**. Vous la consultez et la modifiez dans le **Cartouche**. Cliquez sur le bouton jaune **✎ Cartouche**.',
+                    'L’échelle figure en bas de chaque feuille, à droite dans la case **Échelle** sous la date. Cliquez sur cette case (ou sur le bouton jaune **✎ Cartouche**) pour la consulter et la modifier.',
                 ],
                 done: 'Le cartouche est ouvert.',
             },
@@ -613,7 +612,7 @@ export default {
                 },
                 {
                     title: 'Compléter le cartouche',
-                    text: 'Cliquez sur une case en bas de la feuille (ou sur le bouton jaune « Cartouche ») pour compléter le titre, l’adresse, le propriétaire, le dessinateur, la date, etc. Ces informations figurent en bas de chaque feuille, y compris dans le PDF.',
+                    text: 'Cliquez sur une case en bas de la feuille (ou sur le bouton jaune « Cartouche ») pour compléter l’EAN, l’adresse, le propriétaire, le dessinateur, la date, l’échelle, etc. Ces informations figurent en bas de chaque feuille, y compris dans le PDF.',
                 },
                 {
                     title: 'Créer le plan de position',

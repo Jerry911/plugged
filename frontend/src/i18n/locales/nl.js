@@ -121,7 +121,6 @@ export default {
         title: 'Kaderinfo',
         heading: 'Kaderinfo (onderaan elk blad)',
         fields: {
-            titel: 'Titel',
             straat: 'Straat',
             nr: 'Nr',
             postcode: 'Postcode',
@@ -134,16 +133,16 @@ export default {
             rev: 'Revisie',
             dossier: 'Dossiernr',
             stelsel: 'Stelsel (bv. 230V TT)',
-            keurder: 'Keuringsorganisme',
         },
     },
     sheet: {
         cells: {
-            title: 'Titel',
+            ean: 'EAN',
             address: 'Adres',
-            owner: 'Eigenaar / EAN',
+            owner: 'Eigenaar',
             drawnBy: 'Getekend door',
-            dateScale: 'Datum / Schaal',
+            date: 'Datum',
+            scale: 'Schaal',
             revision: 'Rev',
         },
         clickToFill: 'klik om in te vullen',
@@ -382,7 +381,7 @@ export default {
         summary: '{errors} fouten · {warnings} waarschuwingen · {notes} opmerkingen',
         disclaimer: 'Hulpmiddel op basis van richtwaarden; vervangt de keuring door een erkend organisme niet.',
         or: ' of ',
-        footerFields: {titel: 'titel', gemeente: 'gemeente', eigenaar: 'eigenaar', tekenaar: 'getekend door', datum: 'datum'},
+        footerFields: {gemeente: 'gemeente', eigenaar: 'eigenaar', tekenaar: 'getekend door', datum: 'datum'},
         rules: {
             treeEmpty: 'Het eendraadschema is leeg.',
             noConnection: 'Er is geen aansluiting op het net (aansluiting) in het schema.',
@@ -522,7 +521,7 @@ export default {
             kaderinfo: {
                 title: 'Waar staat de schaal?',
                 body: [
-                    'De schaal staat onderaan elk blad, in het vak **Datum / Schaal**. Je bekijkt en wijzigt ze in de **Kaderinfo**. Klik op de gele knop **✎ Kaderinfo**.',
+                    'De schaal staat onderaan elk blad, rechts in het vak **Schaal** onder de datum. Klik op dat vak (of op de gele knop **✎ Kaderinfo**) om ze te bekijken en te wijzigen.',
                 ],
                 done: 'Kaderinfo is open.',
             },
@@ -614,7 +613,7 @@ export default {
                 },
                 {
                     title: 'Kaderinfo invullen',
-                    text: 'Klik op een vak onderaan het blad (of op de gele knop "Kaderinfo") om titel, adres, eigenaar, tekenaar, datum en dergelijke in te vullen. Die info staat onderaan elk blad, ook in de PDF.',
+                    text: 'Klik op een vak onderaan het blad (of op de gele knop "Kaderinfo") om EAN, adres, eigenaar, tekenaar, datum, schaal en dergelijke in te vullen. Die info staat onderaan elk blad, ook in de PDF.',
                 },
                 {
                     title: 'Situatieschema maken',

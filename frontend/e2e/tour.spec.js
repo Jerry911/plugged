@@ -172,10 +172,16 @@ test('the whole tour: a circuit, a stopcontact, walls with a typed length and a 
 
     // ---- Kaderinfo: where the scale can be seen and changed ----
     await showsStep(page, 'kaderinfo', {timeout: 5000})
-    const kb = await box(page.locator('#btn-footer')),
+    // the Schaal box at the bottom of the sheet is highlighted, shows the scale just chosen and is not hidden by the card
+    const scaleBox = page.locator('[data-tour="sheet-scale"]:visible').first(),
+        kb = await box(scaleBox),
         ks = await spotBox(page)
     expect(hits(ks, {x: kb.x + kb.width / 2, y: kb.y + kb.height / 2})).toBe(true)
-    await page.locator('#btn-footer').click()
+    expect(overlap(await box(card(page)), kb)).toBe(false)
+    await expect(page.locator('.sheet-scale:visible').first()).toHaveText(t('sheet.cells.scale') + ' 1:75')
+    // clicking it opens the Kaderinfo on the scale
+    await scaleBox.click()
+    await expect(page.locator('[data-tour="footer-schaal"]')).toBeFocused()
     await expect(page.locator('#tour-ok')).toBeVisible()
     await showsStep(page, 'kaderinfo-schaal', {timeout: 5000})
     const field = page.locator('[data-tour="footer-schaal"]')

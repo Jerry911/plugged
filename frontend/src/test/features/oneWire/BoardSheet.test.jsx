@@ -130,7 +130,9 @@ test('the texts of the sheet follow the language; the ids of the footer cells ar
     expect(r[0].container.querySelector('.continued-on').textContent).toBe('suite à la feuille 2 →')
     expect(drawnTexts(r[0].container)).toContain('Courbe B')
     expect(r[0].container.querySelector('#sheet-x-number').textContent).toBe(`Feuille 1/${r.length}`)
-    expect(r[0].container.querySelector('#sheet-x-footer-titel')).toBeTruthy()
+    expect(r[0].container.querySelector('#sheet-x-footer-ean')).toBeTruthy()
+    expect(r[0].container.querySelector('#sheet-x-footer-schaal')).toBeTruthy()
+    expect(r[0].container.querySelector('#sheet-x-scale').textContent).toContain('Échelle')
 })
 
 // where the bus lies on the sheet: the y of the drawing's translate (mm)

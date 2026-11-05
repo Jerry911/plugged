@@ -22,7 +22,7 @@ import {useSymbolLibrary} from '../api/useSymbolLibrary.js'
 import {createProject, deleteProject, fetchProject, fetchProjectSummaries, saveProject} from '../api/projectApi.js'
 import {useHistory} from '../hooks/useHistory.js'
 import {exportEds, importEds} from '../model/eds.js'
-import {verify} from '../model/rules.js'
+import {REQUIRED_FOOTER_FIELDS, verify} from '../model/rules.js'
 import {unplacedNodes} from '../model/project.js'
 import {OWN_CATEGORY, setLibrary, symbolName} from '../symbols/symbolLibrary.js'
 import {I18nProvider, useTranslation} from '../i18n/I18nProvider.jsx'
@@ -116,7 +116,8 @@ function Editor({library, user, onLogout}) {
     }
     // a click on a check message: go to the element it is about
     const goToIssue = (issue) => {
-        if (issue.rule === 'footer') return openFooter('titel')
+        // the first required field that is still empty
+        if (issue.rule === 'footer') return openFooter(REQUIRED_FOOTER_FIELDS.find((key) => !(project.footer?.[key] || '').trim()) || 'eigenaar')
         if (issue.rule.startsWith('plan.')) return setTab(SITUATION_TAB)
         setTab(ONE_WIRE_TAB)
         if (issue.page != null) setOneWirePage(issue.page)

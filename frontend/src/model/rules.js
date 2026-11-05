@@ -24,7 +24,7 @@ const BOUNDARY_TYPES = new Set(['kring', 'diff', 'bord', 'subbord', 'zekering'])
 // A feeder circuit (e.g. one that only feeds a sub board) therefore has no consumers of its own; they are counted on the last circuit.
 const ownElementsOf = (nodes) => nodes.flatMap((node) => (BOUNDARY_TYPES.has(node.type) ? [] : [node, ...ownElementsOf(node.children)]))
 // the footer fields that must be filled in
-const REQUIRED_FOOTER_FIELDS = ['titel', 'gemeente', 'eigenaar', 'tekenaar', 'datum']
+export const REQUIRED_FOOTER_FIELDS = ['gemeente', 'eigenaar', 'tekenaar', 'datum']
 const LEVEL_ORDER = {error: 0, warn: 1, info: 2}
 
 /** The rating (A), cable section (mm²) and sensitivity (mA) written in a specs text such as 'B16 2,5mm² 30mA'. */

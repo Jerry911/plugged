@@ -208,8 +208,10 @@ test('Delete key removes node with its children', () => {
 test('footer cells in the diagram call onFooter', () => {
     const fn = vi.fn(),
         {container} = mount(OneWireDiagram, base(), {pageIndex: 0, onFooter: fn})
-    fireEvent.click(getById('eds-sheet-1-drawing-footer-titel'))
-    expect(fn).toHaveBeenCalledWith('titel')
+    fireEvent.click(getById('eds-sheet-1-drawing-footer-ean'))
+    expect(fn).toHaveBeenCalledWith('ean')
+    fireEvent.click(getById('eds-sheet-1-drawing-footer-schaal'))
+    expect(fn).toHaveBeenCalledWith('schaal')
 })
 
 const DEF = () => ({...base(), een: [{id: 'e1', name: 'Blad 1', tree: defaultTree()}]})

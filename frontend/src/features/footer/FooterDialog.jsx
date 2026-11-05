@@ -5,20 +5,18 @@ import {useTranslation} from '../../i18n/I18nProvider.jsx'
 
 /** The footer fields in the order of the form; the labels are in the translations (footer.fields.<key>). */
 export const FOOTER_FIELDS = [
-    'titel',
+    'ean',
     'straat',
     'nr',
     'postcode',
     'gemeente',
     'eigenaar',
-    'ean',
     'tekenaar',
     'datum',
     'schaal',
     'rev',
     'dossier',
     'stelsel',
-    'keurder',
 ]
 
 export const FooterForm = ({project, setProject, focus}) => {

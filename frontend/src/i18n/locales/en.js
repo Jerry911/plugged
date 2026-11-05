@@ -120,7 +120,6 @@ export default {
         title: 'Title block',
         heading: 'Title block (at the bottom of every sheet)',
         fields: {
-            titel: 'Title',
             straat: 'Street',
             nr: 'No.',
             postcode: 'Postal code',
@@ -133,16 +132,16 @@ export default {
             rev: 'Revision',
             dossier: 'File no.',
             stelsel: 'Earthing system (e.g. 230V TT)',
-            keurder: 'Inspection body',
         },
     },
     sheet: {
         cells: {
-            title: 'Title',
+            ean: 'EAN',
             address: 'Address',
-            owner: 'Owner / EAN',
+            owner: 'Owner',
             drawnBy: 'Drawn by',
-            dateScale: 'Date / Scale',
+            date: 'Date',
+            scale: 'Scale',
             revision: 'Rev',
         },
         clickToFill: 'click to fill in',
@@ -381,7 +380,7 @@ export default {
         summary: '{errors} errors · {warnings} warnings · {notes} notes',
         disclaimer: 'A tool based on guideline values; it does not replace the inspection by an accredited body.',
         or: ' or ',
-        footerFields: {titel: 'title', gemeente: 'town', eigenaar: 'owner', tekenaar: 'drawn by', datum: 'date'},
+        footerFields: {gemeente: 'town', eigenaar: 'owner', tekenaar: 'drawn by', datum: 'date'},
         rules: {
             treeEmpty: 'The single-line diagram is empty.',
             noConnection: 'The diagram has no connection to the grid.',
@@ -521,7 +520,7 @@ export default {
             kaderinfo: {
                 title: 'Where is the scale?',
                 body: [
-                    'The scale is at the bottom of every sheet, in the **Date / Scale** box. You view and change it in the **Title block**. Click the yellow **✎ Title block** button.',
+                    'The scale is at the bottom of every sheet, on the right in the **Scale** box under the date. Click that box (or the yellow **✎ Title block** button) to view and change it.',
                 ],
                 done: 'The title block is open.',
             },
@@ -613,7 +612,7 @@ export default {
                 },
                 {
                     title: 'Filling in the title block',
-                    text: 'Click a box at the bottom of the sheet (or the yellow "Title block" button) to fill in the title, address, owner, draughtsman, date and the like. That information is at the bottom of every sheet, also in the PDF.',
+                    text: 'Click a box at the bottom of the sheet (or the yellow "Title block" button) to fill in the EAN, address, owner, draughtsman, date, scale and the like. That information is at the bottom of every sheet, also in the PDF.',
                 },
                 {
                     title: 'Making the site plan',

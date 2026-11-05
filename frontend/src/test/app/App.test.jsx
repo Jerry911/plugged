@@ -416,8 +416,10 @@ test('footer edits flow into the project', async () => {
     await mount()
     await act(async () => {})
     fireEvent.click(getById('btn-footer'))
-    fireEvent.change(getById('footer-titel'), {target: {value: 'Villa'}})
-    expect(sheetText()).toContain('Villa')
+    fireEvent.change(getById('footer-ean'), {target: {value: '541448'}})
+    expect(sheetText()).toContain('541448')
+    fireEvent.change(getById('footer-schaal'), {target: {value: '1:75'}})
+    expect(sheetText()).toContain('1:75')
 })
 test('pdf, print, json export and json import', async () => {
     await mount()

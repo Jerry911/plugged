@@ -170,8 +170,8 @@ test('hierarchy violations (free mode)', () => {
 test('footer completeness', () => {
     const p = ok()
     expect(rule(p, 'footer')).toHaveLength(0)
-    p.footer = {titel: '  ', gemeente: 'Gent'}
-    expect(rule(p, 'footer')[0].msg).toBe('Kaderinfo onvolledig: titel, eigenaar, getekend door, datum.')
+    p.footer = {eigenaar: '  ', gemeente: 'Gent'}
+    expect(rule(p, 'footer')[0].msg).toBe('Kaderinfo onvolledig: eigenaar, getekend door, datum.')
     p.footer = undefined
     expect(rule(p, 'footer')).toHaveLength(1)
 })

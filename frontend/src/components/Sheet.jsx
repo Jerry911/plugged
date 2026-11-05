@@ -17,11 +17,11 @@ export default function Sheet({project, number, total = 2, children, svgRef, onF
     const footer = project.footer || {}
     // [x, width, field that opens when clicked, label, value]
     const cells = [
-        [5, 70, 'titel', t('sheet.cells.title'), footer.titel],
+        [5, 70, 'ean', t('sheet.cells.ean'), footer.ean],
         [75, 75, 'straat', t('sheet.cells.address'), joinFilled([joinFilled([footer.straat, footer.nr]), joinFilled([footer.postcode, footer.gemeente])], ', ')],
-        [150, 50, 'eigenaar', t('sheet.cells.owner'), joinFilled([footer.eigenaar, footer.ean])],
+        [150, 50, 'eigenaar', t('sheet.cells.owner'), footer.eigenaar],
         [200, 35, 'tekenaar', t('sheet.cells.drawnBy'), footer.tekenaar],
-        [235, 33, 'datum', t('sheet.cells.dateScale'), joinFilled([footer.datum, footer.schaal], '  ')],
+        [235, 33, 'datum', t('sheet.cells.date'), footer.datum],
         [268, 24, 'rev', t('sheet.cells.revision'), footer.rev],
     ]
     return (
@@ -65,7 +65,13 @@ export default function Sheet({project, number, total = 2, children, svgRef, onF
                 <text x="6" y="203" fontSize="3" stroke="none">
                     {footer.stelsel ? ' - ' + footer.stelsel : ''}
                     {footer.dossier ? ' - ' + t('sheet.dossier', {number: footer.dossier}) : ''}
-                    {footer.keurder ? ' - ' + footer.keurder : ''}
+                </text>
+                {/* the scale: its own box in the lower row, under the date */}
+                <text id={sheetId && sheetId + '-scale'} className="sheet-scale" x="236" y="203" fontSize="3" stroke="none">
+                    <tspan fontSize={FOOTER_TITLE_FONT_SIZE} fill="#666">
+                        {t('sheet.cells.scale')}
+                    </tspan>{' '}
+                    {footer.schaal || ''}
                 </text>
                 {onFooter && (
                     <rect
@@ -73,10 +79,23 @@ export default function Sheet({project, number, total = 2, children, svgRef, onF
                         className="fcell"
                         x="5"
                         y="198"
-                        width="225"
+                        width="230"
                         height="7"
                         stroke="none"
                         onClick={() => onFooter('dossier')}
+                    />
+                )}
+                {onFooter && (
+                    <rect
+                        id={sheetId && `${sheetId}-footer-schaal`}
+                        data-tour="sheet-scale"
+                        className="fcell"
+                        x="235"
+                        y="198"
+                        width="33"
+                        height="7"
+                        stroke="none"
+                        onClick={() => onFooter('schaal')}
                     />
                 )}
                 <text id={sheetId && sheetId + '-number'} className="sheet-number" x="286" y="203" fontSize="3" textAnchor="end" stroke="none">

@@ -93,8 +93,10 @@ export const tourSteps = () => [
     },
     {
         id: 'kaderinfo',
-        target: '#btn-footer',
-        place: 'bottom',
+        // the Schaal box at the bottom of the sheet (clicking it opens the Kaderinfo on the scale), else the Kaderinfo button
+        target: tourTarget('sheet-scale'),
+        fallback: '#btn-footer',
+        place: 'top',
         watch: () => {
             footerDialogSeen = !!document.querySelector(FOOTER_DIALOG)
             return footerDialogSeen ? 1 : 0

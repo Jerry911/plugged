@@ -32,6 +32,10 @@ export const MM_PER_UNIT = 0.17,
     MAX_SHEET_WIDTH = 1600,
     // the height of circuits (above the bus) a sheet holds at full size
     MAX_SHEET_HEIGHT = DRAWING_HEIGHT / MM_PER_UNIT - HEAD_DEPTH,
+    // Sub boards in sub boards are higher than a sheet at full size; they are drawn smaller, but never smaller than this (still readable on
+    // paper): a circuit in a sub board whose points would need more height bends into a next column instead
+    NESTED_MIN_SCALE = 0.112,
+    NESTED_HEIGHT = DRAWING_HEIGHT / NESTED_MIN_SCALE - HEAD_DEPTH,
     // a sheet is at least this high (drawing units above the bus)
     MIN_SHEET_HEIGHT = 120,
     // where the bus and the first circuit start (left of it: room for the name of the first circuit, clear of the frame)
@@ -59,6 +63,21 @@ export const busPosition = (height, scale) =>
 
 export const sheetScale = (width, height) =>
     Math.min(MM_PER_UNIT, DRAWING_WIDTH / Math.max(1, width), DRAWING_HEIGHT / Math.max(1, height + HEAD_DEPTH))
+
+// While circuits are laid out: how high the bus of the circuit being laid out lies above the bus of the sheet (in a sub board: the top edge of
+// its box), and how much room its points have above its own bus before they bend into a next column (see drawColumns). On the bus of the sheet
+// that is a sheet at full size; in a sub board it is a sheet at NESTED_MIN_SCALE, less the height its board lies at.
+let circuitBase = 0,
+    pointRoom = null
+const withRoom = (base, room, work) => {
+    const before = [circuitBase, pointRoom]
+    ;[circuitBase, pointRoom] = [base, room]
+    try {
+        return work()
+    } finally {
+        ;[circuitBase, pointRoom] = before
+    }
+}
 
 /** Elements drawn as a box with their own circuits inside (a domotics cabinet, a sub board). */
 export const BOX_TYPES = new Set(['domotica', 'subbord'])
@@ -259,8 +278,11 @@ export const connectionReach = (shapes) => {
 }
 
 // vertical room of an element in a stack: the symbol, its count (x3), its label and one line per detail
-// how far the texts under a point (count, name, details) reach below its line: see drawNode
+// how far what hangs under a point (count, name, details) reaches below its line: see drawNode; a box (sub board) reaches 25 below its line,
+// a breaker on the line its specs and cable (see drawInlineBreaker)
 const textBelow = (node) => {
+    if (BOX_TYPES.has(node.type)) return 26
+    if (node.type === 'kring' || node.type === 'diff') return 28 + 13 * Math.max(0, inlineSpecs(node).length - 1)
     const counted = Number(node.p?.aantal) > 1
     return (node.label ? (counted ? 62 : 48) : counted ? 46 : 30) + detailLines(node.p?.details).length * DETAIL_LINE_HEIGHT
 }
@@ -326,9 +348,10 @@ function drawColumns(project, children, stemX, topY, out) {
         })
         return columns
     }
-    let columns = split(MAX_SHEET_HEIGHT + topY)
+    const height = pointRoom ?? MAX_SHEET_HEIGHT
+    let columns = split(height + topY)
     // a bend needs room for the line over the top
-    if (columns.length > 1) columns = split(MAX_SHEET_HEIGHT + topY - BEND_ROOM)
+    if (columns.length > 1) columns = split(height + topY - BEND_ROOM)
     if (columns.length < 2) return drawStack(project, children, stemX, topY, out, BRANCH_STUB, true)
     let x = stemX,
         number = 1,
@@ -359,6 +382,18 @@ function drawColumns(project, children, stemX, topY, out) {
 const INLINE_BREAKER_WIDTH = 64
 // The breaker of a circuit or differentieel under another circuit: the symbol lies on its side on the line (the current flows from left to
 // right), the line stops at the lower contact and carries on after the lever. Name above it, specs and cable under it; then what hangs under it.
+// the lines under a breaker on a line: its specs and cable
+const inlineSpecs = (node) => {
+    const properties = node.p || {},
+        specs =
+            node.type === 'diff'
+                ? differentialSpecs(properties, node.info)
+                : properties.amp
+                  ? [ratingText(properties.polen, properties.amp), properties.curve ? curveText(properties.curve) : '']
+                  : [node.info]
+    return [...specs, properties.kabel].filter(Boolean)
+}
+
 function drawInlineBreaker(project, node, x, y, out) {
     const isDifferential = node.type === 'diff',
         properties = node.p || {},
@@ -379,14 +414,7 @@ function drawInlineBreaker(project, node, x, y, out) {
         },
         lineItem(pivotX + BREAKER_TIP, y, x + INLINE_BREAKER_WIDTH, y),
     )
-    const specs = isDifferential
-        ? differentialSpecs(properties, node.info)
-        : properties.amp
-          ? [ratingText(properties.polen, properties.amp), properties.curve ? curveText(properties.curve) : '']
-          : [node.info]
-    ;[...specs, properties.kabel]
-        .filter(Boolean)
-        .forEach((line, index) => out.push(textItem(centreX, y + 24 + 13 * index, line, {anchor: 'middle', id: node.id})))
+    inlineSpecs(node).forEach((line, index) => out.push(textItem(centreX, y + 24 + 13 * index, line, {anchor: 'middle', id: node.id})))
     if (node.label) out.push(textItem(centreX, y - 22, node.label, {bold: 1, fontSize: 13, anchor: 'middle', id: node.id}))
     return drawStack(project, node.children, x + INLINE_BREAKER_WIDTH, y, out, BRANCH_STUB, false)
 }
@@ -431,8 +459,10 @@ function drawBox(project, node, x, y, out) {
         top = y - 26
     // The circuits of a sub board are laid out by layoutCircuit(), exactly like the circuits on the bus (breaker, specs, plaatsing, in buis,
     // numbers of the elements, click area and latch zone), and moved so that their stem starts on the top edge of the board.
+    // the circuits of the board stand on its top edge: that much higher above the bus of the sheet, and with that much less room above them
+    const base = circuitBase + 25 - y
     circuitsOf(node, true).forEach((circuit) => {
-        const layout = layoutCircuit(project, circuit),
+        const layout = withRoom(base, NESTED_HEIGHT - base, () => layoutCircuit(project, circuit)),
             bounds = layout.items.map(itemBounds).filter(Boolean),
             left = Math.min(...bounds.map((box) => box[0]), 0),
             right = Math.max(layout.w, ...bounds.map((box) => box[2])),
@@ -639,7 +669,13 @@ const MAIN_LINE_TYPES = ['teller', 'hoofdschakelaar', 'diff', 'bord']
 // Without such an overhang the spacing is exactly `previous width + CIRCUIT_SPACING`. `newSheet` marks the first circuit of a new sheet.
 // A circuit that makes the sheet wider than MAX_SHEET_WIDTH still joins it when the sheet does not get smaller for it: a sheet with a
 // circuit that is too high is drawn smaller anyway and has room left at its end (no sheet with a single small circuit after it).
-function layoutBus(project, circuitNodes) {
+function layoutBus(project, nodes) {
+    // a circuit with sub boards that is too wide for one sheet is cut into parts (see splitWide)
+    const circuitNodes = nodes.flatMap((node) => {
+        const layout = layoutCircuit(project, node),
+            room = widthFor(-layout.minY)
+        return layout.w > room && holdsBox(node) ? splitWide(project, node, room) : [node]
+    })
     let sheetStartX = 0,
         right = 0,
         sheetHeight = MIN_SHEET_HEIGHT,
@@ -680,6 +716,62 @@ function layoutBus(project, circuitNodes) {
     return {circuits, end: circuitNodes.length ? right + CIRCUIT_SPACING : BUS_START_X}
 }
 
+// How wide a circuit can be on a sheet of its own: a high circuit makes the sheet smaller anyway (sheetScale), which leaves more room in width.
+const widthFor = (height) => DRAWING_WIDTH / Math.min(MM_PER_UNIT, DRAWING_HEIGHT / (height + HEAD_DEPTH)) - BUS_START_X - CIRCUIT_SPACING
+
+const isBox = (node) => BOX_TYPES.has(node.type) && node.children.length > 0
+// does the drawing under `node` hold a box (sub board, domotics) with circuits?
+const holdsBox = (node) => node.children.some((child) => isBox(child) || holdsBox(child))
+// the circuits of the outermost box under `node` (where `node` can be cut), or none
+const cutPoints = (node) => {
+    const queue = [...node.children]
+    while (queue.length) {
+        const child = queue.shift()
+        if (isBox(child)) return child.children
+        queue.push(...child.children)
+    }
+    return []
+}
+// a part that stays whole when it fits: it holds no box that holds another box (one sub board with its circuits, or a plain circuit)
+const keptWhole = (node) => !node.children.some((child) => (isBox(child) ? child.children.some(holdsBox) || child.children.some(isBox) : !keptWhole(child)))
+
+/**
+ * Cuts a circuit with sub boards (or domotics boxes) in it that is too wide for one sheet into parts that each fit within `room`. The parts are
+ * filled from left to right: a circuit in a box that holds deeper boxes is opened up into the circuits of its own box, while a circuit that
+ * holds at most one box with plain circuits (a sub board with its circuits) stays whole and goes to the next part when it does not fit
+ * anymore (it is only cut itself when it is too wide on its own). Every part repeats the way down to what it holds: the circuit, its breakers
+ * and the boxes it hangs in, each with only the circuits of that part; the other things along the way are drawn in the first part only.
+ * Each part becomes a circuit on the bus of its own, on the next sheets.
+ */
+function splitWide(project, circuit, room) {
+    const groups = [new Set()]
+    // the copy of `node` with only what the part holds (`chosen`), and the way down to it
+    const copyOf = (node, chosen, first) => ({
+        ...node,
+        children: node.children
+            .filter((child) => chosen.has(child) || holds(child, chosen) || (first && !isBox(node) && !holdsBox(child)))
+            .map((child) => (chosen.has(child) || !holds(child, chosen) ? child : copyOf(child, chosen, first))),
+    })
+    const holds = (node, chosen) => node.children.some((child) => chosen.has(child) || holds(child, chosen))
+    const fits = (chosen, first) => layoutCircuit(project, copyOf(circuit, chosen, first)).w <= room
+    const place = (piece) => {
+        const current = groups.at(-1),
+            first = groups.length === 1
+        if (!keptWhole(piece)) return cutPoints(piece).forEach(place)
+        if (!current.size || fits(new Set([...current, piece]), first)) return current.add(piece)
+        groups.push(new Set([piece]))
+        // too wide even on its own: cut it as well
+        if (!fits(groups.at(-1), false) && cutPoints(piece).length) {
+            groups.pop()
+            groups.push(new Set())
+            cutPoints(piece).forEach(place)
+        }
+    }
+    cutPoints(circuit).forEach(place)
+    const parts = groups.filter((group) => group.size)
+    return parts.length > 1 ? parts.map((group, index) => copyOf(circuit, group, index === 0)) : [circuit]
+}
+
 /** The layout of one eendraadschema page: {circuits: [{...layoutCircuit, x, newSheet}], end, bus, head}. */
 export function layoutBoard(project, page) {
     const tree = page.tree,
@@ -709,6 +801,7 @@ export function layoutBoard(project, page) {
     board.head = {...head, items: headItems(project, head)}
     return board
 }
+
 
 /** The board cut into printed sheets: [{from, to (circuit indexes), x0, x1, minY, first, last}]. */
 export function sheetSlices(board) {

@@ -213,7 +213,7 @@ export function BoardSheet({project, board, slice, number, total, selected, ghos
                     <BoardHead head={board.head} selected={selected} onSelect={onSelect} />
                 </g>
                 {board.circuits.slice(slice.from, slice.to).map((circuit) => (
-                    <g key={circuit.node.id} transform={`translate(${circuit.x},0)`}>
+                    <g key={circuit.node.id + '@' + circuit.x} transform={`translate(${circuit.x},0)`}>
                         {circuit.items.map((item, index) => (
                             <DrawnItem
                                 key={index}

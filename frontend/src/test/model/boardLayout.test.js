@@ -8,6 +8,8 @@ import {
     defaultTree,
     layoutCircuit,
     layoutBoard,
+    NESTED_HEIGHT,
+    NESTED_MIN_SCALE,
     sheetSlices,
     sheetPlan,
     pageNumbering,
@@ -29,6 +31,7 @@ import {
     connectionReach,
 } from '../../model/boardLayout.js'
 import {setLanguage} from '../../i18n/translate.js'
+import {flatten} from '../../model/tree.js'
 import {FOOTER_TITLE_FONT_SIZE} from '../../components/Sheet.jsx'
 import {baseProject, node} from '../utils.jsx'
 
@@ -563,7 +566,7 @@ test('the specs and short-circuit rating stand next to each other right of the s
     const [rating, curve, shortCircuit, cable] = vertical,
         stem = circuit.items.find((item) => item.kind === 'line' && item.x1 === item.x2 && item.y1 === 0).x1
     // the specs: on one height a bit above the bus, the first column clear of the stem (text stands left of its x when vertical)
-    expect(new Set([rating, curve, shortCircuit].map((item) => item.y))).toEqual(new Set([-30]))
+    expect(new Set([rating, curve, shortCircuit].map((item) => item.y))).toEqual(new Set([-10]))
     expect(rating.x - 11).toBeGreaterThan(stem + 3)
     expect(curve.x).toBeGreaterThan(rating.x + 10)
     // the cable: along the stem above the specs
@@ -617,4 +620,79 @@ test('more points than fit with the bus at its lowest: the line bends over the t
     const over = circuit.items.find((item) => item.kind === 'line' && item.y1 === item.y2 && item.x1 < stems[1] && item.x2 > stems[1] - 10 && item.y1 < top)
     expect(over).toBeDefined()
     expect(circuit.items.some((item) => item.kind === 'line' && item.x1 === item.x2 && item.y1 === over.y1 && item.y2 > item.y1 && item.x1 > stems[0])).toBe(true)
+})
+
+
+// a board in a board in a board: Hoofdbord (U..Y and Z) -> Z -> ZA -> Tuinhuis (ZB and ZF with a Verdeelbord each, ZP) -> Verdeelbord (circuits)
+const subboard = (id, label, children) => node(id, 'subbord', children, {label})
+const verdeelbord = (prefix) =>
+    subboard(prefix + 'V', 'Verdeelbord', Array.from({length: 6}, (_, i) => kring(prefix + i, Array.from({length: 4}, (_, j) => node(prefix + i + 's' + j, 'stopcontact')))))
+const hoofdbord = () =>
+    subboard('HB', 'Hoofdbord', [
+        ...['U', 'V', 'W', 'X', 'Y'].map((letter) => kring(letter, [node(letter + 's', 'stopcontact')])),
+        kring('Z', [
+            node('ZA', 'diff', [subboard('TH', 'Tuinhuis', [kring('ZB', [verdeelbord('ZB')]), kring('ZF', [verdeelbord('ZF')]), kring('ZP', [node('ZPs', 'stopcontact')])])], {label: 'ZA', p: {amp: 40}}),
+        ]),
+    ])
+const idsIn = (circuit) => new Set(flatten([circuit.node]).map((n) => n.id))
+test('a circuit with sub boards that is too wide for a sheet is cut into parts; every part repeats the way down to what it holds', () => {
+    const p = proj(tree([kring('A1', [node('a', 'stopcontact')]), kring('H', [hoofdbord()])])),
+        board = layoutBoard(p, p.een[0]),
+        parts = board.circuits.filter((circuit) => circuit.node.id === 'H')
+    expect(parts).toHaveLength(2)
+    const [left, right] = parts.map(idsIn)
+    // the first part: U..Y and Z down to Tuinhuis with ZB and its Verdeelbord, not ZF
+    ;['U', 'V', 'W', 'X', 'Y', 'Z', 'ZA', 'TH', 'ZB', 'ZBV', 'ZB0', 'ZB5'].forEach((id) => expect(left.has(id), id).toBe(true))
+    ;['ZF', 'ZFV', 'ZP'].forEach((id) => expect(left.has(id), id).toBe(false))
+    // the second part repeats the way down (H, Hoofdbord, Z, ZA, Tuinhuis) with only ZF (whole, with its Verdeelbord) and ZP
+    ;['H', 'HB', 'Z', 'ZA', 'TH', 'ZF', 'ZFV', 'ZF0', 'ZF5', 'ZP'].forEach((id) => expect(right.has(id), id).toBe(true))
+    ;['U', 'Y', 'ZB', 'ZBV'].forEach((id) => expect(right.has(id), id).toBe(false))
+    // each part on a sheet of its own, the second one following the first
+    expect(parts[1].newSheet).toBe(true)
+    const slices = sheetSlices(board)
+    const sheetOf = (circuit) => slices.findIndex((slice) => board.circuits.indexOf(circuit) >= slice.from && board.circuits.indexOf(circuit) < slice.to)
+    expect(sheetOf(parts[1])).toBe(sheetOf(parts[0]) + 1)
+    // a part is not wider than its height allows (it is not made smaller for its width)
+    parts.forEach((part) => expect(sheetScale(part.w + 60, -part.minY)).toBeCloseTo(sheetScale(1, -part.minY), 2))
+    // the tree itself is untouched
+    expect(p.een[0].tree[0].children[0].children[0].children[1].children[0].children).toHaveLength(6)
+})
+test('a sub board that fits is not cut, and a circuit without sub boards is never cut', () => {
+    const small = proj(tree([kring('H', [subboard('S', 'Klein', [kring('k1', [node('s', 'stopcontact')]), kring('k2', [node('t', 'stopcontact')])])])]))
+    expect(layoutBoard(small, small.een[0]).circuits.map((circuit) => circuit.node.id)).toEqual(['H'])
+    const wide = proj(tree([kring('W', Array.from({length: 1}, () => node('w', 'stopcontact', [chain(40)].flat())))]))
+    expect(layoutBoard(wide, wide.een[0]).circuits).toHaveLength(1)
+})
+
+test('in a sub board deep down a circuit bends into a next column when its points would make the sheet smaller than NESTED_MIN_SCALE', () => {
+    // Hoofdbord -> Z -> ZA -> Tuinhuis -> ZB -> Verdeelbord -> circuit ZE with n points
+    const deep = (n) => {
+        const ze = kring('ZE', Array.from({length: n}, (_, i) => node('ze' + i, 'stopcontact', [], {label: '', p: {aantal: i % 2 ? 2 : 1, nr: 'e' + (i + 1)}})))
+        const p = proj(
+            tree([
+                kring('H', [
+                    subboard('HB', 'Hoofdbord', [
+                        kring('Z', [node('ZA', 'diff', [subboard('TH', 'Tuinhuis', [kring('ZB', [subboard('VB', 'Verdeelbord', [ze])])])], {label: 'ZA', p: {amp: 40}})]),
+                    ]),
+                ]),
+            ]),
+        )
+        const [circuit] = layoutBoard(p, p.een[0]).circuits,
+            numbers = circuit.items.filter((item) => item.kind === 'text' && item.anchor === 'end' && /^e\d+$/.test(item.text))
+        return {height: -circuit.minY, stems: new Set(numbers.map((item) => Math.round(item.x))).size, numbers: numbers.length}
+    }
+    let n = 1
+    while (deep(n + 1).stems === 1) n++
+    // the most points that stay in one column: they fit within the height of a sheet at NESTED_MIN_SCALE
+    expect(n).toBeGreaterThanOrEqual(5)
+    expect(deep(n).height).toBeLessThanOrEqual(NESTED_HEIGHT)
+    // one more bends into a second column, and still fits
+    const bent = deep(n + 1)
+    expect(bent.stems).toBe(2)
+    expect(bent.numbers).toBe(n + 1)
+    expect(bent.height).toBeLessThanOrEqual(NESTED_HEIGHT)
+    expect(sheetScale(1, bent.height)).toBeGreaterThanOrEqual(NESTED_MIN_SCALE - 1e-9)
+    // on the bus of the sheet the same points stay straight (there the full height of a sheet at full size counts)
+    const flat = proj(tree([kring('ZE', Array.from({length: n + 1}, (_, i) => node('ze' + i, 'stopcontact', [], {label: '', p: {aantal: i % 2 ? 2 : 1}})))]))
+    expect(new Set(layoutBoard(flat, flat.een[0]).circuits[0].items.filter((item) => item.anchor === 'end').map((item) => item.x)).size).toBe(1)
 })

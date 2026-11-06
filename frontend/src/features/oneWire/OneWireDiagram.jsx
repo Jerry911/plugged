@@ -27,6 +27,7 @@ import {DISTRIBUTION_TYPES} from './elementFields.js'
 import SymbolPalette from './SymbolPalette.jsx'
 import PropertiesPanel from './PropertiesPanel.jsx'
 import StructureTree from './StructureTree.jsx'
+import {useFillHeight} from '../../hooks/useFillHeight.js'
 
 // id of the element that is drawn (in blue) while a symbol from the palette is dragged over the drawing
 const GHOST_ID = '~ghost~'
@@ -115,7 +116,8 @@ export default function OneWireDiagram({project, setProject, pageIndex, focus, o
         // drag & drop from the palette: the symbol type that is being dragged and where it would land ({id, mode, zone, sheetNumber})
         [draggedType, setDraggedType] = useState(null),
         [dropTarget, setDropTarget] = useState(null),
-        drawing = useRef(null)
+        drawing = useRef(null),
+        sidePanel = useRef(null)
     // a focus (e.g. the message of a check): select the element and scroll the drawing to it (when it is drawn on this sheet), then report it as handled
     useEffect(() => {
         if (!focus) return
@@ -372,10 +374,12 @@ export default function OneWireDiagram({project, setProject, pageIndex, focus, o
             sheet: previewSheets[ghostSheet >= 0 ? ghostSheet : Math.min(dropTarget.sheetNumber - 1, previewSheets.length - 1)],
         }
     })()
+    // the palette and Opbouw reach to the bottom of the window; Opbouw takes the room that is left and scrolls inside
+    useFillHeight(sidePanel)
     const moveSelected = (move) => () => setTree(move(tree, selected.id))
     return (
         <div className="row">
-            <div className="side ui pal sticky-side" data-tour="eds-palette" id="eds-palette">
+            <div className="side ui pal sticky-side fill" data-tour="eds-palette" id="eds-palette" ref={sidePanel}>
                 <SymbolPalette
                     symbolTypes={symbolTypes}
                     search={search}

@@ -6,6 +6,7 @@ import {categoryName, symbolName, typeOf} from '../../symbols/symbolLibrary.js'
 import {placedShapesOf} from '../../symbols/symbolShapes.js'
 import {nodeName} from '../../model/project.js'
 import {useTranslation} from '../../i18n/I18nProvider.jsx'
+import {forwardRef} from 'react'
 import {toDomId} from '../../components/domId.js'
 
 /** One component as a button: symbol, name on the left, marking (e.g. A7) aligned right. */
@@ -33,7 +34,7 @@ export const matchesSearch = (symbolType, search) => {
 export function ComponentPalette({project, symbolTypes, placedCount, search, onSearch, activeType, onChoose}) {
     const {t} = useTranslation()
     return (
-        <div className="pal" data-tour="comp-palette" id="sit-palette">
+        <div className="pal fill-grow fill-col" data-tour="comp-palette" id="sit-palette">
             <b>{t('situation.components', {count: placedCount})}</b>
             <input
                 id="comp-filter"
@@ -44,7 +45,7 @@ export function ComponentPalette({project, symbolTypes, placedCount, search, onS
                 onChange={(event) => onSearch(event.target.value)}
                 style={{width: '100%', boxSizing: 'border-box', margin: '4px 0'}}
             />
-            <div className="pallist">
+            <div className="pallist fill-grow">
                 {symbolTypes.map((symbolType) => (
                     <ComponentButton
                         key={symbolType.k}
@@ -84,10 +85,13 @@ const ShowIcon = () => (
  * The elements of the eendraadschema that are not on the plan yet: click one to place it. In educational mode (`educational`, a student) it is
  * the same list without any judgement: no warning styling or title, no counts and no "all placed" check (see App.jsx).
  */
-export function UnplacedPanel({project, unplaced, hidden, marks, open, onToggleOpen, showHidden, onToggleShowHidden, onPlace, onPlaceAll, onSetHidden, educational}) {
+export const UnplacedPanel = forwardRef(function UnplacedPanel(
+    {project, unplaced, hidden, marks, open, onToggleOpen, showHidden, onToggleShowHidden, onPlace, onPlaceAll, onSetHidden, educational},
+    ref,
+) {
     const {t} = useTranslation()
     return (
-        <div id="sit-unplaced-panel" className={'rightpanel ui' + (open ? '' : ' closed')} data-tour="unplaced">
+        <div id="sit-unplaced-panel" ref={ref} className={'rightpanel ui sticky-side fill' + (open ? '' : ' closed')} data-tour="unplaced">
             <button
                 id="sit-unplaced-toggle"
                 className="paneltoggle"
@@ -96,14 +100,16 @@ export function UnplacedPanel({project, unplaced, hidden, marks, open, onToggleO
                 onClick={onToggleOpen}
             >
                 {open ? '>' : '<'}
+                {/* on a narrow screen the toggle is a bar under the drawing: it says what it opens */}
+                <span className="paneltoggle-text">{open ? t('situation.unplacedCollapse') : t('situation.unplacedOpen')}</span>
                 {!open && !educational && unplaced.length > 0 && <span className="badge">{unplaced.length}</span>}
             </button>
             {open && (
                 <>
                     {unplaced.length ? (
-                        <div className={educational ? 'neutral' : 'warn'} id="sit-unplaced">
+                        <div className={(educational ? 'neutral' : 'warn') + ' fill-grow fill-col'} id="sit-unplaced">
                             <span id="sit-unplaced-title">{educational ? t('situation.elementsTitle') : '⚠ ' + t('situation.unplacedTitle', {count: unplaced.length})}</span>
-                            <div className="pal unplist">
+                            <div className="pal unplist fill-grow">
                                 {unplaced.map((node) => (
                                     <div key={node.id} className="unprow">
                                         <ComponentButton
@@ -172,4 +178,4 @@ export function UnplacedPanel({project, unplaced, hidden, marks, open, onToggleO
             )}
         </div>
     )
-}
+})

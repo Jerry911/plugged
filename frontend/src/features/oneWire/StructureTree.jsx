@@ -75,7 +75,7 @@ export default function StructureTree({project, tree, selectedId, onSelect, fold
             ]
         })
     return (
-        <div id="eds-tree" className="tree">
+        <div id="eds-tree" className="tree fill-grow">
             {rows(tree)}
         </div>
     )

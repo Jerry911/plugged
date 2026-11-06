@@ -1,6 +1,7 @@
 // Copyright 2026 Pleysier Jeroen
 // SPDX-License-Identifier: AGPL-3.0-only
-// Small line icons for the toolbar buttons of the eendraadschema (stroke follows the text colour).
+// Small line icons for the toolbar buttons of the Eigenschappen boxes of the eendraadschema and the situatieschema (stroke follows the
+// text colour).
 const LineIcon = ({children}) => (
     <svg
         width="18"
@@ -67,6 +68,35 @@ export const TOOLBAR_ICONS = {
         <LineIcon>
             <path d="M21 12a9 9 0 1 1-3-6.7" />
             <path d="M21 4v5h-5" />
+        </LineIcon>
+    ),
+    // a quarter turn clockwise: a quarter of a circle with the arrow at its end
+    quarterTurn: (
+        <LineIcon>
+            <path d="M5 19V12a7 7 0 0 1 7-7h6" />
+            <path d="M15 2l3 3-3 3" />
+        </LineIcon>
+    ),
+    // mirror left-right: a dashed axis standing up with a half triangle on each side
+    mirror: (
+        <LineIcon>
+            <path d="M12 3v18" strokeDasharray="2 2.5" />
+            <path d="M9 7L3 17h6z" />
+            <path d="M15 7l6 10h-6z" />
+        </LineIcon>
+    ),
+    // mirror top-bottom (a door opens to the other side of its wall): the same, turned a quarter
+    flip: (
+        <LineIcon>
+            <path d="M3 12h18" strokeDasharray="2 2.5" />
+            <path d="M7 9L17 3v6z" />
+            <path d="M7 15l10 6v-6z" />
+        </LineIcon>
+    ),
+    duplicate: (
+        <LineIcon>
+            <rect x="8" y="8" width="13" height="13" rx="2" />
+            <path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3" />
         </LineIcon>
     ),
     // insert an empty symbol before / after the selected one: a box (the symbol) with a plus at the side where the new one comes

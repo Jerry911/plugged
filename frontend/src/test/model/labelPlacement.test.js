@@ -1,7 +1,7 @@
 // Copyright 2026 Pleysier Jeroen
 // SPDX-License-Identifier: AGPL-3.0-only
 import {expect, test} from 'vitest'
-import {DRAWING_AREA, candidateSpots, centredTextBox, itemBox, labelWidth, placeLabels, wallInBox} from '../../model/labelPlacement.js'
+import {DRAWING_AREA, LABEL_FONT_SIZE, MIN_LABEL_FONT_SIZE, candidateSpots, centredTextBox, itemBox, labelFontSize, labelWidth, placeLabels, symbolExtent, wallInBox} from '../../model/labelPlacement.js'
 
 const sym = (id, x, y, extra = {}) => ({id, kind: 'sym', x, y, ...extra})
 const SIZE = 7
@@ -16,7 +16,7 @@ const overlaps = (a, b) => Math.min(a.x2, b.x2) > Math.max(a.x1, b.x1) && Math.m
 test('a free symbol keeps its marking on the right, next to the symbol', () => {
     const spot = place([], [sym('a', 100, 100)]).get('a')
     expect(spot.side).toBe('right')
-    expect(spot.box.x1).toBeCloseTo(100 + SIZE / 2 + 0.8, 5)
+    expect(spot.box.x1).toBeCloseTo(100 + SIZE / 2 + 0.5, 5)
     expect(spot.y).toBe(100)
 })
 
@@ -122,4 +122,42 @@ test('other texts on the page (the lengths of the walls) are kept clear of', () 
     const length = centredTextBox(106, 100, 90, 7, 2.4)
     expect(length.x2 - length.x1).toBeCloseTo(2.4, 5)
     expect(placeLabels([], [{item: sym('a', 100, 100), size: SIZE}], [{item: sym('a', 100, 100), size: SIZE, text: 'A1'}], [length]).get('a').side).not.toBe('right')
+})
+
+test('the marking grows and shrinks with the symbol, never below the size of the titles of the kader', () => {
+    expect(labelFontSize()).toBe(LABEL_FONT_SIZE)
+    expect(labelFontSize(14)).toBeCloseTo(2 * LABEL_FONT_SIZE, 5)
+    expect(labelFontSize(4)).toBe(MIN_LABEL_FONT_SIZE)
+    const big = candidateSpots(sym('a', 50, 50), 14, 'A1')[0]
+    expect(big.fontSize).toBeCloseTo(5.2, 5)
+    expect(big.box.y2 - big.box.y1).toBeCloseTo(5.2, 5)
+    expect(big.box.x2 - big.box.x1).toBeCloseTo(labelWidth('A1', 5.2), 5)
+    // further away from the centre too: the bigger symbol is not covered
+    expect(big.box.x1).toBeCloseTo(50 + 7 + 0.5, 5)
+})
+
+test('what a symbol really covers: the box around its lines with half the line width, turned with the symbol; the square without lines', () => {
+    // a symbol drawn in the middle third of its 24 x 24 grid, at size 12 (0.5 mm per unit), line width 1 unit
+    const extent = symbolExtent({x1: 8, y1: 10, x2: 16, y2: 14}, 12, 0, 1)
+    expect([extent.x1, extent.y1, extent.x2, extent.y2]).toEqual([-2.25, -1.25, 2.25, 1.25])
+    const turned = symbolExtent({x1: 8, y1: 10, x2: 16, y2: 14}, 12, 90, 1)
+    expect([turned.x1, turned.y1, turned.x2, turned.y2].map((v) => Math.round(v * 100) / 100 + 0)).toEqual([-1.25, -2.25, 1.25, 2.25])
+    expect(symbolExtent(null, 7)).toEqual({x1: -3.5, y1: -3.5, x2: 3.5, y2: 3.5})
+})
+
+test('the marking comes right next to the lines of the symbol, not next to the square it is drawn in', () => {
+    // a narrow symbol (a bell): 2 mm wide, 6 mm high, in a square of 7 mm
+    const extent = {x1: -1, y1: -3, x2: 1, y2: 3},
+        item = sym('a', 100, 100)
+    const right = candidateSpots(item, SIZE, 'B1', extent)[0]
+    expect(right.box.x1).toBeCloseTo(101.5, 5)
+    expect(right.y).toBe(100)
+    const top = candidateSpots(item, SIZE, 'B1', {x1: -1, y1: -3, x2: 3, y2: 1}).find((spot) => spot.side === 'top')
+    // above the middle of the lines, which are off-centre here
+    expect(top.x).toBe(101)
+    expect(top.box.y2).toBeCloseTo(96.5, 5)
+    // a neighbour counts with what it really covers too
+    expect(itemBox(item, SIZE, extent)).toEqual({x1: 99, y1: 97, x2: 101, y2: 103})
+    const spots = placeLabels([], [{item, size: SIZE, extent}], [{item, size: SIZE, text: 'B1', extent}])
+    expect(spots.get('a').box.x1).toBeCloseTo(101.5, 5)
 })

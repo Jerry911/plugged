@@ -10,6 +10,7 @@ import {categoryName, OWN_CATEGORY, symbolName} from '../../symbols/symbolLibrar
 import {newId} from '../../model/tree.js'
 import {useTranslation} from '../../i18n/I18nProvider.jsx'
 import {toDomId} from '../../components/domId.js'
+import {useFillHeight} from '../../hooks/useFillHeight.js'
 
 const DRAWING_TOOLS = ['select', 'line', 'circle', 'rect', 'arc', 'text']
 // width (in grid units) of the invisible outline that makes a thin line easy to click when selecting
@@ -68,7 +69,8 @@ export default function SymbolEditor({library, onSave, onRemove, onRestore, onRe
         setDraft({...draft, ...patch})
         setMessage('')
     }
-    const svgRef = useRef(null),
+    const menu = useRef(null),
+        svgRef = useRef(null),
         boxRef = useRef(null),
         // the shapes that are being dragged: {start (grid units, not snapped), grab (the anchor of the shape that was grabbed), originals (draft.shapes before the drag), moved}
         moveRef = useRef(null),
@@ -278,9 +280,11 @@ export default function SymbolEditor({library, onSave, onRemove, onRestore, onRe
         bounds = unionBounds(chosen)
     const categories = [...new Set(library.map((symbol) => symbol.cat))],
         searchText = search.toLowerCase()
+    // the list of components reaches to the bottom of the window at the most and scrolls inside
+    useFillHeight(menu)
     return (
         <div className="row comp">
-            <div className="side ui pal" id="comp-menu">
+            <div className="side ui pal sticky-side fill" id="comp-menu" ref={menu}>
                 <input
                     id="comp-search"
                     placeholder={t('symbolEditor.search')}
@@ -295,7 +299,7 @@ export default function SymbolEditor({library, onSave, onRemove, onRestore, onRe
                 <button id="comp-restore-all" title={t('symbolEditor.restoreAllTitle')} onClick={restoreAll}>
                     {t('symbolEditor.restoreAll')}
                 </button>
-                <div className="complist">
+                <div className="complist fill-grow">
                     {categories.map((category) => {
                         const matching = library.filter((symbol) => symbol.cat === category && symbolName(symbol).toLowerCase().includes(searchText))
                         return (

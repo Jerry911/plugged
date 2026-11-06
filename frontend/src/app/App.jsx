@@ -434,28 +434,31 @@ function Editor({library, user, onLogout}) {
                 ))}
                 <span className="sep" />
                 <button id="btn-undo" title={t('app.undoTitle')} disabled={!canUndo} onClick={undo}>
-                    ↶ {t('app.undo')}
+                    ↶ <span className="bar-text">{t('app.undo')}</span>
                 </button>
                 <button id="btn-redo" title={t('app.redoTitle')} disabled={!canRedo} onClick={redo}>
-                    ↷ {t('app.redo')}
+                    ↷ <span className="bar-text">{t('app.redo')}</span>
                 </button>
-                <button id="btn-footer" className="accent" onClick={() => openFooter()}>
-                    ✎ {t('app.footer')}
+                <button id="btn-footer" className="accent" title={t('app.footer')} onClick={() => openFooter()}>
+                    ✎ <span className="bar-text">{t('app.footer')}</span>
                 </button>
-                <span style={{flex: 1}} />
+                <span className="bar-spacer" />
                 <span id="status-message">{statusMessage}</span>
                 <input id="import-input" type="file" accept={IMPORT_ACCEPT} hidden onChange={importFile} />
                 <span className="sep" />
                 <button id="btn-pdf" onClick={() => setPrintJob('pdf')}>
                     PDF
                 </button>
-                <button id="btn-print" onClick={() => setPrintJob('print')}>
-                    {t('app.print')}
+                <button id="btn-print" title={t('app.print')} onClick={() => setPrintJob('print')}>
+                    <span className="bar-icon" aria-hidden="true">
+                        🖨
+                    </span>
+                    <span className="bar-text minor">{t('app.print')}</span>
                 </button>
                 <span className="sep" />
                 <LanguageSelect />
                 <button id="tab-info" className={tab === INFO_TAB ? 'on' : ''} title={t('tabs.infoTitle')} onClick={() => setTab(INFO_TAB)}>
-                    ⓘ {t('tabs.info')}
+                    ⓘ <span className="bar-text minor">{t('tabs.info')}</span>
                 </button>
                 {restricted && (
                     <span id="educational-badge" className="edubadge" role="img" title={t('educational.badge')} aria-label={t('educational.badge')}>
@@ -464,12 +467,12 @@ function Editor({library, user, onLogout}) {
                 )}
                 {!user.admin && user.ownedGroups?.length > 0 && (
                     <button id="tab-teacher" className={tab === TEACHER_TAB ? 'on' : ''} title={t('teacher.tabTitle')} onClick={() => setTab(TEACHER_TAB)}>
-                        🎓 {t('teacher.tab')}
+                        🎓 <span className="bar-text minor">{t('teacher.tab')}</span>
                     </button>
                 )}
                 {user.admin && (
                     <button id="tab-admin" className={tab === ADMIN_TAB ? 'on' : ''} title={t('tabs.adminTitle')} onClick={() => setTab(ADMIN_TAB)}>
-                        ⚙ {t('tabs.admin')}
+                        ⚙ <span className="bar-text minor">{t('tabs.admin')}</span>
                         {waitingUsers > 0 && (
                             <span id="tab-admin-waiting" className="badge" title={t('users.pending', {count: waitingUsers})}>
                                 {waitingUsers}
@@ -478,7 +481,10 @@ function Editor({library, user, onLogout}) {
                     </button>
                 )}
                 <button id="btn-logout" title={t('auth.logoutTitle', {name: `${user.name} ${user.surname}`})} onClick={signOut}>
-                    {t('auth.logout')}
+                    <span className="bar-icon" aria-hidden="true">
+                        ⏻
+                    </span>
+                    <span className="bar-text minor">{t('auth.logout')}</span>
                 </button>
             </div>
             {exportOpen && !restricted && <ExportDialog onExport={exportAs} onClose={() => setExportOpen(false)} />}

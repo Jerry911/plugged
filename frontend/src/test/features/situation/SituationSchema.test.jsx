@@ -784,27 +784,31 @@ test('typing "width x height" draws a room from the first point towards the curs
 })
 
 // ---- collapsible "nergens geplaatst" panel ----
-test('the "nergens geplaatst" list sits right of the drawing and can be collapsed so the drawing grows', () => {
+test('the "nergens geplaatst" list sits right of the drawing and can be collapsed; the drawing takes all the width between the panels', () => {
     const {container} = mount(SituationSchema, P(), {pageIndex: 0}),
         panel = () => container.querySelector('.rightpanel'),
         wrap = () => container.querySelector('.zoomscroll').parentElement
     expect(container.querySelector('.main').nextElementSibling).toBe(panel())
     expect(container.querySelector('.side').textContent).not.toContain('Nergens geplaatst')
     expect(panel().textContent).toContain('Nergens geplaatst (1)')
-    expect(wrap().style.maxWidth).toBe('1100px')
-    const toggle = () => getById('sit-unplaced-toggle')
+    // no limit: the drawing grows with the room it gets
+    expect(wrap().style.maxWidth).toBe('')
+    const toggle = () => getById('sit-unplaced-toggle'),
+        arrow = () => toggle().firstChild.textContent
     expect(toggle()).toHaveAccessibleName('Nergens geplaatst inklappen')
-    expect(toggle().textContent).toBe('>')
+    expect(arrow()).toBe('>')
+    // the words are only shown on a narrow screen, where the toggle is a bar under the drawing
+    expect(toggle().querySelector('.paneltoggle-text')).toHaveTextContent('Nergens geplaatst inklappen')
     fireEvent.click(toggle())
     expect(panel()).toHaveClass('closed')
     expect(panel().textContent).not.toContain('Keuken')
     expect(toggle()).toHaveAccessibleName('Nergens geplaatst openen')
-    expect(toggle().textContent).toBe('<1')
-    expect(wrap().style.maxWidth).toBe('1480px')
+    expect(arrow()).toBe('<')
+    expect(toggle().querySelector('.badge')).toHaveTextContent('1')
+    expect(wrap().style.maxWidth).toBe('')
     fireEvent.click(toggle())
     expect(panel()).not.toHaveClass('closed')
     expect(panel().textContent).toContain('Keuken stopcontact')
-    expect(wrap().style.maxWidth).toBe('1100px')
 })
 test('the panel shows the all-placed message and has no badge when nothing is missing', () => {
     const init = P()
@@ -1061,7 +1065,7 @@ test('selected-item panel: close button on top, text first, size slider next, bu
     const text = panel.querySelector('#sym-text'), slider = panel.querySelector('input[type=range]'), buttons = panel.querySelector('.tb')
     expect(before(text, slider)).toBe(true)
     expect(before(slider, buttons)).toBe(true)
-    expect(buttons.lastElementChild.textContent).toBe('⧉')
+    expect(buttons.lastElementChild.id).toBe('sit-delete')
     fireEvent.click(container.querySelector('#sit-close'))
     expect(container.querySelector('#sit-props')).toBeNull()
     expect(byId('sit-props')).toBeNull()
@@ -1084,7 +1088,7 @@ test('the marking of a symbol moves to a free spot: away from a wall, from anoth
     // nothing around: right of the symbol, as always
     expect(marks({id: 's', name: 'X', walls: [], items: [{id: 'a', kind: 'sym', type: 'lichtpunt', x: 100, y: 100, mark: 'A1'}]}).map(at)).toEqual([['A1', 'right']])
     // a wall just right of the symbol: the marking goes left, where it can be read
-    const [beside] = marks({id: 's', name: 'X', walls: [wall('w', 106, 50, 106, 150)], items: [{id: 'a', kind: 'sym', type: 'lichtpunt', x: 100, y: 100, mark: 'A1'}]})
+    const [beside] = marks({id: 's', name: 'X', walls: [wall('w', 104, 50, 104, 150)], items: [{id: 'a', kind: 'sym', type: 'lichtpunt', x: 100, y: 100, mark: 'A1'}]})
     expect(at(beside)).toEqual(['A1', 'left'])
     expect(Number(beside.getAttribute('x'))).toBeLessThan(100)
     // a symbol placed right next to it: the marking makes way, the neighbour keeps its own on the right
@@ -1094,7 +1098,7 @@ test('the marking of a symbol moves to a free spot: away from a wall, from anoth
         walls: [],
         items: [
             {id: 'a', kind: 'sym', type: 'lichtpunt', x: 100, y: 100, mark: 'F5'},
-            {id: 'b', kind: 'sym', type: 'lichtpunt', x: 110, y: 100, mark: 'F6'},
+            {id: 'b', kind: 'sym', type: 'lichtpunt', x: 105, y: 100, mark: 'F6'},
         ],
     })
     expect(pair.map(at)).toEqual([
@@ -1114,4 +1118,98 @@ test('the length written next to a wall is not covered by a marking; without len
     expect(lengthLabelBox(wall('x', 0, 0, 1, 0), 50)).toBeNull()
     expect(side(page)).not.toBe('right')
     expect(side({...page, dims: false})).toBe('right')
+})
+
+// ---- the Eigenschappen box: the same look as on the eendraadschema ----
+const selectSymbol = (container) => {
+    fireEvent.pointerMove(sv(container), {clientX: 5, clientY: 5})
+    fireEvent.pointerDown(container.querySelector('svg.sheet g[style*="move"]'), {clientX: 100, clientY: 100})
+    fireEvent.pointerUp(sv(container))
+}
+test('Eigenschappen of a symbol: heading, what is selected, icon buttons with a hover text, and a delete button', () => {
+    const init = P()
+    init.sit[0].items = [{id: 'i1', kind: 'sym', node: 'n1', x: 100, y: 100, r: 0, s: 7}]
+    const {container, spy} = mount(SituationSchema, init, {pageIndex: 0})
+    selectSymbol(container)
+    expect(getById('sit-props')).toHaveClass('props')
+    expect(getById('sit-props-heading')).toHaveTextContent(t('situation.properties'))
+    expect(getById('sit-props-title')).toHaveTextContent(t('situation.selected', {kind: t('situation.kinds.sym')}) + ' · Stopcontact')
+    // every button says what it does on hover, like on the eendraadschema
+    for (const id of ['sit-rotate-ccw', 'sit-rotate-cw', 'sit-rotate-90', 'sit-duplicate', 'sit-delete', 'sit-close'])
+        expect(getById(id).getAttribute('title'), id).toBeTruthy()
+    expect(getById('sit-rotate-90')).toHaveAttribute('title', t('situation.rotateClockwiseTitle', {degrees: 90}))
+    expect(getById('sit-rotate-90').querySelector('svg')).toBeTruthy()
+    expect(getById('sit-rotate-90')).toHaveTextContent('90°')
+    expect(getById('sit-rotate-ccw')).toHaveTextContent('15°')
+    expect(byId('sit-rotation')).toBeNull()
+    fireEvent.click(getById('sit-rotate-ccw'))
+    expect(sit(spy).items[0].r).toBe(-15)
+    // the turn is shown between 0 and 360
+    expect(getById('sit-rotation')).toHaveTextContent('345°')
+    expect(getById('sit-delete')).toHaveAccessibleName(t('common.delete'))
+    fireEvent.click(getById('sit-delete'))
+    expect(sit(spy).items).toHaveLength(0)
+    expect(byId('sit-props')).toBeNull()
+})
+test('Eigenschappen of a door: mirror buttons with icons and their own hover texts', () => {
+    const init = P()
+    init.sit[0].items = [{id: 'd', kind: 'door', x: 100, y: 100, r: 0, w: 10}]
+    const {container, spy} = mount(SituationSchema, init, {pageIndex: 0})
+    selectSymbol(container)
+    expect(getById('sit-flip')).toHaveAttribute('title', t('situation.flipTitle'))
+    expect(getById('sit-mirror')).toHaveAttribute('title', t('situation.mirrorTitle'))
+    fireEvent.click(getById('sit-mirror'))
+    expect(sit(spy).items[0].m).toBe(true)
+})
+test('Eigenschappen of a wall: its length, duplicate, delete and close', () => {
+    const init = P()
+    init.sit[0].walls = [wall('w', 10, 20, 50, 20)]
+    const {container, spy} = mount(SituationSchema, init, {pageIndex: 0})
+    const hit = () => container.querySelector('line[stroke="transparent"]')
+    fireEvent.pointerDown(hit(), {clientX: 20, clientY: 20})
+    fireEvent.pointerUp(sv(container))
+    expect(getById('sit-wall-heading')).toHaveTextContent(t('situation.properties'))
+    expect(getById('sit-wall-props')).toHaveTextContent(t('situation.wall'))
+    fireEvent.click(getById('sit-wall-duplicate'))
+    expect(sit(spy).walls).toHaveLength(2)
+    fireEvent.click(getById('sit-wall-delete'))
+    expect(sit(spy).walls).toHaveLength(1)
+    expect(byId('sit-wall-props')).toBeNull()
+    fireEvent.pointerDown(hit(), {clientX: 20, clientY: 20})
+    fireEvent.pointerUp(sv(container))
+    fireEvent.click(getById('sit-wall-close'))
+    expect(byId('sit-wall-props')).toBeNull()
+    expect(sit(spy).walls).toHaveLength(1)
+})
+test('Eigenschappen of several elements: turn, duplicate, delete all of them, or close', () => {
+    const {container, spy} = mount(SituationSchema, MULTI(), {pageIndex: 0})
+    const selectAll = () => {
+        dn(container, 5, 10)
+        mv(container, 290, 180)
+        up(container)
+    }
+    selectAll()
+    expect(getById('sit-multi-heading')).toHaveTextContent(t('situation.properties'))
+    expect(getById('sit-multi-delete')).toHaveAttribute('title', t('situation.deleteSelectionTitle'))
+    fireEvent.click(getById('sit-multi-close'))
+    expect(byId('sit-multi')).toBeNull()
+    selectAll()
+    fireEvent.click(getById('sit-multi-delete'))
+    expect(sit(spy).walls).toHaveLength(0)
+    expect(sit(spy).items).toHaveLength(0)
+    expect(byId('sit-multi')).toBeNull()
+})
+test('the marking of a symbol grows and shrinks with the symbol, but stays readable', () => {
+    const init = P()
+    init.sit[0].items = [{id: 'i1', kind: 'sym', node: 'n1', x: 100, y: 100, r: 0, s: 7, mark: 'A1'}]
+    const size = (s) => {
+        init.sit[0].items[0].s = s
+        const {container, unmount} = render(<SituationSheet project={init} page={init.sit[0]} number={1} total={1} />)
+        const fontSize = +container.querySelector('.symbol-mark').getAttribute('font-size')
+        unmount()
+        return fontSize
+    }
+    expect(size(7)).toBeCloseTo(2.6, 5)
+    expect(size(14)).toBeCloseTo(5.2, 5)
+    expect(size(4)).toBeCloseTo(2.2, 5)
 })

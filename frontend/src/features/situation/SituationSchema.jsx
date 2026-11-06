@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // The situatieschema tab: tools and the selected item on the left, the plan in the middle, the elements that are not placed yet on the right.
 import {useEffect, useRef, useState} from 'react'
-import {allTypes, typeOf} from '../../symbols/symbolLibrary.js'
+import {allTypes, symbolName, typeOf} from '../../symbols/symbolLibrary.js'
 import ZoomPane from '../../components/ZoomPane.jsx'
 import ZoomControls from '../../components/ZoomControls.jsx'
 import {circuitMarks, hiddenNodes, placeableNodes, setNodeProperties, unplacedNodes} from '../../model/project.js'
@@ -25,6 +25,9 @@ import {
 } from '../../model/geometry.js'
 import {useTranslation} from '../../i18n/I18nProvider.jsx'
 import {DEFAULT_ITEM_SIZE, SituationSheet} from './SituationSheet.jsx'
+import {IconButton, PropertiesBox} from '../../components/PropertiesBox.jsx'
+import {TOOLBAR_ICONS} from '../oneWire/icons.jsx'
+import {useFillHeight} from '../../hooks/useFillHeight.js'
 import {ComponentPalette, matchesSearch, UnplacedPanel} from './SituationPanels.jsx'
 
 const TOOLS = ['select', 'wall', 'room', 'door', 'window', 'sym', 'text', 'erase']
@@ -62,7 +65,9 @@ export default function SituationSchema({project, setProject, pageIndex, onFoote
         dimensionInput = useRef(),
         justBoxSelected = useRef(false),
         // last cursor position while drawing: survives the mouse leaving the sheet, gives the direction of a typed length
-        aim = useRef(null)
+        aim = useRef(null),
+        leftPanel = useRef(null),
+        rightPanel = useRef(null)
     const scale = scaleOf(project.footer),
         showLengths = page.dims !== false
     const updatePage = (patch) => setProject({...project, sit: project.sit.map((existing, index) => (index === pageIndex ? {...existing, ...patch} : existing))})
@@ -443,10 +448,14 @@ export default function SituationSchema({project, setProject, pageIndex, onFoote
         },
     }
     // the length input of a selected wall starts over when the wall changes
+    // the panels reach to the bottom of the window (their lists scroll inside); the sheet takes all the width between them, so collapsing the
+    // right panel makes it bigger
+    useFillHeight(leftPanel)
+    useFillHeight(rightPanel)
     const wallInputKey = (wall) => `${wall.id}:${wall.x1},${wall.y1},${wall.x2},${wall.y2}`
     return (
         <div className="row">
-            <div className="side ui">
+            <div className="side ui sticky-side fill" ref={leftPanel}>
                 <div className="tb" id="sit-tools">
                     {TOOLS.map((name) => (
                         <button key={name} id={'sit-tool-' + name} className={tool === name ? 'on' : ''} data-tour={'tool-' + name} onClick={() => chooseTool(name)}>
@@ -456,65 +465,66 @@ export default function SituationSchema({project, setProject, pageIndex, onFoote
                 </div>
                 <p id="sit-help">{t('situation.help')}</p>
                 {selectedItem && (
-                    <div className="warn" id="sit-props">
-                        <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
-                            <b id="sit-props-title">{t('situation.selected', {kind: t('situation.kinds.' + selectedItem.kind)})}</b>
-                            <button
-                                id="sit-close"
-                                title={t('situation.closeSelection')}
-                                aria-label={t('situation.closeSelection')}
-                                style={{display: 'inline-flex', width: 'auto', padding: '2px 7px'}}
-                                onClick={() => setSelection([])}
-                            >
-                                ✕
-                            </button>
-                        </div>
+                    <PropertiesBox
+                        id="sit-props"
+                        title={t('situation.properties')}
+                        titleId="sit-props-heading"
+                        subtitle={
+                            t('situation.selected', {kind: t('situation.kinds.' + selectedItem.kind)}) +
+                            (selectedItem.kind === 'sym' && selectedSymbolType ? ' · ' + symbolName(selectedSymbolType) : '')
+                        }
+                        subtitleId="sit-props-title"
+                        closeId="sit-close"
+                        closeLabel={t('situation.closeSelection')}
+                        onClose={() => setSelection([])}
+                    >
                         {selectedItem.kind === 'sym' && (
-                            <label style={{display: 'flex', alignItems: 'center', gap: 6}}>
+                            <label>
                                 {t('situation.text')}
-                                <input
-                                    id="sym-text"
-                                    value={selectedItem.mark ?? (selectedItem.node ? marks.get(selectedItem.node) || '' : '')}
-                                    placeholder={t('situation.markPlaceholder')}
-                                    onChange={(event) => updateSelectedItem({mark: event.target.value})}
-                                    style={{flex: 1, minWidth: 0}}
-                                />
-                                {selectedItem.node && selectedItem.mark !== undefined && (
-                                    <button type="button" id="sym-text-reset" title={t('situation.resetMark')} onClick={() => updateSelectedItem({mark: undefined})}>
-                                        ↺
-                                    </button>
-                                )}
+                                <span className="props-field">
+                                    <input
+                                        id="sym-text"
+                                        value={selectedItem.mark ?? (selectedItem.node ? marks.get(selectedItem.node) || '' : '')}
+                                        placeholder={t('situation.markPlaceholder')}
+                                        onChange={(event) => updateSelectedItem({mark: event.target.value})}
+                                    />
+                                    {selectedItem.node && selectedItem.mark !== undefined && (
+                                        <button type="button" id="sym-text-reset" title={t('situation.resetMark')} aria-label={t('situation.resetMark')} onClick={() => updateSelectedItem({mark: undefined})}>
+                                            ↺
+                                        </button>
+                                    )}
+                                </span>
                             </label>
                         )}
                         {selectedItem.kind === 'text' && (
-                            <label style={{display: 'flex', alignItems: 'center', gap: 6}}>
+                            <label>
                                 {t('situation.text')}
-                                <input id="text-txt" value={selectedItem.txt} onChange={(event) => updateSelectedItem({txt: event.target.value})} style={{flex: 1, minWidth: 0}} />
+                                <input id="text-txt" className="props-wide" value={selectedItem.txt} onChange={(event) => updateSelectedItem({txt: event.target.value})} />
                             </label>
                         )}
-                        <label style={{display: 'flex', alignItems: 'center', gap: 6}}>
+                        <label>
                             {t('situation.size')}
                             <input
                                 id="sit-size"
+                                className="props-wide"
                                 type="range"
                                 min={sizeMin}
                                 max={sizeMax}
                                 step=".5"
                                 value={selectedItem[sizeKey] || DEFAULT_ITEM_SIZE[selectedItem.kind]}
                                 onChange={(event) => updateSelectedItem({[sizeKey]: +event.target.value})}
-                                style={{flex: 1, minWidth: 0}}
                             />
                         </label>
                         {isOpening(selectedItem) && (
                             <label>
-                                {t('situation.width')}{' '}
+                                {t('situation.width')}
                                 <input
                                     id="sit-width"
+                                    className="props-wide"
                                     key={`${selectedItem.id}:${selectedItem.w}`}
                                     defaultValue={formatLength(selectedItem.w || 10, scale)}
                                     onKeyDown={(event) => event.key === 'Enter' && setOpeningWidth(event.target.value)}
                                     onBlur={(event) => setOpeningWidth(event.target.value)}
-                                    style={{width: 80}}
                                 />
                             </label>
                         )}
@@ -533,63 +543,85 @@ export default function SituationSchema({project, setProject, pageIndex, onFoote
                                 {t('situation.waterproof')}
                             </label>
                         )}
-                        <div className="tb">
-                            <button id="sit-rotate-ccw" onClick={() => updateSelectedItem({r: (selectedItem.r || 0) - 15})}>
-                                ⟲15°
-                            </button>
-                            <button id="sit-rotate-cw" onClick={() => updateSelectedItem({r: (selectedItem.r || 0) + 15})}>
-                                ⟳15°
-                            </button>
-                            <button id="sit-rotate-90" onClick={() => updateSelectedItem({r: (selectedItem.r || 0) + 90})}>
-                                ⟳90°
-                            </button>
+                        <div className="tb icons">
+                            <IconButton
+                                id="sit-rotate-ccw"
+                                icon={TOOLBAR_ICONS.counterClockwise}
+                                text="15°"
+                                title={t('situation.rotateCounterClockwiseTitle', {degrees: 15})}
+                                onClick={() => updateSelectedItem({r: (selectedItem.r || 0) - 15})}
+                            />
+                            <IconButton
+                                id="sit-rotate-cw"
+                                icon={TOOLBAR_ICONS.clockwise}
+                                text="15°"
+                                title={t('situation.rotateClockwiseTitle', {degrees: 15})}
+                                onClick={() => updateSelectedItem({r: (selectedItem.r || 0) + 15})}
+                            />
+                            <IconButton
+                                id="sit-rotate-90"
+                                icon={TOOLBAR_ICONS.quarterTurn}
+                                text="90°"
+                                title={t('situation.rotateClockwiseTitle', {degrees: 90})}
+                                onClick={() => updateSelectedItem({r: (selectedItem.r || 0) + 90})}
+                            />
                             {isOpening(selectedItem) && (
                                 <>
-                                    <button id="sit-flip" onClick={() => updateSelectedItem({f: !selectedItem.f})}>
-                                        ⇅ {t('situation.mirror')}
-                                    </button>
-                                    <button id="sit-mirror" onClick={() => updateSelectedItem({m: !selectedItem.m})}>
-                                        ⇄ {t('situation.mirror')}
-                                    </button>
+                                    <IconButton id="sit-flip" icon={TOOLBAR_ICONS.flip} title={t('situation.flipTitle')} onClick={() => updateSelectedItem({f: !selectedItem.f})} />
+                                    <IconButton id="sit-mirror" icon={TOOLBAR_ICONS.mirror} title={t('situation.mirrorTitle')} onClick={() => updateSelectedItem({m: !selectedItem.m})} />
                                 </>
                             )}
-                            <button id="sit-duplicate" title={t('situation.duplicate')} onClick={duplicateSelection}>
-                                ⧉
-                            </button>
+                            <IconButton id="sit-duplicate" icon={TOOLBAR_ICONS.duplicate} title={t('situation.duplicate')} onClick={duplicateSelection} />
+                            <IconButton id="sit-delete" className="props-delete" icon={TOOLBAR_ICONS.trash} title={t('situation.deleteSelectionTitle')} label={t('common.delete')} onClick={deleteSelection} />
+                            {!!selectedItem.r && <small id="sit-rotation"> {((selectedItem.r % 360) + 360) % 360}°</small>}
                         </div>
-                    </div>
+                    </PropertiesBox>
                 )}
                 {selectedWall && (
-                    <div className="warn" id="sit-wall-props">
-                        <b>{t('situation.wall')}</b>
+                    <PropertiesBox
+                        id="sit-wall-props"
+                        title={t('situation.properties')}
+                        titleId="sit-wall-heading"
+                        subtitle={t('situation.wall')}
+                        closeId="sit-wall-close"
+                        closeLabel={t('situation.closeSelection')}
+                        onClose={() => setSelection([])}
+                    >
                         <label>
-                            {t('situation.length')}{' '}
+                            {t('situation.length')}
                             <input
                                 id="sit-wall-length"
+                                className="props-wide"
                                 key={wallInputKey(selectedWall)}
                                 defaultValue={formatLength(Math.hypot(selectedWall.x2 - selectedWall.x1, selectedWall.y2 - selectedWall.y1), scale)}
                                 onKeyDown={(event) => event.key === 'Enter' && setWallLength(event.target.value)}
                                 onBlur={(event) => setWallLength(event.target.value)}
-                                style={{width: 80}}
                             />
                         </label>
-                    </div>
+                        <div className="tb icons">
+                            <IconButton id="sit-wall-duplicate" icon={TOOLBAR_ICONS.duplicate} title={t('situation.duplicate')} onClick={duplicateSelection} />
+                            <IconButton id="sit-wall-delete" className="props-delete" icon={TOOLBAR_ICONS.trash} title={t('situation.deleteSelectionTitle')} label={t('common.delete')} onClick={deleteSelection} />
+                        </div>
+                    </PropertiesBox>
                 )}
                 {selection.length > 1 && (
-                    <div className="warn" id="sit-multi">
-                        <b id="sit-multi-title">{t('situation.multipleSelected', {count: selection.length})}</b>
-                        <div className="tb">
-                            <button id="sit-multi-rotate-ccw" onClick={() => rotateSelection(-15)}>
-                                ⟲15°
-                            </button>
-                            <button id="sit-multi-rotate-cw" onClick={() => rotateSelection(15)}>
-                                ⟳15°
-                            </button>
-                            <button id="sit-multi-duplicate" title={t('situation.duplicate')} onClick={duplicateSelection}>
-                                ⧉
-                            </button>
+                    <PropertiesBox
+                        id="sit-multi"
+                        title={t('situation.properties')}
+                        titleId="sit-multi-heading"
+                        subtitle={t('situation.multipleSelected', {count: selection.length})}
+                        subtitleId="sit-multi-title"
+                        closeId="sit-multi-close"
+                        closeLabel={t('situation.closeSelection')}
+                        onClose={() => setSelection([])}
+                    >
+                        <div className="tb icons">
+                            <IconButton id="sit-multi-rotate-ccw" icon={TOOLBAR_ICONS.counterClockwise} text="15°" title={t('situation.rotateCounterClockwiseTitle', {degrees: 15})} onClick={() => rotateSelection(-15)} />
+                            <IconButton id="sit-multi-rotate-cw" icon={TOOLBAR_ICONS.clockwise} text="15°" title={t('situation.rotateClockwiseTitle', {degrees: 15})} onClick={() => rotateSelection(15)} />
+                            <IconButton id="sit-multi-duplicate" icon={TOOLBAR_ICONS.duplicate} title={t('situation.duplicate')} onClick={duplicateSelection} />
+                            <IconButton id="sit-multi-delete" className="props-delete" icon={TOOLBAR_ICONS.trash} title={t('situation.deleteSelectionTitle')} label={t('common.delete')} onClick={deleteSelection} />
                         </div>
-                    </div>
+                    </PropertiesBox>
                 )}
                 <ComponentPalette
                     project={project}
@@ -605,7 +637,7 @@ export default function SituationSchema({project, setProject, pageIndex, onFoote
                 />
             </div>
             <div className="main">
-                <div style={{position: 'relative', maxWidth: panelOpen ? 1100 : 1480}}>
+                <div style={{position: 'relative'}}>
                     <ZoomPane zoom={zoom} rightPan>
                         <div style={{width: `${zoom * 100}%`}}>
                             <SituationSheet project={project} page={page} {...pageNumbering(project, page)} editor={editor} onFooter={onFooter} />
@@ -695,6 +727,7 @@ export default function SituationSchema({project, setProject, pageIndex, onFoote
                 </div>
             </div>
             <UnplacedPanel
+                ref={rightPanel}
                 project={project}
                 unplaced={unplaced}
                 hidden={hidden}

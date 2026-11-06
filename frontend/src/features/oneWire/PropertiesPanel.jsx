@@ -9,6 +9,7 @@ import {ROTATION_STEP} from '../../model/tree.js'
 import {useTranslation} from '../../i18n/I18nProvider.jsx'
 import {DISTRIBUTION_TYPES, fieldRows, fieldsOf} from './elementFields.js'
 import {TOOLBAR_ICONS} from './icons.jsx'
+import {IconButton, PropertiesBox} from '../../components/PropertiesBox.jsx'
 
 const fullWidth = {width: '100%', boxSizing: 'border-box'}
 
@@ -96,19 +97,15 @@ export default function PropertiesPanel({
         </label>
     )
     return (
-        <div className="warn" id="eds-props" data-tour="eds-props">
-            <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
-                <b id="eds-props-title">{t('oneWire.properties')}</b>
-                <button
-                    id="eds-close"
-                    title={t('oneWire.closeProperties')}
-                    aria-label={t('oneWire.closeProperties')}
-                    style={{display: 'inline-flex', width: 'auto', padding: '2px 7px'}}
-                    onClick={onClose}
-                >
-                    ✕
-                </button>
-            </div>
+        <PropertiesBox
+            id="eds-props"
+            data-tour="eds-props"
+            title={t('oneWire.properties')}
+            titleId="eds-props-title"
+            closeId="eds-close"
+            closeLabel={t('oneWire.closeProperties')}
+            onClose={onClose}
+        >
             <label>
                 {node.type === 'kring' ? t('oneWire.letter') : t('oneWire.text')}
                 <input id="eds-label" value={node.label} onChange={(event) => onLabelChange(event.target.value)} style={fullWidth} />
@@ -257,32 +254,35 @@ export default function PropertiesPanel({
                 <button id="eds-indent" title={t('oneWire.toolbar.indentTitle')} aria-label={t('oneWire.toolbar.indent')} onClick={onIndent}>
                     {TOOLBAR_ICONS.indent}
                 </button>
-                <button id="eds-duplicate" title={t('oneWire.toolbar.duplicate')} aria-label={t('oneWire.toolbar.duplicate')} onClick={onDuplicate}>
-                    ⧉
-                </button>
-                <button id="eds-delete" title={t('oneWire.toolbar.deleteTitle')} aria-label={t('common.delete')} onClick={onDelete}>
-                    {TOOLBAR_ICONS.trash}
-                </button>
-                <button
+                <IconButton
                     id="eds-rotate-ccw"
+                    icon={TOOLBAR_ICONS.counterClockwise}
+                    text={ROTATION_STEP + '°'}
                     title={t('oneWire.toolbar.rotateCounterClockwiseTitle', {degrees: ROTATION_STEP})}
-                    aria-label={t('oneWire.toolbar.rotateCounterClockwise')}
+                    label={t('oneWire.toolbar.rotateCounterClockwise')}
                     disabled={isDistribution}
                     onClick={() => onRotate(-ROTATION_STEP)}
-                >
-                    {TOOLBAR_ICONS.counterClockwise}
-                </button>
-                <button
+                />
+                <IconButton
                     id="eds-rotate-cw"
+                    icon={TOOLBAR_ICONS.clockwise}
+                    text={ROTATION_STEP + '°'}
                     title={t('oneWire.toolbar.rotateClockwiseTitle', {degrees: ROTATION_STEP})}
-                    aria-label={t('oneWire.toolbar.rotateClockwise')}
+                    label={t('oneWire.toolbar.rotateClockwise')}
                     disabled={isDistribution}
                     onClick={() => onRotate(ROTATION_STEP)}
-                >
-                    {TOOLBAR_ICONS.clockwise}
-                </button>
+                />
+                <IconButton id="eds-duplicate" icon={TOOLBAR_ICONS.duplicate} title={t('oneWire.toolbar.duplicate')} onClick={onDuplicate} />
+                <IconButton
+                    id="eds-delete"
+                    className="props-delete"
+                    icon={TOOLBAR_ICONS.trash}
+                    title={t('oneWire.toolbar.deleteTitle')}
+                    label={t('common.delete')}
+                    onClick={onDelete}
+                />
                 {!isDistribution && !!node.r && <small id="eds-rotation"> {node.r}°</small>}
             </div>
-        </div>
+        </PropertiesBox>
     )
 }

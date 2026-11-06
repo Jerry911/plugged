@@ -8,7 +8,8 @@ import {placedShapesOf} from '../../symbols/symbolShapes.js'
 import Sheet from '../../components/Sheet.jsx'
 import {circuitMarks, placeableNodes} from '../../model/project.js'
 import {formatLength, scaleOf} from '../../model/geometry.js'
-import {LABEL_FONT_SIZE, centredTextBox, placeLabels} from '../../model/labelPlacement.js'
+import {centredTextBox, placeLabels, symbolExtent} from '../../model/labelPlacement.js'
+import {unionBounds} from '../../symbols/shapeHit.js'
 import {useTranslation} from '../../i18n/I18nProvider.jsx'
 
 /** The default size (mm on the sheet) of each kind of item. */
@@ -123,11 +124,22 @@ export function SituationSheet({project, page, number, total, editor, onFooter})
         sizeOf = (item) => item.s || item.w || DEFAULT_ITEM_SIZE[item.kind],
         // text next to a symbol: the marking of the eendraadschema element (A5), unless the user typed their own
         labelOf = (item) => item.mark ?? (item.node && nodes.some((node) => node.id === item.node) ? marks.get(item.node) || '' : ''),
+        // the lines of a symbol: of its element of the eendraadschema (name + marking), or of a general library component (`type`, no marking);
+        // a socket is drawn with the 'h' when it is waterproof: the property of the element of the eendraadschema (so it follows there), else
+        // of the loose symbol
+        shapesOf = (item) => {
+            const node = item.node ? nodes.find((candidate) => candidate.id === item.node) : null,
+                looseType = !item.node && item.type ? allTypes(project).find((symbolType) => symbolType.k === item.type) : null
+            return node ? placedShapesOf(typeOf(project, node.type), node.p) : looseType && placedShapesOf(looseType, {h: item.h})
+        },
+        // what a symbol really covers (its lines, turned): its marking comes right next to that, not next to the square it is drawn in
+        extentOf = (item) =>
+            item.kind === 'sym' ? symbolExtent(unionBounds(shapesOf(item) || []), sizeOf(item), item.r || 0, SYMBOL_STROKE_WIDTH) : undefined,
         // every marking goes to a free spot around its symbol: not behind a wall, another symbol or another marking
         labelSpots = placeLabels(
             walls,
-            items.map((item) => ({item, size: sizeOf(item)})),
-            items.filter((item) => item.kind === 'sym' && labelOf(item)).map((item) => ({item, size: sizeOf(item), text: labelOf(item)})),
+            items.map((item) => ({item, size: sizeOf(item), extent: extentOf(item)})),
+            items.filter((item) => item.kind === 'sym' && labelOf(item)).map((item) => ({item, size: sizeOf(item), text: labelOf(item), extent: extentOf(item)})),
             showLengths ? walls.map((wall) => lengthLabelBox(wall, scale)).filter(Boolean) : [],
         ),
         interaction = (kind, id, part) => (editor ? editor.interactionProps(kind, id, part) : {})
@@ -192,12 +204,7 @@ export function SituationSheet({project, page, number, total, editor, onFooter})
                     selected = isSelected(item.id),
                     itemProps = editor ? {id: 'sit-item-' + item.id, ...interaction('item', item.id)} : {}
                 if (item.kind === 'sym') {
-                    // linked to an element of the eendraadschema (name + marking), or a general library component (`type`, no marking)
-                    const node = item.node ? nodes.find((candidate) => candidate.id === item.node) : null,
-                        looseType = !item.node && item.type ? allTypes(project).find((symbolType) => symbolType.k === item.type) : null,
-                        // a socket is drawn with the 'h' when it is waterproof: the property of the element of the eendraadschema (so it follows
-                        // there), else of the loose symbol
-                        shapes = node ? placedShapesOf(typeOf(project, node.type), node.p) : looseType && placedShapesOf(looseType, {h: item.h}),
+                    const shapes = shapesOf(item),
                         label = labelOf(item),
                         spot = labelSpots.get(item.id)
                     return (
@@ -224,7 +231,7 @@ export function SituationSheet({project, page, number, total, editor, onFooter})
                                     data-side={spot.side}
                                     x={spot.x}
                                     y={spot.y}
-                                    fontSize={LABEL_FONT_SIZE}
+                                    fontSize={spot.fontSize}
                                     fontWeight="bold"
                                     textAnchor="middle"
                                     dominantBaseline="middle"

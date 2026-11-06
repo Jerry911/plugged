@@ -51,8 +51,47 @@
     position: relative
 }
 
+/* collapsed: no room taken at all (the row gap goes too), the drawing gets the width; the toggle stays above it */
 .rightpanel.closed {
-    width: 34px
+    width: 0;
+    margin-left: -10px
+}
+
+/* a panel that reaches to the bottom of the window (useFillHeight sets its height): a column whose .fill-grow part takes the room that is
+   left and scrolls inside, while the rest keeps its own height; when even that does not fit, the whole panel scrolls */
+.fill {
+    display: flex;
+    flex-direction: column
+}
+
+.side.fill {
+    overflow-y: auto;
+    overscroll-behavior: contain
+}
+
+.fill > *, .fill-col > * {
+    flex: none
+}
+
+.fill-col {
+    display: flex;
+    flex-direction: column;
+    min-height: 0
+}
+
+.fill .fill-grow {
+    flex: 1 1 auto;
+    min-height: 140px;
+    max-height: none;
+    overflow: auto
+}
+
+.fill .fill-grow.fill-col {
+    overflow: hidden
+}
+
+.fill .fill-col > .fill-grow {
+    min-height: 60px
 }
 
 .rightpanel ul {
@@ -63,7 +102,7 @@
 }
 
 .rightpanel .warn, .rightpanel .ok, .rightpanel .neutral {
-    margin-top: 34px
+    margin-top: 0
 }
 
 /* educational mode: the elements to place, without any judgement */
@@ -73,12 +112,19 @@
     padding: 6px
 }
 
+/* the toggle of the right panel sits above the drawing, in the line of the page buttons, at the right */
+.paneltoggle-text {
+    display: none
+}
+
 .paneltoggle {
     position: absolute;
-    top: 0;
-    left: -6px;
-    min-width: 28px;
-    font-weight: 700
+    top: -44px;
+    right: 0;
+    min-width: 34px;
+    min-height: 30px;
+    font-weight: 700;
+    z-index: 2
 }
 
 .verify {
@@ -100,4 +146,153 @@
     padding: 3px 4px;
     margin-right: 4px;
     border-radius: 4px;
+}
+
+/* the room between the buttons on the left and the ones on the right of the top bar; icons that only show on a narrow screen */
+.bar-spacer {
+    flex: 1
+}
+
+.bar-icon {
+    display: none
+}
+
+/* a laptop screen: the buttons at the right of the top bar (print, info, admin, sign out) show only their icon, so the bar keeps one line */
+@media (max-width: 1500px) {
+    .bar .minor {
+        display: none
+    }
+
+    .bar .bar-icon {
+        display: inline
+    }
+}
+
+/* ---- narrow screens (tablet upright, phone): the panels stand above and below the drawing instead of beside it ---- */
+@media (max-width: 900px) {
+    .bar {
+        gap: 4px;
+        padding: 6px
+    }
+
+    .bar button, .bar select {
+        padding: 4px 7px
+    }
+
+    /* the language picker shows its code (NL, FR, EN); the name is in the list */
+    .bar .langsel {
+        max-width: 4.6em
+    }
+
+    /* only the icon of the less used buttons (their text is the hover text), no separators: the bar takes two lines instead of five */
+    .bar .bar-text, .bar .sep, .bar-spacer {
+        display: none
+    }
+
+    .bar .bar-icon {
+        display: inline
+    }
+
+    #status-message {
+        order: 99;
+        flex-basis: 100%;
+        font-size: 12px
+    }
+
+    #status-message:empty {
+        display: none
+    }
+
+    .row {
+        flex-direction: column;
+        gap: 8px;
+        padding: 6px
+    }
+
+    .side, .rightpanel {
+        width: auto
+    }
+
+    /* not sticky and not as high as the window: a panel of a limited height above the drawing, scrolling inside */
+    .side.sticky-side, .rightpanel.sticky-side {
+        position: static;
+        align-self: stretch;
+        max-height: none
+    }
+
+    .dlg {
+        left: 6px;
+        right: 6px;
+        bottom: 6px;
+        width: auto;
+        max-height: 80vh
+    }
+
+    .side.fill {
+        max-height: 45vh
+    }
+
+    .fill .fill-grow {
+        min-height: 0
+    }
+
+    .side.fill .fill-grow:not(.fill-col) {
+        max-height: 30vh
+    }
+
+    /* the list of what is not placed yet comes under the drawing; collapsed it is just its toggle */
+    .rightpanel {
+        order: 2
+    }
+
+    .rightpanel.closed {
+        width: auto;
+        margin-left: 0;
+        min-height: 34px
+    }
+
+    .paneltoggle {
+        position: static;
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        justify-content: center;
+        width: 100%
+    }
+
+    .paneltoggle .paneltoggle-text {
+        display: inline;
+        font-weight: 600
+    }
+
+    .rightpanel .unplist {
+        max-height: 40vh
+    }
+
+    .main {
+        width: 100%
+    }
+
+    .verify {
+        margin: 6px
+    }
+
+    /* the Eigenschappen of the selection: a sheet along the bottom of the screen, always in reach, over the drawing */
+    .side .props {
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 30;
+        margin: 0;
+        max-height: 50vh;
+        overflow-y: auto;
+        border-width: 2px 0 0;
+        box-shadow: 0 -6px 18px #0003
+    }
+
+    /* the help with the mouse and keyboard (right click, Shift, Del) does not apply to a touch screen */
+    #sit-help {
+        display: none
+    }
 }

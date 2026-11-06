@@ -45,7 +45,7 @@ test('an own project shows nothing extra; a project of someone else shows its ow
     expect(byId('project-sharebtn-2')).toBeNull()
     expect(byId('project-delete-2')).toBeNull()
     clickId('project-load-2')
-    expect(onLoad).toHaveBeenCalledWith(2)
+    expect(onLoad).toHaveBeenCalledWith(2, expect.objectContaining({id: 2}))
     clickId('project-delete-1')
     expect(onDelete).toHaveBeenCalledWith(expect.objectContaining({id: 1}))
 })

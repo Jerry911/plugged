@@ -21,6 +21,7 @@ import {tourSteps} from '../features/tour/tourSteps.jsx'
 import {useSymbolLibrary} from '../api/useSymbolLibrary.js'
 import {createProject, deleteProject, fetchProject, fetchProjectSummaries, saveProject} from '../api/projectApi.js'
 import {useHistory} from '../hooks/useHistory.js'
+import {useAutoSave} from '../hooks/useAutoSave.js'
 import {exportEds, importEds} from '../model/eds.js'
 import {REQUIRED_FOOTER_FIELDS, verify} from '../model/rules.js'
 import {unplacedNodes} from '../model/project.js'
@@ -53,6 +54,15 @@ const download = (content, type, fileName) => {
 }
 
 // the editor needs the symbol library: show it only when the backend has delivered it
+// The letter of an Alt shortcut. On a Mac Option+letter types a special character (Option+S = ß) or starts an accent (Option+E = é), so
+// the key on the keyboard (event.code) counts there, except in a text field: that one is typing, not a shortcut.
+const shortcutLetter = (event) => {
+    if (/^[a-z]$/i.test(event.key)) return event.key.toLowerCase()
+    const target = event.target
+    if (target?.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target?.tagName || '')) return null
+    return /^Key[A-Z]$/.test(event.code || '') ? event.code.slice(3).toLowerCase() : null
+}
+
 export default function App() {
     return (
         <I18nProvider>
@@ -93,7 +103,9 @@ function Editor({library, user, onLogout}) {
         [oneWirePage, setOneWirePage] = useState(0),
         [situationPage, setSituationPage] = useState(0),
         [projectId, setProjectId] = useState(null), // null: a new project that was never saved (the server gives it a number)
+        [ownProject, setOwnProject] = useState(true), // false: a project of somebody else (shared with a group, or seen by the admin)
         [projectListKey, setProjectListKey] = useState(0), // bumped after a save or delete so an open project list reloads
+        [loadMenuRequest, setLoadMenuRequest] = useState(0), // bumped by Alt+L: the Project menu opens with its list of projects
         [printJob, setPrintJob] = useState(null),
         [verifyOpen, setVerifyOpen] = useState(false),
         [exportOpen, setExportOpen] = useState(false),
@@ -142,10 +154,11 @@ function Editor({library, user, onLogout}) {
     }, [project.custom])
     const markSaved = (savedProject) => (savedSnapshot.current = JSON.stringify(savedProject))
     // a loaded or new project replaces the open one: the undo history and the page selection start over
-    const openProject = (loaded, id) => {
+    const openProject = (loaded, id, own = true) => {
         reset(loaded)
         markSaved(loaded)
         setProjectId(id)
+        setOwnProject(own)
         setOneWirePage(0)
         setSituationPage(0)
         setTab(ONE_WIRE_TAB)
@@ -160,6 +173,7 @@ function Editor({library, user, onLogout}) {
                     reset(loaded)
                     markSaved(loaded)
                     setProjectId(latest.id)
+                    setOwnProject(true)
                     setOneWirePage(0)
                     setSituationPage(0)
                     // somebody who finds real work on the server is not a beginner: the tour does not draw in it by itself
@@ -240,21 +254,35 @@ function Editor({library, user, onLogout}) {
         if (id != null) {
             setProject(document)
             setProjectId(id)
+            setOwnProject(true)
             setStatusMessage(t('app.savedAs', {number: id}))
             markSaved(document)
         } else setStatusMessage(t('app.saveFailed'))
     }
+    // automatic save: only of an own project that is already on the server (a new one gets its number from a save by hand), and only
+    // what changed (see useAutoSave for how seldom); a project of somebody else is only saved by hand, so two people with the same project
+    // open do not overwrite each other's work without noticing
+    const autoSave = async ({keepalive} = {}) => {
+        const document = project,
+            stored = await saveProject(projectId, document, {keepalive})
+        if (stored) {
+            markSaved(document)
+            setStatusMessage(t('app.autoSaved', {time: new Date().toLocaleTimeString(language, {hour: '2-digit', minute: '2-digit'})}))
+        } else setStatusMessage(t('app.autoSaveFailed'))
+        return stored
+    }
+    useAutoSave({enabled: projectId != null && ownProject, changed: project, isDirty: hasUnsavedChanges, save: autoSave})
     const startNewProject = async () => {
         if (!confirmDiscard()) return
         openProject(newProject(), null)
         setStatusMessage(t('app.newProject'))
     }
-    const loadProject = async (id) => {
+    const loadProject = async (id, summary) => {
         if (!confirmDiscard()) return
         try {
             const document = await fetchProject(id)
             if (!document) return setStatusMessage(t('app.projectNotFound', {number: id}))
-            openProject(normalizeProject(document), id)
+            openProject(normalizeProject(document), id, summary?.mine ?? true)
             setStatusMessage(t('app.projectLoaded', {number: id}))
         } catch {
             setStatusMessage(t('app.loadFailed'))
@@ -268,16 +296,28 @@ function Editor({library, user, onLogout}) {
         setStatusMessage(deleted ? t('app.projectDeleted', {number: summary.id}) : t('app.deleteFailed'))
         setProjectListKey((key) => key + 1)
     }
+    const openImport = () => document.getElementById('import-input').click()
+    const openExport = () => {
+        setFooterDialog(null)
+        setExportOpen((open) => !open)
+    }
+    // the shortcuts of the Project menu: Alt+S save, Alt+N new, Alt+L load, Alt+I import, Alt+E export (not for a student: see `restricted`).
+    // Alt and not Ctrl: the browser keeps several Ctrl keys for itself (Ctrl+N a new window, Ctrl+L the address bar). Only Alt alone: with
+    // Ctrl too it is AltGr on Windows (AltGr+E = €), with Shift or Cmd it is not ours either.
+    const projectShortcuts = {s: save, n: startNewProject, l: () => setLoadMenuRequest((count) => count + 1), i: openImport, e: openExport}
     useEffect(() => {
         const onKeyDown = (event) => {
-            if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 's') {
-                event.preventDefault()
-                save()
-            }
+            if (!event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return
+            const key = shortcutLetter(event),
+                action = projectShortcuts[key]
+            if (!action) return
+            event.preventDefault()
+            if (restricted && (key === 'i' || key === 'e')) return
+            action()
         }
         addEventListener('keydown', onKeyDown)
         return () => removeEventListener('keydown', onKeyDown)
-    }, [project, projectId, language])
+    })
     const showImported = () => {
         setOneWirePage(0)
         setSituationPage(0)
@@ -361,17 +401,15 @@ function Editor({library, user, onLogout}) {
                     onNameChange={(name) => setProject((current) => ({...current, name}))}
                     projectId={projectId}
                     refreshKey={projectListKey}
+                    loadMenuRequest={loadMenuRequest}
                     onSave={save}
                     onSaveAs={saveAs}
                     onNew={startNewProject}
                     onLoad={loadProject}
                     onDelete={removeProject}
                     locked={restricted}
-                    onImport={() => document.getElementById('import-input').click()}
-                    onExport={() => {
-                        setFooterDialog(null)
-                        setExportOpen((open) => !open)
-                    }}
+                    onImport={openImport}
+                    onExport={openExport}
                 />
                 <span className="sep" />
                 {TABS.map((entry, index) => (

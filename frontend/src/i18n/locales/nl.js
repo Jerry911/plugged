@@ -26,6 +26,8 @@ export default {
         confirmUnsaved: 'Er zijn niet-opgeslagen wijzigingen in dit project. Toch doorgaan?',
         saved: 'Opgeslagen ✓',
         saveFailed: 'Fout bij opslaan',
+        autoSaved: 'Automatisch opgeslagen om {time} ✓',
+        autoSaveFailed: 'Automatisch opslaan mislukt, straks opnieuw',
         saveAsPrompt: 'Naam van het nieuwe project',
         savedAs: 'Opgeslagen als project {number} ✓',
         newProject: 'Nieuw project; klik op Opslaan om het te bewaren',
@@ -72,7 +74,7 @@ export default {
         number: 'Project nr {number}',
         defaultName: 'Project {number}',
         save: 'Opslaan',
-        saveTitle: 'Bewaar dit project op de server (Ctrl+S)',
+        saveTitle: 'Bewaar dit project op de server (Alt+S). Eenmaal bewaard wordt je eigen project na een wijziging ook automatisch opgeslagen',
         saveAs: 'Opslaan als…',
         saveAsTitle: 'Bewaar een kopie als nieuw project',
         new: 'Nieuw',
@@ -567,7 +569,7 @@ export default {
             project: {
                 title: 'Vergeet niet op te slaan',
                 body: [
-                    'Plugged bewaart niet automatisch. Onder **Project** sla je op ([[Ctrl]]+[[S]]), begin je een nieuw project, laad je een ander of importeer en exporteer je (.json of .eds). Rechts in de balk staan **PDF**, **Afdrukken** en de keuze van de taal.',
+                    'Eenmaal opgeslagen bewaart Plugged je eigen project ook automatisch na een wijziging. Onder **Project** sla je op ([[Alt]]+[[S]]), begin je een nieuw project ([[Alt]]+[[N]]), laad je een ander ([[Alt]]+[[L]]) of importeer ([[Alt]]+[[I]]) en exporteer je ([[Alt]]+[[E]]) (.json of .eds). Rechts in de balk staan **PDF**, **Afdrukken** en de keuze van de taal.',
                 ],
             },
             klaar: {
@@ -629,7 +631,7 @@ export default {
                 },
                 {
                     title: 'Bewaren, importeren en exporteren',
-                    text: 'Op het tabblad "Project" geef je het project een naam en bewaar je het met "Opslaan" (of Ctrl+S) op de server. "Opslaan als…" bewaart een kopie als nieuw project, "Nieuw" begint een leeg project en "Laden" toont de lijst met opgeslagen projecten, met naam en datum van de laatste keer opslaan. "Importeren" opent een .json (projectbestand) of een .eds. "Exporteren" laat je kiezen tussen .json en .eds. "PDF" maakt een vectoriële PDF (A4 liggend) van alle bladen, "Afdrukken" opent het afdrukvenster van je browser.',
+                    text: 'Op het tabblad "Project" geef je het project een naam en bewaar je het met "Opslaan" (of Alt+S) op de server. "Opslaan als…" bewaart een kopie als nieuw project, "Nieuw" begint een leeg project en "Laden" toont de lijst met opgeslagen projecten, met naam en datum van de laatste keer opslaan. "Importeren" opent een .json (projectbestand) of een .eds. "Exporteren" laat je kiezen tussen .json en .eds. "PDF" maakt een vectoriële PDF (A4 liggend) van alle bladen, "Afdrukken" opent het afdrukvenster van je browser.',
                 },
                 {
                     title: 'Taal kiezen',
@@ -640,6 +642,11 @@ export default {
             shortcuts: [
                 {keys: 'Del / Backspace', text: 'verwijdert het geselecteerde element, de muur of het symbool'},
                 {keys: 'Ctrl+Z', text: 'ongedaan maken'},
+                {keys: 'Alt+S', text: 'project opslaan'},
+                {keys: 'Alt+N', text: 'nieuw project'},
+                {keys: 'Alt+L', text: 'lijst van projecten openen (laden)'},
+                {keys: 'Alt+I', text: 'importeren'},
+                {keys: 'Alt+E', text: 'exporteren'},
                 {keys: 'Ctrl+Y of Ctrl+Shift+Z', text: 'opnieuw'},
                 {keys: 'R', text: 'draait de selectie in het situatieschema'},
             ],

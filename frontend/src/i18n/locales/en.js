@@ -25,6 +25,8 @@ export default {
         confirmUnsaved: 'This project has unsaved changes. Continue anyway?',
         saved: 'Saved ✓',
         saveFailed: 'Saving failed',
+        autoSaved: 'Saved automatically at {time} ✓',
+        autoSaveFailed: 'Automatic save failed, trying again later',
         saveAsPrompt: 'Name of the new project',
         savedAs: 'Saved as project {number} ✓',
         newProject: 'New project; click Save to keep it',
@@ -71,7 +73,7 @@ export default {
         number: 'Project no. {number}',
         defaultName: 'Project {number}',
         save: 'Save',
-        saveTitle: 'Store this project on the server (Ctrl+S)',
+        saveTitle: 'Store this project on the server (Alt+S). Once stored, your own project is also saved automatically after a change',
         saveAs: 'Save as…',
         saveAsTitle: 'Store a copy as a new project',
         new: 'New',
@@ -566,7 +568,7 @@ export default {
             project: {
                 title: 'Do not forget to save',
                 body: [
-                    'Plugged does not save automatically. Under **Project** you save ([[Ctrl]]+[[S]]), start a new project, load another one, or import and export (.json or .eds). On the right of the bar are **PDF**, **Print** and the choice of language.',
+                    'Once stored, Plugged also saves your own project automatically after a change. Under **Project** you save ([[Alt]]+[[S]]), start a new project ([[Alt]]+[[N]]), load another one ([[Alt]]+[[L]]), or import ([[Alt]]+[[I]]) and export ([[Alt]]+[[E]]) (.json or .eds). On the right of the bar are **PDF**, **Print** and the choice of language.',
                 ],
             },
             klaar: {
@@ -628,7 +630,7 @@ export default {
                 },
                 {
                     title: 'Saving, importing and exporting',
-                    text: 'In the "Project" menu you give the project a name and store it on the server with "Save" (or Ctrl+S). "Save as…" stores a copy as a new project, "New" starts an empty project and "Load" shows the list of stored projects, with the name and the date they were last saved. "Import" opens a .json (project file) or an .eds. "Export" lets you choose between .json and .eds. "PDF" makes a vector PDF (A4 landscape) of all sheets, "Print" opens the print window of your browser.',
+                    text: 'In the "Project" menu you give the project a name and store it on the server with "Save" (or Alt+S). "Save as…" stores a copy as a new project, "New" starts an empty project and "Load" shows the list of stored projects, with the name and the date they were last saved. "Import" opens a .json (project file) or an .eds. "Export" lets you choose between .json and .eds. "PDF" makes a vector PDF (A4 landscape) of all sheets, "Print" opens the print window of your browser.',
                 },
                 {
                     title: 'Choosing the language',
@@ -639,6 +641,11 @@ export default {
             shortcuts: [
                 {keys: 'Del / Backspace', text: 'deletes the selected element, wall or symbol'},
                 {keys: 'Ctrl+Z', text: 'undo'},
+                {keys: 'Alt+S', text: 'save the project'},
+                {keys: 'Alt+N', text: 'new project'},
+                {keys: 'Alt+L', text: 'open the list of projects (load)'},
+                {keys: 'Alt+I', text: 'import'},
+                {keys: 'Alt+E', text: 'export'},
                 {keys: 'Ctrl+Y or Ctrl+Shift+Z', text: 'redo'},
                 {keys: 'R', text: 'rotates the selection on the site plan'},
             ],

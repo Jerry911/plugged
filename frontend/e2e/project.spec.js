@@ -35,7 +35,7 @@ test('a saved project is still there after reloading the page', async ({page, ap
 test('shows a message when saving fails', async ({page, app, backend}) => {
     backend.failSave = true
     await app.open(backend)
-    await page.keyboard.press('Control+s')
+    await page.keyboard.press('Alt+s')
     await expect(page.locator('#status-message', {hasText: t('app.saveFailed')})).toBeVisible()
 })
 
@@ -139,4 +139,53 @@ test.describe('the backend has no symbols', () => {
 test('the check button shows the number of errors and warnings of the schema', async ({page, app, backend}) => {
     await app.open(backend, flawed())
     await expect(page.locator('#btn-verify')).toHaveText(/✖2.*⚠/)
+})
+
+test('an own stored project is saved by itself once the user stops changing it, and when the tab is hidden', async ({page, app, backend}) => {
+    await page.clock.install()
+    await app.open(backend, project({name: 'Eerste woning'}))
+    await app.project()
+    await page.locator('#project-name').fill('Woning Jan')
+    await app.project()
+    // nothing is sent while the user is still busy
+    await page.clock.runFor(5_000)
+    expect((await backend.saved(1)).name).toBe('Eerste woning')
+    const put = page.waitForResponse((r) => r.request().method() === 'PUT' && /\/api\/projects\/1(\?|$)/.test(r.url()))
+    await page.clock.runFor(20_000)
+    await put
+    await expect(app.status()).toHaveText(/^Automatisch opgeslagen om \d\d:\d\d ✓$/)
+    expect((await backend.saved(1)).name).toBe('Woning Jan')
+    // another change, then the tab is hidden: saved right away
+    await app.project()
+    await page.locator('#project-name').fill('Woning Piet')
+    await app.project()
+    const hidden = page.waitForResponse((r) => r.request().method() === 'PUT' && /\/api\/projects\/1(\?|$)/.test(r.url()))
+    await page.evaluate(() => {
+        Object.defineProperty(document, 'visibilityState', {configurable: true, get: () => 'hidden'})
+        document.dispatchEvent(new Event('visibilitychange'))
+    })
+    await hidden
+    expect((await backend.saved(1)).name).toBe('Woning Piet')
+})
+
+test('the keyboard shortcuts of the Project menu: Alt+L load, Alt+E export, Alt+I import, Alt+N new', async ({page, app, backend}) => {
+    await backend.seed(2, project({name: 'Tweede woning', een: [{id: 'a', name: 'Eigen blad', tree: []}]}))
+    await app.open(backend, project({name: 'Eerste woning'}))
+    await page.keyboard.press('Alt+l')
+    await expect(page.locator('#project-list')).toContainText('Tweede woning')
+    await expect(page.locator('#btn-load')).toContainText('Alt+L')
+    await page.locator('#project-load-2').click()
+    await expect(page.locator('#eds-page-1')).toHaveText('Eigen blad')
+    await page.keyboard.press('Alt+e')
+    await expect(page.locator('#export-confirm')).toBeVisible()
+    await page.keyboard.press('Alt+e')
+    await expect(page.locator('#export-confirm')).toHaveCount(0)
+    const chooser = page.waitForEvent('filechooser')
+    await page.keyboard.press('Alt+i')
+    await chooser
+    await page.keyboard.press('Alt+n')
+    await expect(app.status()).toHaveText(t('app.newProject'))
+    await app.project()
+    await expect(page.locator('#project-number')).toHaveText(t('projects.notSaved'))
+    await expect(page.locator('#btn-new')).toContainText('Alt+N')
 })

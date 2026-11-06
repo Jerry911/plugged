@@ -5,6 +5,8 @@
 import {apiFetch, JSON_HEADERS} from './http.js'
 
 const projectUrl = (id) => '/api/projects/' + id
+// browsers refuse a keepalive request with more than 64 KiB of body
+export const KEEPALIVE_LIMIT = 60_000
 
 /** The stored project document, or null when it does not exist. Throws when the backend cannot be reached. */
 export const fetchProject = async (id) => {
@@ -27,13 +29,17 @@ export const createProject = async (project) => {
     }
 }
 
-/** Stores the project document under `id` (its name also goes along as ?name=, for the project list). Resolves to true when it was stored. */
-export const saveProject = async (id, project) => {
-    const name = (project.name || '').trim()
-    const response = await apiFetch(projectUrl(id) + (name ? '?name=' + encodeURIComponent(name) : ''), {
+/**
+ * Stores the project document under `id` (its name also goes along as ?name=, for the project list). Resolves to true when it was stored.
+ * keepalive: the request goes on when the page is closed (an automatic save on leaving); browsers allow that only for small bodies.
+ */
+export const saveProject = async (id, project, {keepalive = false} = {}) => {
+    const body = JSON.stringify(project)
+    const response = await apiFetch(withName(projectUrl(id), project), {
         method: 'PUT',
         headers: JSON_HEADERS,
-        body: JSON.stringify(project),
+        body,
+        ...(keepalive && new TextEncoder().encode(body).length < KEEPALIVE_LIMIT ? {keepalive: true} : {}),
     })
     return response.ok
 }

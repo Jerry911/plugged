@@ -319,8 +319,8 @@ export class App {
         await this.page.locator('#btn-load').click()
         await this.page.locator('#project-load-' + id).click()
     }
-    /** saves with Ctrl+S (works on every tab) and returns the saved project document */
-    /** saves with Ctrl+S and answers what the backend stored; `language` = the language the application is in (the status message is checked) */
+    /** saves with Alt+S (works on every tab) and returns the saved project document */
+    /** saves with Alt+S and answers what the backend stored; `language` = the language the application is in (the status message is checked) */
     async save(backend, id = 1, language = 'nl') {
         // wait for the PUT itself: the "Opgeslagen ✓" message stays on screen after a first save, so on a second save it proves nothing
         // a stored project is saved with PUT /api/projects/{id}; a new one with POST /api/projects (the server gives it its number)
@@ -329,7 +329,7 @@ export class App {
                 (r.request().method() === 'PUT' && new RegExp('/api/projects/' + id + '(\\?|$)').test(r.url())) ||
                 (r.request().method() === 'POST' && new URL(r.url()).pathname === '/api/projects'),
         )
-        await this.page.keyboard.press('Control+s')
+        await this.page.keyboard.press('Alt+s')
         await put
         await expect(this.status()).toHaveText(t('app.saved', {}, language))
         return backend.saved(id)

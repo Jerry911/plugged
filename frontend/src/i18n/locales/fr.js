@@ -25,6 +25,8 @@ export default {
         confirmUnsaved: 'Ce projet contient des modifications non enregistrées. Continuer quand même ?',
         saved: 'Enregistré ✓',
         saveFailed: 'Erreur lors de l’enregistrement',
+        autoSaved: 'Enregistré automatiquement à {time} ✓',
+        autoSaveFailed: 'Échec de l’enregistrement automatique, nouvel essai plus tard',
         saveAsPrompt: 'Nom du nouveau projet',
         savedAs: 'Enregistré comme projet {number} ✓',
         newProject: 'Nouveau projet ; cliquez sur Enregistrer pour le conserver',
@@ -71,7 +73,7 @@ export default {
         number: 'Projet n° {number}',
         defaultName: 'Projet {number}',
         save: 'Enregistrer',
-        saveTitle: 'Enregistrer ce projet sur le serveur (Ctrl+S)',
+        saveTitle: 'Enregistrer ce projet sur le serveur (Alt+S). Une fois enregistré, votre propre projet est aussi enregistré automatiquement après une modification',
         saveAs: 'Enregistrer sous…',
         saveAsTitle: 'Enregistrer une copie comme nouveau projet',
         new: 'Nouveau',
@@ -566,7 +568,7 @@ export default {
             project: {
                 title: 'N’oubliez pas d’enregistrer',
                 body: [
-                    'Plugged n’enregistre pas automatiquement. Sous **Projet**, vous enregistrez ([[Ctrl]]+[[S]]), commencez un nouveau projet, en chargez un autre, ou importez et exportez (.json ou .eds). À droite de la barre se trouvent **PDF**, **Imprimer** et le choix de la langue.',
+                    'Une fois enregistré, Plugged enregistre aussi automatiquement votre propre projet après une modification. Sous **Projet**, vous enregistrez ([[Alt]]+[[S]]), commencez un nouveau projet ([[Alt]]+[[N]]), en chargez un autre ([[Alt]]+[[L]]), ou importez ([[Alt]]+[[I]]) et exportez ([[Alt]]+[[E]]) (.json ou .eds). À droite de la barre se trouvent **PDF**, **Imprimer** et le choix de la langue.',
                 ],
             },
             klaar: {
@@ -628,7 +630,7 @@ export default {
                 },
                 {
                     title: 'Enregistrer, importer et exporter',
-                    text: 'Dans le menu « Projet », vous donnez un nom au projet et l’enregistrez sur le serveur avec « Enregistrer » (ou Ctrl+S). « Enregistrer sous… » enregistre une copie comme nouveau projet, « Nouveau » commence un projet vide et « Charger » affiche la liste des projets enregistrés, avec leur nom et la date du dernier enregistrement. « Importer » ouvre un .json (fichier de projet) ou un .eds. « Exporter » vous laisse choisir entre .json et .eds. « PDF » crée un PDF vectoriel (A4 paysage) de toutes les feuilles, « Imprimer » ouvre la fenêtre d’impression de votre navigateur.',
+                    text: 'Dans le menu « Projet », vous donnez un nom au projet et l’enregistrez sur le serveur avec « Enregistrer » (ou Alt+S). « Enregistrer sous… » enregistre une copie comme nouveau projet, « Nouveau » commence un projet vide et « Charger » affiche la liste des projets enregistrés, avec leur nom et la date du dernier enregistrement. « Importer » ouvre un .json (fichier de projet) ou un .eds. « Exporter » vous laisse choisir entre .json et .eds. « PDF » crée un PDF vectoriel (A4 paysage) de toutes les feuilles, « Imprimer » ouvre la fenêtre d’impression de votre navigateur.',
                 },
                 {
                     title: 'Choisir la langue',
@@ -639,6 +641,11 @@ export default {
             shortcuts: [
                 {keys: 'Suppr / Retour arrière', text: 'supprime l’élément, le mur ou le symbole sélectionné'},
                 {keys: 'Ctrl+Z', text: 'annuler'},
+                {keys: 'Alt+S', text: 'enregistrer le projet'},
+                {keys: 'Alt+N', text: 'nouveau projet'},
+                {keys: 'Alt+L', text: 'ouvrir la liste des projets (charger)'},
+                {keys: 'Alt+I', text: 'importer'},
+                {keys: 'Alt+E', text: 'exporter'},
                 {keys: 'Ctrl+Y ou Ctrl+Maj+Z', text: 'rétablir'},
                 {keys: 'R', text: 'tourne la sélection dans le plan de position'},
             ],

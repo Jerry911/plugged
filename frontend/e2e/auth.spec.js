@@ -130,7 +130,7 @@ test('a project is private until its owner shares it with a group; members can o
     await expect(bob.page.locator('#project-sharebtn-' + id)).toHaveCount(0)
     await bob.page.locator('#project-load-' + id).click()
     await expect(bob.page.locator('#status-message')).toHaveText(t('app.projectLoaded', {number: id}))
-    await bob.page.keyboard.press('Control+s')
+    await bob.page.keyboard.press('Alt+s')
     await expect(bob.page.locator('#status-message')).toHaveText(t('app.saved'))
 
     // the administrator sees it too

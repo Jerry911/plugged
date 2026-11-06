@@ -213,7 +213,7 @@ test('arrow keys move through the Project menu items', async () => {
     fireEvent.keyDown(byId('btn-export'), {key: 'ArrowDown'})
     expect(document.activeElement).toBe(byId('btn-save'))
 })
-test('a project is saved with its name (in the document and as ?name=) and Ctrl+S saves too', async () => {
+test('a project is saved with its name (in the document and as ?name=) and Alt+S saves too', async () => {
     projectsApi(new Map())
     await mount()
     await act(async () => {})
@@ -227,7 +227,7 @@ test('a project is saved with its name (in the document and as ?name=) and Ctrl+
     expect(JSON.parse(puts()[0][1].body).name).toBe('Woning Jan')
     toProject()
     expect(getById('project-number')).toHaveTextContent(t('projects.number', {number: 1}))
-    fireEvent.keyDown(window, {key: 's', ctrlKey: true})
+    fireEvent.keyDown(window, {key: 's', altKey: true})
     await waitFor(() => expect(puts()).toHaveLength(2))
     expect(puts()[1][0]).toBe('/api/projects/1?name=Woning%20Jan')
     expect(puts()[1][1].method).toBe('PUT')
@@ -302,6 +302,66 @@ test('Nieuw starts an empty project that gets its number from the server when it
     await act(async () => {})
     expect(store.size).toBe(4)
 })
+test('the shortcuts of the Project menu: Alt+S save, Alt+N new, Alt+L load, Alt+I import, Alt+E export; Ctrl, Shift or AltGr leave them to the browser', async () => {
+    projectsApi(new Map([[1, doc('Eerste', 'T1')], [2, doc('Tweede', 'T2')]]))
+    await mount()
+    await pageNamed('Blad Eerste')
+    const press = (key, extra = {}, target = window) => {
+        const event = new KeyboardEvent('keydown', {key, altKey: true, bubbles: true, cancelable: true, ...extra})
+        act(() => target.dispatchEvent(event))
+        return event.defaultPrevented
+    }
+    // Alt+L: the Project menu opens with the list of projects
+    expect(press('l')).toBe(true)
+    await waitFor(() => getById('project-list'))
+    expect(getById('btn-load')).toHaveAttribute('aria-expanded', 'true')
+    expect(getById('btn-load')).toHaveTextContent('Alt+L')
+    fireEvent.click(await waitFor(() => getById('project-load-2')))
+    await pageNamed('Blad Tweede')
+    expect(byId('project-menu')).toBeNull()
+    // Alt+E: the export dialog, a second time closes it again
+    expect(press('E')).toBe(true)
+    getById('export-confirm')
+    press('e')
+    expect(byId('export-confirm')).toBeNull()
+    // Alt+I: the file picker
+    const picker = vi.spyOn(byId('import-input'), 'click').mockImplementation(() => {})
+    expect(press('i')).toBe(true)
+    expect(picker).toHaveBeenCalledTimes(1)
+    // the Ctrl keys are the browser's again; Alt with Shift, Cmd, or Ctrl (AltGr on Windows: AltGr+E = €) is not ours either
+    expect(press('i', {altKey: false, ctrlKey: true})).toBe(false)
+    expect(press('i', {shiftKey: true})).toBe(false)
+    expect(press('i', {metaKey: true})).toBe(false)
+    expect(press('€', {ctrlKey: true, code: 'KeyE'})).toBe(false)
+    expect(picker).toHaveBeenCalledTimes(1)
+    // a Mac types a special character with Option: the key on the keyboard counts (Option+I = ˆ)
+    expect(press('Dead', {code: 'KeyI'})).toBe(true)
+    expect(picker).toHaveBeenCalledTimes(2)
+    // Alt+N: a new project, after asking about unsaved changes
+    toProject()
+    fireEvent.change(byId('project-name'), {target: {value: 'Gewijzigd'}})
+    // in a text field Option+E on a Mac starts an accent (é): typing, not a shortcut; Alt+letter on Windows still works there
+    expect(press('Dead', {code: 'KeyE'}, byId('project-name'))).toBe(false)
+    expect(byId('export-confirm')).toBeNull()
+    toProject()
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false)
+    expect(press('n')).toBe(true)
+    expect(confirm).toHaveBeenCalled()
+    expect(pageButton(1)).toHaveTextContent('Blad Tweede')
+    confirm.mockReturnValue(true)
+    press('n')
+    await statusIs(t('app.newProject'))
+    expect(pageButton(1)).not.toHaveTextContent('Blad Tweede')
+    // other keys stay with the browser
+    expect(press('p')).toBe(false)
+    expect(press('7', {code: 'Digit7'})).toBe(false)
+    expect(press('x', {altKey: false})).toBe(false)
+    toProject()
+    expect(getById('btn-save')).toHaveTextContent('Alt+S')
+    expect(getById('btn-new')).toHaveTextContent('Alt+N')
+    expect(getById('btn-import')).toHaveTextContent('Alt+I')
+    expect(getById('btn-export')).toHaveTextContent('Alt+E')
+})
 test('the editor opens the most recently saved own project, not a newer one of a coworker', async () => {
     const store = new Map([[1, doc('Eerste', 'T1')], [2, doc('Tweede', 'T2')], [3, doc('Derde', 'T3')]])
     projectsApi(store)
@@ -322,6 +382,73 @@ test('the editor opens the most recently saved own project, not a newer one of a
     await pageNamed('Blad Tweede')
     toProject()
     expect(getById('project-number')).toHaveTextContent(t('projects.number', {number: 2}))
+})
+// hiding the tab: the automatic save does not wait for its timer (the timers themselves are tested in useAutoSave.test.js)
+const hideTab = async () => {
+    const visibility = vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('hidden')
+    await act(async () => document.dispatchEvent(new Event('visibilitychange')))
+    visibility.mockRestore()
+}
+test('an own stored project is saved by itself after a change, with a short message; without a change nothing is sent', async () => {
+    const store = new Map([[1, doc('Eerste', 'T1')]])
+    projectsApi(store)
+    await mount()
+    await pageNamed('Blad Eerste')
+    await hideTab()
+    expect(puts()).toHaveLength(0)
+    toProject()
+    fireEvent.change(byId('project-name'), {target: {value: 'Woning Jan'}})
+    await hideTab()
+    await waitFor(() => expect(puts()).toHaveLength(1))
+    expect(puts()[0][0]).toBe('/api/projects/1?name=Woning%20Jan')
+    expect(puts()[0][1].keepalive).toBe(true)
+    expect(store.get(1).name).toBe('Woning Jan')
+    await waitFor(() => expect(status().textContent).toMatch(/^Automatisch opgeslagen om \d\d:\d\d ✓$/))
+    // saved: leaving again sends nothing, and loading another project does not ask about unsaved changes
+    await hideTab()
+    expect(puts()).toHaveLength(1)
+})
+test('a failed automatic save says so', async () => {
+    projectsApi(new Map([[1, doc('Eerste', 'T1')]]))
+    const answer = global.fetch.getMockImplementation()
+    global.fetch = vi.fn(async (url, o) => (o?.method === 'PUT' && url.startsWith('/api/projects/') ? {ok: false} : answer(url, o)))
+    await mount()
+    await pageNamed('Blad Eerste')
+    toProject()
+    fireEvent.change(byId('project-name'), {target: {value: 'Woning Jan'}})
+    await hideTab()
+    await statusIs(t('app.autoSaveFailed'))
+})
+test('a new project that was never saved, and a project of a coworker, are not saved by themselves', async () => {
+    projectsApi(new Map([[1, doc('Eerste', 'T1')], [2, doc('Collega', 'T2')]]))
+    const answer = global.fetch.getMockImplementation()
+    global.fetch = vi.fn(async (url, o) =>
+        url === '/api/projects/summaries'
+            ? {ok: true, json: async () => [summary(1, {name: 'Eerste'}), summary(2, {name: 'Collega', mine: false, canManage: false, updated: '2025-01-01T10:00:00Z'})]}
+            : answer(url, o),
+    )
+    await mount()
+    await pageNamed('Blad Eerste')
+    toProject()
+    fireEvent.click(byId('btn-load'))
+    await waitFor(() => getById('project-list'))
+    fireEvent.click(getById('project-load-2'))
+    await pageNamed('Blad Collega')
+    toProject()
+    fireEvent.change(byId('project-name'), {target: {value: 'Gewijzigd'}})
+    await hideTab()
+    expect(puts()).toHaveLength(0)
+    // saved by hand it is stored as usual
+    fireEvent.click(byId('btn-save'))
+    await waitFor(() => expect(puts().at(-1)[0]).toBe('/api/projects/2?name=Gewijzigd'))
+    // a new project: nothing until it got its number
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+    toProject()
+    fireEvent.click(byId('btn-new'))
+    toProject()
+    fireEvent.change(byId('project-name'), {target: {value: 'Nieuw'}})
+    await hideTab()
+    expect(puts()).toHaveLength(1)
 })
 test('without own projects, or when the list cannot be loaded, the editor opens a new project', async () => {
     global.fetch = vi.fn(async (url, o) =>

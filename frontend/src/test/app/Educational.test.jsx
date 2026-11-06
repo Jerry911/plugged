@@ -54,6 +54,15 @@ test('a student: no validation, import and export switched off, a badge that say
     await act(async () => fireEvent.change(getById('import-input'), {target: {files: [file]}}))
     expect(getById('eds-page-1')).toHaveTextContent('Blad 1')
     expect(byId('tab-teacher')).toBeNull()
+    // nor through the shortcuts: Alt+I and Alt+E do nothing (and the browser does not take them over either)
+    const picker = vi.spyOn(getById('import-input'), 'click').mockImplementation(() => {})
+    for (const key of ['i', 'e']) {
+        const event = new KeyboardEvent('keydown', {key, altKey: true, bubbles: true, cancelable: true})
+        act(() => window.dispatchEvent(event))
+        expect(event.defaultPrevented).toBe(true)
+    }
+    expect(picker).not.toHaveBeenCalled()
+    expect(byId('export-confirm')).toBeNull()
 })
 
 test('everybody else validates, imports and exports as before', async () => {

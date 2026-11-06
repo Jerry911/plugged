@@ -171,7 +171,7 @@ export function ProjectList({currentId, refreshKey, onLoad, onDelete}) {
                         <td>{summary.id}</td>
                         <td className="pm-when">{formatSaveMoment(summary.updated, locale)}</td>
                         <td className="pm-acts">
-                            <button id={'project-load-' + summary.id} title={t('projects.loadTitle', {number: summary.id})} onClick={() => onLoad(summary.id)}>
+                            <button id={'project-load-' + summary.id} title={t('projects.loadTitle', {number: summary.id})} onClick={() => onLoad(summary.id, summary)}>
                                 {t('projects.load')}
                             </button>
                             {summary.canManage && (
@@ -221,7 +221,7 @@ export function ProjectList({currentId, refreshKey, onLoad, onDelete}) {
 
 const SUBMENU_WIDTH = 480 // room the project list needs next to the menu
 
-export default function ProjectMenu({name, onNameChange, projectId, refreshKey, locked, onSave, onSaveAs, onNew, onLoad, onDelete, onImport, onExport}) {
+export default function ProjectMenu({name, onNameChange, projectId, refreshKey, loadMenuRequest = 0, locked, onSave, onSaveAs, onNew, onLoad, onDelete, onImport, onExport}) {
     const {t} = useTranslation()
     const [open, setOpen] = useState(false),
         [listOpen, setListOpen] = useState(false), // the nested "Laden" flyout
@@ -259,6 +259,12 @@ export default function ProjectMenu({name, onNameChange, projectId, refreshKey, 
             document.removeEventListener('keydown', onEscape)
         }
     }, [open])
+    // Alt+L (see App.jsx): the menu opens with its list of projects
+    useEffect(() => {
+        if (!loadMenuRequest) return
+        setOpen(true)
+        setListOpen(true)
+    }, [loadMenuRequest])
     useLayoutEffect(() => {
         if (open) setAlignRight(menu.current.getBoundingClientRect().right > window.innerWidth - 8)
     }, [open])
@@ -316,9 +322,9 @@ export default function ProjectMenu({name, onNameChange, projectId, refreshKey, 
                         <small id="project-number">{projectId ? t('projects.number', {number: projectId}) : t('projects.notSaved')}</small>
                     </div>
                     <ul className="pm-list" role="menu" aria-label={t('projects.menu')}>
-                        {menuItem('btn-save', 'save', t('projects.save'), closeAndRun(onSave), {title: t('projects.saveTitle'), hint: 'Ctrl+S'})}
+                        {menuItem('btn-save', 'save', t('projects.save'), closeAndRun(onSave), {title: t('projects.saveTitle'), hint: 'Alt+S'})}
                         {menuItem('btn-saveas', 'saveas', t('projects.saveAs'), closeAndRun(onSaveAs), {title: t('projects.saveAsTitle')})}
-                        {menuItem('btn-new', 'new', t('projects.new'), closeAndRun(onNew), {title: t('projects.newTitle')})}
+                        {menuItem('btn-new', 'new', t('projects.new'), closeAndRun(onNew), {title: t('projects.newTitle'), hint: 'Alt+N'})}
                         <li role="separator" className="pm-sepline" />
                         <li role="none" className="pm-has-sub">
                             <button
@@ -332,18 +338,19 @@ export default function ProjectMenu({name, onNameChange, projectId, refreshKey, 
                             >
                                 <MenuIcon name="load" />
                                 <span className="pm-label">{t('projects.load')}</span>
+                                <kbd>Alt+L</kbd>
                                 <MenuIcon name="chevron" />
                             </button>
                             {listOpen && (
                                 <div className={'pm-sub ' + listSide}>
-                                    <ProjectList currentId={projectId} refreshKey={refreshKey} onLoad={(id) => (close(), onLoad(id))} onDelete={onDelete} />
+                                    <ProjectList currentId={projectId} refreshKey={refreshKey} onLoad={(id, summary) => (close(), onLoad(id, summary))} onDelete={onDelete} />
                                 </div>
                             )}
                         </li>
                         <li role="separator" className="pm-sepline" />
                         {/* educational mode: a student cannot import or export (see App.jsx) */}
-                        {menuItem('btn-import', 'import', t('projects.import'), closeAndRun(onImport), {title: locked ? t('educational.locked') : t('projects.importTitle'), disabled: !!locked})}
-                        {menuItem('btn-export', 'export', t('projects.export'), closeAndRun(onExport), {title: locked ? t('educational.locked') : t('projects.exportTitle'), disabled: !!locked})}
+                        {menuItem('btn-import', 'import', t('projects.import'), closeAndRun(onImport), {title: locked ? t('educational.locked') : t('projects.importTitle'), disabled: !!locked, hint: 'Alt+I'})}
+                        {menuItem('btn-export', 'export', t('projects.export'), closeAndRun(onExport), {title: locked ? t('educational.locked') : t('projects.exportTitle'), disabled: !!locked, hint: 'Alt+E'})}
                     </ul>
                 </div>
             )}

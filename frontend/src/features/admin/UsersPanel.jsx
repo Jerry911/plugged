@@ -74,6 +74,11 @@ export default function UsersPanel({users, groups, currentUser, busy, actions}) 
                                             ✓ {t('users.approve')}
                                         </button>
                                     )}
+                                    {user.approved && !self && !user.primary && (
+                                        <button id={'users-password-' + user.id} disabled={busy} title={t('users.resetPasswordTitle')} onClick={() => actions.resetPassword(user)}>
+                                            🔑 {t('users.resetPassword')}
+                                        </button>
+                                    )}
                                     {user.approved && !user.admin && (
                                         <button id={'users-promote-' + user.id} disabled={busy} title={t('users.makeAdminTitle')} onClick={() => actions.setAdmin(user, true)}>
                                             {t('users.makeAdmin')}

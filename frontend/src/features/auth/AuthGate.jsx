@@ -7,7 +7,7 @@ import {useCallback, useEffect, useState} from 'react'
 import {useTranslation} from '../../i18n/I18nProvider.jsx'
 import {fetchAuthStatus, logout} from '../../api/authApi.js'
 import {onUnauthorized} from '../../api/http.js'
-import {LoginForm, LoginScreen, RegisterScreen, SetupScreen} from './AuthScreens.jsx'
+import {ChangePasswordScreen, LoginForm, LoginScreen, RegisterScreen, SetupScreen} from './AuthScreens.jsx'
 
 const REGISTER_HASH = '#register'
 export const STATUS_REFRESH_MS = 60_000
@@ -101,9 +101,26 @@ export default function AuthGate({children}) {
             )
         return <LoginScreen key={notice?.email} email={notice?.email} notice={notice?.text} onLogin={signedIn} onRegister={go('register')} />
     }
+    // signed in with a temporary password of the administrator: a new one first
+    if (state.user.mustChangePassword)
+        return (
+            <ChangePasswordScreen
+                user={state.user}
+                onDone={(user) => user && signedIn(user)}
+                onLogout={() => {
+                    setNotice(null)
+                    setState((current) => ({...current, user: null}))
+                }}
+            />
+        )
+    // the account removed itself (Mijn account): back to signing in, with a word about it
+    const onAccountDeleted = () => {
+        setNotice({text: t('account.deleted')})
+        setState((current) => ({...current, user: null}))
+    }
     return (
         <>
-            {children({user: state.user, onLogout})}
+            {children({user: state.user, onLogout, onAccountDeleted})}
             {sessionLost && (
                 <div id="session-lost" className="authoverlay ui" role="dialog" aria-modal="true">
                     <LoginForm email={state.user.email} title={t('auth.sessionLost.title')} notice={t('auth.sessionLost.text')} onLogin={signedIn} />

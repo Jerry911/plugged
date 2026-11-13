@@ -13,7 +13,7 @@ export const KEEPALIVE_LIMIT = 60_000
 const versions = new Map()
 const rememberVersion = (id, response) => {
     const etag = response.headers?.get?.('ETag')
-    if (etag) versions.set(String(id), etag)
+    if (etag && id != null) versions.set(String(id), etag)
 }
 /** The version (ETag) this browser knows of project `id`, or undefined. */
 export const knownVersion = (id) => versions.get(String(id))
@@ -100,6 +100,71 @@ export const shareProject = async (id, groupIds) => {
     } catch {
         return {ok: false, error: ''}
     }
+}
+
+/** {ok, ...answer} or {ok: false, status, error} of a call that changes something; never throws. */
+const call = async (url, method, {versionOf} = {}) => {
+    try {
+        const response = await apiFetch(url, {method})
+        if (response.ok) {
+            if (versionOf != null) rememberVersion(versionOf, response)
+            const answer = response.status === 204 ? {} : await response.json().catch(() => ({}))
+            return {ok: true, ...answer}
+        }
+        const problem = await response.json().catch(() => null)
+        return {ok: false, status: response.status, error: problem?.detail || ''}
+    } catch {
+        return {ok: false, error: ''}
+    }
+}
+
+/** The projects in the trash the user may restore (summaries; `updated` is when it was deleted). Throws when not available. */
+export const fetchTrash = async () => {
+    const response = await apiFetch('/api/projects/trash')
+    if (!response.ok) throw new Error('trash not available')
+    const summaries = await response.json()
+    return Array.isArray(summaries) ? summaries : []
+}
+/** Takes a project out of the trash: {ok, ...summary}. */
+export const untrashProject = (id) => call(projectUrl(id) + '/untrash', 'POST')
+/** Removes a project in the trash for good: {ok}. */
+export const purgeProject = (id) => call('/api/projects/trash/' + id, 'DELETE')
+/** A copy of a project as a new own project: {ok, id, version}. */
+export const copyProject = async (id, name) => {
+    const result = await call(projectUrl(id) + '/copy' + (name ? '?name=' + encodeURIComponent(name) : ''), 'POST')
+    if (result.ok) versions.set(String(result.id), '"' + (result.version ?? 0) + '"')
+    return result
+}
+/** The history of a project, newest first: [{version, name, savedAt, savedBy, size, current}]. Throws when not available. */
+export const fetchHistory = async (id) => {
+    const response = await apiFetch(projectUrl(id) + '/versions')
+    if (!response.ok) throw new Error('history not available')
+    const list = await response.json()
+    return Array.isArray(list) ? list : []
+}
+/** Saves an older version again as the newest one: {ok, version}. */
+export const restoreVersion = (id, version) => call(projectUrl(id) + '/versions/' + version + '/restore', 'POST', {versionOf: id})
+
+// a random id of this browser window, so the server tells the windows apart (also two windows of one user)
+const WINDOW_ID = (globalThis.crypto?.randomUUID?.() || String(Math.random()).slice(2) + Date.now()).replace(/[^A-Za-z0-9_-]/g, '').slice(0, 64)
+/**
+ * This window has project `id` open (`editing`: with unsaved changes). Answers {others: [{name, editing, since, me}], version, savedBy}:
+ * who else has it open, and the version in the database and who saved it; null when that is not known.
+ */
+export const reportPresence = async (id, editing) => {
+    try {
+        const response = await apiFetch(projectUrl(id) + '/presence', {method: 'POST', headers: JSON_HEADERS, body: JSON.stringify({window: WINDOW_ID, editing: !!editing})})
+        return response.ok ? await response.json() : null
+    } catch {
+        return null
+    }
+}
+/** This window closed project `id` (keepalive: also when the page closes). */
+export const leavePresence = (id) => Promise.resolve(apiFetch(projectUrl(id) + '/presence?window=' + WINDOW_ID, {method: 'DELETE', keepalive: true})).catch(() => {})
+/** The version number in an ETag ("3" -> 3), or null. */
+export const versionNumber = (etag) => {
+    const number = Number(String(etag ?? '').replace(/^W\//, '').replace(/"/g, ''))
+    return etag == null || Number.isNaN(number) ? null : number
 }
 
 /** {donateUrl, contactEmail} of this installation (empty strings when not configured or not reachable). */

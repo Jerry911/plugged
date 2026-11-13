@@ -46,6 +46,30 @@ export const setupAdmin = ({name, surname, password, setupKey}) => send('/api/au
 export const register = ({name, surname, email, password}) => send('/api/auth/register', {name, surname, email, password})
 export const login = ({email, password}) => send('/api/auth/login', {email, password})
 export const logout = () => send('/api/auth/logout')
+/** {ok, user, error}: a new password for the signed-in user (also to replace a temporary one); the other sessions of the account end. */
+export const changePassword = ({currentPassword, newPassword}) => send('/api/auth/password', {currentPassword, newPassword}, 'PUT')
+
+/** The own data (GDPR) as a JSON file the browser downloads. {ok, error}. */
+export const exportMyData = async () => {
+    try {
+        const response = await apiFetch('/api/account/export')
+        if (!response.ok) return {ok: false, error: await problem(response)}
+        const url = URL.createObjectURL(await response.blob()),
+            link = document.createElement('a')
+        link.href = url
+        link.download = 'plugged-mijn-gegevens.json'
+        document.body.appendChild(link)
+        link.click()
+        link.remove()
+        setTimeout(() => URL.revokeObjectURL(url), 1000)
+        return {ok: true}
+    } catch {
+        return {ok: false, error: t('auth.unreachable')}
+    }
+}
+
+/** {ok, error}: removes the own account and everything that is his, confirmed with the password. */
+export const deleteMyAccount = (password) => send('/api/account', {password}, 'DELETE')
 
 /** The accounts (those waiting for approval first). Throws when the list cannot be loaded. */
 export const fetchUsers = async () => {
@@ -61,6 +85,8 @@ const userUrl = (id) => '/api/admin/users/' + encodeURIComponent(id)
 export const approveUser = (id) => send(userUrl(id) + '/approve')
 /** Opens an account that was locked after too many wrong passwords. */
 export const unlockUser = (id) => send(userUrl(id) + '/unlock')
+/** {ok, user: {password}, error}: a temporary password for the account (shown once); he chooses his own at the next sign-in. */
+export const resetUserPassword = (id) => send(userUrl(id) + '/password')
 
 /** {ok, error}: removes the account (or turns down the registration). */
 export const deleteUser = async (id) => {

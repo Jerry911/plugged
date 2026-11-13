@@ -45,6 +45,14 @@ public class AppUser {
     @ColumnDefault("0")
     @Column(nullable = false)
     private int loginCount = 0;
+    /** Goes up with every change of the password: the sessions signed in before it end (see PluggedPrincipal). */
+    @ColumnDefault("0")
+    @Column(nullable = false)
+    private int credentialsVersion = 0;
+    /** The password is a temporary one an administrator gave: it has to be changed before anything else. */
+    @ColumnDefault("false")
+    @Column(nullable = false)
+    private boolean mustChangePassword = false;
     /** Wrong passwords in a row since the last successful sign-in (or the last lockout). */
     @ColumnDefault("0")
     @Column(nullable = false)
@@ -78,6 +86,25 @@ public class AppUser {
 
     public String getEmail() {
         return email;
+    }
+
+    public int getCredentialsVersion() {
+        return credentialsVersion;
+    }
+
+    public boolean isMustChangePassword() {
+        return mustChangePassword;
+    }
+
+    /**
+     * A new password ({@code temporary}: given by an administrator, to be changed at the next sign-in). The sessions signed in with the
+     * old one end; a lockout is lifted.
+     */
+    public void changePassword(String newHash, boolean temporary) {
+        passwordHash = newHash;
+        mustChangePassword = temporary;
+        credentialsVersion++;
+        unlock();
     }
 
     public String getPasswordHash() {

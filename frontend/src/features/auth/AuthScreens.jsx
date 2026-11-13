@@ -1,10 +1,11 @@
 // Copyright 2026 Pleysier Jeroen
 // SPDX-License-Identifier: AGPL-3.0-only
-// The screens before the editor: the first start (create the administrator), signing in and registering.
+// The screens before the editor: the first start (create the administrator), signing in, registering, and choosing a new password after
+// signing in with a temporary one. ChangePasswordForm is also used in Mijn account.
 import {useState} from 'react'
 import {useTranslation} from '../../i18n/I18nProvider.jsx'
 import LanguageSelect from '../../i18n/LanguageSelect.jsx'
-import {login, register, setupAdmin} from '../../api/authApi.js'
+import {changePassword, login, logout, register, setupAdmin} from '../../api/authApi.js'
 
 /** The top bar (name and language) and a card in the middle of the page. */
 export function AuthLayout({children}) {
@@ -20,7 +21,7 @@ export function AuthLayout({children}) {
     )
 }
 
-function Field({id, label, type = 'text', value, onChange, autoComplete, readOnly, autoFocus, hint}) {
+export function Field({id, label, type = 'text', value, onChange, autoComplete, readOnly, autoFocus, hint}) {
     return (
         <label className="authfield" htmlFor={id}>
             <span>{label}</span>
@@ -38,7 +39,7 @@ function Field({id, label, type = 'text', value, onChange, autoComplete, readOnl
     )
 }
 
-const Message = ({id, kind, text}) =>
+export const Message = ({id, kind, text}) =>
     text ? (
         <p id={id} className={'authmsg ' + kind} role={kind === 'error' ? 'alert' : 'status'}>
             {text}
@@ -46,7 +47,7 @@ const Message = ({id, kind, text}) =>
     ) : null
 
 /** Submits `action()` (which answers {ok, error}) once at a time and shows its error. */
-const useSubmit = () => {
+export const useSubmit = () => {
     const [busy, setBusy] = useState(false),
         [error, setError] = useState('')
     const submit = async (event, action) => {
@@ -72,6 +73,80 @@ function PasswordFields({password, setPassword, repeat, setRepeat}) {
             <Field id="auth-password" type="password" label={t('auth.password')} value={password} onChange={setPassword} autoComplete="new-password" hint={t('auth.passwordHint')} />
             <Field id="auth-password2" type="password" label={t('auth.passwordRepeat')} value={repeat} onChange={setRepeat} autoComplete="new-password" />
         </>
+    )
+}
+
+/**
+ * The current password and the new one twice. `onChanged(user)` after the change; `temporary`: the current password is the temporary one
+ * of the administrator (only the label differs).
+ */
+export function ChangePasswordForm({onChanged, temporary, autoFocus}) {
+    const {t} = useTranslation()
+    const [current, setCurrent] = useState(''),
+        [password, setPassword] = useState(''),
+        [repeat, setRepeat] = useState(''),
+        [done, setDone] = useState(false)
+    const {busy, error, setError, submit} = useSubmit()
+    const onSubmit = (event) =>
+        submit(event, async () => {
+            setDone(false)
+            if (password !== repeat) return setError(t('auth.passwordMismatch'))
+            const result = await changePassword({currentPassword: current, newPassword: password})
+            if (result.ok) {
+                setCurrent('')
+                setPassword('')
+                setRepeat('')
+                setDone(true)
+                onChanged?.(result.user)
+            }
+            return result
+        })
+    return (
+        <form id="password-form" className="passwordform" onSubmit={onSubmit} noValidate>
+            <Field
+                id="password-current"
+                type="password"
+                label={t(temporary ? 'account.temporaryPassword' : 'account.currentPassword')}
+                value={current}
+                onChange={setCurrent}
+                autoComplete="current-password"
+                autoFocus={autoFocus}
+            />
+            <Field id="password-new" type="password" label={t('account.newPassword')} value={password} onChange={setPassword} autoComplete="new-password" hint={t('auth.passwordHint')} />
+            <Field id="password-repeat" type="password" label={t('auth.passwordRepeat')} value={repeat} onChange={setRepeat} autoComplete="new-password" />
+            <Message id="password-error" kind="error" text={error} />
+            <Message id="password-done" kind="info" text={done && !error ? t('account.passwordChanged') : ''} />
+            <button id="password-submit" type="submit" className={temporary ? 'authsubmit' : 'accent'} disabled={busy}>
+                {t('account.changePassword')}
+            </button>
+        </form>
+    )
+}
+
+/** Signed in with a temporary password of the administrator: a new one first, before the editor opens. */
+export function ChangePasswordScreen({user, onDone, onLogout}) {
+    const {t} = useTranslation()
+    return (
+        <AuthLayout>
+            <div id="must-change-password" className="authcard">
+                <h1>{t('account.mustChangeTitle')}</h1>
+                <p>{t('account.mustChangeText', {name: user.name})}</p>
+                <ChangePasswordForm temporary autoFocus onChanged={onDone} />
+                <p className="authswitch">
+                    <a
+                        id="must-change-logout"
+                        href="#"
+                        onClick={async (event) => {
+                            event.preventDefault()
+                            await logout()
+                            onLogout()
+                        }}
+                    >
+                        {t('auth.logout')}
+                    </a>
+                </p>
+            </div>
+        </AuthLayout>
     )
 }
 

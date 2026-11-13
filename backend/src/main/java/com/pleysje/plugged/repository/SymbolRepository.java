@@ -34,6 +34,9 @@ public interface SymbolRepository extends JpaRepository<SymbolEntity, String> {
     @Query(value = "delete from symbol_groups where group_id = :groupId", nativeQuery = true)
     int unshareGroup(@Param("groupId") long groupId);
 
+    /** The own symbols of a user. */
+    List<SymbolEntity> findByOwnerUserId(Long ownerUserId);
+
     /** Symbols of a test version that belonged to one group (see SymbolEntity#getLegacyOwnerGroupId). */
     List<SymbolEntity> findByLegacyOwnerGroupIdNotNull();
 }

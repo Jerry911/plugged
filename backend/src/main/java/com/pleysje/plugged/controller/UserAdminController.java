@@ -28,6 +28,8 @@ import org.springframework.web.bind.annotation.RestController;
  *   <li>GET /api/admin/users: the accounts, those waiting for approval first</li>
  *   <li>POST /api/admin/users/{id}/approve: the account may sign in from now on</li>
  *   <li>POST /api/admin/users/{id}/unlock: opens an account that was locked after too many wrong passwords</li>
+ *   <li>POST /api/admin/users/{id}/password: a temporary password for the account, answered once ({password}); he has to choose his own
+ *       at the next sign-in, and his sessions end</li>
  *   <li>PUT /api/admin/users/{id}/admin {admin}: makes the account administrator (true; also approves it) or an ordinary user again</li>
  *   <li>DELETE /api/admin/users/{id}: removes the account (also to turn down a registration); not an administrator. Its projects go to the
  *       administrator who removes it.</li>
@@ -52,6 +54,12 @@ public class UserAdminController {
     @PostMapping("/{id}/approve")
     public UserDto approve(@PathVariable long id) {
         return ApiLog.run(log, "POST /api/admin/users/{id}/approve", "id=" + id, () -> UserDto.of(userService.approve(id)));
+    }
+
+    @PostMapping("/{id}/password")
+    public java.util.Map<String, String> resetPassword(@PathVariable long id, Authentication authentication) {
+        return ApiLog.run(log, "POST /api/admin/users/{id}/password", "id=" + id,
+                () -> java.util.Map.of("password", userService.resetPassword(Authentications.userId(authentication), id)));
     }
 
     @PostMapping("/{id}/unlock")

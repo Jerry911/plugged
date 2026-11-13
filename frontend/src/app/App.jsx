@@ -19,7 +19,9 @@ import {AllSheets, makePdf} from '../features/project/pdfExport.jsx'
 import Tour, {markTourSeen, tourSeen} from '../features/tour/Tour.jsx'
 import {tourSteps} from '../features/tour/tourSteps.jsx'
 import {useSymbolLibrary} from '../api/useSymbolLibrary.js'
-import {createProject, deleteProject, fetchProject, fetchProjectSummaries, saveProject} from '../api/projectApi.js'
+import {copyProject, createProject, deleteProject, fetchProject, fetchProjectSummaries, restoreVersion, saveProject} from '../api/projectApi.js'
+import {usePresence} from '../hooks/usePresence.js'
+import AccountDialog from '../features/account/AccountDialog.jsx'
 import {useHistory} from '../hooks/useHistory.js'
 import {useAutoSave} from '../hooks/useAutoSave.js'
 import {exportEds, importEds} from '../model/eds.js'
@@ -66,12 +68,12 @@ const shortcutLetter = (event) => {
 export default function App() {
     return (
         <I18nProvider>
-            <AuthGate>{({user, onLogout}) => <LibraryGate user={user} onLogout={onLogout} />}</AuthGate>
+            <AuthGate>{({user, onLogout, onAccountDeleted}) => <LibraryGate user={user} onLogout={onLogout} onAccountDeleted={onAccountDeleted} />}</AuthGate>
         </I18nProvider>
     )
 }
 
-function LibraryGate({user, onLogout}) {
+function LibraryGate({user, onLogout, onAccountDeleted}) {
     const {t} = useTranslation()
     const library = useSymbolLibrary()
     if (library.status === 'loading')
@@ -89,10 +91,10 @@ function LibraryGate({user, onLogout}) {
                 </button>
             </div>
         )
-    return <Editor library={library} user={user} onLogout={onLogout} />
+    return <Editor library={library} user={user} onLogout={onLogout} onAccountDeleted={onAccountDeleted} />
 }
 
-function Editor({library, user, onLogout}) {
+function Editor({library, user, onLogout, onAccountDeleted}) {
     const {t, language} = useTranslation()
     const [initialProject] = useState(newProject)
     const {project, setProject, reset, undo, redo, canUndo, canRedo} = useHistory(initialProject),
@@ -100,6 +102,8 @@ function Editor({library, user, onLogout}) {
         [footerDialog, setFooterDialog] = useState(null),
         [tab, setTab] = useState(ONE_WIRE_TAB),
         [statusMessage, setStatusMessage] = useState(''),
+        [accountOpen, setAccountOpen] = useState(false),
+        [newerVersion, setNewerVersion] = useState(null), // somebody else saved the open project while it has unsaved changes here
         [oneWirePage, setOneWirePage] = useState(0),
         [situationPage, setSituationPage] = useState(0),
         [projectId, setProjectId] = useState(null), // null: a new project that was never saved (the server gives it a number)
@@ -225,6 +229,14 @@ function Editor({library, user, onLogout}) {
         addEventListener('keydown', onKeyDown)
         return () => removeEventListener('keydown', onKeyDown)
     }, [undo, redo])
+    // a newer version of the open project (saved by somebody else) replaces it, without going to another tab or page
+    const followProject = (loaded) => {
+        reset(loaded)
+        markSaved(loaded)
+        setOneWirePage((page) => Math.min(page, Math.max(0, (loaded.een?.length || 1) - 1)))
+        setSituationPage((page) => Math.min(page, Math.max(0, (loaded.sit?.length || 1) - 1)))
+        setNewerVersion(null)
+    }
     const hasUnsavedChanges = () => JSON.stringify(project) !== savedSnapshot.current
     const confirmDiscard = () => !hasUnsavedChanges() || window.confirm(t('app.confirmUnsaved'))
     const signOut = () => confirmDiscard() && onLogout()
@@ -299,14 +311,59 @@ function Editor({library, user, onLogout}) {
             setStatusMessage(t('app.loadFailed'))
         }
     }
+    // working together: who else has the open project, and their saves. Nothing unsaved here: their version is loaded right away (you
+    // follow their work); with unsaved changes it is offered (newerVersion), as loading it would throw those changes away
+    const loadNewerVersion = async (answer) => {
+        const id = projectId
+        try {
+            const document = await fetchProject(id)
+            if (!document || id !== projectId) return
+            followProject(normalizeProject(document))
+            setStatusMessage(answer?.savedBy ? t('presence.followed', {name: answer.savedBy}) : t('presence.followedAnonymous'))
+        } catch {
+            setStatusMessage(t('app.loadFailed'))
+        }
+    }
+    const others = usePresence({
+        projectId,
+        isDirty: hasUnsavedChanges,
+        onNewerVersion: (answer) => (hasUnsavedChanges() ? setNewerVersion(answer) : loadNewerVersion(answer)),
+    })
+    useEffect(() => setNewerVersion(null), [projectId])
     const removeProject = async (summary) => {
-        if (!window.confirm(t('app.confirmDelete', {name: summary.name || t('projects.defaultName', {number: summary.id})}))) return
+        if (!window.confirm(t('app.confirmTrash', {name: summary.name || t('projects.defaultName', {number: summary.id})}))) return
         const deleted = await deleteProject(summary.id)
         // the open project was deleted: saving it again makes a new project
         if (deleted && summary.id === projectId) setProjectId(null)
-        setStatusMessage(deleted ? t('app.projectDeleted', {number: summary.id}) : t('app.deleteFailed'))
+        setStatusMessage(deleted ? t('app.projectTrashed', {number: summary.id}) : t('app.deleteFailed'))
         setProjectListKey((key) => key + 1)
     }
+    // a copy of a project in the list, as a new own project (it is not opened)
+    const duplicateProject = async (summary) => {
+        const name = t('common.copyOf', {name: summary.name || t('projects.defaultName', {number: summary.id})}),
+            result = await copyProject(summary.id, name)
+        setStatusMessage(result.ok ? t('app.projectCopied', {number: result.id}) : result.error || t('app.copyFailed'))
+        setProjectListKey((key) => key + 1)
+    }
+    // an older version saved again as the newest: when it is the open project, it is loaded (unsaved changes here are asked about first)
+    const restoreProjectVersion = async (summary, version) => {
+        const current = summary.id === projectId
+        if (current && !confirmDiscard()) return false
+        const result = await restoreVersion(summary.id, version)
+        if (!result.ok) {
+            setStatusMessage(result.error || t('app.restoreFailed'))
+            return false
+        }
+        if (current) {
+            const document = await fetchProject(summary.id)
+            if (document) followProject(normalizeProject(document))
+        }
+        setStatusMessage(t('app.versionRestored', {version, number: summary.id}))
+        setProjectListKey((key) => key + 1)
+        return true
+    }
+    // the project the user is in was put in the trash or restored from it elsewhere: nothing to do here, the list is reloaded
+    const onTrashChanged = () => setProjectListKey((key) => key + 1)
     const openImport = () => document.getElementById('import-input').click()
     const openExport = () => {
         setFooterDialog(null)
@@ -418,6 +475,10 @@ function Editor({library, user, onLogout}) {
                     onNew={startNewProject}
                     onLoad={loadProject}
                     onDelete={removeProject}
+                    onCopy={duplicateProject}
+                    onRestoreVersion={restoreProjectVersion}
+                    onTrashChanged={onTrashChanged}
+                    restricted={restricted}
                     locked={restricted}
                     onImport={openImport}
                     onExport={openExport}
@@ -454,6 +515,25 @@ function Editor({library, user, onLogout}) {
                     ✎ <span className="bar-text">{t('app.footer')}</span>
                 </button>
                 <span className="bar-spacer" />
+                {others.length > 0 && (
+                    <span
+                        id="presence"
+                        className={'presence' + (others.some((other) => other.editing) ? ' editing' : '')}
+                        title={others
+                            .map((other) => (other.me ? t('presence.youElsewhere') : other.name) + (other.editing ? ' (' + t('presence.unsaved') + ')' : ''))
+                            .join('\n')}
+                    >
+                        👥 {others.length === 1 ? (others[0].me ? t('presence.youElsewhere') : others[0].name) : t('presence.count', {count: others.length})}
+                    </span>
+                )}
+                {newerVersion && (
+                    <span id="newer-version" className="presence editing">
+                        {newerVersion.savedBy ? t('presence.newer', {name: newerVersion.savedBy}) : t('presence.newerAnonymous')}{' '}
+                        <button id="newer-version-load" title={t('presence.loadTitle')} onClick={() => confirmDiscard() && loadNewerVersion(newerVersion)}>
+                            {t('presence.load')}
+                        </button>
+                    </span>
+                )}
                 <span id="status-message">{statusMessage}</span>
                 <input id="import-input" type="file" accept={IMPORT_ACCEPT} hidden onChange={importFile} />
                 <span className="sep" />
@@ -491,6 +571,12 @@ function Editor({library, user, onLogout}) {
                         )}
                     </button>
                 )}
+                <button id="btn-account" title={t('account.title')} onClick={() => setAccountOpen((open) => !open)}>
+                    <span className="bar-icon" aria-hidden="true">
+                        👤
+                    </span>
+                    <span className="bar-text minor">{t('account.button')}</span>
+                </button>
                 <button id="btn-logout" title={t('auth.logoutTitle', {name: `${user.name} ${user.surname}`})} onClick={signOut}>
                     <span className="bar-icon" aria-hidden="true">
                         ⏻
@@ -498,6 +584,7 @@ function Editor({library, user, onLogout}) {
                     <span className="bar-text minor">{t('auth.logout')}</span>
                 </button>
             </div>
+            {accountOpen && <AccountDialog user={user} onClose={() => setAccountOpen(false)} onDeleted={onAccountDeleted} />}
             {exportOpen && !restricted && <ExportDialog onExport={exportAs} onClose={() => setExportOpen(false)} />}
             {verifyOpen && !restricted && <VerifyPanel issues={issues} onGoTo={goToIssue} onClose={() => setVerifyOpen(false)} />}
             {footerDialog && (

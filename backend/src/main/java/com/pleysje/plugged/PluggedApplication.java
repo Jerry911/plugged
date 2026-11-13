@@ -10,6 +10,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
  * the symbol catalog in catalog, the stored data in entity / repository; the React frontend is served from the static resources.
  */
 @SpringBootApplication
+@org.springframework.scheduling.annotation.EnableScheduling
 public class PluggedApplication {
     public static void main(String[] arguments) {
         SpringApplication.run(PluggedApplication.class, arguments);

@@ -65,6 +65,8 @@ export class FakeBackend {
             json = (body, status = 200) => route.fulfill({status, contentType: 'application/json', body: JSON.stringify(body)}),
             empty = (status = 204) => route.fulfill({status})
         if (path.startsWith('/api/projects')) {
+            // working together (usePresence): in the fake nobody else is ever there
+            if (path.endsWith('/presence')) return m === 'POST' ? json({others: [], version: 0, savedBy: null, savedByMe: true}) : empty()
             const id = Number(path.split('/')[3])
             // a new project: the server gives the next number
             if (!path.split('/')[3] && m === 'POST') {

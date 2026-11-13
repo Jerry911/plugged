@@ -3,16 +3,13 @@
 // The "Project" menu in the top bar: a flyout with name, save, save as, new, load (a nested flyout with the projects stored on the
 // server), import and export. Clicking "Project" opens the menu, clicking it again (or outside it, or Escape) closes it.
 import {useEffect, useLayoutEffect, useRef, useState} from 'react'
-import {fetchProjectSummaries, fetchShareableGroups, shareProject} from '../../api/projectApi.js'
+import {fetchHistory, fetchProjectSummaries, fetchShareableGroups, fetchTrash, purgeProject, shareProject, untrashProject} from '../../api/projectApi.js'
 import {useTranslation} from '../../i18n/I18nProvider.jsx'
 
 const formatSaveMoment = (isoMoment, locale) => {
     const moment = isoMoment ? new Date(isoMoment) : null
     return moment && !isNaN(moment) ? moment.toLocaleString(locale, {dateStyle: 'short', timeStyle: 'short'}) : ''
 }
-// the stored projects, most recently saved first (projects saved before names and dates existed come last)
-const mostRecentFirst = (summaries) =>
-    [...summaries].sort((a, b) => (b.updated || '').localeCompare(a.updated || '') || a.id - b.id)
 
 // small line icons (24x24, stroke = text colour) so the menu items look the same on every system
 const MENU_ICONS = {
@@ -25,6 +22,7 @@ const MENU_ICONS = {
     chevron: ['M9 6l6 6-6 6'],
     share: ['M16 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6z', 'M8 13a3 3 0 1 0 0-6 3 3 0 0 0 0 6z', 'M2 20c0-3 3-5 6-5s6 2 6 5', 'M14 15.5c.6-.3 1.3-.5 2-.5 3 0 6 2 6 5'],
     caret: ['M6 9l6 6 6-6'],
+    history: ['M3 12a9 9 0 1 0 3-6.7', 'M3 4v4h4', 'M12 7v5l3 2'],
 }
 const MenuIcon = ({name}) => (
     <svg className="pm-ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
@@ -116,22 +114,219 @@ function SharePanel({summary, onDone, onClose}) {
     )
 }
 
-/** The table of the projects the user may see (reloaded whenever `refreshKey` changes). */
-export function ProjectList({currentId, refreshKey, onLoad, onDelete}) {
+// how the list can be sorted; `recent` first
+const SORTS = {
+    recent: (a, b) => (b.updated || '').localeCompare(a.updated || '') || a.id - b.id,
+    name: (a, b) => (a.name || '').localeCompare(b.name || '', undefined, {sensitivity: 'base'}) || a.id - b.id,
+    owner: (a, b) => (a.owner?.name || '').localeCompare(b.owner?.name || '', undefined, {sensitivity: 'base'}) || SORTS.recent(a, b),
+    number: (a, b) => a.id - b.id,
+}
+// a project matches the search when its name, number, owner or one of its groups contains every word typed
+const matches = (summary, search) => {
+    const words = search.toLowerCase().split(/\s+/).filter(Boolean)
+    if (!words.length) return true
+    const text = [summary.name, String(summary.id), summary.owner?.name, ...(summary.groups || []).map((group) => group.name)].join(' ').toLowerCase()
+    return words.every((word) => text.includes(word))
+}
+
+/** The saved versions of a project (newest first); `onRestore(version)` resolves to true when it was restored. */
+function HistoryPanel({summary, onRestore, onClose}) {
+    const {t, locale} = useTranslation()
+    const [versions, setVersions] = useState(null),
+        [failed, setFailed] = useState(false),
+        [busy, setBusy] = useState(false)
+    const load = () =>
+        fetchHistory(summary.id)
+            .then(setVersions)
+            .catch(() => setFailed(true))
+    useEffect(() => {
+        load()
+    }, [summary.id])
+    const restore = async (version) => {
+        setBusy(true)
+        const restored = await onRestore(version)
+        setBusy(false)
+        if (restored) load()
+    }
+    return (
+        <div id={'project-history-' + summary.id} className="pm-share">
+            <b>{t('projects.historyIntro', {name: summary.name || t('projects.defaultName', {number: summary.id})})}</b>
+            {failed && <p className="pm-note error">{t('projects.historyFailed')}</p>}
+            {versions && !versions.length && <p className="pm-note">{t('projects.historyEmpty')}</p>}
+            {versions?.length > 0 && (
+                <div className="pm-history">
+                    <table>
+                        <tbody>
+                            {versions.map((version) => (
+                                <tr key={version.version} id={'project-version-' + summary.id + '-' + version.version}>
+                                    <td>{t('projects.versionNumber', {version: version.version})}</td>
+                                    <td>{formatSaveMoment(version.savedAt, locale)}</td>
+                                    <td>{version.savedBy || ''}</td>
+                                    <td>
+                                        {version.current ? (
+                                            <small>{t('projects.versionCurrent')}</small>
+                                        ) : (
+                                            <button
+                                                id={'project-version-restore-' + summary.id + '-' + version.version}
+                                                disabled={busy}
+                                                title={t('projects.restoreVersionTitle')}
+                                                onClick={() => restore(version.version)}
+                                            >
+                                                {t('projects.restoreVersion')}
+                                            </button>
+                                        )}
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            )}
+            <div className="pm-share-acts">
+                <button id="project-history-close" onClick={onClose}>
+                    {t('common.close')}
+                </button>
+            </div>
+        </div>
+    )
+}
+
+/** The projects in the trash the user may restore or remove for good (`onChanged()` after either). */
+function TrashList({refreshKey, onChanged}) {
     const {t, locale} = useTranslation()
     const [summaries, setSummaries] = useState(null),
         [failed, setFailed] = useState(false),
-        [sharing, setSharing] = useState(null) // id of the project whose groups are being chosen
+        [error, setError] = useState('')
     useEffect(() => {
         let live = true
-        setFailed(false)
-        fetchProjectSummaries()
-            .then((list) => live && setSummaries(mostRecentFirst(list)))
+        fetchTrash()
+            .then((list) => live && setSummaries(list))
             .catch(() => live && setFailed(true))
         return () => {
             live = false
         }
     }, [refreshKey])
+    const nameOf = (summary) => summary.name || t('projects.defaultName', {number: summary.id})
+    const act = async (summary, action) => {
+        setError('')
+        const result = await action(summary.id)
+        if (!result.ok) return setError(result.error || t('projects.trashFailed'))
+        setSummaries((list) => list.filter((item) => item.id !== summary.id))
+        onChanged()
+    }
+    if (failed) return <p id="project-trash-error" className="pm-note">{t('projects.trashFailed')}</p>
+    if (!summaries) return <p className="pm-note">{t('projects.listLoading')}</p>
+    if (!summaries.length) return <p id="project-trash-empty" className="pm-note">{t('projects.trashEmpty')}</p>
+    return (
+        <>
+            {error && (
+                <p className="pm-note error" role="alert">
+                    {error}
+                </p>
+            )}
+            <table id="project-trash" className="plist ui" aria-label={t('projects.trash')}>
+                <thead>
+                    <tr>
+                        <th>{t('projects.columns.name')}</th>
+                        <th>{t('projects.columns.number')}</th>
+                        <th>{t('projects.columns.deleted')}</th>
+                        <th />
+                    </tr>
+                </thead>
+                <tbody>
+                    {summaries.map((summary) => (
+                        <tr key={summary.id} id={'project-trash-row-' + summary.id}>
+                            <td className="pm-name">
+                                {nameOf(summary)}
+                                <ProjectMeta summary={summary} />
+                            </td>
+                            <td>{summary.id}</td>
+                            <td className="pm-when">{formatSaveMoment(summary.updated, locale)}</td>
+                            <td className="pm-acts">
+                                <button id={'project-untrash-' + summary.id} title={t('projects.untrashTitle')} onClick={() => act(summary, untrashProject)}>
+                                    {t('projects.untrash')}
+                                </button>
+                                <button
+                                    id={'project-purge-' + summary.id}
+                                    className="pm-del"
+                                    title={t('projects.purgeTitle')}
+                                    onClick={() => window.confirm(t('projects.confirmPurge', {name: nameOf(summary)})) && act(summary, purgeProject)}
+                                >
+                                    ✕
+                                </button>
+                            </td>
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
+        </>
+    )
+}
+
+/**
+ * The table of the projects the user may see (reloaded whenever `refreshKey` changes), with a search box, a choice of order and the trash.
+ * `onCopy(summary)` duplicates one, `onRestoreVersion(summary, version)` restores a version of its history, `onTrashChanged()` after a
+ * project came out of the trash or was removed for good. `restricted`: a student only duplicates his own projects.
+ */
+export function ProjectList({currentId, refreshKey, onLoad, onDelete, onCopy, onRestoreVersion, onTrashChanged, restricted}) {
+    const {t, locale} = useTranslation()
+    const [summaries, setSummaries] = useState(null),
+        [failed, setFailed] = useState(false),
+        [panel, setPanel] = useState(null), // {id, kind: 'share' | 'history'}: the panel open under a project
+        [search, setSearch] = useState(''),
+        [sort, setSort] = useState('recent'),
+        [showTrash, setShowTrash] = useState(false)
+    useEffect(() => {
+        let live = true
+        setFailed(false)
+        fetchProjectSummaries()
+            .then((list) => live && setSummaries(list))
+            .catch(() => live && setFailed(true))
+        return () => {
+            live = false
+        }
+    }, [refreshKey])
+    const togglePanel = (id, kind) => setPanel((current) => (current?.id === id && current.kind === kind ? null : {id, kind}))
+    const tools = (
+        <div className="pm-tools">
+            {!showTrash && (
+                <>
+                    <input
+                        id="project-search"
+                        type="search"
+                        value={search}
+                        placeholder={t('projects.searchPlaceholder')}
+                        aria-label={t('projects.search')}
+                        onChange={(event) => setSearch(event.target.value)}
+                    />
+                    <select id="project-sort" value={sort} aria-label={t('projects.sort')} title={t('projects.sort')} onChange={(event) => setSort(event.target.value)}>
+                        {Object.keys(SORTS).map((key) => (
+                            <option key={key} value={key}>
+                                {t('projects.sorts.' + key)}
+                            </option>
+                        ))}
+                    </select>
+                </>
+            )}
+            <button
+                id="project-trash-toggle"
+                className={showTrash ? 'on' : ''}
+                aria-pressed={showTrash}
+                title={t('projects.trashTitle')}
+                style={showTrash ? {marginLeft: 'auto'} : undefined}
+                onClick={() => setShowTrash((on) => !on)}
+            >
+                {showTrash ? '← ' + t('projects.backToList') : '🗑 ' + t('projects.trash')}
+            </button>
+        </div>
+    )
+    if (showTrash)
+        return (
+            <div className="ui">
+                {tools}
+                <TrashList refreshKey={refreshKey} onChanged={onTrashChanged || (() => {})} />
+            </div>
+        )
     if (failed)
         return (
             <p id="project-list-error" className="pm-note ui">
@@ -146,82 +341,140 @@ export function ProjectList({currentId, refreshKey, onLoad, onDelete}) {
         )
     if (!summaries.length)
         return (
-            <p id="project-list-empty" className="pm-note ui">
-                {t('projects.listEmpty')}
-            </p>
+            <div className="ui">
+                {tools}
+                <p id="project-list-empty" className="pm-note ui">
+                    {t('projects.listEmpty')}
+                </p>
+            </div>
         )
+    const shown = summaries.filter((summary) => matches(summary, search)).sort(SORTS[sort] || SORTS.recent)
     return (
-        <table id="project-list" className="plist ui" aria-label={t('projects.storedProjects')}>
-            <thead>
-                <tr>
-                    <th>{t('projects.columns.name')}</th>
-                    <th>{t('projects.columns.number')}</th>
-                    <th>{t('projects.columns.lastSaved')}</th>
-                    <th />
-                </tr>
-            </thead>
-            <tbody>
-                {summaries.map((summary) => [
-                    <tr key={summary.id} id={'project-row-' + summary.id} className={summary.id === currentId ? 'cur' : ''}>
-                        <td className="pm-name">
-                            {summary.name || <i>{t('projects.defaultName', {number: summary.id})}</i>}
-                            {summary.id === currentId && <small> {t('projects.current')}</small>}
-                            <ProjectMeta summary={summary} />
-                        </td>
-                        <td>{summary.id}</td>
-                        <td className="pm-when">{formatSaveMoment(summary.updated, locale)}</td>
-                        <td className="pm-acts">
-                            <button id={'project-load-' + summary.id} title={t('projects.loadTitle', {number: summary.id})} onClick={() => onLoad(summary.id, summary)}>
-                                {t('projects.load')}
-                            </button>
-                            {summary.canManage && (
-                                <button
-                                    id={'project-sharebtn-' + summary.id}
-                                    title={t('projects.shareTitle')}
-                                    aria-label={t('projects.shareTitle')}
-                                    aria-expanded={sharing === summary.id}
-                                    className={sharing === summary.id ? 'on' : ''}
-                                    onClick={() => setSharing((id) => (id === summary.id ? null : summary.id))}
-                                >
-                                    <MenuIcon name="share" />
-                                </button>
-                            )}
-                            {summary.canManage && (
-                                <button
-                                    id={'project-delete-' + summary.id}
-                                    title={t('projects.deleteTitle', {number: summary.id})}
-                                    aria-label={t('projects.deleteLabel', {name: summary.name || t('projects.defaultName', {number: summary.id})})}
-                                    className="pm-del"
-                                    onClick={() => onDelete(summary)}
-                                >
-                                    🗑
-                                </button>
-                            )}
-                        </td>
-                    </tr>,
-                    sharing === summary.id && (
-                        <tr key={summary.id + '-share'} className="pm-share-row">
-                            <td colSpan={4}>
-                                <SharePanel
-                                    summary={summary}
-                                    onClose={() => setSharing(null)}
-                                    onDone={(updated) => {
-                                        setSharing(null)
-                                        setSummaries((list) => list.map((item) => (item.id === updated.id ? updated : item)))
-                                    }}
-                                />
-                            </td>
+        <div className="ui">
+            {tools}
+            {!shown.length && (
+                <p id="project-list-nomatch" className="pm-note">
+                    {t('projects.noMatch', {search})}
+                </p>
+            )}
+            {shown.length > 0 && (
+                <table id="project-list" className="plist ui" aria-label={t('projects.storedProjects')}>
+                    <thead>
+                        <tr>
+                            <th>{t('projects.columns.name')}</th>
+                            <th>{t('projects.columns.number')}</th>
+                            <th>{t('projects.columns.lastSaved')}</th>
+                            <th />
                         </tr>
-                    ),
-                ])}
-            </tbody>
-        </table>
+                    </thead>
+                    <tbody>
+                        {shown.map((summary) => [
+                            <tr key={summary.id} id={'project-row-' + summary.id} className={summary.id === currentId ? 'cur' : ''}>
+                                <td className="pm-name">
+                                    {summary.name || <i>{t('projects.defaultName', {number: summary.id})}</i>}
+                                    {summary.id === currentId && <small> {t('projects.current')}</small>}
+                                    <ProjectMeta summary={summary} />
+                                </td>
+                                <td>{summary.id}</td>
+                                <td className="pm-when">{formatSaveMoment(summary.updated, locale)}</td>
+                                <td className="pm-acts">
+                                    <button id={'project-load-' + summary.id} title={t('projects.loadTitle', {number: summary.id})} onClick={() => onLoad(summary.id, summary)}>
+                                        {t('projects.load')}
+                                    </button>
+                                    {onCopy && (!restricted || summary.mine) && (
+                                        <button
+                                            id={'project-copy-' + summary.id}
+                                            title={t('projects.copyTitle')}
+                                            aria-label={t('projects.copyTitle')}
+                                            onClick={() => onCopy(summary)}
+                                        >
+                                            <MenuIcon name="saveas" />
+                                        </button>
+                                    )}
+                                    {onRestoreVersion && (
+                                        <button
+                                            id={'project-historybtn-' + summary.id}
+                                            title={t('projects.historyTitle')}
+                                            aria-label={t('projects.historyTitle')}
+                                            aria-expanded={panel?.id === summary.id && panel.kind === 'history'}
+                                            className={panel?.id === summary.id && panel.kind === 'history' ? 'on' : ''}
+                                            onClick={() => togglePanel(summary.id, 'history')}
+                                        >
+                                            <MenuIcon name="history" />
+                                        </button>
+                                    )}
+                                    {summary.canManage && (
+                                        <button
+                                            id={'project-sharebtn-' + summary.id}
+                                            title={t('projects.shareTitle')}
+                                            aria-label={t('projects.shareTitle')}
+                                            aria-expanded={panel?.id === summary.id && panel.kind === 'share'}
+                                            className={panel?.id === summary.id && panel.kind === 'share' ? 'on' : ''}
+                                            onClick={() => togglePanel(summary.id, 'share')}
+                                        >
+                                            <MenuIcon name="share" />
+                                        </button>
+                                    )}
+                                    {summary.canManage && (
+                                        <button
+                                            id={'project-delete-' + summary.id}
+                                            title={t('projects.deleteTitle', {number: summary.id})}
+                                            aria-label={t('projects.deleteLabel', {name: summary.name || t('projects.defaultName', {number: summary.id})})}
+                                            className="pm-del"
+                                            onClick={() => onDelete(summary)}
+                                        >
+                                            🗑
+                                        </button>
+                                    )}
+                                </td>
+                            </tr>,
+                            panel?.id === summary.id && (
+                                <tr key={summary.id + '-' + panel.kind} className="pm-share-row">
+                                    <td colSpan={4}>
+                                        {panel.kind === 'share' ? (
+                                            <SharePanel
+                                                summary={summary}
+                                                onClose={() => setPanel(null)}
+                                                onDone={(updated) => {
+                                                    setPanel(null)
+                                                    setSummaries((list) => list.map((item) => (item.id === updated.id ? updated : item)))
+                                                }}
+                                            />
+                                        ) : (
+                                            <HistoryPanel summary={summary} onRestore={(version) => onRestoreVersion(summary, version)} onClose={() => setPanel(null)} />
+                                        )}
+                                    </td>
+                                </tr>
+                            ),
+                        ])}
+                    </tbody>
+                </table>
+            )}
+        </div>
     )
 }
 
 const SUBMENU_WIDTH = 480 // room the project list needs next to the menu
 
-export default function ProjectMenu({name, onNameChange, projectId, refreshKey, loadMenuRequest = 0, locked, onSave, onSaveAs, onNew, onLoad, onDelete, onImport, onExport}) {
+export default function ProjectMenu({
+    name,
+    onNameChange,
+    projectId,
+    refreshKey,
+    loadMenuRequest = 0,
+    locked,
+    onSave,
+    onSaveAs,
+    onNew,
+    onLoad,
+    onDelete,
+    onCopy,
+    onRestoreVersion,
+    onTrashChanged,
+    restricted,
+    onImport,
+    onExport,
+}) {
     const {t} = useTranslation()
     const [open, setOpen] = useState(false),
         [listOpen, setListOpen] = useState(false), // the nested "Laden" flyout
@@ -343,7 +596,16 @@ export default function ProjectMenu({name, onNameChange, projectId, refreshKey, 
                             </button>
                             {listOpen && (
                                 <div className={'pm-sub ' + listSide}>
-                                    <ProjectList currentId={projectId} refreshKey={refreshKey} onLoad={(id, summary) => (close(), onLoad(id, summary))} onDelete={onDelete} />
+                                    <ProjectList
+                                        currentId={projectId}
+                                        refreshKey={refreshKey}
+                                        onLoad={(id, summary) => (close(), onLoad(id, summary))}
+                                        onDelete={onDelete}
+                                        onCopy={onCopy}
+                                        onRestoreVersion={onRestoreVersion}
+                                        onTrashChanged={onTrashChanged}
+                                        restricted={restricted}
+                                    />
                                 </div>
                             )}
                         </li>

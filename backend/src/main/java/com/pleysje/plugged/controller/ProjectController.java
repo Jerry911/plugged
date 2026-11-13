@@ -6,7 +6,10 @@ import com.pleysje.plugged.dto.AdminRequests;
 import com.pleysje.plugged.dto.ProjectSummary;
 import com.pleysje.plugged.logging.ApiLog;
 import com.pleysje.plugged.security.Authentications;
+import com.pleysje.plugged.entity.AppUser;
+import com.pleysje.plugged.service.PresenceService;
 import com.pleysje.plugged.service.ProjectService;
+import java.util.Map;
 import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -37,7 +40,15 @@ import org.springframework.web.bind.annotation.RestController;
  *   <li>GET /api/projects/{id}: the document, its version in the ETag header; 404 for a project the user may not see</li>
  *   <li>PUT /api/projects/{id}: saves the document; the If-Match header must carry the version it is based on (428 without it, 409 when
  *       somebody else saved in between); answers 204 with the new version as ETag. A project that does not exist answers 404.</li>
- *   <li>DELETE /api/projects/{id}</li>
+ *   <li>DELETE /api/projects/{id}: into the trash. GET /api/projects/trash: the projects in the trash the user may restore;
+ *       POST /api/projects/{id}/untrash takes one out again; DELETE /api/projects/trash/{id} removes it for good</li>
+ *   <li>POST /api/projects/{id}/copy?name=: a copy as a new own project; answers {id, version} (201)</li>
+ *   <li>GET /api/projects/{id}/versions: the history [{version, name, savedAt, savedBy, size, current}]; GET .../versions/{version}: that
+ *       document; POST .../versions/{version}/restore: saves it again as the newest version (new ETag)</li>
+ *   <li>POST /api/projects/{id}/presence {window, editing}: this window has the project open (a heartbeat); answers {others: [{name,
+ *       editing, since, me}], version, savedBy, savedByMe}: who else has it open (me: another window of the same user), and the version in
+ *       the database and who saved it. DELETE
+ *       /api/projects/{id}/presence?window= when it closes.</li>
  *   <li>PUT /api/projects/{id}/groups {groupIds}: the groups the project is shared with (owner or administrator)</li>
  * </ul>
  */
@@ -47,9 +58,11 @@ public class ProjectController {
     private static final Logger log = LoggerFactory.getLogger(ProjectController.class);
 
     private final ProjectService projects;
+    private final PresenceService presence;
 
-    public ProjectController(ProjectService projects) {
+    public ProjectController(ProjectService projects, PresenceService presence) {
         this.projects = projects;
+        this.presence = presence;
     }
 
     @GetMapping
@@ -116,6 +129,87 @@ public class ProjectController {
             // falls through to the answer below
         }
         throw new LocalizedStatusException(HttpStatus.PRECONDITION_REQUIRED, "project.versionRequired");
+    }
+
+    @GetMapping("/trash")
+    public List<ProjectSummary> trash(Authentication authentication) {
+        return ApiLog.run(log, "GET /api/projects/trash", "", () -> projects.trash(Authentications.userId(authentication)));
+    }
+
+    @PostMapping("/{id}/untrash")
+    public ProjectSummary untrash(@PathVariable long id, Authentication authentication) {
+        return ApiLog.run(log, "POST /api/projects/{id}/untrash", "id=" + id, () -> {
+            long userId = Authentications.userId(authentication);
+            projects.untrash(userId, id);
+            return projects.summary(userId, id);
+        });
+    }
+
+    @DeleteMapping("/trash/{id}")
+    public ResponseEntity<Void> purge(@PathVariable long id, Authentication authentication) {
+        return ApiLog.run(log, "DELETE /api/projects/trash/{id}", "id=" + id, () -> {
+            projects.purge(Authentications.userId(authentication), id);
+            return ResponseEntity.noContent().<Void>build();
+        });
+    }
+
+    @PostMapping("/{id}/copy")
+    public ResponseEntity<ProjectSummary.Created> copy(@PathVariable long id, @RequestParam(required = false) String name, Authentication authentication) {
+        return ApiLog.run(log, "POST /api/projects/{id}/copy", "id=" + id + ", name=" + name, () -> {
+            ProjectSummary.Created created = projects.copy(Authentications.userId(authentication), id, cleanName(name));
+            return ResponseEntity.status(HttpStatus.CREATED).eTag(etag(created.version())).body(created);
+        });
+    }
+
+    @GetMapping("/{id}/versions")
+    public List<ProjectService.VersionSummary> history(@PathVariable long id, Authentication authentication) {
+        return ApiLog.run(log, "GET /api/projects/{id}/versions", "id=" + id, () -> projects.history(Authentications.userId(authentication), id));
+    }
+
+    @GetMapping(value = "/{id}/versions/{version}", produces = MediaType.APPLICATION_JSON_VALUE)
+    public String version(@PathVariable long id, @PathVariable long version, Authentication authentication) {
+        return ApiLog.run(log, "GET /api/projects/{id}/versions/{version}", "id=" + id + ", version=" + version,
+                () -> projects.versionDocument(Authentications.userId(authentication), id, version));
+    }
+
+    @PostMapping("/{id}/versions/{version}/restore")
+    public ResponseEntity<Map<String, Long>> restoreVersion(@PathVariable long id, @PathVariable long version, Authentication authentication) {
+        return ApiLog.run(log, "POST /api/projects/{id}/versions/{version}/restore", "id=" + id + ", version=" + version, () -> {
+            long now = projects.restoreVersion(Authentications.userId(authentication), id, version);
+            return ResponseEntity.ok().eTag(etag(now)).body(Map.of("version", now));
+        });
+    }
+
+    /** The body of a presence report: the (random) id of the browser window and whether it has unsaved changes. */
+    public record Presence(String window, boolean editing) {
+    }
+
+    @PostMapping("/{id}/presence")
+    public Map<String, Object> presence(@PathVariable long id, @RequestBody Presence body, Authentication authentication) {
+        long userId = Authentications.userId(authentication);
+        ProjectService.CurrentVersion current = projects.currentVersion(userId, id);
+        AppUser user = projects.user(userId);
+        String window = cleanWindow(body.window());
+        List<PresenceService.Viewer> others = presence.report(id, window, userId, (user.getName() + " " + user.getSurname()).trim(), body.editing());
+        Map<String, Object> answer = new java.util.LinkedHashMap<>();
+        answer.put("others", others.stream().map(viewer -> Map.of("name", viewer.name(), "editing", viewer.editing(), "since", viewer.since(),
+                "me", viewer.userId() == userId)).toList());
+        answer.put("version", current.version());
+        answer.put("savedBy", current.savedBy());
+        answer.put("savedByMe", current.savedById() != null && current.savedById() == userId);
+        return answer;
+    }
+
+    @DeleteMapping("/{id}/presence")
+    public ResponseEntity<Void> leave(@PathVariable long id, @RequestParam String window) {
+        presence.leave(id, cleanWindow(window));
+        return ResponseEntity.noContent().build();
+    }
+
+    private static String cleanWindow(String window) {
+        String clean = window == null ? "" : window.replaceAll("[^A-Za-z0-9_-]", "");
+        if (clean.isEmpty() || clean.length() > 64) throw new LocalizedStatusException(HttpStatus.BAD_REQUEST, "project.invalidWindow");
+        return clean;
     }
 
     @DeleteMapping("/{id}")

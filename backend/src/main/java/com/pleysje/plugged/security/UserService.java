@@ -196,6 +196,43 @@ public class UserService {
         return users.findById(id).orElseThrow(() -> new LocalizedStatusException(HttpStatus.NOT_FOUND, "user.notFound", id));
     }
 
+    /**
+     * The signed-in user chooses a new password; the current one proves it is him (403 when it is wrong). The other sessions of the account
+     * end (the caller signs the current one in again, see AuthController). Also how a temporary password is replaced.
+     */
+    @Transactional
+    public AppUser changePassword(long userId, AuthRequests.ChangePassword request) {
+        AppUser user = find(userId);
+        if (!passwordEncoder.matches(request.currentPassword() == null ? "" : request.currentPassword(), user.getPasswordHash()))
+            throw new LocalizedStatusException(HttpStatus.FORBIDDEN, "auth.currentPasswordWrong");
+        if (passwordEncoder.matches(request.newPassword(), user.getPasswordHash()))
+            throw new LocalizedStatusException(HttpStatus.BAD_REQUEST, "auth.passwordUnchanged");
+        user.changePassword(passwordEncoder.encode(request.newPassword()), false);
+        log.info("User {} changed his password", userId);
+        return user;
+    }
+
+    /** True when this is the password of the account (to confirm removing it). */
+    public boolean passwordMatches(AppUser user, String password) {
+        return passwordEncoder.matches(password == null ? "" : password, user.getPasswordHash());
+    }
+
+    /**
+     * An administrator gives an account a temporary password (the app sends no mail: he passes it on himself). The account has to choose a
+     * new one at its next sign-in, and its sessions end. Not for the own account (change it yourself) nor, except by himself, for the primary
+     * administrator. Answers the temporary password.
+     */
+    @Transactional
+    public String resetPassword(long actingAdminId, long id) {
+        if (actingAdminId == id) throw new LocalizedStatusException(HttpStatus.BAD_REQUEST, "users.resetOwnPassword");
+        AppUser user = find(id);
+        if (isPrimaryAdmin(user)) throw new LocalizedStatusException(HttpStatus.FORBIDDEN, "users.resetPrimaryPassword");
+        String temporary = TemporaryPasswords.next();
+        user.changePassword(passwordEncoder.encode(temporary), true);
+        log.info("User {} got a temporary password from administrator {}", id, actingAdminId);
+        return temporary;
+    }
+
     /** Opens an account that was locked after too many wrong passwords. */
     @Transactional
     public AppUser unlock(long id) {

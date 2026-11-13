@@ -9,6 +9,7 @@ import {
     addGroupMember,
     approveUser,
     unlockUser,
+    resetUserPassword,
     createGroup,
     deleteGroup,
     deleteUser,
@@ -61,6 +62,16 @@ export default function AdminPage({currentUser, onUsersChange}) {
     const actions = {
         approve: (user) => run(() => approveUser(user.id), 'users.approved', {name: fullName(user)}),
         unlock: (user) => run(() => unlockUser(user.id), 'users.unlocked', {name: fullName(user)}),
+        // the temporary password is shown once, in the message, for the administrator to pass on
+        resetPassword: async (user) => {
+            if (!window.confirm(t('users.confirmReset', {name: fullName(user)}))) return false
+            setBusy(true)
+            const result = await resetUserPassword(user.id)
+            setBusy(false)
+            setMessage(result.ok ? {kind: 'ok', text: t('users.temporaryPassword', {name: fullName(user), password: result.user.password})} : {kind: 'error', text: result.error})
+            await load()
+            return result.ok
+        },
         setAdmin: (user, admin) => run(() => setUserAdmin(user.id, admin), admin ? 'users.madeAdmin' : 'users.madeUser', {name: fullName(user)}),
         remove: (user) => {
             if (window.confirm(t(user.approved ? 'users.confirmDelete' : 'users.confirmReject', {name: fullName(user), email: user.email})))

@@ -22,7 +22,7 @@ public final class Authentications {
     public static Authentication of(AppUser user) {
         List<GrantedAuthority> roles = new ArrayList<>(List.of(new SimpleGrantedAuthority("ROLE_" + SecurityConfig.ROLE_USER)));
         if (user.isAdmin()) roles.add(new SimpleGrantedAuthority(ADMIN_AUTHORITY));
-        return UsernamePasswordAuthenticationToken.authenticated(new PluggedPrincipal(user.getId(), user.getEmail()), null, roles);
+        return UsernamePasswordAuthenticationToken.authenticated(new PluggedPrincipal(user.getId(), user.getEmail(), user.getCredentialsVersion()), null, roles);
     }
 
     /** True when the authentication carries the administrator role. */

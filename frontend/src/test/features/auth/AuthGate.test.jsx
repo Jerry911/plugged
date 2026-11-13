@@ -182,3 +182,33 @@ test('a session that ends during the work: sign in again on top of the editor, w
     await waitFor(() => expect(byId('session-lost')).toBeNull())
     getById('editor')
 })
+
+test('signed in with a temporary password: a new one first, then the editor', async () => {
+    backend({setupRequired: false, adminEmail: 'admin@example.be', user: {...ADMIN, mustChangePassword: true}}, {
+        '/api/auth/password': (body) => (body.currentPassword === 'tijdelijk' ? json({...ADMIN, mustChangePassword: false}) : json({detail: 'Je huidige wachtwoord klopt niet'}, 403)),
+    })
+    mount()
+    await waitFor(() => getById('must-change-password'))
+    expect(byId('editor')).toBeNull()
+    typeInto('password-current', 'fout')
+    typeInto('password-new', 'nieuwgeheim')
+    typeInto('password-repeat', 'nieuwgeheim')
+    submit('password-form')
+    await waitFor(() => expect(getById('password-error')).toHaveTextContent('Je huidige wachtwoord klopt niet'))
+    typeInto('password-current', 'tijdelijk')
+    submit('password-form')
+    await waitFor(() => expect(getById('editor')).toHaveTextContent(ADMIN.email))
+    expect(posted('/api/auth/password').at(-1)).toEqual({currentPassword: 'tijdelijk', newPassword: 'nieuwgeheim'})
+})
+
+test('the two new passwords must be the same', async () => {
+    backend({setupRequired: false, adminEmail: 'admin@example.be', user: {...ADMIN, mustChangePassword: true}})
+    mount()
+    await waitFor(() => getById('must-change-password'))
+    typeInto('password-current', 'tijdelijk')
+    typeInto('password-new', 'nieuwgeheim')
+    typeInto('password-repeat', 'anders123')
+    submit('password-form')
+    await waitFor(() => expect(getById('password-error')).toHaveTextContent(t('auth.passwordMismatch')))
+    expect(posted('/api/auth/password')).toEqual([])
+})

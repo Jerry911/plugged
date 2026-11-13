@@ -52,7 +52,8 @@ const setup = (data = null, ok = true, extra = []) => {
     )
 }
 // project saves only (not the symbols): PUT of a stored project, POST of a new one
-const puts = () => global.fetch.mock.calls.filter((c) => ['PUT', 'POST'].includes(c[1]?.method) && c[0].startsWith('/api/projects'))
+// the saves (not the heartbeats of usePresence)
+const puts = () => global.fetch.mock.calls.filter((c) => ['PUT', 'POST'].includes(c[1]?.method) && c[0].startsWith('/api/projects') && !c[0].includes('/presence'))
 // import / export go through the buttons with these ids: one file picker (json and eds) and one export dialog with a file type choice
 const toProject = () => fireEvent.click(byId('tab-project'))
 const clickSave = () => {

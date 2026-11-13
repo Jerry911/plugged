@@ -133,6 +133,14 @@ test('a project is private until its owner shares it with a group; members can o
     await bob.page.keyboard.press('Alt+s')
     await expect(bob.page.locator('#status-message')).toHaveText(t('app.saved'))
 
+    // working together: Alice, who has the project open, sees Bob in it, and his save comes to her by itself
+    await expect(alice.page.locator('#presence')).toContainText('Bob Test', {timeout: 15_000})
+    await expect(bob.page.locator('#presence')).toContainText('Alice Test', {timeout: 15_000})
+    await expect(alice.page.locator('#status-message')).toHaveText(t('presence.followed', {name: 'Bob Test'}), {timeout: 15_000})
+    // Bob closes his window: after a while Alice no longer sees him
+    await bob.page.goto('about:blank')
+    await expect(alice.page.locator('#presence')).toHaveCount(0, {timeout: 15_000})
+
     // the administrator sees it too
     expect((await backend.stored(id)).name).toBe('Woning Alice')
     for (const person of [alice, bob]) await person.page.context().close()

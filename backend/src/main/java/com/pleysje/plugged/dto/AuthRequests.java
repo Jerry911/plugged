@@ -56,6 +56,17 @@ public final class AuthRequests {
         }
     }
 
+    /** A new password of the signed-in user; {@code currentPassword} proves it is him (also after a temporary one of an administrator). */
+    public record ChangePassword(
+            String currentPassword,
+            @NotNull(message = "auth.passwordTooShort") @Size(min = MIN_PASSWORD_LENGTH, message = "auth.passwordTooShort")
+            @MaxUtf8Bytes(value = MAX_PASSWORD_BYTES, message = "auth.passwordTooLong") String newPassword) {
+    }
+
+    /** Removing the own account: the password confirms it. */
+    public record DeleteAccount(String password) {
+    }
+
     /** Not validated: whatever is typed, a wrong address or password answers "wrong email address or password". */
     public record Login(String email, String password) {
         public Login {

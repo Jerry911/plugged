@@ -38,6 +38,7 @@ const backend = (accounts, groupList = []) => {
         if (m) {
             const id = Number(m[1]),
                 user = state.users.find((candidate) => candidate.id === id)
+            if (m[2] === '/password') return json({password: 'abcd-EFGH-2345'})
             if (m[2] === '/approve') user.approved = true
             else if (m[2] === '/unlock') user.lockedUntil = null
             else if (m[2] === '/admin') Object.assign(user, {admin: body.admin, approved: user.approved || body.admin})
@@ -283,5 +284,19 @@ describe('locked accounts', () => {
         await waitFor(() => expect(message()).toHaveTextContent(t('users.unlocked', {name: 'Piet X'})))
         expect(global.fetch).toHaveBeenCalledWith('/api/admin/users/3/unlock', expect.objectContaining({method: 'POST'}))
         await waitFor(() => expect(byId('users-locked-3')).toBeNull())
+    })
+})
+
+describe('temporary passwords', () => {
+    test('an administrator gives an account a temporary password, shown once; not to himself', async () => {
+        backend([ME, account(3, 'Piet'), account(4, 'Jan', {approved: false})])
+        await mount()
+        expect(byId('users-password-1')).toBeNull()
+        expect(byId('users-password-4')).toBeNull()
+        vi.spyOn(window, 'confirm').mockReturnValue(true)
+        clickId('users-password-3')
+        await waitFor(() => expect(message()).toHaveTextContent(t('users.temporaryPassword', {name: 'Piet X', password: 'abcd-EFGH-2345'})))
+        expect(window.confirm).toHaveBeenCalledWith(t('users.confirmReset', {name: 'Piet X'}))
+        expect(global.fetch).toHaveBeenCalledWith('/api/admin/users/3/password', expect.objectContaining({method: 'POST'}))
     })
 })

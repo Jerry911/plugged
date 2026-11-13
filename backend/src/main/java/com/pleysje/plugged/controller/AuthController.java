@@ -42,6 +42,8 @@ import org.springframework.web.bind.annotation.RestController;
  *   <li>POST /api/auth/register {name, surname, email, password}: a new account, waiting for approval (201)</li>
  *   <li>POST /api/auth/login {email, password}: 401 wrong address or password, 403 not approved yet, 423 locked after too many wrong
  *       passwords</li>
+ *   <li>PUT /api/auth/password {currentPassword, newPassword}: a new password (403 when the current one is wrong); the other sessions of
+ *       the account end</li>
  *   <li>POST /api/auth/logout</li>
  * </ul>
  * Setup, registration and failed sign-ins count towards the attempts of the network address (429 when there are too many, see
@@ -68,7 +70,7 @@ public class AuthController {
 
     /** The user as the editor needs him: with what educational mode allows him (see GroupService#isRestricted) and the groups he owns. */
     private UserDto forEditor(AppUser user) {
-        return UserDto.of(user).forEditor(groups.isRestricted(user), groups.ownedGroupIds(user.getId()));
+        return UserDto.of(user, userService.isPrimaryAdmin(user)).forEditor(groups.isRestricted(user), groups.ownedGroupIds(user.getId()));
     }
 
     @GetMapping("/status")
@@ -118,6 +120,24 @@ public class AuthController {
                 throw refused;
             }
             return signIn(user, request, response);
+        });
+    }
+
+    /**
+     * A new password for the signed-in user (also to replace a temporary one); 403 when the current password is wrong. Every other session
+     * of the account ends; this one stays signed in.
+     */
+    @org.springframework.web.bind.annotation.PutMapping("/password")
+    public UserDto changePassword(@Valid @RequestBody AuthRequests.ChangePassword body, Authentication authentication, HttpServletRequest request,
+                                  HttpServletResponse response) {
+        return ApiLog.run(log, "PUT /api/auth/password", "", () -> {
+            AppUser user = userService.changePassword(Authentications.userId(authentication), body);
+            SecurityContext context = SecurityContextHolder.createEmptyContext();
+            context.setAuthentication(Authentications.of(user));
+            SecurityContextHolder.setContext(context);
+            request.changeSessionId();
+            contexts.saveContext(context, request, response);
+            return forEditor(user);
         });
     }
 

@@ -515,3 +515,71 @@
     margin: 6px 0 0;
     padding-left: 20px
 }
+
+/* choosing a new password (after a temporary one, and in Mijn account) */
+.passwordform {
+    display: flex;
+    flex-direction: column;
+    gap: 10px
+}
+
+/* Mijn account */
+.accountdlg {
+    width: min(440px, 92vw);
+    max-height: 86vh;
+    overflow: auto
+}
+
+.accountdlg section {
+    border-top: 1px solid #ddd;
+    padding: 10px 0 4px
+}
+
+.accountdlg h3 {
+    margin: 0 0 6px;
+    font-size: 1em
+}
+
+.accountdlg .danger-zone p {
+    margin: 4px 0 8px
+}
+
+/* who else has the open project */
+.presence {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    border-radius: 10px;
+    background: #e8f0fb;
+    color: #1f3a5f;
+    font-size: .85em;
+    white-space: nowrap
+}
+
+.presence.editing {
+    background: #fff4e0;
+    color: #7a4b00
+}
+
+/* the project list: search, sort and trash */
+.pm-tools {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    margin-bottom: 6px
+}
+
+.pm-tools input[type=search] {
+    flex: 1;
+    min-width: 0
+}
+
+.pm-history {
+    max-height: 220px;
+    overflow: auto
+}
+
+.pm-history td {
+    padding: 2px 6px
+}

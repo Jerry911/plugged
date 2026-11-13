@@ -49,6 +49,11 @@ public class ProjectDoc {
     /** Moment of the last save, ISO-8601 (a string, so it sorts and serializes without surprises). */
     @Column(length = 40)
     private String updated;
+    /** In the trash since this moment (ISO-8601), null = not deleted. A project in the trash is not listed, opened or saved. */
+    @Column(length = 40)
+    private String deletedAt;
+    /** Who put it in the trash. */
+    private Long deletedBy;
     /** The id of the user who owns the project (null only for projects saved before accounts existed, until they are given to the admin). */
     private Long ownerId;
     /** Sharing is no new version of the document: an editor that has the project open can still save it. */
@@ -88,6 +93,24 @@ public class ProjectDoc {
 
     public String getName() {
         return name;
+    }
+
+    public String getDeletedAt() {
+        return deletedAt;
+    }
+
+    public Long getDeletedBy() {
+        return deletedBy;
+    }
+
+    public boolean isDeleted() {
+        return deletedAt != null;
+    }
+
+    /** Into the trash (by {@code userId}), or out of it again ({@code userId} null). */
+    public void trash(Long userId) {
+        deletedAt = userId == null ? null : java.time.Instant.now().toString();
+        deletedBy = userId;
     }
 
     public String getUpdated() {

@@ -149,7 +149,7 @@ test('a student cannot create a project with content in one go: the new project 
     fireEvent.click(getById('tab-project'))
     await act(async () => fireEvent.click(getById('btn-save')))
     await waitFor(() => expect(calls.some((call) => call.method === 'PUT')).toBe(true))
-    const [create, save] = calls.filter((call) => call.url.startsWith('/api/projects'))
+    const [create, save] = calls.filter((call) => call.url.startsWith('/api/projects') && !call.url.includes('/presence'))
     expect(create.method).toBe('POST')
     expect(JSON.stringify(create.body)).not.toContain('"kring"')
     expect(create.body.sit.every((page) => !page.walls.length && !page.items.length)).toBe(true)

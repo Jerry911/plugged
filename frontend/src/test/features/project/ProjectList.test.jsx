@@ -136,3 +136,92 @@ test('a refusal without a message, or no answer at all: a general message', asyn
     await waitFor(() => expect(global.fetch).toHaveBeenCalledWith('/api/projects/1/groups', expect.anything()))
     expect(getById('project-share-error')).toHaveTextContent(t('projects.shareFailed'))
 })
+
+describe('finding, duplicating, history and trash', () => {
+    const rowIds = () => [...document.querySelectorAll('#project-list tbody tr[id^="project-row-"]')].map((row) => Number(row.id.replace('project-row-', '')))
+    const list = [
+        summary(1, {name: 'Woning Peeters', updated: '2026-11-01T10:00:00Z'}),
+        summary(2, {name: 'appartement Janssens', updated: '2026-11-03T10:00:00Z', mine: false, canManage: false, owner: {id: 3, name: 'Bob Test'}, groups: [{id: 7, name: 'Klas 5A'}]}),
+        summary(3, {name: 'Garage', updated: '2026-11-02T10:00:00Z'}),
+    ]
+
+    test('the list is searched by name, number, owner and group, and sorted as chosen', async () => {
+        backend({summaries: list})
+        await mount()
+        expect(rowIds()).toEqual([2, 3, 1])
+        fireEvent.change(getById('project-search'), {target: {value: 'woning'}})
+        expect(rowIds()).toEqual([1])
+        fireEvent.change(getById('project-search'), {target: {value: 'bob'}})
+        expect(rowIds()).toEqual([2])
+        fireEvent.change(getById('project-search'), {target: {value: '5a'}})
+        expect(rowIds()).toEqual([2])
+        fireEvent.change(getById('project-search'), {target: {value: 'niets hier'}})
+        expect(getById('project-list-nomatch')).toHaveTextContent(t('projects.noMatch', {search: 'niets hier'}))
+        fireEvent.change(getById('project-search'), {target: {value: ''}})
+        fireEvent.change(getById('project-sort'), {target: {value: 'name'}})
+        expect(rowIds()).toEqual([2, 3, 1])
+        fireEvent.change(getById('project-sort'), {target: {value: 'number'}})
+        expect(rowIds()).toEqual([1, 2, 3])
+    })
+
+    test('duplicating is offered for every project; a student only duplicates his own', async () => {
+        backend({summaries: list})
+        const onCopy = vi.fn()
+        await mount({onCopy})
+        clickId('project-copy-2')
+        expect(onCopy).toHaveBeenCalledWith(expect.objectContaining({id: 2}))
+        document.body.innerHTML = ''
+        await mount({onCopy, restricted: true})
+        expect(byId('project-copy-2')).toBeNull()
+        getById('project-copy-1')
+    })
+
+    test('the history lists the versions and restores an older one', async () => {
+        backend({summaries: list})
+        const fetchMock = global.fetch
+        global.fetch = vi.fn(async (url, options) =>
+            url === '/api/projects/1/versions'
+                ? json([
+                      {version: 4, savedAt: '2026-11-05T10:00:00Z', savedBy: 'Alice Test', size: 100, current: true},
+                      {version: 3, savedAt: '2026-11-04T10:00:00Z', savedBy: 'Bob Test', size: 90, current: false},
+                  ])
+                : fetchMock(url, options),
+        )
+        const onRestoreVersion = vi.fn(async () => true)
+        await mount({onRestoreVersion})
+        clickId('project-historybtn-1')
+        await waitFor(() => getById('project-version-1-4'))
+        expect(getById('project-version-1-3')).toHaveTextContent('Bob Test')
+        expect(byId('project-version-restore-1-4')).toBeNull()
+        clickId('project-version-restore-1-3')
+        await waitFor(() => expect(onRestoreVersion).toHaveBeenCalledWith(expect.objectContaining({id: 1}), 3))
+        clickId('project-history-close')
+        expect(byId('project-history-1')).toBeNull()
+    })
+
+    test('the trash shows the deleted projects, which come back or go for good', async () => {
+        backend({summaries: list})
+        const fetchMock = global.fetch
+        let trash = [summary(9, {name: 'Oud project', updated: '2026-11-10T10:00:00Z'}), summary(8, {name: 'Nog ouder'})]
+        global.fetch = vi.fn(async (url, options = {}) => {
+            if (url === '/api/projects/trash') return json(trash)
+            if (url === '/api/projects/9/untrash' && options.method === 'POST') return json(summary(9))
+            if (url === '/api/projects/trash/8' && options.method === 'DELETE') return {ok: true, status: 204, json: async () => null}
+            return fetchMock(url, options)
+        })
+        const onTrashChanged = vi.fn()
+        vi.spyOn(window, 'confirm').mockReturnValue(true)
+        await mount({onTrashChanged})
+        clickId('project-trash-toggle')
+        await waitFor(() => getById('project-trash'))
+        expect(byId('project-search')).toBeNull()
+        clickId('project-untrash-9')
+        await waitFor(() => expect(byId('project-trash-row-9')).toBeNull())
+        clickId('project-purge-8')
+        await waitFor(() => getById('project-trash-empty'))
+        expect(window.confirm).toHaveBeenCalledWith(t('projects.confirmPurge', {name: 'Nog ouder'}))
+        expect(onTrashChanged).toHaveBeenCalledTimes(2)
+        clickId('project-trash-toggle')
+        await waitFor(() => getById('project-list'))
+    })
+})

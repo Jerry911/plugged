@@ -50,6 +50,7 @@ test('first start: the administrator gets the configured address, which cannot b
     await waitFor(() => getById('setup-form'))
     expect(getById('auth-email')).toHaveValue('admin@example.be')
     expect(getById('auth-email')).toHaveAttribute('readonly')
+    typeInto('auth-setup-key', 'ABCD-EFGH-JKLM-NPQR')
     typeInto('auth-name', 'Jeroen')
     typeInto('auth-surname', 'Pleysier')
     typeInto('auth-password', 'geheim123')
@@ -60,7 +61,24 @@ test('first start: the administrator gets the configured address, which cannot b
     typeInto('auth-password2', 'geheim123')
     submit('setup-form')
     await waitFor(() => expect(getById('editor')).toHaveTextContent(ADMIN.email))
-    expect(posted('/api/auth/setup')).toEqual([{name: 'Jeroen', surname: 'Pleysier', password: 'geheim123'}])
+    expect(posted('/api/auth/setup')).toEqual([{name: 'Jeroen', surname: 'Pleysier', password: 'geheim123', setupKey: 'ABCD-EFGH-JKLM-NPQR'}])
+})
+
+test('first start with a wrong setup key: the message of the server is shown', async () => {
+    backend({setupRequired: true, adminEmail: 'admin@example.be', user: null}, {
+        '/api/auth/setup': () => json({status: 403, detail: 'De installatiesleutel klopt niet.', messageKey: 'auth.setupKeyWrong'}, 403),
+    })
+    mount()
+    await waitFor(() => getById('setup-form'))
+    expect(getById('auth-setup-key')).toHaveValue('')
+    typeInto('auth-setup-key', 'fout')
+    typeInto('auth-name', 'Jeroen')
+    typeInto('auth-surname', 'Pleysier')
+    typeInto('auth-password', 'geheim123')
+    typeInto('auth-password2', 'geheim123')
+    submit('setup-form')
+    await waitFor(() => expect(getById('auth-error')).toHaveTextContent('De installatiesleutel klopt niet.'))
+    expect(byId('editor')).toBeNull()
 })
 
 test('first start without PLUGGED_ADMIN_EMAIL: no form, only what to do', async () => {

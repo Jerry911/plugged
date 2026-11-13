@@ -134,7 +134,7 @@ test('a project is private until its owner shares it with a group; members can o
     await expect(bob.page.locator('#status-message')).toHaveText(t('app.saved'))
 
     // the administrator sees it too
-    expect((await backend.saved(id)).name).toBe('Woning Alice')
+    expect((await backend.stored(id)).name).toBe('Woning Alice')
     for (const person of [alice, bob]) await person.page.context().close()
 })
 

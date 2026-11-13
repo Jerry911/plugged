@@ -81,12 +81,13 @@ export function SetupScreen({adminEmail, onDone}) {
     const [name, setName] = useState(''),
         [surname, setSurname] = useState(''),
         [password, setPassword] = useState(''),
-        [repeat, setRepeat] = useState('')
+        [repeat, setRepeat] = useState(''),
+        [setupKey, setSetupKey] = useState('')
     const {busy, error, setError, submit} = useSubmit()
     const onSubmit = (event) =>
         submit(event, async () => {
             if (password !== repeat) return setError(t('auth.passwordMismatch'))
-            const result = await setupAdmin({name, surname, password})
+            const result = await setupAdmin({name, surname, password, setupKey})
             if (result.ok) onDone(result.user)
             return result
         })
@@ -97,8 +98,9 @@ export function SetupScreen({adminEmail, onDone}) {
                 <p className="authintro">{t('auth.setup.intro')}</p>
                 {adminEmail ? (
                     <>
+                        <Field id="auth-setup-key" label={t('auth.setup.key')} value={setupKey} onChange={setSetupKey} autoComplete="off" hint={t('auth.setup.keyHint')} autoFocus />
                         <Field id="auth-email" type="email" label={t('auth.email')} value={adminEmail} readOnly hint={t('auth.setup.emailFixed')} />
-                        <Field id="auth-name" label={t('auth.name')} value={name} onChange={setName} autoComplete="given-name" autoFocus />
+                        <Field id="auth-name" label={t('auth.name')} value={name} onChange={setName} autoComplete="given-name" />
                         <Field id="auth-surname" label={t('auth.surname')} value={surname} onChange={setSurname} autoComplete="family-name" />
                         <PasswordFields password={password} setPassword={setPassword} repeat={repeat} setRepeat={setRepeat} />
                         <Message id="auth-error" kind="error" text={error} />

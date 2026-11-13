@@ -67,6 +67,41 @@ const legacyTypesOf = (project) =>
         }))
         .filter((symbolType) => !libraryIndex.has(symbolType.k))
 
+// a project carries a copy of the own symbols it uses (project.symbols, see embedSymbols): somebody with whom the project is shared, who
+// does not have those symbols in his library, still sees them drawn
+const embeddedTypeOf = (project, key) =>
+    !libraryIndex.has(key) ? (Array.isArray(project?.symbols) ? project.symbols.find((symbolType) => symbolType?.k === key && Array.isArray(symbolType.shapes)) : null) : null
+
+/** The type keys used in a project (elements of the eendraadschema and symbols on the plans). */
+const usedTypeKeys = (value, keys = new Set()) => {
+    if (Array.isArray(value)) value.forEach((element) => usedTypeKeys(element, keys))
+    else if (value && typeof value === 'object') {
+        if (typeof value.type === 'string') keys.add(value.type)
+        Object.values(value).forEach((child) => typeof child === 'object' && usedTypeKeys(child, keys))
+    }
+    return keys
+}
+
+/**
+ * The project as it is stored: with a copy (project.symbols) of the own symbols it uses (not the standard ones, which everybody has), so the
+ * project still draws for somebody who does not have them. A symbol that is no longer in the library keeps its earlier copy.
+ */
+export const embedSymbols = (project) => {
+    const used = usedTypeKeys([project.een, project.sit]),
+        symbols = []
+    used.forEach((key) => {
+        const symbolType = libraryIndex.get(key)
+        if (symbolType && !symbolType.builtin) {
+            const {k, name, cat, parents, place, shapes, sock, details} = symbolType
+            symbols.push({k, name, cat, parents, place, shapes, ...(sock ? {sock} : {}), ...(details ? {details} : {})})
+        } else if (!symbolType) {
+            const earlier = embeddedTypeOf(project, key)
+            if (earlier) symbols.push(earlier)
+        }
+    })
+    return {...project, symbols}
+}
+
 /** Every symbol type a project can use: the library plus the components stored in old projects. */
 export const allTypes = (project) => [...activeLibrary, ...legacyTypesOf(project)]
 
@@ -76,6 +111,7 @@ export const typeOf = (project, key) =>
     (key === EMPTY_TYPE.k ? EMPTY_TYPE : null) ||
     (key === CONNECTION_TYPE.k ? CONNECTION_TYPE : null) ||
     legacyTypesOf(project).find((symbolType) => symbolType.k === key) ||
+    embeddedTypeOf(project, key) ||
     UNKNOWN_TYPE
 
 /**

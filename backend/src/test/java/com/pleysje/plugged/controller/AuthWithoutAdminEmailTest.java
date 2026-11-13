@@ -26,7 +26,7 @@ class AuthWithoutAdminEmailTest {
     @Test
     void setupIsRefused() throws Exception {
         mvc.perform(get("/api/auth/status")).andExpect(jsonPath("$.setupRequired", is(true)));
-        mvc.perform(post("/api/auth/setup").with(csrf()).contentType(MediaType.APPLICATION_JSON).content("{\"name\":\"J\",\"surname\":\"P\",\"password\":\"geheim123\"}"))
+        mvc.perform(post("/api/auth/setup").with(csrf()).contentType(MediaType.APPLICATION_JSON).content("{\"name\":\"J\",\"surname\":\"P\",\"password\":\"geheim123\",\"setupKey\":\"test-setup-key\"}"))
                 .andExpect(status().isConflict()).andExpect(jsonPath("$.messageKey", is("auth.adminEmailMissing")));
     }
 }

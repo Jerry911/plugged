@@ -12,6 +12,8 @@ import com.pleysje.plugged.repository.ProjectRepository;
 import com.pleysje.plugged.repository.UserGroupRepository;
 import com.pleysje.plugged.repository.UserRepository;
 import com.pleysje.plugged.security.UserService;
+import org.springframework.beans.factory.annotation.Value;
+import tools.jackson.databind.JsonNode;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
@@ -35,8 +37,15 @@ import org.springframework.transaction.annotation.Transactional;
  * </ul>
  * Other administrators manage users, groups and symbols, but for projects they are users like any other: their own projects and those
  * shared with their groups.
- * A project the user may not see answers 404, as if it did not exist: project numbers of others are not given away. New projects get the
- * next free number from the server ({@link #create}), so two users never pick the same one.
+ * A project the user may not see answers 404, as if it did not exist: project numbers of others are not given away. New projects get their
+ * number from the database ({@link #create}); a client cannot choose one.
+ * <ul>
+ *   <li>Every document is checked before it is stored ({@link ProjectJson}).</li>
+ *   <li>A save names the version it is based on: when somebody else saved in between, it is refused (409) instead of overwriting that work.</li>
+ *   <li>A user owns at most plugged.max-projects-per-user projects (0 = no limit).</li>
+ *   <li>A student in educational mode (GroupService#isRestricted) cannot import: a project he creates must be empty (no circuits, nothing
+ *       on the plans); he fills it by working in it.</li>
+ * </ul>
  */
 @Service
 public class ProjectService {
@@ -46,12 +55,21 @@ public class ProjectService {
     private final UserRepository users;
     private final UserGroupRepository groups;
     private final UserService userService;
+    private final GroupService groupService;
+    private final int maxProjectsPerUser;
 
-    public ProjectService(ProjectRepository projects, UserRepository users, UserGroupRepository groups, UserService userService) {
+    public ProjectService(ProjectRepository projects, UserRepository users, UserGroupRepository groups, UserService userService, GroupService groupService,
+                          @Value("${plugged.max-projects-per-user:500}") int maxProjectsPerUser) {
         this.projects = projects;
         this.users = users;
         this.groups = groups;
         this.userService = userService;
+        this.groupService = groupService;
+        this.maxProjectsPerUser = maxProjectsPerUser;
+    }
+
+    /** A project document with the version it has in the database. */
+    public record Document(String json, long version) {
     }
 
     /** Does the user see and manage the projects of everyone? Only the primary administrator (the Hoofdbeheerder). */
@@ -116,40 +134,44 @@ public class ProjectService {
     }
 
     @Transactional(readOnly = true)
-    public String document(long userId, long id) {
-        return openable(user(userId), id).getJson();
+    public Document document(long userId, long id) {
+        ProjectDoc project = openable(user(userId), id);
+        return new Document(project.getJson(), project.getVersion());
     }
 
-    /** A new project of the user under the next free number; answers that number. */
+    /** A new project of the user; the database gives it its number. Answers the number and version. */
     @Transactional
-    public synchronized long create(long userId, String json, String name) {
+    public ProjectSummary.Created create(long userId, String json, String name) {
         AppUser user = user(userId);
-        long id = projects.maxId() + 1;
-        ProjectDoc project = new ProjectDoc(id, json, name);
+        JsonNode document = ProjectJson.check(json);
+        if (groupService.isRestricted(user) && !ProjectJson.isEmpty(document))
+            throw new LocalizedStatusException(HttpStatus.FORBIDDEN, "project.importNotAllowed");
+        if (maxProjectsPerUser > 0 && projects.countByOwnerId(user.getId()) >= maxProjectsPerUser)
+            throw new LocalizedStatusException(HttpStatus.FORBIDDEN, "project.quotaReached", maxProjectsPerUser);
+        ProjectDoc project = new ProjectDoc(json, name);
         project.setOwnerId(user.getId());
-        projects.save(project);
-        log.info("Created project {} of user {} (name={}, {} chars)", id, user.getId(), name, json.length());
-        return id;
+        project = projects.saveAndFlush(project);
+        log.info("Created project {} of user {} (name={}, {} chars)", project.getId(), user.getId(), name, json.length());
+        return new ProjectSummary.Created(project.getId(), project.getVersion());
     }
 
     /**
-     * Saves a project the user may open. A number that does not exist yet becomes a new project of the user (an import or an older client
-     * that chose the number itself); a project of someone else that the user may not open answers 404.
+     * Saves a project the user may open, based on version {@code expectedVersion}; answers the new version. 404 for a project that does not
+     * exist or that the user may not open, 409 when it was saved by somebody else since that version.
      */
     @Transactional
-    public synchronized void save(long userId, long id, String json, String name) {
+    public long save(long userId, long id, long expectedVersion, String json, String name) {
         AppUser user = user(userId);
-        ProjectDoc project = projects.findById(id).orElse(null);
-        if (project == null) {
-            project = new ProjectDoc(id, json, name);
-            project.setOwnerId(user.getId());
-            projects.save(project);
-            log.info("Created project {} of user {} (name={}, {} chars)", id, user.getId(), name, json.length());
-            return;
+        ProjectDoc project = openable(user, id);
+        if (project.getVersion() != expectedVersion) {
+            log.info("Save of project {} by user {} refused: based on version {}, the database has {}", id, user.getId(), expectedVersion, project.getVersion());
+            throw new LocalizedStatusException(HttpStatus.CONFLICT, "project.changedElsewhere", id);
         }
-        if (!canOpen(user, project)) throw new LocalizedStatusException(HttpStatus.NOT_FOUND, "project.notFound", id);
+        ProjectJson.check(json);
         project.update(json, name);
-        log.info("Saved project {} by user {} (name={}, {} chars)", id, user.getId(), name, json.length());
+        projects.flush();
+        log.info("Saved project {} by user {} (name={}, {} chars, version {})", id, user.getId(), name, json.length(), project.getVersion());
+        return project.getVersion();
     }
 
     /** Deletes a project (owner or administrator). A number that does not exist is fine: there is nothing to delete. */

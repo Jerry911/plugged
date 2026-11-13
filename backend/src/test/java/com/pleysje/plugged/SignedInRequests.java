@@ -2,22 +2,35 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 package com.pleysje.plugged;
 
+import com.pleysje.plugged.entity.AppUser;
+import com.pleysje.plugged.security.Authentications;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 
 /**
  * The requests of {@link MockMvcRequestBuilders}, made by a signed-in user with a valid CSRF token: the tests of the API itself (projects,
  * symbols, ...) do not have to sign in first. The tests of signing in itself are in AuthControllerTest.
+ * <p>
+ * The API that needs to know who the user is (symbols, projects) needs one of our accounts: {@link #signInAs} chooses the account of the
+ * requests that follow (set it in a @BeforeEach). Without one, the requests come from a user "tester" that is no account of ours.
  */
 public final class SignedInRequests {
+    private static AppUser account;
+
     private SignedInRequests() {
     }
 
+    /** The account of the requests that follow (null: the user "tester", no account of ours). */
+    public static void signInAs(AppUser user) {
+        account = user;
+    }
+
     private static MockHttpServletRequestBuilder signedIn(MockHttpServletRequestBuilder request) {
-        return request.with(user("tester").roles("USER")).with(csrf());
+        return (account == null ? request.with(user("tester").roles("USER")) : request.with(authentication(Authentications.of(account)))).with(csrf());
     }
 
     public static MockHttpServletRequestBuilder get(String url, Object... variables) {

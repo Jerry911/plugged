@@ -56,8 +56,19 @@ export default function UsersPanel({users, groups, currentUser, busy, actions}) 
                                     <span id={'users-status-' + user.id} className={'userstag ' + (user.admin ? 'admin' : user.approved ? 'approved' : 'waiting')}>
                                         {t(user.admin ? (user.primary ? 'users.statusPrimary' : 'users.statusAdmin') : user.approved ? 'users.statusApproved' : 'users.statusWaiting')}
                                     </span>
+                                    {user.lockedUntil && (
+                                        <span id={'users-locked-' + user.id} className="userstag waiting" title={t('users.lockedTitle', {time: moment(user.lockedUntil)})}>
+                                            {' '}
+                                            🔒 {t('users.locked')}
+                                        </span>
+                                    )}
                                 </td>
                                 <td className="usersactions">
+                                    {user.lockedUntil && (
+                                        <button id={'users-unlock-' + user.id} disabled={busy} onClick={() => actions.unlock(user)}>
+                                            {t('users.unlock')}
+                                        </button>
+                                    )}
                                     {!user.approved && (
                                         <button id={'users-approve-' + user.id} className="accent" disabled={busy} onClick={() => actions.approve(user)}>
                                             ✓ {t('users.approve')}

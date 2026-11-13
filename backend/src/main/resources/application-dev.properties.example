@@ -1,0 +1,5 @@
+# Development settings, used with the Spring profile "dev" (--spring.profiles.active=dev).
+# Copy this file to application-dev.properties (which git ignores) and fill in your own values.
+plugged.admin.email=you@example.com
+# a fixed setup key for the first start of a fresh development database (instead of a random one in the log)
+#plugged.setup.key=dev-setup-key

@@ -6,9 +6,11 @@ services:
       # host port: set PLUGGED_PORT in the shell or in a .env file next to this file (default 8080)
       - "${PLUGGED_PORT:-8080}:8080"
     environment:
-      # address of the administrator (first start: Plugged asks for the details of this account) and of the contact form of the Info page;
-      # set PLUGGED_ADMIN_EMAIL in the shell or in the .env file next to this file
+      # address of the administrator (first start: Plugged asks for the details of this account and for the setup key it prints in its
+      # log: `docker compose logs plugged`) and of the contact form of the Info page; set PLUGGED_ADMIN_EMAIL in the shell or in the .env file
       PLUGGED_ADMIN_EMAIL: ${PLUGGED_ADMIN_EMAIL:?set PLUGGED_ADMIN_EMAIL to the email address of the administrator}
+      # behind a reverse proxy that terminates HTTPS on the same Docker network, the X-Forwarded-* headers of the proxy are trusted
+      # (PLUGGED_FORWARD_HEADERS=native, the default), so cookies get the Secure flag. See README for the other settings.
     volumes:
       - plugged-data:/data
     restart: unless-stopped

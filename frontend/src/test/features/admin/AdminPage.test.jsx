@@ -39,6 +39,7 @@ const backend = (accounts, groupList = []) => {
             const id = Number(m[1]),
                 user = state.users.find((candidate) => candidate.id === id)
             if (m[2] === '/approve') user.approved = true
+            else if (m[2] === '/unlock') user.lockedUntil = null
             else if (m[2] === '/admin') Object.assign(user, {admin: body.admin, approved: user.approved || body.admin})
             else if (method === 'DELETE') state.users = state.users.filter((candidate) => candidate.id !== id)
             return method === 'DELETE' ? {ok: true, status: 204} : json(user)
@@ -269,4 +270,18 @@ test('Groepen: an owner (teacher) per member and the educational mode per group'
     expect(message()).toHaveTextContent(t('educational.switchedOn', {group: 'Klas 5'}))
     fireEvent.click(getById('group-7-educational'))
     await waitFor(() => expect(message()).toHaveTextContent(t('educational.switchedOff', {group: 'Klas 5'})))
+})
+
+describe('locked accounts', () => {
+    test('an account locked after too many wrong passwords is shown and the administrator unlocks it', async () => {
+        backend([ME, account(3, 'Piet', {lockedUntil: '2099-01-01T10:00:00Z'}), account(4, 'Jan')])
+        await mount()
+        expect(getById('users-locked-3')).toHaveTextContent(t('users.locked'))
+        expect(byId('users-locked-4')).toBeNull()
+        expect(byId('users-unlock-4')).toBeNull()
+        clickId('users-unlock-3')
+        await waitFor(() => expect(message()).toHaveTextContent(t('users.unlocked', {name: 'Piet X'})))
+        expect(global.fetch).toHaveBeenCalledWith('/api/admin/users/3/unlock', expect.objectContaining({method: 'POST'}))
+        await waitFor(() => expect(byId('users-locked-3')).toBeNull())
+    })
 })

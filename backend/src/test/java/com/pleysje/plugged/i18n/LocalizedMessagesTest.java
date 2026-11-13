@@ -15,6 +15,13 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.Properties;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.AfterEach;
+import com.pleysje.plugged.TestAccounts;
+import com.pleysje.plugged.SignedInRequests;
+import com.pleysje.plugged.repository.ProjectRepository;
+import com.pleysje.plugged.repository.UserGroupRepository;
+import com.pleysje.plugged.repository.UserRepository;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -36,6 +43,24 @@ class LocalizedMessagesTest {
 
     @Autowired
     MockMvc mvc;
+    @Autowired
+    UserRepository users;
+    @Autowired
+    UserGroupRepository groups;
+    @Autowired
+    ProjectRepository projects;
+
+    /** the requests come from an administrator: he may also change the standard symbols */
+    @BeforeEach
+    void signInAsAdministrator() {
+        TestAccounts.clean(groups, projects, users);
+        SignedInRequests.signInAs(TestAccounts.account(users, "Admin", true));
+    }
+
+    @AfterEach
+    void signOut() {
+        SignedInRequests.signInAs(null);
+    }
 
     @Test
     void anUnknownSymbolIsReportedInTheLanguageOfTheRequest() throws Exception {

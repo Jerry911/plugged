@@ -18,8 +18,9 @@ import org.hibernate.annotations.Fetch;
 import org.hibernate.annotations.FetchMode;
 
 /**
- * A symbol of the catalog: the standard symbols (builtin, seeded from {@link com.pleysje.plugged.catalog.StandardSymbols}, possibly edited by the
- * user) and the symbols the user made. The parents and the shapes are child tables (symbol_parents, symbol_shapes).
+ * A symbol of the catalog: the standard symbols (builtin, seeded from {@link com.pleysje.plugged.catalog.StandardSymbols}, shared by everyone
+ * and changed only by administrators) and the symbols the users made. A symbol of a user belongs either to that user ({@code owner_user_id})
+ * or to a group ({@code owner_group_id}): only the user, or the members of the group, see and use it. The parents and the shapes are child tables (symbol_parents, symbol_shapes).
  * The column names are those of the existing databases: they do not follow the Java field names everywhere.
  */
 @Entity
@@ -73,6 +74,13 @@ public class SymbolEntity {
     @Column(name = "sock_n")
     private Integer socketCount;
 
+    /** the user a personal symbol belongs to (null for standard symbols, hidden rows and group symbols) */
+    @Column(name = "owner_user_id")
+    private Long ownerUserId;
+    /** the group a shared symbol belongs to (null for standard symbols, hidden rows and personal symbols) */
+    @Column(name = "owner_group_id")
+    private Long ownerGroupId;
+
     /** the symbol has the extended details input; null = not stored yet (symbols of before this option), see SymbolMapper#toDto */
     @Column(name = "has_details")
     private Boolean details;
@@ -108,6 +116,14 @@ public class SymbolEntity {
     public Integer getSocketCount() { return socketCount; }
     public void setSocketCount(Integer socketCount) { this.socketCount = socketCount; }
     public Boolean getDetails() { return details; }
+    public Long getOwnerUserId() { return ownerUserId; }
+    public Long getOwnerGroupId() { return ownerGroupId; }
+
+    /** Personal symbol of this user (groupId null) or symbol of this group. */
+    public void setOwner(Long userId, Long groupId) {
+        this.ownerUserId = groupId == null ? userId : null;
+        this.ownerGroupId = groupId;
+    }
     public void setDetails(Boolean details) { this.details = details; }
 
     /** Same drawing and settings (name, category, placement, parents, shapes, socket parameters)? Flags and version are not compared. */

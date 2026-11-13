@@ -6,11 +6,11 @@ import com.pleysje.plugged.dto.AuthRequests;
 import com.pleysje.plugged.entity.AppUser;
 import com.pleysje.plugged.i18n.LocalizedStatusException;
 import com.pleysje.plugged.repository.ProjectRepository;
+import com.pleysje.plugged.repository.SymbolRepository;
 import com.pleysje.plugged.repository.UserGroupRepository;
 import com.pleysje.plugged.repository.UserRepository;
-import java.nio.charset.StandardCharsets;
+import java.time.Instant;
 import java.util.List;
-import java.util.Locale;
 import java.util.regex.Pattern;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -30,34 +30,36 @@ import org.springframework.transaction.annotation.Transactional;
  *   <li>Anyone can {@link #register}; the account cannot sign in until an administrator has {@link #approve approved} it.</li>
  *   <li>An administrator can make another account administrator, or an ordinary user again ({@link #setAdmin}). The administrator of
  *       plugged.admin.email (the primary administrator) always stays one, and nobody takes the role away from himself.</li>
- *   <li>Projects saved before accounts existed belong to the primary administrator; the projects of a removed account go to the
- *       administrator who removed it.</li>
+ *   <li>Projects and symbols saved before accounts existed belong to the primary administrator; the projects and personal symbols of a
+ *       removed account go to the administrator who removed it.</li>
+ *   <li>Too many wrong passwords in a row (plugged.auth.max-failed-logins) lock an account for plugged.auth.lockout; an administrator can
+ *       {@link #unlock} it earlier (see also {@link LoginThrottle}).</li>
  * </ul>
+ * The request bodies are checked with Bean Validation before they get here (see AuthRequests).
  */
 @Service
 public class UserService {
     private static final Logger log = LoggerFactory.getLogger(UserService.class);
-    public static final int MAX_NAME_LENGTH = 100;
-    public static final int MAX_EMAIL_LENGTH = 254;
-    public static final int MIN_PASSWORD_LENGTH = 8;
-    /** bcrypt only looks at the first 72 bytes of a password: a longer one is refused instead of being cut silently. */
-    public static final int MAX_PASSWORD_BYTES = 72;
-    private static final Pattern EMAIL = Pattern.compile("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$");
+    private static final Pattern EMAIL = Pattern.compile(AuthRequests.EMAIL_PATTERN);
 
     private final UserRepository users;
     private final ProjectRepository projects;
     private final UserGroupRepository groups;
+    private final SymbolRepository symbols;
     private final PasswordEncoder passwordEncoder;
+    private final LoginThrottle throttle;
     private final String adminEmail;
     /** Compared with when the email address is unknown, so a wrong address takes as long as a wrong password. */
     private final String dummyHash;
 
-    public UserService(UserRepository users, ProjectRepository projects, UserGroupRepository groups, PasswordEncoder passwordEncoder,
-                       @Value("${plugged.admin.email:}") String adminEmail) {
+    public UserService(UserRepository users, ProjectRepository projects, UserGroupRepository groups, SymbolRepository symbols,
+                       PasswordEncoder passwordEncoder, LoginThrottle throttle, @Value("${plugged.admin.email:}") String adminEmail) {
         this.users = users;
         this.projects = projects;
         this.groups = groups;
+        this.symbols = symbols;
         this.passwordEncoder = passwordEncoder;
+        this.throttle = throttle;
         this.adminEmail = normalizeEmail(adminEmail);
         this.dummyHash = passwordEncoder.encode("not-a-password-of-anyone");
         if (this.adminEmail.isEmpty()) log.warn("plugged.admin.email (PLUGGED_ADMIN_EMAIL) is not set: no administrator can be created, so nobody can sign in");
@@ -86,19 +88,21 @@ public class UserService {
         admin.setApproved(true);
         admin = users.save(admin);
         log.info("Administrator account created (user {})", admin.getId());
-        giveOwnerlessProjectsTo(admin);
+        giveOwnerlessWorkTo(admin);
         return admin;
     }
 
-    /** At start-up: projects saved before accounts existed go to the primary administrator (once there is one). */
+    /** At start-up: projects and own symbols saved before they had owners go to the primary administrator (once there is one). */
     @EventListener(ApplicationReadyEvent.class)
-    public void claimOwnerlessProjects() {
-        users.findByEmail(adminEmail).filter(AppUser::isAdmin).ifPresent(this::giveOwnerlessProjectsTo);
+    public void claimOwnerlessWork() {
+        users.findByEmail(adminEmail).filter(AppUser::isAdmin).ifPresent(this::giveOwnerlessWorkTo);
     }
 
-    private void giveOwnerlessProjectsTo(AppUser admin) {
+    private void giveOwnerlessWorkTo(AppUser admin) {
         int count = projects.assignOwnerless(admin.getId());
         if (count > 0) log.info("{} project(s) saved before accounts existed now belong to the administrator (user {})", count, admin.getId());
+        int symbolCount = symbols.assignOwnerless(admin.getId());
+        if (symbolCount > 0) log.info("{} own symbol(s) saved before symbols had owners now belong to the administrator (user {})", symbolCount, admin.getId());
     }
 
     /** True for the administrator of plugged.admin.email: that account always stays administrator and cannot be removed. */
@@ -127,7 +131,7 @@ public class UserService {
     @Transactional
     public synchronized AppUser register(AuthRequests.Register request) {
         if (setupRequired()) throw new LocalizedStatusException(HttpStatus.CONFLICT, "auth.setupRequired");
-        String email = validEmail(request.email());
+        String email = request.email();
         if (users.existsByEmail(email)) throw new LocalizedStatusException(HttpStatus.CONFLICT, "auth.emailTaken");
         AppUser user = users.save(newUser(request.name(), request.surname(), email, request.password()));
         log.info("User {} registered, waiting for approval", user.getId());
@@ -135,15 +139,33 @@ public class UserService {
     }
 
     /**
-     * The account with this email address and password. The password is checked before the approval, so "not approved yet" is only said to
-     * whoever knows the password.
+     * The account with this email address and password. A locked account (too many wrong passwords) is refused even with the right
+     * password; an unknown address is locked the same way (see LoginThrottle), so the answers do not tell which addresses have an account.
+     * The password is checked before the approval, so "not approved yet" is only said to whoever knows the password. Runs in its own
+     * transaction (noRollbackFor): a wrong password is counted even though the sign-in fails.
      */
+    @Transactional(noRollbackFor = LocalizedStatusException.class)
     public AppUser authenticate(AuthRequests.Login request) {
-        String email = normalizeEmail(request.email()), password = request.password() == null ? "" : request.password();
+        String email = request.email(), password = request.password();
         AppUser user = users.findByEmail(email).orElse(null);
         boolean matches = passwordEncoder.matches(password, user == null ? dummyHash : user.getPasswordHash());
-        if (user == null || !matches) {
-            log.info("Sign-in refused for {}: {}", forLog(email), user == null ? "unknown address" : "wrong password");
+        Instant now = throttle.now();
+        if (user == null) {
+            throttle.checkUnknownEmail(email);
+            Instant lockedNow = throttle.recordUnknownEmail(email);
+            log.info("Sign-in refused for {}: unknown address", forLog(email));
+            if (lockedNow != null) throw throttle.locked(lockedNow);
+            throw new LocalizedStatusException(HttpStatus.UNAUTHORIZED, "auth.badCredentials");
+        }
+        Instant lockedUntil = user.lockedUntil(now);
+        if (lockedUntil != null) {
+            log.info("Sign-in refused for {}: account locked until {}", forLog(email), lockedUntil);
+            throw throttle.locked(lockedUntil);
+        }
+        if (!matches) {
+            boolean lockedNow = user.recordFailedLogin(now, throttle.maxFailedLogins(), throttle.lockout());
+            log.info("Sign-in refused for {}: wrong password{}", forLog(email), lockedNow ? "; account locked for " + throttle.lockout() : "");
+            if (lockedNow) throw throttle.locked(user.lockedUntil(now));
             throw new LocalizedStatusException(HttpStatus.UNAUTHORIZED, "auth.badCredentials");
         }
         if (!user.isApproved()) {
@@ -174,6 +196,15 @@ public class UserService {
         return users.findById(id).orElseThrow(() -> new LocalizedStatusException(HttpStatus.NOT_FOUND, "user.notFound", id));
     }
 
+    /** Opens an account that was locked after too many wrong passwords. */
+    @Transactional
+    public AppUser unlock(long id) {
+        AppUser user = find(id);
+        if (user.getLockedUntil() != null) log.info("User {} unlocked", id);
+        user.unlock();
+        return user;
+    }
+
     @Transactional
     public AppUser approve(long id) {
         AppUser user = find(id);
@@ -193,44 +224,25 @@ public class UserService {
         AppUser user = find(id);
         if (user.isAdmin()) throw new LocalizedStatusException(HttpStatus.CONFLICT, "user.adminCannotBeDeleted");
         int moved = projects.changeOwner(id, actingAdminId);
+        int movedSymbols = symbols.changeOwner(id, actingAdminId);
         groups.removeOwnerEverywhere(id);
         groups.removeMemberEverywhere(id);
         users.delete(user);
-        log.info("User {} deleted; {} project(s) now belong to user {}", id, moved, actingAdminId);
+        log.info("User {} deleted; {} project(s) and {} symbol(s) now belong to user {}", id, moved, movedSymbols, actingAdminId);
     }
 
     private AppUser newUser(String name, String surname, String email, String password) {
-        return new AppUser(validName(name, "auth.nameRequired"), validName(surname, "auth.surnameRequired"), email, passwordEncoder.encode(validPassword(password)));
-    }
-
-    private static String validName(String value, String requiredKey) {
-        String trimmed = value == null ? "" : value.trim();
-        if (trimmed.isEmpty()) throw new LocalizedStatusException(HttpStatus.BAD_REQUEST, requiredKey);
-        if (trimmed.length() > MAX_NAME_LENGTH) throw new LocalizedStatusException(HttpStatus.BAD_REQUEST, "auth.nameTooLong", MAX_NAME_LENGTH);
-        return trimmed;
-    }
-
-    private static String validEmail(String value) {
-        String email = normalizeEmail(value);
-        if (email.length() > MAX_EMAIL_LENGTH || !EMAIL.matcher(email).matches()) throw new LocalizedStatusException(HttpStatus.BAD_REQUEST, "auth.invalidEmail");
-        return email;
-    }
-
-    private static String validPassword(String password) {
-        if (password == null || password.length() < MIN_PASSWORD_LENGTH)
-            throw new LocalizedStatusException(HttpStatus.BAD_REQUEST, "auth.passwordTooShort", MIN_PASSWORD_LENGTH);
-        if (password.getBytes(StandardCharsets.UTF_8).length > MAX_PASSWORD_BYTES)
-            throw new LocalizedStatusException(HttpStatus.BAD_REQUEST, "auth.passwordTooLong", MAX_PASSWORD_BYTES);
-        return password;
+        return new AppUser(name, surname, email, passwordEncoder.encode(password));
     }
 
     /** An address someone typed, safe to put in a log line: no line breaks (that could fake log lines), not endlessly long. */
     static String forLog(String text) {
+        if (text == null) return "";
         String clean = text.replaceAll("[\\p{Cntrl}]", "_");
-        return clean.length() > MAX_EMAIL_LENGTH ? clean.substring(0, MAX_EMAIL_LENGTH) + "..." : clean;
+        return clean.length() > AuthRequests.MAX_EMAIL_LENGTH ? clean.substring(0, AuthRequests.MAX_EMAIL_LENGTH) + "..." : clean;
     }
 
     static String normalizeEmail(String email) {
-        return email == null ? "" : email.trim().toLowerCase(Locale.ROOT);
+        return AuthRequests.normalizeEmail(email);
     }
 }

@@ -1,6 +1,6 @@
 // Copyright 2026 Pleysier Jeroen
 // SPDX-License-Identifier: AGPL-3.0-only
-// The symbol library: the standard symbols, the ones the user edited and the ones the user made. The backend owns it (GET /api/symbols):
+// The symbol library of the user: the standard symbols, his own symbols and those of his groups. The backend owns it (GET /api/symbols):
 // it defines and restores the standard drawings and stores the changes in the database. This hook only loads it and sends changes.
 import {useCallback, useEffect, useState} from 'react'
 import {fetchOk, JSON_HEADERS} from './http.js'
@@ -8,47 +8,24 @@ import {CONNECTION_TYPE} from '../symbols/symbolLibrary.js'
 
 const symbolUrl = (key) => '/api/symbols/' + encodeURIComponent(key)
 
-// Components made before the symbols table existed live in /api/components (one JSON document per component). The own ones (custom:...)
-// are copied into the symbols table once and the old rows are removed; the standard ones in there are obsolete.
-const migrateLegacyComponents = async (symbols) => {
-    try {
-        const response = await fetchOk('/api/components')
-        if (!response) return symbols
-        const rows = await response.json(),
-            knownKeys = new Set(symbols.map((symbol) => symbol.k)),
-            result = [...symbols]
-        for (const row of rows) {
-            let component = null
-            try {
-                component = row.k.startsWith('custom:') && !knownKeys.has(row.k) ? JSON.parse(row.json) : null
-            } catch {
-                component = null
-            }
-            if (component) {
-                const {name, cat, parents, place, shapes} = component,
-                    saved = await fetchOk(symbolUrl(row.k), {
-                        method: 'PUT',
-                        headers: JSON_HEADERS,
-                        body: JSON.stringify({k: row.k, name, cat, parents, place, shapes}),
-                    })
-                if (!saved) continue
-                result.push(await saved.json())
-            }
-            await fetchOk('/api/components/' + encodeURIComponent(row.k), {method: 'DELETE'})
-        }
-        return result
-    } catch {
-        return symbols
-    }
-}
-
 /** The library with `symbol` replacing the one with the same key (or added at the end). */
 const withSymbol = (library, symbol) =>
     library.some((existing) => existing.k === symbol.k) ? library.map((existing) => (existing.k === symbol.k ? symbol : existing)) : [...library, symbol]
 
 export function useSymbolLibrary() {
     const [library, setLibraryState] = useState([]),
+        [groups, setGroups] = useState([]), // the groups the user can put a symbol in ([{id, name}])
         [status, setStatus] = useState('loading') // 'loading' | 'ready' | 'error'
+    // the groups the user can put a symbol in; loaded again when Componenten opens (groups and members change under Beheer)
+    const loadGroups = useCallback(async () => {
+        try {
+            const answer = await fetchOk('/api/symbols/groups'),
+                list = answer ? await answer.json() : []
+            setGroups(Array.isArray(list) ? list : [])
+        } catch {
+            setGroups([])
+        }
+    }, [])
     const load = useCallback(async () => {
         setStatus('loading')
         const response = await fetchOk('/api/symbols')
@@ -59,9 +36,10 @@ export function useSymbolLibrary() {
             symbols = null
         }
         if (!Array.isArray(symbols)) return setStatus('error')
-        setLibraryState(await migrateLegacyComponents(symbols))
+        setLibraryState(symbols)
         setStatus('ready')
-    }, [])
+        await loadGroups()
+    }, [loadGroups])
     useEffect(() => {
         load()
     }, [load])
@@ -96,5 +74,5 @@ export function useSymbolLibrary() {
         const response = await fetchOk('/api/symbols/template')
         return response ? response.json() : null
     }, [])
-    return {library, status, reload: load, save, remove, restore, makeStandard, restoreAll, template}
+    return {library, groups, reloadGroups: loadGroups, status, reload: load, save, remove, restore, makeStandard, restoreAll, template}
 }

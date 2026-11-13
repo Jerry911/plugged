@@ -13,6 +13,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
@@ -21,6 +22,7 @@ import static com.pleysje.plugged.TestAccounts.account;
 import static com.pleysje.plugged.TestAccounts.as;
 import static org.hamcrest.Matchers.*;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -38,6 +40,10 @@ class ProjectControllerTest {
     UserRepository users;
     @Autowired
     UserGroupRepository groups;
+    @Autowired
+    org.springframework.jdbc.core.JdbcTemplate jdbc;
+    @Autowired
+    com.pleysje.plugged.config.ProjectIds projectIds;
 
     AppUser alice, bob, carol, admin, otherAdmin;
 
@@ -51,14 +57,25 @@ class ProjectControllerTest {
         otherAdmin = account(users, "Beheer", true);
     }
 
+    /** The version (ETag) of the project as this user sees it now; "0" when he cannot open it. */
+    private String versionOf(AppUser user, long id) throws Exception {
+        var response = mvc.perform(get("/api/projects/" + id).with(as(user))).andReturn().getResponse();
+        return response.getStatus() == 200 ? response.getHeader(HttpHeaders.ETAG) : "\"0\"";
+    }
+
+    /** Saves like the editor does: based on the version it opened. */
     private ResultActions putProject(AppUser user, long id, String json) throws Exception {
-        return mvc.perform(put("/api/projects/" + id).with(as(user)).contentType(MediaType.APPLICATION_JSON).content(json));
+        return putProject(user, id, json, versionOf(user, id));
+    }
+
+    private ResultActions putProject(AppUser user, long id, String json, String version) throws Exception {
+        return mvc.perform(put("/api/projects/" + id).with(as(user)).header(HttpHeaders.IF_MATCH, version).contentType(MediaType.APPLICATION_JSON).content(json));
     }
 
     private long create(AppUser user, String json) throws Exception {
         String answer = mvc.perform(post("/api/projects").with(as(user)).contentType(MediaType.APPLICATION_JSON).content(json))
                 .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
-        return Long.parseLong(answer.replaceAll("\\D", ""));
+        return Long.parseLong(answer.replaceAll(".*\"id\":(\\d+).*", "$1"));
     }
 
     private UserGroup group(String name, AppUser... members) {
@@ -79,44 +96,93 @@ class ProjectControllerTest {
 
     @Test
     void putThenGetRoundTrips() throws Exception {
-        putProject(alice, 1, "{\"een\":[{\"id\":\"e1\",\"name\":\"Blad 1\"}],\"footer\":{\"titel\":\"Test\"}}").andExpect(status().isNoContent());
-        mvc.perform(get("/api/projects/1").with(as(alice))).andExpect(status().isOk()).andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+        long id = create(alice, "{}");
+        putProject(alice, id, "{\"een\":[{\"id\":\"e1\",\"name\":\"Blad 1\"}],\"footer\":{\"titel\":\"Test\"}}").andExpect(status().isNoContent());
+        mvc.perform(get("/api/projects/" + id).with(as(alice))).andExpect(status().isOk()).andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.footer.titel", is("Test"))).andExpect(jsonPath("$.een[0].name", is("Blad 1")));
     }
 
     @Test
     void putOverwrites() throws Exception {
-        putProject(alice, 1, "{\"v\":1}");
-        putProject(alice, 1, "{\"v\":2}");
-        mvc.perform(get("/api/projects/1").with(as(alice))).andExpect(jsonPath("$.v", is(2)));
+        long id = create(alice, "{\"v\":1}");
+        putProject(alice, id, "{\"v\":2}").andExpect(status().isNoContent());
+        mvc.perform(get("/api/projects/" + id).with(as(alice))).andExpect(jsonPath("$.v", is(2)));
     }
 
     @Test
-    void postGivesTheNextFreeNumber() throws Exception {
-        assertEquals(1, create(alice, "{\"v\":1}"));
-        putProject(bob, 7, "{}").andExpect(status().isNoContent());
-        assertEquals(8, create(bob, "{\"v\":2}"));
+    void theServerGivesTheNumbersAndAClientCannotChooseOne() throws Exception {
+        long first = create(alice, "{\"v\":1}"), second = create(bob, "{\"v\":2}");
+        assertTrue(second > first);
+        // a number that does not exist is not created by a save
+        putProject(bob, second + 1000, "{}", "\"0\"").andExpect(status().isNotFound());
+        putProject(bob, Long.MAX_VALUE, "{}", "\"0\"").andExpect(status().isNotFound());
+        assertTrue(create(bob, "{}") > second);
         mvc.perform(post("/api/projects").param("name", "  Woning Jan ").with(as(alice)).contentType(MediaType.APPLICATION_JSON).content("{}"))
-                .andExpect(status().isCreated()).andExpect(jsonPath("$.id", is(9)));
+                .andExpect(status().isCreated()).andExpect(jsonPath("$.id").isNumber()).andExpect(jsonPath("$.version", is(0)))
+                .andExpect(header().string(HttpHeaders.ETAG, "\"0\""));
         mvc.perform(get("/api/projects/summaries").with(as(alice))).andExpect(jsonPath("$[1].name", is("Woning Jan")));
+    }
+
+    @Test
+    void theNumbersContinueAfterTheProjectsOfAnOlderDatabase() throws Exception {
+        // an older version chose the numbers itself: a project 900 is already there when this version starts
+        long highest = create(alice, "{}") + 900;
+        jdbc.update("insert into project_doc (id, json, version) values (?, '{}', 0)", highest);
+        projectIds.afterSingletonsInstantiated();
+        assertTrue(create(alice, "{}") > highest);
+    }
+
+    @Test
+    void everySaveIsANewVersionAndAnOlderVersionIsRefused() throws Exception {
+        UserGroup team = group("Team", alice, bob);
+        long id = create(alice, "{\"v\":1}");
+        share(alice, id, team.getId()).andExpect(status().isOk());
+        mvc.perform(get("/api/projects/" + id).with(as(alice))).andExpect(header().string(HttpHeaders.ETAG, "\"0\""));
+        // Alice and Bob both open version 0; Alice saves first
+        putProject(alice, id, "{\"v\":2}", "\"0\"").andExpect(status().isNoContent()).andExpect(header().string(HttpHeaders.ETAG, "\"1\""));
+        // Bob's save is based on version 0: refused, Alice's work stays
+        putProject(bob, id, "{\"v\":3}", "\"0\"").andExpect(status().isConflict()).andExpect(jsonPath("$.messageKey", is("project.changedElsewhere")));
+        mvc.perform(get("/api/projects/" + id).with(as(bob))).andExpect(jsonPath("$.v", is(2))).andExpect(header().string(HttpHeaders.ETAG, "\"1\""));
+        // after loading it again he can save (a weak ETag works too)
+        putProject(bob, id, "{\"v\":3}", "W/\"1\"").andExpect(status().isNoContent()).andExpect(header().string(HttpHeaders.ETAG, "\"2\""));
+        // without a version: 428
+        mvc.perform(put("/api/projects/" + id).with(as(alice)).contentType(MediaType.APPLICATION_JSON).content("{}"))
+                .andExpect(status().isPreconditionRequired()).andExpect(jsonPath("$.messageKey", is("project.versionRequired")));
+        mvc.perform(put("/api/projects/" + id).with(as(alice)).header(HttpHeaders.IF_MATCH, "nonsense").contentType(MediaType.APPLICATION_JSON).content("{}"))
+                .andExpect(status().isPreconditionRequired());
+    }
+
+    @Test
+    void onlyDocumentsTheEditorCanOpenAreStored() throws Exception {
+        mvc.perform(post("/api/projects").with(as(alice)).contentType(MediaType.APPLICATION_JSON).content("{not json"))
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.messageKey", is("project.invalidJson")));
+        mvc.perform(post("/api/projects").with(as(alice)).contentType(MediaType.APPLICATION_JSON).content("[1,2]"))
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.messageKey", is("project.invalidStructure")));
+        mvc.perform(post("/api/projects").with(as(alice)).contentType(MediaType.APPLICATION_JSON).content("{\"een\":\"x\"}"))
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.detail", containsString("een")));
+        mvc.perform(post("/api/projects").with(as(alice)).contentType(MediaType.APPLICATION_JSON).content("{\"sit\":[{\"walls\":{}}]}"))
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.detail", containsString("sit[0].walls")));
+        long id = create(alice, "{\"een\":[{\"tree\":[]}],\"sit\":[{\"walls\":[],\"items\":[]}],\"footer\":{},\"name\":\"ok\"}");
+        putProject(alice, id, "{\"footer\":[]}").andExpect(status().isBadRequest()).andExpect(jsonPath("$.messageKey", is("project.invalidStructure")));
+        // an older format (one tree and one plan) is fine: the editor converts it
+        create(alice, "{\"tree\":[],\"plan\":{\"walls\":[],\"items\":[]}}");
+        mvc.perform(get("/api/projects").with(as(alice))).andExpect(jsonPath("$", hasSize(2)));
     }
 
     @Test
     void listReturnsTheIdsOfTheOwnProjects() throws Exception {
         mvc.perform(get("/api/projects").with(as(alice))).andExpect(status().isOk()).andExpect(jsonPath("$", hasSize(0)));
-        putProject(alice, 5, "{}");
-        putProject(alice, 7, "{}");
-        putProject(bob, 6, "{}");
-        mvc.perform(get("/api/projects").with(as(alice))).andExpect(jsonPath("$", contains(5, 7)));
-        mvc.perform(get("/api/projects").with(as(bob))).andExpect(jsonPath("$", contains(6)));
-        mvc.perform(get("/api/projects").with(as(admin))).andExpect(jsonPath("$", contains(5, 6, 7)));
+        long first = create(alice, "{}"), other = create(bob, "{}"), second = create(alice, "{}");
+        mvc.perform(get("/api/projects").with(as(alice))).andExpect(jsonPath("$", contains((int) first, (int) second)));
+        mvc.perform(get("/api/projects").with(as(bob))).andExpect(jsonPath("$", contains((int) other)));
+        mvc.perform(get("/api/projects").with(as(admin))).andExpect(jsonPath("$", contains((int) first, (int) other, (int) second)));
     }
 
     @Test
     void deleteRemovesProject() throws Exception {
-        putProject(alice, 3, "{}");
-        mvc.perform(delete("/api/projects/3").with(as(alice))).andExpect(status().isOk());
-        mvc.perform(get("/api/projects/3").with(as(alice))).andExpect(status().isNotFound());
+        long id = create(alice, "{}");
+        mvc.perform(delete("/api/projects/" + id).with(as(alice))).andExpect(status().isOk());
+        mvc.perform(get("/api/projects/" + id).with(as(alice))).andExpect(status().isNotFound());
     }
 
     @Test
@@ -127,18 +193,18 @@ class ProjectControllerTest {
     @Test
     void largeProjectRoundTrips() throws Exception {
         String big = "{\"data\":\"" + "x".repeat(300_000) + "\"}";
-        putProject(alice, 9, big);
-        mvc.perform(get("/api/projects/9").with(as(alice))).andExpect(status().isOk()).andExpect(jsonPath("$.data", hasLength(300_000)));
+        long id = create(alice, big);
+        mvc.perform(get("/api/projects/" + id).with(as(alice))).andExpect(status().isOk()).andExpect(jsonPath("$.data", hasLength(300_000)));
     }
 
     @Test
     void nameOwnerAndSharingAreListedWithoutTheDocument() throws Exception {
-        mvc.perform(put("/api/projects/2").param("name", "Woning Jan").with(as(alice)).contentType(MediaType.APPLICATION_JSON).content("{\"v\":1}"))
-                .andExpect(status().isNoContent());
-        putProject(alice, 1, "{\"v\":2}");
+        long first = create(alice, "{\"v\":2}");
+        mvc.perform(post("/api/projects").param("name", "Woning Jan").with(as(alice)).contentType(MediaType.APPLICATION_JSON).content("{\"v\":1}"))
+                .andExpect(status().isCreated());
         mvc.perform(get("/api/projects/summaries").with(as(alice))).andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(2)))
-                .andExpect(jsonPath("$[0].id", is(1)))
+                .andExpect(jsonPath("$[0].id", is((int) first)))
                 .andExpect(jsonPath("$[0].name").value(nullValue()))
                 .andExpect(jsonPath("$[1].name", is("Woning Jan")))
                 .andExpect(jsonPath("$[1].updated", notNullValue()))

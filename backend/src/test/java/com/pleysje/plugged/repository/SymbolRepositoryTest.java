@@ -61,7 +61,7 @@ class SymbolRepositoryTest {
         repository.saveAll(List.of(old, edited, mine));
         entityManager.flush();
         entityManager.clear();
-        new SymbolService(repository).seed();
+        new SymbolService(repository, null, null, null).seed();
         entityManager.flush();
         entityManager.clear();
         assertFalse(repository.existsById("stopcontact_h"));

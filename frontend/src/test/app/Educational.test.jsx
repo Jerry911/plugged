@@ -130,3 +130,29 @@ test('everybody else is warned about unplaced elements as before', async () => {
     fireEvent.click(getById('sit-unplaced-toggle'))
     expect(getById('sit-unplaced-toggle').querySelector('.badge')).toHaveTextContent('1')
 })
+
+test('a student cannot create a project with content in one go: the new project is created empty, then his work is saved in it', async () => {
+    const calls = []
+    global.fetch = vi.fn(async (url, options = {}) => {
+        const method = options.method || 'GET'
+        if (method !== 'GET') calls.push({url, method, body: options.body ? JSON.parse(options.body) : null, ifMatch: options.headers?.['If-Match']})
+        if (url === '/api/auth/status') return json({setupRequired: false, adminEmail: 'admin@example.be', user: user({restricted: true})})
+        if (url === '/api/symbols') return json(standard)
+        if (url === '/api/projects/summaries') return json([])
+        if (url.startsWith('/api/projects') && method === 'POST') return {...json({id: 5, version: 0}, 201), headers: {get: () => '"0"'}}
+        if (url.startsWith('/api/projects/5') && method === 'PUT') return {ok: true, status: 204, headers: {get: () => '"1"'}, json: async () => null}
+        return json(null, 404)
+    })
+    render(<App />)
+    await waitFor(() => getById('tab-comp'))
+    await act(async () => {})
+    fireEvent.click(getById('tab-project'))
+    await act(async () => fireEvent.click(getById('btn-save')))
+    await waitFor(() => expect(calls.some((call) => call.method === 'PUT')).toBe(true))
+    const [create, save] = calls.filter((call) => call.url.startsWith('/api/projects'))
+    expect(create.method).toBe('POST')
+    expect(JSON.stringify(create.body)).not.toContain('"kring"')
+    expect(create.body.sit.every((page) => !page.walls.length && !page.items.length)).toBe(true)
+    expect(save).toMatchObject({method: 'PUT', ifMatch: '"0"'})
+    expect(save.url).toMatch(/^\/api\/projects\/5/)
+})

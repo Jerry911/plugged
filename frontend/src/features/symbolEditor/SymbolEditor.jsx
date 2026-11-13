@@ -26,13 +26,24 @@ const PREVIEW_SIZES = [20, 32, 46]
 const editableCopy = (symbol) => ({...symbol, parents: [...symbol.parents], shapes: [...symbol.shapes]})
 
 // where a symbol comes from, for the label above the drawing
-const originKey = (symbol) => (symbol.builtin ? (symbol.modified ? 'symbolEditor.origin.modified' : 'symbolEditor.origin.standard') : 'symbolEditor.origin.own')
+const originKey = (symbol) =>
+    symbol.builtin
+        ? symbol.modified
+            ? 'symbolEditor.origin.modified'
+            : 'symbolEditor.origin.standard'
+        : symbol.group != null
+          ? 'symbolEditor.origin.group'
+          : 'symbolEditor.origin.own'
 
 /**
- * library = all symbols; the handlers call the backend (see api/useSymbolLibrary.js): onSave(symbol), onRemove(key), onRestore(key),
- * onRestoreAll(), onMakeStandard(key) and onTemplate() (a new, empty symbol of the user).
+ * library = the symbols of the user (the standard ones, his own and those of his groups); the handlers call the backend (see
+ * api/useSymbolLibrary.js): onSave(symbol), onRemove(key), onRestore(key), onRestoreAll(), onMakeStandard(key) and onTemplate() (a new,
+ * empty symbol of the user). groups = the groups the user can put a symbol in ([{id, name}]); onOpen() is called when the editor opens
+ * (it loads the groups again: they may have changed under Beheer).
+ * A symbol the backend marks as not editable (a standard symbol for somebody who is no administrator, a group symbol for a student) is shown
+ * read-only: it can only be duplicated into an own symbol.
  */
-export default function SymbolEditor({library, onSave, onRemove, onRestore, onRestoreAll, onMakeStandard, onTemplate}) {
+export default function SymbolEditor({library, groups = [], onOpen, onSave, onRemove, onRestore, onRestoreAll, onMakeStandard, onTemplate}) {
     const {t} = useTranslation()
     const [draft, setDraft] = useState(null),
         [original, setOriginal] = useState(null),
@@ -50,6 +61,9 @@ export default function SymbolEditor({library, onSave, onRemove, onRestore, onRe
         [hover, setHover] = useState(null),
         [message, setMessage] = useState('')
     const dirty = !!draft && JSON.stringify(draft) !== JSON.stringify(original),
+        readOnly = draft?.editable === false,
+        // the standard symbols are changed by administrators only: the backend says so with `editable`
+        mayChangeStandard = library.some((symbol) => symbol.builtin && symbol.editable !== false),
         isStandard = !!draft?.builtin,
         isStored = library.some((symbol) => draft && symbol.k === draft.k)
     // The name field shows the name in the active language; a standard name that was not changed is stored as it was (in Dutch), so it keeps
@@ -65,6 +79,7 @@ export default function SymbolEditor({library, onSave, onRemove, onRestore, onRe
         setMessage('')
     }
     const change = (patch) => {
+        if (readOnly) return
         if (patch.shapes) setSelected([]) // the indexes of the selection no longer point at the same shapes
         setDraft({...draft, ...patch})
         setMessage('')
@@ -107,7 +122,7 @@ export default function SymbolEditor({library, onSave, onRemove, onRestore, onRe
     // pressing a shape: shift adds it to / removes it from the selection, a shape of the selection is dragged together with the rest of the
     // selection, any other shape becomes the selection and can be dragged straight away
     const pressShape = (event, index) => {
-        if (event.button !== 0) return
+        if (event.button !== 0 || readOnly) return
         event.stopPropagation()
         if (event.shiftKey) return setSelected((current) => (current.includes(index) ? current.filter((i) => i !== index) : [...current, index]))
         const local = localPointOf(svgRef.current, event.clientX, event.clientY)
@@ -127,6 +142,7 @@ export default function SymbolEditor({library, onSave, onRemove, onRestore, onRe
         setHovered(null)
     }
     const onDrawingClick = (event) => {
+        if (readOnly) return
         if (tool === 'select') return afterDrag.current ? undefined : setSelected([])
         const {x, y} = gridPointOf(event)
         if (tool === 'text') {
@@ -140,13 +156,17 @@ export default function SymbolEditor({library, onSave, onRemove, onRestore, onRe
     }
     // select tool: dragging on empty space draws a selection box (shapes inside it or touching it)
     const onDrawingDown = (event) => {
-        if (tool !== 'select' || event.button !== 0) return
+        if (readOnly || tool !== 'select' || event.button !== 0) return
         const local = localPointOf(event.currentTarget, event.clientX, event.clientY),
             start = {x: local.x, y: local.y}
         boxRef.current = {from: start, to: start, add: event.shiftKey}
         setBox(boxRef.current)
     }
     const dragging = !!box || moving
+    // the groups may have changed under Beheer since the app opened
+    useEffect(() => {
+        onOpen?.()
+    }, [onOpen])
     useEffect(() => {
         if (!dragging) return
         const pointOf = (event) => localPointOf(svgRef.current, event.clientX, event.clientY)
@@ -273,8 +293,10 @@ export default function SymbolEditor({library, onSave, onRemove, onRestore, onRe
         setOriginal(null)
         setMessage(t('symbolEditor.allRestored'))
     }
+    // a copy is always an own symbol of the user (personal; he can put it in one of his groups)
     const duplicate = () =>
-        open({...draft, k: 'custom:' + newId(), name: t('common.copyOf', {name: draft.name}), builtin: false, modified: false, v: 0}, true)
+        open({...draft, k: 'custom:' + newId(), name: t('common.copyOf', {name: draft.name}), builtin: false, modified: false, v: 0, group: null, editable: true}, true)
+    const groupName = (id) => groups.find((group) => group.id === id)?.name ?? '#' + id
     // the selected shapes and the frame around them (indexes that no longer exist are left out)
     const chosen = draft ? selected.map((i) => draft.shapes[i]).filter(Boolean) : [],
         bounds = unionBounds(chosen)
@@ -296,9 +318,11 @@ export default function SymbolEditor({library, onSave, onRemove, onRestore, onRe
                 <button id="comp-new" onClick={createNew}>
                     ＋ {t('symbolEditor.newComponent')}
                 </button>
-                <button id="comp-restore-all" title={t('symbolEditor.restoreAllTitle')} onClick={restoreAll}>
-                    {t('symbolEditor.restoreAll')}
-                </button>
+                {mayChangeStandard && (
+                    <button id="comp-restore-all" title={t('symbolEditor.restoreAllTitle')} onClick={restoreAll}>
+                        {t('symbolEditor.restoreAll')}
+                    </button>
+                )}
                 <div className="complist fill-grow">
                     {categories.map((category) => {
                         const matching = library.filter((symbol) => symbol.cat === category && symbolName(symbol).toLowerCase().includes(searchText))
@@ -340,49 +364,63 @@ export default function SymbolEditor({library, onSave, onRemove, onRestore, onRe
                     </>
                 ) : (
                     <>
-                        <p id="comp-hint" className="chint">{t('symbolEditor.drawingHint')}</p>
+                        {readOnly ? (
+                            <p id="comp-read-only" className="chint">
+                                {t(isStandard ? 'symbolEditor.readOnlyStandard' : 'symbolEditor.readOnlyGroup')}
+                            </p>
+                        ) : (
+                            <p id="comp-hint" className="chint">{t('symbolEditor.drawingHint')}</p>
+                        )}
                         <div className="tb cgroup cactions">
-                            <button id="comp-save" className="accent" onClick={save}>
-                                {isStored ? t('common.save') : t('symbolEditor.add')}
-                            </button>
-                            <button id="comp-duplicate" onClick={duplicate}>
+                            {!readOnly && (
+                                <button id="comp-save" className="accent" onClick={save}>
+                                    {isStored ? t('common.save') : t('symbolEditor.add')}
+                                </button>
+                            )}
+                            <button id="comp-duplicate" className={readOnly ? 'accent' : undefined} onClick={duplicate}>
                                 {t('symbolEditor.duplicate')}
                             </button>
-                            <button id="comp-undo-shape" title={t('symbolEditor.undoShape')} onClick={() => change({shapes: draft.shapes.slice(0, -1)})}>
-                                ↶
-                            </button>
-                            <button id="comp-clear" onClick={() => change({shapes: []})}>
-                                {t('symbolEditor.clear')}
-                            </button>
+                            {!readOnly && (
+                                <>
+                                    <button id="comp-undo-shape" title={t('symbolEditor.undoShape')} onClick={() => change({shapes: draft.shapes.slice(0, -1)})}>
+                                        ↶
+                                    </button>
+                                    <button id="comp-clear" onClick={() => change({shapes: []})}>
+                                        {t('symbolEditor.clear')}
+                                    </button>
+                                </>
+                            )}
                             {dirty && <span id="comp-dirty">● {t('symbolEditor.unsaved')}</span>}
                             {message && <span id="comp-message">{message}</span>}
                             <small id="comp-origin" style={{marginLeft: 'auto'}}>
-                                {t(originKey(draft))}
+                                {t(originKey(draft), {group: draft.group != null ? groupName(draft.group) : ''})}
                             </small>
                         </div>
                         <div className="cwork">
                             <div className="ctools">
-                                <div className="cgroup">
-                                    <b>{t('symbolEditor.draw')}</b>
-                                    {DRAWING_TOOLS.map((name) => (
-                                        <button
-                                            key={name}
-                                            id={'comp-tool-' + name}
-                                            className={tool === name ? 'on' : ''}
-                                            onClick={() => {
-                                                setTool(name)
-                                                setAnchor(null)
-                                                setSelected([])
-                                            }}
-                                        >
-                                            {t('symbolEditor.tools.' + name)}
+                                {!readOnly && (
+                                    <div className="cgroup">
+                                        <b>{t('symbolEditor.draw')}</b>
+                                        {DRAWING_TOOLS.map((name) => (
+                                            <button
+                                                key={name}
+                                                id={'comp-tool-' + name}
+                                                className={tool === name ? 'on' : ''}
+                                                onClick={() => {
+                                                    setTool(name)
+                                                    setAnchor(null)
+                                                    setSelected([])
+                                                }}
+                                            >
+                                                {t('symbolEditor.tools.' + name)}
+                                            </button>
+                                        ))}
+                                        <button id="comp-delete-selected" disabled={!selected.length} title={t('symbolEditor.deleteSelectedTitle')} onClick={deleteSelected}>
+                                            {t('symbolEditor.deleteSelected', {count: selected.length})}
                                         </button>
-                                    ))}
-                                    <button id="comp-delete-selected" disabled={!selected.length} title={t('symbolEditor.deleteSelectedTitle')} onClick={deleteSelected}>
-                                        {t('symbolEditor.deleteSelected', {count: selected.length})}
-                                    </button>
-                                </div>
-                                {(isStandard || isStored) && (
+                                    </div>
+                                )}
+                                {!readOnly && (isStandard || isStored) && (
                                     <div className="cgroup">
                                         <b>{t('symbolEditor.component')}</b>
                                         {isStandard && (
@@ -540,77 +578,101 @@ export default function SymbolEditor({library, onSave, onRemove, onRestore, onRe
                                         </svg>
                                     ))}
                                 </div>
-                                <div className="cfields">
-                                    <label>
-                                        {t('symbolEditor.name')}
-                                        <input
-                                            id="comp-name"
-                                            placeholder={t('symbolEditor.namePlaceholder')}
-                                            value={draft.name}
-                                            onChange={(event) => change({name: event.target.value})}
-                                        />
-                                    </label>
-                                    <label>
-                                        {t('symbolEditor.category')}
-                                        <input
-                                            id="comp-category"
-                                            placeholder={t('symbolEditor.category')}
-                                            list="comp-cats"
-                                            value={draft.cat}
-                                            onChange={(event) => change({cat: event.target.value})}
-                                        />
-                                    </label>
-                                    <datalist id="comp-cats">
-                                        {categories.map((category) => (
-                                            <option key={category} value={category} />
-                                        ))}
-                                    </datalist>
-                                </div>
-                                <label style={{display: 'block', margin: '8px 0'}}>
-                                    <input id="comp-placeable" type="checkbox" checked={draft.place} onChange={(event) => change({place: event.target.checked})} />{' '}
-                                    {t('symbolEditor.placeable')}
-                                </label>
-                                <label style={{display: 'block', margin: '8px 0'}}>
-                                    <input
-                                        id="comp-details"
-                                        type="checkbox"
-                                        checked={!!draft.details}
-                                        onChange={(event) => change({details: event.target.checked})}
-                                    />{' '}
-                                    {t('symbolEditor.extendedDetails')}
-                                </label>
-                                <details id="comp-parents">
-                                    <summary>
-                                        <b>{t('symbolEditor.parents', {count: draft.parents.length})}</b>
-                                    </summary>
-                                    <div className="tb">
-                                        <button id="comp-parents-all" onClick={() => change({parents: library.map((symbol) => symbol.k)})}>
-                                            {t('symbolEditor.all')}
-                                        </button>
-                                        <button id="comp-parents-none" onClick={() => change({parents: []})}>
-                                            {t('symbolEditor.none')}
-                                        </button>
-                                    </div>
-                                    <div style={{maxHeight: 200, overflow: 'auto'}}>
-                                        {library.map((symbol) => (
-                                            <label key={symbol.k} style={{display: 'block'}}>
-                                                <input
-                                                    id={'comp-parent-' + toDomId(symbol.k)}
-                                                    type="checkbox"
-                                                    checked={draft.parents.includes(symbol.k)}
-                                                    onChange={(event) =>
-                                                        change({
-                                                            parents: event.target.checked
-                                                                ? [...draft.parents, symbol.k]
-                                                                : draft.parents.filter((key) => key !== symbol.k),
-                                                        })
-                                                    }
-                                                />{' '}
-                                                {symbolName(symbol)}
+                                <fieldset id="comp-fields" disabled={readOnly} style={{border: 0, padding: 0, margin: 0, minWidth: 0}}>
+                                    <div className="cfields">
+                                        <label>
+                                            {t('symbolEditor.name')}
+                                            <input
+                                                id="comp-name"
+                                                placeholder={t('symbolEditor.namePlaceholder')}
+                                                value={draft.name}
+                                                onChange={(event) => change({name: event.target.value})}
+                                            />
+                                        </label>
+                                        <label>
+                                            {t('symbolEditor.category')}
+                                            <input
+                                                id="comp-category"
+                                                placeholder={t('symbolEditor.category')}
+                                                list="comp-cats"
+                                                value={draft.cat}
+                                                onChange={(event) => change({cat: event.target.value})}
+                                            />
+                                        </label>
+                                        <datalist id="comp-cats">
+                                            {categories.map((category) => (
+                                                <option key={category} value={category} />
+                                            ))}
+                                        </datalist>
+                                        {!isStandard && (
+                                            <label>
+                                                {t('symbolEditor.belongsTo')}
+                                                <select
+                                                    id="comp-group"
+                                                    disabled={groups.length === 0 && draft.group == null}
+                                                    title={groups.length === 0 && draft.group == null ? t('symbolEditor.noGroups') : undefined}
+                                                    value={draft.group ?? ''}
+                                                    onChange={(event) => change({group: event.target.value === '' ? null : Number(event.target.value)})}
+                                                >
+                                                    <option value="">{t('symbolEditor.personal')}</option>
+                                                    {groups.map((group) => (
+                                                        <option key={group.id} value={group.id}>
+                                                            {t('symbolEditor.group', {group: group.name})}
+                                                        </option>
+                                                    ))}
+                                                    {draft.group != null && !groups.some((group) => group.id === draft.group) && (
+                                                        <option value={draft.group}>{t('symbolEditor.group', {group: groupName(draft.group)})}</option>
+                                                    )}
+                                                </select>
                                             </label>
-                                        ))}
+                                        )}
                                     </div>
-                                </details>
+                                    <label style={{display: 'block', margin: '8px 0'}}>
+                                        <input id="comp-placeable" type="checkbox" checked={draft.place} onChange={(event) => change({place: event.target.checked})} />{' '}
+                                        {t('symbolEditor.placeable')}
+                                    </label>
+                                    <label style={{display: 'block', margin: '8px 0'}}>
+                                        <input
+                                            id="comp-details"
+                                            type="checkbox"
+                                            checked={!!draft.details}
+                                            onChange={(event) => change({details: event.target.checked})}
+                                        />{' '}
+                                        {t('symbolEditor.extendedDetails')}
+                                    </label>
+                                    <details id="comp-parents">
+                                        <summary>
+                                            <b>{t('symbolEditor.parents', {count: draft.parents.length})}</b>
+                                        </summary>
+                                        <div className="tb">
+                                            <button id="comp-parents-all" onClick={() => change({parents: library.map((symbol) => symbol.k)})}>
+                                                {t('symbolEditor.all')}
+                                            </button>
+                                            <button id="comp-parents-none" onClick={() => change({parents: []})}>
+                                                {t('symbolEditor.none')}
+                                            </button>
+                                        </div>
+                                        <div style={{maxHeight: 200, overflow: 'auto'}}>
+                                            {library.map((symbol) => (
+                                                <label key={symbol.k} style={{display: 'block'}}>
+                                                    <input
+                                                        id={'comp-parent-' + toDomId(symbol.k)}
+                                                        type="checkbox"
+                                                        checked={draft.parents.includes(symbol.k)}
+                                                        onChange={(event) =>
+                                                            change({
+                                                                parents: event.target.checked
+                                                                    ? [...draft.parents, symbol.k]
+                                                                    : draft.parents.filter((key) => key !== symbol.k),
+                                                            })
+                                                        }
+                                                    />{' '}
+                                                    {symbolName(symbol)}
+                                                </label>
+                                            ))}
+                                        </div>
+                                    </details>
+                                </fieldset>
                             </div>
                         </div>
                     </>

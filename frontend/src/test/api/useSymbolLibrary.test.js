@@ -6,16 +6,14 @@ import standard from '../fixtures/standardSymbols.js'
 
 const mine = {k: 'custom:b', name: 'Beta', cat: 'Eigen', parents: ['kring'], place: true, shapes: [{t: 'line', x1: 0, y1: 12, x2: 5, y2: 12}], v: 0, builtin: false, modified: false}
 const json = (body, ok = true) => ({ok, json: async () => body})
-// a fake backend: serves the library, echoes saved symbols and answers restore / delete / template; `legacy` are rows of the old /api/components
-const backend = ({list = standard, legacy = null} = {}) => {
+// a fake backend: serves the library, echoes saved symbols and answers restore / delete / template
+const backend = ({list = standard} = {}) => {
     global.fetch = vi.fn(async (url, o = {}) => {
         const m = o.method || 'GET'
         if (url === '/api/symbols' && m === 'GET') return json(list)
         if (url === '/api/symbols/restore') return json(standard)
         if (url === '/api/symbols/template') return json({k: 'custom:nieuw', name: '', parents: ['kring'], shapes: []})
         if (url.endsWith('/restore')) return json(standard.find((c) => c.k === decodeURIComponent(url.split('/')[3])))
-        if (url === '/api/components') return legacy ? json(legacy) : {ok: false}
-        if (url.startsWith('/api/components/')) return {ok: true}
         if (url.startsWith('/api/symbols/') && m === 'PUT') return json({...JSON.parse(o.body), builtin: false, modified: false, v: 0})
         if (url.startsWith('/api/symbols/') && m === 'DELETE') return {ok: true}
         return {ok: false}
@@ -112,39 +110,4 @@ test('template gives a new symbol of the backend, or null', async () => {
     global.fetch = vi.fn(async () => ({ok: false}))
     await act(async () => void (t = await result.current.template()))
     expect(t).toBeNull()
-})
-test('own components of the old /api/components table are copied to the symbols table once and then removed', async () => {
-    const old = {k: 'custom:old', name: 'Oud', cat: 'Eigen', parents: ['kring'], place: true, shapes: mine.shapes, v: 3}
-    backend({
-        legacy: [
-            {k: 'custom:old', json: JSON.stringify(old)},
-            {k: 'oven', json: JSON.stringify({k: 'oven', name: 'Mijn oven'})},
-            {k: 'custom:bad', json: 'nope'},
-            {k: 'custom:b', json: JSON.stringify(mine)},
-        ],
-        list: [...standard, mine],
-    })
-    const {result} = await load()
-    expect(result.current.library.map((c) => c.k)).toEqual([...standard.map((c) => c.k), 'custom:b', 'custom:old'])
-    const put = global.fetch.mock.calls.find((c) => c[0] === '/api/symbols/custom%3Aold')
-    expect(JSON.parse(put[1].body)).toEqual({k: 'custom:old', name: 'Oud', cat: 'Eigen', parents: ['kring'], place: true, shapes: mine.shapes})
-    // every old row is removed: the migrated one, the obsolete standard one, the unreadable one and the one that was already copied
-    const gone = global.fetch.mock.calls.filter((c) => c[1]?.method === 'DELETE' && c[0].startsWith('/api/components/')).map((c) => c[0])
-    expect(gone).toEqual(['/api/components/custom%3Aold', '/api/components/oven', '/api/components/custom%3Abad', '/api/components/custom%3Ab'])
-})
-test('an old component that the backend refuses stays in the old table', async () => {
-    backend({legacy: [{k: 'custom:old', json: JSON.stringify({name: 'Oud', shapes: []})}]})
-    const base = global.fetch
-    global.fetch = vi.fn(async (url, o) => (url === '/api/symbols/custom%3Aold' ? {ok: false} : base(url, o)))
-    const {result} = await load()
-    expect(result.current.library).toEqual(standard)
-    expect(global.fetch.mock.calls.some((c) => c[1]?.method === 'DELETE')).toBe(false)
-})
-test('a broken old table does not stop the library from loading', async () => {
-    backend({legacy: [{k: 'custom:old', json: '{}'}]})
-    const base = global.fetch
-    global.fetch = vi.fn(async (url, o) => (url === '/api/components' ? {ok: true, json: async () => Promise.reject(new Error('bad'))} : base(url, o)))
-    const {result} = await load()
-    expect(result.current.status).toBe('ready')
-    expect(result.current.library).toEqual(standard)
 })

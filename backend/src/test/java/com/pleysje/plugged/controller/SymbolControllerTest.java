@@ -7,6 +7,12 @@ import com.pleysje.plugged.repository.SymbolRepository;
 import com.pleysje.plugged.service.SymbolService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.AfterEach;
+import com.pleysje.plugged.TestAccounts;
+import com.pleysje.plugged.SignedInRequests;
+import com.pleysje.plugged.repository.ProjectRepository;
+import com.pleysje.plugged.repository.UserGroupRepository;
+import com.pleysje.plugged.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
@@ -22,6 +28,24 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class SymbolControllerTest {
     @Autowired
     MockMvc mvc;
+    @Autowired
+    UserRepository users;
+    @Autowired
+    UserGroupRepository groups;
+    @Autowired
+    ProjectRepository projects;
+
+    /** the requests come from an administrator: he may also change the standard symbols */
+    @BeforeEach
+    void signInAsAdministrator() {
+        TestAccounts.clean(groups, projects, users);
+        SignedInRequests.signInAs(TestAccounts.account(users, "Admin", true));
+    }
+
+    @AfterEach
+    void signOut() {
+        SignedInRequests.signInAs(null);
+    }
     @Autowired
     SymbolRepository repository;
     @Autowired
@@ -203,4 +227,4 @@ class SymbolControllerTest {
         mvc.perform(put("/api/symbols/template").contentType(MediaType.APPLICATION_JSON).content(symbol("template", "T", BOX))).andExpect(status().isBadRequest());
         mvc.perform(get("/api/symbols")).andExpect(jsonPath("$", hasSize(StandardSymbols.all().size())));
     }
-}
+}

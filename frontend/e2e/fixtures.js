@@ -10,7 +10,7 @@
 import {readFileSync} from 'node:fs'
 import {fileURLToPath} from 'node:url'
 import {test as base, expect} from '@playwright/test'
-import {REAL, testInfo} from './mode.js'
+import {REAL, testInfo, testProperties} from './mode.js'
 
 // the requests to the REST API: only paths that start with /api/ (not the source modules under /src/api/ the Vite dev server serves)
 const API_REQUEST = (url) => url.pathname.startsWith('/api/')
@@ -52,6 +52,10 @@ export class FakeBackend {
 
     async install(page) {
         await page.route(API_REQUEST, (route) => this.handle(route))
+    }
+    /** the number of the n-th project of the test (the fake numbers them 1, 2, ...) */
+    id(n) {
+        return n
     }
 
     async handle(route) {
@@ -127,7 +131,6 @@ export class FakeBackend {
         if (path === '/api/auth/status') return json({setupRequired: false, adminEmail: testInfo.contactEmail, user: FAKE_USER})
         if (path === '/api/groups') return json([])
         if (path === '/api/info') return json(this.info)
-        if (path.startsWith('/api/components')) return m === 'GET' ? json([]) : empty()
         return empty(404)
     }
 
@@ -139,6 +142,10 @@ export class FakeBackend {
     }
     async saved(id = 1) {
         return this.projects.get(id)
+    }
+    /** the stored project with this number (in the fake: the same as project n of the test) */
+    async stored(number) {
+        return this.projects.get(number)
     }
     async addSymbol(sym) {
         this.symbols.push({cat: 'Eigen', parents: ['kring'], place: true, v: 0, builtin: false, modified: false, ...sym})
@@ -189,19 +196,38 @@ class RealBackend {
     }
     // clean slate: no projects, only the standard symbols
     userId = null // the signed-in administrator (the tour remembers per user that it was seen: plugged.tour.<id>)
+    // The server numbers the projects itself (a database sequence that never starts over), so project n of a test is not number n as in
+    // the fake: a seeded project gets the number the server gave it; any other project n (made in the editor) is the last number init()
+    // saw handed out + n.
+    base = 0
+    numbers = new Map()
+    id(n) {
+        return this.numbers.get(n) ?? this.base + n
+    }
     async init() {
         this.userId = (await (await this.request.get('/api/auth/status')).json()).user.id
         for (const id of await (await this.request.get('/api/projects')).json()) await this.request.delete('/api/projects/' + id)
+        const probe = await this.request.post('/api/projects', {data: '{}', headers: {'Content-Type': 'application/json'}})
+        expect(probe.ok(), 'create a project: ' + (await probe.text())).toBeTruthy()
+        this.base = (await probe.json()).id
+        await this.request.delete('/api/projects/' + this.base)
         const list = await (await this.request.get('/api/symbols')).json()
         for (const s of list.filter((x) => !x.builtin)) await this.request.delete('/api/symbols/' + encodeURIComponent(s.k))
         await this.request.post('/api/symbols/restore')
     }
-    async seed(id, doc) {
-        const r = await this.request.put('/api/projects/' + id + (doc.name ? '?name=' + encodeURIComponent(doc.name) : ''), {data: JSON.stringify(doc), headers: {'Content-Type': 'application/json'}})
+    /** stores `doc` as project n of the test */
+    async seed(n, doc) {
+        const r = await this.request.post('/api/projects' + (doc.name ? '?name=' + encodeURIComponent(doc.name) : ''), {data: JSON.stringify(doc), headers: {'Content-Type': 'application/json'}})
         expect(r.ok()).toBeTruthy()
+        this.numbers.set(n, (await r.json()).id)
     }
-    async saved(id = 1) {
-        const r = await this.request.get('/api/projects/' + id)
+    async saved(n = 1) {
+        const r = await this.request.get('/api/projects/' + this.id(n))
+        return r.ok() ? r.json() : undefined
+    }
+    /** the stored project with this number (as the editor shows it), not project n of the test */
+    async stored(number) {
+        const r = await this.request.get('/api/projects/' + number)
         return r.ok() ? r.json() : undefined
     }
     async addSymbol(sym) {
@@ -230,7 +256,7 @@ export const signInAsAdmin = async (context) => {
     const status = await (await context.get('/api/auth/status')).json()
     const headers = {'X-XSRF-TOKEN': await csrfOf(context)}
     const response = status.setupRequired
-        ? await context.post('/api/auth/setup', {data: {name: ADMIN.name, surname: ADMIN.surname, password: ADMIN.password}, headers})
+        ? await context.post('/api/auth/setup', {data: {name: ADMIN.name, surname: ADMIN.surname, password: ADMIN.password, setupKey: testProperties['plugged.setup.key']}, headers})
         : await context.post('/api/auth/login', {data: {email: ADMIN.email, password: ADMIN.password}, headers})
     expect(response.ok(), 'sign in as the administrator: ' + (await response.text())).toBeTruthy()
     return (await context.storageState()).cookies
@@ -282,21 +308,22 @@ export const test = base.extend({
         await page.addInitScript((key) => {
             if (!sessionStorage.getItem('e2e-new-visitor') && localStorage.getItem(key) === null) localStorage.setItem(key, JSON.stringify({v: 99, how: 'e2e'}))
         }, tourKey(backend.userId))
-        await use(new App(page))
+        await use(new App(page, backend))
     },
 })
 export {expect}
 export {t, textPattern} from './texts.js'
 
 export class App {
-    constructor(page) {
+    constructor(page, backend) {
         this.page = page
+        this.backend = backend
     }
     /** opens the editor (optionally with a project in the database) and waits until the symbol library has loaded */
     async open(backend, doc, id = 1) {
         if (doc) await backend.seed(id, doc)
         // subscribe before navigating: the project is fetched right after the page has started
-        const loaded = doc ? this.page.waitForResponse((r) => r.url().endsWith('/api/projects/' + id) && r.request().method() === 'GET') : null
+        const loaded = doc ? this.page.waitForResponse((r) => r.url().endsWith('/api/projects/' + backend.id(id)) && r.request().method() === 'GET') : null
         await this.page.goto('/')
         await expect(this.page.locator('#tab-comp')).toBeVisible()
         await loaded
@@ -317,7 +344,7 @@ export class App {
     async load(id) {
         await this.project()
         await this.page.locator('#btn-load').click()
-        await this.page.locator('#project-load-' + id).click()
+        await this.page.locator('#project-load-' + this.backend.id(id)).click()
     }
     /** saves with Alt+S (works on every tab) and returns the saved project document */
     /** saves with Alt+S and answers what the backend stored; `language` = the language the application is in (the status message is checked) */
@@ -326,7 +353,7 @@ export class App {
         // a stored project is saved with PUT /api/projects/{id}; a new one with POST /api/projects (the server gives it its number)
         const put = this.page.waitForResponse(
             (r) =>
-                (r.request().method() === 'PUT' && new RegExp('/api/projects/' + id + '(\\?|$)').test(r.url())) ||
+                (r.request().method() === 'PUT' && new RegExp('/api/projects/' + backend.id(id) + '(\\?|$)').test(r.url())) ||
                 (r.request().method() === 'POST' && new URL(r.url()).pathname === '/api/projects'),
         )
         await this.page.keyboard.press('Alt+s')
@@ -394,4 +421,4 @@ export class App {
         await this.page.mouse.move(b.x, b.y, {steps: 4})
         await this.page.mouse.up()
     }
-}
+}

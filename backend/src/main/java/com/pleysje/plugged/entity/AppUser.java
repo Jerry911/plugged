@@ -45,6 +45,13 @@ public class AppUser {
     @ColumnDefault("0")
     @Column(nullable = false)
     private int loginCount = 0;
+    /** Wrong passwords in a row since the last successful sign-in (or the last lockout). */
+    @ColumnDefault("0")
+    @Column(nullable = false)
+    private int failedLogins = 0;
+    /** Moment until which the account cannot sign in after too many wrong passwords, ISO-8601; null = not locked. */
+    @Column(length = 40)
+    private String lockedUntil;
 
     protected AppUser() {
     }
@@ -105,9 +112,44 @@ public class AppUser {
         return loginCount;
     }
 
-    /** A successful sign-in: now is the last one, and there is one more. */
+    /** A successful sign-in: now is the last one, and there is one more. The wrong attempts before it are forgotten. */
     public void recordLogin() {
         lastLogin = Instant.now().toString();
         loginCount++;
+        failedLogins = 0;
+        lockedUntil = null;
+    }
+
+    public int getFailedLogins() {
+        return failedLogins;
+    }
+
+    /** The moment the lockout ends, or null when the account is not locked (any more) at {@code now}. */
+    public Instant lockedUntil(Instant now) {
+        if (lockedUntil == null) return null;
+        Instant until = Instant.parse(lockedUntil);
+        return until.isAfter(now) ? until : null;
+    }
+
+    public String getLockedUntil() {
+        return lockedUntil;
+    }
+
+    /**
+     * A wrong password at {@code now}: after {@code maxFailures} in a row the account is locked for {@code lockout}. Answers true when this
+     * attempt locked it.
+     */
+    public boolean recordFailedLogin(Instant now, int maxFailures, java.time.Duration lockout) {
+        if (lockedUntil != null && lockedUntil(now) == null) lockedUntil = null; // an expired lockout starts the count over
+        if (++failedLogins < maxFailures) return false;
+        failedLogins = 0;
+        lockedUntil = now.plus(lockout).toString();
+        return true;
+    }
+
+    /** The administrator opens a locked account again. */
+    public void unlock() {
+        failedLogins = 0;
+        lockedUntil = null;
     }
 }

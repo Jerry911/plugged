@@ -8,6 +8,7 @@ import {useTranslation} from '../../i18n/I18nProvider.jsx'
 import {
     addGroupMember,
     approveUser,
+    unlockUser,
     createGroup,
     deleteGroup,
     deleteUser,
@@ -59,6 +60,7 @@ export default function AdminPage({currentUser, onUsersChange}) {
     const waiting = users ? users.filter((user) => !user.approved).length : 0
     const actions = {
         approve: (user) => run(() => approveUser(user.id), 'users.approved', {name: fullName(user)}),
+        unlock: (user) => run(() => unlockUser(user.id), 'users.unlocked', {name: fullName(user)}),
         setAdmin: (user, admin) => run(() => setUserAdmin(user.id, admin), admin ? 'users.madeAdmin' : 'users.madeUser', {name: fullName(user)}),
         remove: (user) => {
             if (window.confirm(t(user.approved ? 'users.confirmDelete' : 'users.confirmReject', {name: fullName(user), email: user.email})))

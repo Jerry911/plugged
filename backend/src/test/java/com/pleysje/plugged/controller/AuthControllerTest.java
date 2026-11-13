@@ -49,7 +49,7 @@ class AuthControllerTest {
     }
 
     private ResultActions setupAdmin(MockHttpSession session) throws Exception {
-        return send(post("/api/auth/setup"), session, "{\"name\":\" Jeroen \",\"surname\":\"Pleysier\",\"password\":\"" + PASSWORD + "\"}");
+        return send(post("/api/auth/setup"), session, "{\"name\":\" Jeroen \",\"surname\":\"Pleysier\",\"password\":\"" + PASSWORD + "\",\"setupKey\":\"test-setup-key\"}");
     }
 
     private ResultActions register(String email, String password) throws Exception {
@@ -82,7 +82,7 @@ class AuthControllerTest {
     void setupCreatesAnApprovedAdministratorAndSignsItIn() throws Exception {
         MockHttpSession session = new MockHttpSession();
         // an email address in the request is ignored: the address of the administrator is plugged.admin.email
-        send(post("/api/auth/setup"), session, "{\"name\":\"Jeroen\",\"surname\":\"Pleysier\",\"email\":\"other@example.be\",\"password\":\"" + PASSWORD + "\"}")
+        send(post("/api/auth/setup"), session, "{\"name\":\"Jeroen\",\"surname\":\"Pleysier\",\"email\":\"other@example.be\",\"password\":\"" + PASSWORD + "\",\"setupKey\":\"test-setup-key\"}")
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.email", is(ADMIN)))
                 .andExpect(jsonPath("$.admin", is(true)))
@@ -98,7 +98,7 @@ class AuthControllerTest {
 
     @Test
     void setupGivesTheProjectsFromBeforeAccountsToTheAdministrator() throws Exception {
-        projects.save(new com.pleysje.plugged.entity.ProjectDoc(3L, "{}", "Oud"));
+        projects.save(new com.pleysje.plugged.entity.ProjectDoc("{}", "Oud"));
         MockHttpSession session = new MockHttpSession();
         setupAdmin(session).andExpect(status().isOk());
         mvc.perform(get("/api/projects/summaries").session(session)).andExpect(jsonPath("$[0].mine", is(true)));
@@ -192,8 +192,8 @@ class AuthControllerTest {
     @Test
     void changesNeedTheCsrfToken() throws Exception {
         MockHttpSession admin = signedInAdmin();
-        mvc.perform(put("/api/projects/1").session(admin).contentType(MediaType.APPLICATION_JSON).content("{}")).andExpect(status().isForbidden());
-        mvc.perform(put("/api/projects/1").session(admin).with(csrf()).contentType(MediaType.APPLICATION_JSON).content("{}")).andExpect(status().isNoContent());
+        mvc.perform(post("/api/projects").session(admin).contentType(MediaType.APPLICATION_JSON).content("{}")).andExpect(status().isForbidden());
+        mvc.perform(post("/api/projects").session(admin).with(csrf()).contentType(MediaType.APPLICATION_JSON).content("{}")).andExpect(status().isCreated());
     }
 
     @Test
@@ -272,7 +272,7 @@ class AuthControllerTest {
         MockHttpSession admin = new MockHttpSession();
         java.util.List<String[]> lines = logLines(() -> {
             setupAdmin(admin).andExpect(status().isOk());
-            mvc.perform(put("/api/projects/5").session(admin).with(csrf()).contentType(MediaType.APPLICATION_JSON).content("{}")).andExpect(status().isNoContent());
+            mvc.perform(post("/api/projects").session(admin).with(csrf()).contentType(MediaType.APPLICATION_JSON).content("{}")).andExpect(status().isCreated());
             mvc.perform(get("/api/auth/status")).andExpect(status().isOk());
             login(null, "Nobody@Example.be\\nINFO fake line", PASSWORD).andExpect(status().isUnauthorized());
         });
@@ -280,8 +280,8 @@ class AuthControllerTest {
         org.junit.jupiter.api.Assertions.assertEquals("-", userOf(lines, "--> POST /api/auth/setup"));
         org.junit.jupiter.api.Assertions.assertEquals(ADMIN, userOf(lines, "User "));
         org.junit.jupiter.api.Assertions.assertEquals(ADMIN, userOf(lines, "<-- POST /api/auth/setup"));
-        org.junit.jupiter.api.Assertions.assertEquals(ADMIN, userOf(lines, "--> PUT /api/projects/{id}"));
-        org.junit.jupiter.api.Assertions.assertEquals(ADMIN, userOf(lines, "Created project 5 of user"));
+        org.junit.jupiter.api.Assertions.assertEquals(ADMIN, userOf(lines, "--> POST /api/projects"));
+        org.junit.jupiter.api.Assertions.assertEquals(ADMIN, userOf(lines, "Created project "));
         org.junit.jupiter.api.Assertions.assertEquals("-", userOf(lines, "--> GET /api/auth/status"));
         // a refused sign-in says which address was tried, without the line break it was given
         org.junit.jupiter.api.Assertions.assertEquals("-", userOf(lines, "Sign-in refused for nobody@example.be_info fake line: unknown address"));

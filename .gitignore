@@ -10,3 +10,5 @@ data/
 /backend/src/main/resources/static/
 /frontend/.env.local
 /backend/config/
+# personal development settings (e.g. your own admin address); copy application-dev.properties.example to start one
+/backend/src/main/resources/application-dev.properties

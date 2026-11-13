@@ -17,20 +17,30 @@ class ProjectRepositoryTest {
 
     @Test
     void saveFindOverwriteDelete() {
-        repository.saveAndFlush(new ProjectDoc(1L, "{\"v\":1}"));
-        assertEquals("{\"v\":1}", repository.findById(1L).orElseThrow().getJson());
-        repository.saveAndFlush(new ProjectDoc(1L, "{\"v\":2}"));
+        long id = repository.saveAndFlush(new ProjectDoc("{\"v\":1}")).getId();
+        ProjectDoc stored = repository.findById(id).orElseThrow();
+        assertEquals("{\"v\":1}", stored.getJson());
+        long version = stored.getVersion();
+        stored.update("{\"v\":2}", null);
+        repository.saveAndFlush(stored);
         assertEquals(1, repository.count());
-        assertEquals("{\"v\":2}", repository.findById(1L).orElseThrow().getJson());
-        repository.deleteById(1L);
-        assertTrue(repository.findById(1L).isEmpty());
+        assertEquals("{\"v\":2}", repository.findById(id).orElseThrow().getJson());
+        assertEquals(version + 1, repository.findById(id).orElseThrow().getVersion()); // every save is a new version
+        repository.deleteById(id);
+        assertTrue(repository.findById(id).isEmpty());
+    }
+
+    @Test
+    void newProjectsGetDifferentNumbersFromTheDatabase() {
+        long first = repository.saveAndFlush(new ProjectDoc("{}")).getId();
+        long second = repository.saveAndFlush(new ProjectDoc("{}")).getId();
+        assertTrue(second > first);
     }
 
     @Test
     void storesLargeDocuments() {
         String big = "{\"x\":\"" + "a".repeat(500_000) + "\"}";
-        repository.saveAndFlush(new ProjectDoc(2L, big));
-        repository.flush();
-        assertEquals(big.length(), repository.findById(2L).orElseThrow().getJson().length());
+        long id = repository.saveAndFlush(new ProjectDoc(big)).getId();
+        assertEquals(big.length(), repository.findById(id).orElseThrow().getJson().length());
     }
 }

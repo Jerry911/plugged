@@ -112,12 +112,13 @@ class AdminControllerTest {
         long id = createGroup("Team");
         mvc.perform(put("/api/admin/groups/" + id + "/members/" + alice.getId()).with(as(admin)));
         mvc.perform(put("/api/admin/groups/" + id + "/members/" + bob.getId()).with(as(admin)));
-        json(put("/api/projects/1"), alice, "{}").andExpect(status().isNoContent());
-        json(put("/api/projects/1/groups"), alice, "{\"groupIds\":[" + id + "]}").andExpect(status().isOk());
-        mvc.perform(get("/api/projects/1").with(as(bob))).andExpect(status().isOk());
+        String created = json(post("/api/projects"), alice, "{}").andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+        long project = Long.parseLong(created.replaceAll(".*\"id\":(\\d+).*", "$1"));
+        json(put("/api/projects/" + project + "/groups"), alice, "{\"groupIds\":[" + id + "]}").andExpect(status().isOk());
+        mvc.perform(get("/api/projects/" + project).with(as(bob))).andExpect(status().isOk());
         mvc.perform(delete("/api/admin/groups/" + id).with(as(admin))).andExpect(status().isNoContent());
-        mvc.perform(get("/api/projects/1").with(as(bob))).andExpect(status().isNotFound());
-        mvc.perform(get("/api/projects/1").with(as(alice))).andExpect(status().isOk());
+        mvc.perform(get("/api/projects/" + project).with(as(bob))).andExpect(status().isNotFound());
+        mvc.perform(get("/api/projects/" + project).with(as(alice))).andExpect(status().isOk());
         mvc.perform(delete("/api/admin/groups/" + id).with(as(admin))).andExpect(status().isNotFound());
     }
 
@@ -161,16 +162,17 @@ class AdminControllerTest {
     void theProjectsOfARemovedAccountGoToTheAdministratorWhoRemovesIt() throws Exception {
         long group = createGroup("Team");
         mvc.perform(put("/api/admin/groups/" + group + "/members/" + bob.getId()).with(as(admin)));
-        json(put("/api/projects/4"), bob, "{\"v\":4}").andExpect(status().isNoContent());
+        String created = json(post("/api/projects"), bob, "{\"v\":4}").andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+        long project = Long.parseLong(created.replaceAll(".*\"id\":(\\d+).*", "$1"));
         mvc.perform(delete("/api/admin/users/" + bob.getId()).with(as(admin))).andExpect(status().isNoContent());
-        assertEquals(admin.getId(), projects.findById(4L).orElseThrow().getOwnerId());
+        assertEquals(admin.getId(), projects.findById(project).orElseThrow().getOwnerId());
         mvc.perform(get("/api/admin/groups").with(as(admin))).andExpect(jsonPath("$[0].members", hasSize(0)));
     }
 
     @Test
     void projectsFromBeforeAccountsBelongToThePrimaryAdministrator() {
-        projects.save(new ProjectDoc(12L, "{}", "Oud"));
-        userService.claimOwnerlessProjects();
-        assertEquals(admin.getId(), projects.findById(12L).orElseThrow().getOwnerId());
+        long id = projects.save(new ProjectDoc("{}", "Oud")).getId();
+        userService.claimOwnerlessWork();
+        assertEquals(admin.getId(), projects.findById(id).orElseThrow().getOwnerId());
     }
 }

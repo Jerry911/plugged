@@ -8,9 +8,10 @@ import com.pleysje.plugged.logging.ApiLog;
 import com.pleysje.plugged.security.Authentications;
 import com.pleysje.plugged.service.ProjectService;
 import java.util.List;
-import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import com.pleysje.plugged.i18n.LocalizedStatusException;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -21,6 +22,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -31,8 +33,11 @@ import org.springframework.web.bind.annotation.RestController;
  * <ul>
  *   <li>GET /api/projects: the numbers of the projects the user may see</li>
  *   <li>GET /api/projects/summaries: [{id, name, updated, owner, groups, mine, canManage}] of those projects</li>
- *   <li>POST /api/projects?name=: a new project under the next free number; answers {id} (201)</li>
- *   <li>GET / PUT / DELETE /api/projects/{id}: the document; 404 for a project the user may not see</li>
+ *   <li>POST /api/projects?name=: a new project, the server gives the number; answers {id, version} (201) and the version as ETag</li>
+ *   <li>GET /api/projects/{id}: the document, its version in the ETag header; 404 for a project the user may not see</li>
+ *   <li>PUT /api/projects/{id}: saves the document; the If-Match header must carry the version it is based on (428 without it, 409 when
+ *       somebody else saved in between); answers 204 with the new version as ETag. A project that does not exist answers 404.</li>
+ *   <li>DELETE /api/projects/{id}</li>
  *   <li>PUT /api/projects/{id}/groups {groupIds}: the groups the project is shared with (owner or administrator)</li>
  * </ul>
  */
@@ -67,28 +72,50 @@ public class ProjectController {
     }
 
     @GetMapping(value = "/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
-    public String get(@PathVariable long id, Authentication authentication) {
-        return ApiLog.run(log, "GET /api/projects/{id}", "id=" + id, () -> projects.document(Authentications.userId(authentication), id));
+    public ResponseEntity<String> get(@PathVariable long id, Authentication authentication) {
+        return ApiLog.run(log, "GET /api/projects/{id}", "id=" + id, () -> {
+            ProjectService.Document document = projects.document(Authentications.userId(authentication), id);
+            return ResponseEntity.ok().eTag(etag(document.version())).body(document.json());
+        });
     }
 
     @PostMapping
-    public ResponseEntity<Map<String, Long>> create(@RequestBody String json, @RequestParam(required = false) String name, Authentication authentication) {
+    public ResponseEntity<ProjectSummary.Created> create(@RequestBody String json, @RequestParam(required = false) String name, Authentication authentication) {
         String operation = "POST /api/projects";
         return ApiLog.run(log, operation, "name=" + name + ", json=" + json.length() + " chars", () -> {
             ApiLog.body(log, operation, json);
-            long id = projects.create(Authentications.userId(authentication), json, cleanName(name));
-            return ResponseEntity.status(HttpStatus.CREATED).body(Map.of("id", id));
+            ProjectSummary.Created created = projects.create(Authentications.userId(authentication), json, cleanName(name));
+            return ResponseEntity.status(HttpStatus.CREATED).eTag(etag(created.version())).body(created);
         });
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Void> put(@PathVariable long id, @RequestBody String json, @RequestParam(required = false) String name, Authentication authentication) {
+    public ResponseEntity<Void> put(@PathVariable long id, @RequestBody String json, @RequestParam(required = false) String name,
+                                    @RequestHeader(value = HttpHeaders.IF_MATCH, required = false) String ifMatch, Authentication authentication) {
         String operation = "PUT /api/projects/{id}";
-        return ApiLog.run(log, operation, "id=" + id + ", name=" + name + ", json=" + json.length() + " chars", () -> {
+        return ApiLog.run(log, operation, "id=" + id + ", name=" + name + ", version=" + ifMatch + ", json=" + json.length() + " chars", () -> {
             ApiLog.body(log, operation, json);
-            projects.save(Authentications.userId(authentication), id, json, cleanName(name));
-            return ResponseEntity.noContent().<Void>build();
+            long version = projects.save(Authentications.userId(authentication), id, versionOf(ifMatch), json, cleanName(name));
+            return ResponseEntity.noContent().eTag(etag(version)).<Void>build();
         });
+    }
+
+    /** The ETag of a version: "3". */
+    static String etag(long version) {
+        return "\"" + version + "\"";
+    }
+
+    /** The version of an If-Match header ("3", W/"3" or 3); 428 when there is none. */
+    static long versionOf(String ifMatch) {
+        String value = ifMatch == null ? "" : ifMatch.trim();
+        if (value.startsWith("W/")) value = value.substring(2);
+        value = value.replace("\"", "");
+        try {
+            if (!value.isEmpty()) return Long.parseLong(value);
+        } catch (NumberFormatException exception) {
+            // falls through to the answer below
+        }
+        throw new LocalizedStatusException(HttpStatus.PRECONDITION_REQUIRED, "project.versionRequired");
     }
 
     @DeleteMapping("/{id}")

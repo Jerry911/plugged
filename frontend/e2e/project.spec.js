@@ -58,7 +58,7 @@ test('Laden lists the stored projects by name and opens the chosen one; saving g
     const list = page.locator('#project-list')
     await expect(list).toContainText('Eerste woning')
     await expect(list).toContainText('Tweede woning')
-    await page.locator('#project-load-2').click()
+    await page.locator('#project-load-' + backend.id(2)).click()
     await expect(page.locator('#eds-page-1')).toHaveText('Eigen blad')
     const saved = await app.save(backend, 2)
     expect(saved.name).toBe('Tweede woning')
@@ -150,7 +150,7 @@ test('an own stored project is saved by itself once the user stops changing it, 
     // nothing is sent while the user is still busy
     await page.clock.runFor(5_000)
     expect((await backend.saved(1)).name).toBe('Eerste woning')
-    const put = page.waitForResponse((r) => r.request().method() === 'PUT' && /\/api\/projects\/1(\?|$)/.test(r.url()))
+    const put = page.waitForResponse((r) => r.request().method() === 'PUT' && new RegExp('/api/projects/' + backend.id(1) + '(\\?|$)').test(r.url()))
     await page.clock.runFor(20_000)
     await put
     await expect(app.status()).toHaveText(/^Automatisch opgeslagen om \d\d:\d\d ✓$/)
@@ -159,7 +159,7 @@ test('an own stored project is saved by itself once the user stops changing it, 
     await app.project()
     await page.locator('#project-name').fill('Woning Piet')
     await app.project()
-    const hidden = page.waitForResponse((r) => r.request().method() === 'PUT' && /\/api\/projects\/1(\?|$)/.test(r.url()))
+    const hidden = page.waitForResponse((r) => r.request().method() === 'PUT' && new RegExp('/api/projects/' + backend.id(1) + '(\\?|$)').test(r.url()))
     await page.evaluate(() => {
         Object.defineProperty(document, 'visibilityState', {configurable: true, get: () => 'hidden'})
         document.dispatchEvent(new Event('visibilitychange'))
@@ -174,7 +174,7 @@ test('the keyboard shortcuts of the Project menu: Alt+L load, Alt+E export, Alt+
     await page.keyboard.press('Alt+l')
     await expect(page.locator('#project-list')).toContainText('Tweede woning')
     await expect(page.locator('#btn-load')).toContainText('Alt+L')
-    await page.locator('#project-load-2').click()
+    await page.locator('#project-load-' + backend.id(2)).click()
     await expect(page.locator('#eds-page-1')).toHaveText('Eigen blad')
     await page.keyboard.press('Alt+e')
     await expect(page.locator('#export-confirm')).toBeVisible()

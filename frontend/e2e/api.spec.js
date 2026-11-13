@@ -9,33 +9,64 @@ test.skip(!REAL, 'needs the real Spring Boot backend (E2E_REAL_BACKEND=1)')
 const json = {'Content-Type': 'application/json'}
 
 test.describe('/api/projects', () => {
+    const create = async (request, doc, name) => {
+        const response = await request.post('/api/projects' + (name ? '?name=' + encodeURIComponent(name) : ''), {data: JSON.stringify(doc), headers: json})
+        expect(response.status()).toBe(201)
+        return response
+    }
     test('a project can be stored, listed, read back unchanged and deleted', async ({request}) => {
         const doc = project({footer: {titel: 'API test'}})
-        expect((await request.put('/api/projects/4242', {data: JSON.stringify(doc), headers: json})).status()).toBe(204)
-        expect(await (await request.get('/api/projects')).json()).toContain(4242)
-        const response = await request.get('/api/projects/4242')
+        const created = await create(request, doc)
+        const {id, version} = await created.json()
+        expect(version).toBe(0)
+        expect(created.headers()['etag']).toBe('"0"')
+        expect(await (await request.get('/api/projects')).json()).toContain(id)
+        const response = await request.get('/api/projects/' + id)
         expect(response.status()).toBe(200)
         expect(response.headers()['content-type']).toContain('application/json')
+        expect(response.headers()['etag']).toBe('"0"')
         expect(await response.json()).toEqual(doc)
-        // saving again replaces it
-        await request.put('/api/projects/4242', {data: JSON.stringify({...doc, footer: {titel: 'Nieuw'}}), headers: json})
-        expect((await (await request.get('/api/projects/4242')).json()).footer.titel).toBe('Nieuw')
-        await request.delete('/api/projects/4242')
-        expect((await request.get('/api/projects/4242')).status()).toBe(404)
-        expect(await (await request.get('/api/projects')).json()).not.toContain(4242)
+        // saving again, based on the version that was read, replaces it and makes a new version
+        const saved = await request.put('/api/projects/' + id, {data: JSON.stringify({...doc, footer: {titel: 'Nieuw'}}), headers: {...json, 'If-Match': '"0"'}})
+        expect(saved.status()).toBe(204)
+        expect(saved.headers()['etag']).toBe('"1"')
+        expect((await (await request.get('/api/projects/' + id)).json()).footer.titel).toBe('Nieuw')
+        await request.delete('/api/projects/' + id)
+        expect((await request.get('/api/projects/' + id)).status()).toBe(404)
+        expect(await (await request.get('/api/projects')).json()).not.toContain(id)
+    })
+    test('a save based on an older version, or without a version, is refused', async ({request}) => {
+        const {id} = await (await create(request, project())).json()
+        expect((await request.put('/api/projects/' + id, {data: '{}', headers: {...json, 'If-Match': '"0"'}})).status()).toBe(204)
+        const stale = await request.put('/api/projects/' + id, {data: '{}', headers: {...json, 'If-Match': '"0"'}})
+        expect(stale.status()).toBe(409)
+        expect((await stale.json()).messageKey).toBe('project.changedElsewhere')
+        expect((await request.put('/api/projects/' + id, {data: '{}', headers: json})).status()).toBe(428)
+        await request.delete('/api/projects/' + id)
+    })
+    test('the client cannot choose a number, and only a project document is stored', async ({request}) => {
+        expect((await request.put('/api/projects/987650', {data: '{}', headers: {...json, 'If-Match': '"0"'}})).status()).toBe(404)
+        const invalid = await request.post('/api/projects', {data: '[1, 2, 3]', headers: json})
+        expect(invalid.status()).toBe(400)
+        expect((await invalid.json()).messageKey).toBe('project.invalidStructure')
+        expect((await request.post('/api/projects', {data: '{"een": ', headers: json})).status()).toBe(400)
     })
     test('the name given on save is listed in the summaries, without the project document', async ({request}) => {
-        const doc = project({footer: {titel: 'Lijst'}})
-        await request.put('/api/projects/4243?name=' + encodeURIComponent('Woning Jan'), {data: JSON.stringify(doc), headers: json})
+        const {id} = await (await create(request, project({footer: {titel: 'Lijst'}}), 'Woning Jan')).json()
         const rows = await (await request.get('/api/projects/summaries')).json()
-        const row = rows.find((summary) => summary.id === 4243)
-        expect(row).toMatchObject({id: 4243, name: 'Woning Jan'})
+        const row = rows.find((summary) => summary.id === id)
+        expect(row).toMatchObject({id, name: 'Woning Jan'})
         expect(row.updated).toBeTruthy()
         expect(row.een).toBeUndefined()
-        await request.delete('/api/projects/4243')
+        await request.delete('/api/projects/' + id)
     })
     test('an unknown project is a 404', async ({request}) => {
         expect((await request.get('/api/projects/987654')).status()).toBe(404)
+    })
+    test('every answer carries the security headers', async ({request}) => {
+        const response = await request.get('/api/info')
+        expect(response.headers()['content-security-policy']).toContain("script-src 'self'")
+        expect(response.headers()['x-frame-options']).toBe('DENY')
     })
 })
 

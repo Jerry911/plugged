@@ -1,7 +1,7 @@
 // Copyright 2026 Pleysier Jeroen
 // SPDX-License-Identifier: AGPL-3.0-only
 import {render} from '@testing-library/react'
-import {allTypes, categoryName, setLibrary, symbolName, typeOf} from '../../symbols/symbolLibrary.js'
+import {allTypes, categoryName, embedSymbols, setLibrary, symbolName, typeOf} from '../../symbols/symbolLibrary.js'
 import {arcPath, placedShapesOf, socketShapes, socketStackOf, waterproofMark} from '../../symbols/symbolShapes.js'
 import SymbolGraphic from '../../symbols/SymbolGraphic.jsx'
 import {connectionReach} from '../../model/boardLayout.js'
@@ -35,6 +35,31 @@ test('typeOf falls back to the placeholder for an unknown (e.g. deleted) symbol,
     setLibrary(null)
     expect(typeOf({custom: []}, 'nope')).toMatchObject({k: '?', parents: []})
     expect(allTypes({})).toEqual([])
+})
+const MINE = {k: 'custom:mijn', name: 'Mijn lamp', cat: 'Eigen', parents: ['kring'], place: true, shapes: [{t: 'circle', cx: 12, cy: 12, r: 5}], builtin: false, editable: true, group: null}
+const USING = {
+    een: [{id: 'e1', tree: [{id: 'k1', type: 'kring', children: [{id: 'm1', type: 'custom:mijn', children: []}, {id: 'l1', type: 'lichtpunt', children: []}]}]}],
+    sit: [{id: 's1', walls: [], items: [{id: 'i1', kind: 'sym', type: 'custom:los'}]}],
+}
+test('a stored project carries a copy of the own symbols it uses, not of the standard ones', () => {
+    setLibrary([...BUILTIN, MINE, {...MINE, k: 'custom:ongebruikt'}])
+    const stored = embedSymbols(USING)
+    expect(stored.symbols).toEqual([{k: 'custom:mijn', name: 'Mijn lamp', cat: 'Eigen', parents: ['kring'], place: true, shapes: MINE.shapes}])
+    expect(stored.een).toBe(USING.een)
+    setLibrary(BUILTIN)
+})
+test('somebody without the symbol still sees it drawn from the copy in the project; his own library wins', () => {
+    setLibrary(BUILTIN)
+    const shared = {...USING, symbols: [{...MINE, builtin: undefined}]}
+    expect(typeOf(shared, 'custom:mijn')).toMatchObject({name: 'Mijn lamp', shapes: MINE.shapes})
+    expect(typeOf(USING, 'custom:mijn').name).toBe('Onbekend symbool')
+    // saved again by him: the copy stays in the project
+    expect(embedSymbols(shared).symbols.map((symbol) => symbol.k)).toEqual(['custom:mijn'])
+    // a broken copy is ignored
+    expect(typeOf({symbols: [{k: 'custom:mijn'}]}, 'custom:mijn').name).toBe('Onbekend symbool')
+    setLibrary([...BUILTIN, {...MINE, name: 'Eigen versie'}])
+    expect(typeOf(shared, 'custom:mijn').name).toBe('Eigen versie')
+    setLibrary(BUILTIN)
 })
 test('Sym renders every shape kind', () => {
     const {container} = render(

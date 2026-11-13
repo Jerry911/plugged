@@ -8,6 +8,7 @@ import com.pleysje.plugged.entity.AppUser;
 import com.pleysje.plugged.entity.UserGroup;
 import com.pleysje.plugged.i18n.LocalizedStatusException;
 import com.pleysje.plugged.repository.ProjectRepository;
+import com.pleysje.plugged.repository.SymbolRepository;
 import com.pleysje.plugged.repository.UserGroupRepository;
 import com.pleysje.plugged.repository.UserRepository;
 import java.util.List;
@@ -24,16 +25,16 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class GroupService {
     private static final Logger log = LoggerFactory.getLogger(GroupService.class);
-    public static final int MAX_NAME_LENGTH = 100;
-
     private final UserGroupRepository groups;
     private final UserRepository users;
     private final ProjectRepository projects;
+    private final SymbolRepository symbols;
 
-    public GroupService(UserGroupRepository groups, UserRepository users, ProjectRepository projects) {
+    public GroupService(UserGroupRepository groups, UserRepository users, ProjectRepository projects, SymbolRepository symbols) {
         this.groups = groups;
         this.users = users;
         this.projects = projects;
+        this.symbols = symbols;
     }
 
     @Transactional(readOnly = true)
@@ -50,7 +51,7 @@ public class GroupService {
 
     @Transactional
     public GroupDto create(String name) {
-        String clean = validName(name);
+        String clean = name.strip();
         if (groups.existsByNameIgnoreCase(clean)) throw new LocalizedStatusException(HttpStatus.CONFLICT, "group.nameTaken", clean);
         UserGroup group = groups.save(new UserGroup(clean));
         log.info("Group {} \"{}\" created", group.getId(), clean);
@@ -60,20 +61,24 @@ public class GroupService {
     @Transactional
     public GroupDto rename(long id, String name) {
         UserGroup group = find(id);
-        String clean = validName(name);
+        String clean = name.strip();
         if (groups.existsByNameIgnoreCaseAndIdNot(clean, id)) throw new LocalizedStatusException(HttpStatus.CONFLICT, "group.nameTaken", clean);
         group.setName(clean);
         log.info("Group {} renamed to \"{}\"", id, clean);
         return GroupDto.of(group);
     }
 
-    /** Removes a group: its projects stay with their owners, they are just no longer shared with it. */
+    /**
+     * Removes a group: its projects stay with their owners, they are just no longer shared with it; its symbols become personal symbols of
+     * {@code actingAdminId}, the administrator who removes it.
+     */
     @Transactional
-    public void delete(long id) {
+    public void delete(long actingAdminId, long id) {
         UserGroup group = find(id);
         int unshared = projects.unshareGroup(id);
+        int moved = symbols.groupToUser(id, actingAdminId);
         groups.delete(group);
-        log.info("Group {} deleted ({} project(s) no longer shared with it)", id, unshared);
+        log.info("Group {} deleted ({} project(s) no longer shared with it, {} symbol(s) now belong to user {})", id, unshared, moved, actingAdminId);
     }
 
     @Transactional
@@ -138,12 +143,5 @@ public class GroupService {
 
     private UserGroup find(long id) {
         return groups.findById(id).orElseThrow(() -> new LocalizedStatusException(HttpStatus.NOT_FOUND, "group.notFound"));
-    }
-
-    private static String validName(String name) {
-        String clean = name == null ? "" : name.strip();
-        if (clean.isEmpty()) throw new LocalizedStatusException(HttpStatus.BAD_REQUEST, "group.nameRequired");
-        if (clean.length() > MAX_NAME_LENGTH) throw new LocalizedStatusException(HttpStatus.BAD_REQUEST, "group.nameTooLong", MAX_NAME_LENGTH);
-        return clean;
     }
 }

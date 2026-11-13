@@ -25,7 +25,7 @@ import {useAutoSave} from '../hooks/useAutoSave.js'
 import {exportEds, importEds} from '../model/eds.js'
 import {REQUIRED_FOOTER_FIELDS, verify} from '../model/rules.js'
 import {unplacedNodes} from '../model/project.js'
-import {OWN_CATEGORY, setLibrary, symbolName} from '../symbols/symbolLibrary.js'
+import {embedSymbols, OWN_CATEGORY, setLibrary, symbolName} from '../symbols/symbolLibrary.js'
 import {I18nProvider, useTranslation} from '../i18n/I18nProvider.jsx'
 import LanguageSelect from '../i18n/LanguageSelect.jsx'
 import PageBar from './PageBar.jsx'
@@ -232,19 +232,30 @@ function Editor({library, user, onLogout}) {
     useEffect(() => {
         if (user.admin) fetchUsers().then(countWaiting, () => {})
     }, [user.admin, countWaiting])
-    // stores the document under `id`, or as a new project when `id` is null (the server gives the number); resolves to the number or null
+    // somebody else saved the open project in the meantime: the server refused to overwrite that work
+    const onConflict = () => setStatusMessage(t('app.saveConflict'))
+    // stores the document under `id`, or as a new project when `id` is null (the server gives the number); resolves to the number or null.
+    // The stored document carries a copy of the own symbols it uses (embedSymbols), so it draws for everybody it is shared with.
+    // A student in educational mode cannot create a project with content (that would be an import): his new project is created empty first,
+    // then his work is saved in it.
     const store = async (id, document) => {
-        const storedId = id == null ? await createProject(document) : (await saveProject(id, document)) ? id : null
-        if (storedId != null) {
-            markSaved(document)
-            setProjectListKey((key) => key + 1)
+        let storedId = id
+        if (storedId == null) {
+            storedId = await createProject(embedSymbols(restricted ? {...newProject(), name: document.name, footer: document.footer} : document))
+            if (storedId == null) return null
+            if (restricted) setProjectId(storedId)
         }
+        if (id != null || restricted) {
+            if (!(await saveProject(storedId, embedSymbols(document), {onConflict}))) return null
+        }
+        markSaved(document)
+        setProjectListKey((key) => key + 1)
         return storedId
     }
     const save = async () => {
         const id = await store(projectId, project)
         if (id != null) setProjectId(id)
-        setStatusMessage(id != null ? t('app.saved') : t('app.saveFailed'))
+        setStatusMessage((current) => (id != null ? t('app.saved') : current === t('app.saveConflict') ? current : t('app.saveFailed')))
     }
     const saveAs = async () => {
         const name = window.prompt(t('app.saveAsPrompt'), (project.name || project.footer?.titel || '').trim())
@@ -264,11 +275,11 @@ function Editor({library, user, onLogout}) {
     // open do not overwrite each other's work without noticing
     const autoSave = async ({keepalive} = {}) => {
         const document = project,
-            stored = await saveProject(projectId, document, {keepalive})
+            stored = await saveProject(projectId, embedSymbols(document), {keepalive, onConflict})
         if (stored) {
             markSaved(document)
             setStatusMessage(t('app.autoSaved', {time: new Date().toLocaleTimeString(language, {hour: '2-digit', minute: '2-digit'})}))
-        } else setStatusMessage(t('app.autoSaveFailed'))
+        } else setStatusMessage((current) => (current === t('app.saveConflict') ? current : t('app.autoSaveFailed')))
         return stored
     }
     useAutoSave({enabled: projectId != null && ownProject, changed: project, isDirty: hasUnsavedChanges, save: autoSave})
@@ -533,6 +544,8 @@ function Editor({library, user, onLogout}) {
                 {tab === COMPONENTS_TAB && (
                     <SymbolEditor
                         library={symbols}
+                        groups={library.groups}
+                        onOpen={library.reloadGroups}
                         onSave={saveSymbol}
                         onRemove={removeSymbol}
                         onRestore={restoreSymbol}

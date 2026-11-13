@@ -65,7 +65,7 @@ class AdminSymbolControllerTest {
     }
 
     private void draw(String key, String name, String shapes) throws Exception {
-        mvc.perform(put("/api/symbols/" + key).with(as(user)).contentType(MediaType.APPLICATION_JSON)
+        mvc.perform(put("/api/symbols/" + key).with(as(admin)).contentType(MediaType.APPLICATION_JSON)
                 .content("{\"k\":\"" + key + "\",\"name\":\"" + name + "\",\"cat\":\"Verlichting & bediening\",\"parents\":[\"kring\"],\"place\":true,\"shapes\":[" + shapes + "]}"))
                 .andExpect(status().isOk());
     }
@@ -94,7 +94,7 @@ class AdminSymbolControllerTest {
     void aDrawingMadeStandardGoesIntoTheCatalog_anEditAloneDoesNot() throws Exception {
         draw("lichtpunt", "Lamp", NEW_LAMP);
         mvc.perform(get("/api/admin/symbols/catalog/changes").with(as(admin))).andExpect(jsonPath("$", hasSize(0)));
-        mvc.perform(post("/api/symbols/lichtpunt/standard").with(as(user))).andExpect(status().isOk());
+        mvc.perform(post("/api/symbols/lichtpunt/standard").with(as(admin))).andExpect(status().isOk());
         // what the next release changes
         mvc.perform(get("/api/admin/symbols/catalog/changes").with(as(admin)))
                 .andExpect(jsonPath("$", hasSize(1)))
@@ -109,7 +109,7 @@ class AdminSymbolControllerTest {
         assertEquals("circle", lamp.shapes().get(0).get("t"));
         // a later edit that is not made the standard changes nothing, nor does deleting another standard symbol
         draw("lichtpunt", "Nog een lamp", NEW_LAMP);
-        mvc.perform(delete("/api/symbols/motor").with(as(user))).andExpect(status().isNoContent());
+        mvc.perform(delete("/api/symbols/motor").with(as(admin))).andExpect(status().isNoContent());
         List<SymbolDto> again = download();
         assertEquals("Lamp", again.stream().filter(symbol -> symbol.key().equals("lichtpunt")).findFirst().orElseThrow().name());
         assertTrue(again.stream().anyMatch(symbol -> symbol.key().equals("motor")));
@@ -162,8 +162,8 @@ class AdminSymbolControllerTest {
         // an edited one, one with its own standard, a deleted one, one that left the catalog, one that is missing
         draw("motor", "Mijn motor", NEW_LAMP);
         draw("lichtpunt", "Lamp", NEW_LAMP);
-        mvc.perform(post("/api/symbols/lichtpunt/standard").with(as(user))).andExpect(status().isOk());
-        mvc.perform(delete("/api/symbols/tv").with(as(user))).andExpect(status().isNoContent());
+        mvc.perform(post("/api/symbols/lichtpunt/standard").with(as(admin))).andExpect(status().isOk());
+        mvc.perform(delete("/api/symbols/tv").with(as(admin))).andExpect(status().isNoContent());
         SymbolEntity gone = SymbolMapper.toEntity(new SymbolDto("weg", "Weg", "Overig", List.of(), true, List.of(Map.of("t", "rect", "x", 2.0, "y", 2.0, "w", 10.0, "h", 8.0)),
                 null, StandardSymbols.VERSION, true, false, false));
         gone.setBuiltin(true);
@@ -199,7 +199,7 @@ class AdminSymbolControllerTest {
     @Test
     void theDownloadOnlyRefersToStandardSymbols_aMissingSocketCountComesFromTheCatalog() throws Exception {
         // an own symbol under which the general socket may hang, made the standard
-        mvc.perform(put("/api/symbols/custom:tweepolig").with(as(user)).contentType(MediaType.APPLICATION_JSON)
+        mvc.perform(put("/api/symbols/custom:tweepolig").with(as(admin)).contentType(MediaType.APPLICATION_JSON)
                 .content("{\"k\":\"custom:tweepolig\",\"name\":\"Tweepolig\",\"cat\":\"Eigen\",\"parents\":[\"kring\"],\"place\":true,\"shapes\":[" + NEW_LAMP + "]}"))
                 .andExpect(status().isOk());
         SymbolDto general = StandardSymbols.find("stopcontact_alg");
@@ -211,13 +211,13 @@ class AdminSymbolControllerTest {
         edited.setModified(true);
         edited.setStandardVersion(StandardSymbols.VERSION);
         symbols.save(edited);
-        mvc.perform(post("/api/symbols/stopcontact_alg/standard").with(as(user))).andExpect(status().isOk());
+        mvc.perform(post("/api/symbols/stopcontact_alg/standard").with(as(admin))).andExpect(status().isOk());
         // a database from before the number of sockets was stored: the double socket does not know it has two
         SymbolEntity twice = symbols.findById("stopcontact2").orElseThrow();
         twice.setSocketCount(null);
         twice.setModified(true);
         symbols.save(twice);
-        mvc.perform(post("/api/symbols/stopcontact2/standard").with(as(user))).andExpect(status().isOk());
+        mvc.perform(post("/api/symbols/stopcontact2/standard").with(as(admin))).andExpect(status().isOk());
 
         List<SymbolDto> catalog = download();
         SymbolDto socket = catalog.stream().filter(symbol -> symbol.key().equals("stopcontact_alg")).findFirst().orElseThrow();
@@ -234,7 +234,7 @@ class AdminSymbolControllerTest {
     void aStandardThatWouldStopTheBuildIsReportedBeforeTheDownload() throws Exception {
         // a lamp that no longer touches the line y = 12
         draw("lichtpunt", "Lamp", "{\"t\":\"circle\",\"cx\":12,\"cy\":4,\"r\":2}");
-        mvc.perform(post("/api/symbols/lichtpunt/standard").with(as(user))).andExpect(status().isOk());
+        mvc.perform(post("/api/symbols/lichtpunt/standard").with(as(admin))).andExpect(status().isOk());
         mvc.perform(get("/api/admin/symbols/catalog/problems").with(as(admin))).andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(1)))
                 .andExpect(jsonPath("$[0].key", is("lichtpunt")))

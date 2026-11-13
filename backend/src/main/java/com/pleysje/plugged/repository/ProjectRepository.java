@@ -27,8 +27,8 @@ public interface ProjectRepository extends JpaRepository<ProjectDoc, Long> {
     @Query("select p.id, g.id, g.name from ProjectDoc p join p.groups g where p.id in :ids order by g.name")
     List<Object[]> groupsOf(@Param("ids") Collection<Long> ids);
 
-    @Query("select coalesce(max(p.id), 0) from ProjectDoc p")
-    long maxId();
+    /** How many projects a user owns (for plugged.max-projects-per-user). */
+    long countByOwnerId(Long ownerId);
 
     /** Projects saved before accounts existed get an owner. */
     @Modifying

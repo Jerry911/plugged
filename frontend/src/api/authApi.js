@@ -37,8 +37,11 @@ const send = async (url, body, method = 'POST') => {
     }
 }
 
-/** First start: the administrator (its email address is set by the server). Signs it in. */
-export const setupAdmin = ({name, surname, password}) => send('/api/auth/setup', {name, surname, password})
+/**
+ * First start: the administrator (its email address is set by the server). Signs it in. setupKey: the secret key the server printed in its
+ * log (console) at start-up; without it the server refuses (403).
+ */
+export const setupAdmin = ({name, surname, password, setupKey}) => send('/api/auth/setup', {name, surname, password, setupKey})
 /** A new account, waiting for the approval of the administrator. */
 export const register = ({name, surname, email, password}) => send('/api/auth/register', {name, surname, email, password})
 export const login = ({email, password}) => send('/api/auth/login', {email, password})
@@ -56,6 +59,8 @@ const userUrl = (id) => '/api/admin/users/' + encodeURIComponent(id)
 
 /** {ok, error}: the account may sign in from now on. */
 export const approveUser = (id) => send(userUrl(id) + '/approve')
+/** Opens an account that was locked after too many wrong passwords. */
+export const unlockUser = (id) => send(userUrl(id) + '/unlock')
 
 /** {ok, error}: removes the account (or turns down the registration). */
 export const deleteUser = async (id) => {

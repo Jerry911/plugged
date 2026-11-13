@@ -7,10 +7,17 @@ import com.pleysje.plugged.catalog.StandardSymbols;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.pleysje.plugged.catalog.SymbolShapes;
+import com.pleysje.plugged.dto.ProjectSummary;
 import com.pleysje.plugged.dto.SymbolDto;
+import com.pleysje.plugged.entity.AppUser;
 import com.pleysje.plugged.entity.SymbolEntity;
+import com.pleysje.plugged.entity.UserGroup;
 import com.pleysje.plugged.i18n.LocalizedStatusException;
+import com.pleysje.plugged.i18n.Violations;
 import com.pleysje.plugged.repository.SymbolRepository;
+import com.pleysje.plugged.repository.UserGroupRepository;
+import com.pleysje.plugged.repository.UserRepository;
+import java.util.stream.Collectors;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
@@ -23,8 +30,16 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * The symbol catalog: the standard symbols ({@link StandardSymbols}) plus the symbols of the user, stored in the database.
- * A standard symbol can be edited, deleted and restored to its standard drawing; a symbol of the user can be edited and deleted.
+ * The symbol catalog: the standard symbols ({@link StandardSymbols}) plus the symbols of the users, stored in the database.
+ * <ul>
+ *   <li>The <b>standard symbols</b> are shared by everyone. Only an administrator edits, deletes, restores them or makes a drawing the
+ *       standard; the others use them (and can duplicate one into a symbol of their own).</li>
+ *   <li>A <b>personal symbol</b> belongs to the user who made it: only he sees, changes and deletes it.</li>
+ *   <li>A <b>group symbol</b> belongs to a group: its members see and use it; members who are no students in educational mode (see
+ *       GroupService#isRestricted) and administrators change and delete it. An administrator can put a symbol in any group.</li>
+ * </ul>
+ * A symbol the user may not see answers 404, as if it did not exist. Projects carry a copy of the own symbols they use (frontend), so a
+ * shared project still draws correctly for somebody who does not have the symbol.
  * Errors are {@link LocalizedStatusException}s: their message is written in the language of the request.
  */
 @Service
@@ -32,20 +47,76 @@ import org.springframework.transaction.annotation.Transactional;
 public class SymbolService {
     private static final Logger log = LoggerFactory.getLogger(SymbolService.class);
     /** keys that are part of the URLs of the API */
-    public static final List<String> RESERVED_KEYS = List.of("template", "restore");
+    public static final List<String> RESERVED_KEYS = List.of("template", "restore", "groups");
     /** prefix of the hidden rows that hold the standard a user chose with {@link #makeStandard}; they never show up in the catalog */
     public static final String CHOSEN_STANDARD_PREFIX = "std:";
     /** prefix of the hidden marker rows that say a standard symbol was deleted by the user: seeding then leaves it out until it is restored */
     public static final String DELETED_MARKER_PREFIX = "del:";
-    public static final int MAX_NAME_LENGTH = 120, MAX_CATEGORY_LENGTH = 60, MAX_SHAPES = 500, MAX_PARENTS = 500, MIN_SOCKETS = 1, MAX_SOCKETS = 20;
-    private static final Pattern KEY_PATTERN = Pattern.compile("[A-Za-z0-9_.:-]{1,100}");
+    public static final int MIN_SOCKETS = 1, MAX_SOCKETS = 20;
+    private static final Pattern KEY_PATTERN = Pattern.compile(SymbolDto.KEY_PATTERN);
     /** sort order of the symbols of the user: after all standard symbols */
     private static final int CUSTOM_SORT_ORDER = 100_000;
 
     private final SymbolRepository repository;
+    private final UserRepository users;
+    private final UserGroupRepository groups;
+    private final GroupService groupService;
 
-    public SymbolService(SymbolRepository repository) {
+    public SymbolService(SymbolRepository repository, UserRepository users, UserGroupRepository groups, GroupService groupService) {
         this.repository = repository;
+        this.users = users;
+        this.groups = groups;
+        this.groupService = groupService;
+    }
+
+    /**
+     * What a user may do with the symbols: {@code memberGroups} the groups whose symbols he sees, {@code editableGroups} the groups whose
+     * symbols he changes and puts new symbols in.
+     */
+    record Access(AppUser user, Set<Long> memberGroups, Set<Long> editableGroups) {
+        boolean admin() {
+            return user.isAdmin();
+        }
+
+        boolean sees(SymbolEntity entity) {
+            if (entity.isBuiltin()) return true;
+            if (entity.getOwnerGroupId() != null) return memberGroups.contains(entity.getOwnerGroupId()) || admin() && editableGroups.contains(entity.getOwnerGroupId());
+            if (entity.getOwnerUserId() != null) return entity.getOwnerUserId().equals(user.getId());
+            return admin(); // a symbol of before owners existed, until the primary administrator claims it
+        }
+
+        boolean edits(SymbolEntity entity) {
+            if (entity.isBuiltin()) return admin();
+            if (entity.getOwnerGroupId() != null) return editableGroups.contains(entity.getOwnerGroupId());
+            if (entity.getOwnerUserId() != null) return entity.getOwnerUserId().equals(user.getId());
+            return admin();
+        }
+    }
+
+    /** The access of the signed-in user (401 when the account is gone). */
+    Access access(long userId) {
+        AppUser user = users.findById(userId).orElseThrow(() -> new LocalizedStatusException(HttpStatus.UNAUTHORIZED, "auth.signInRequired"));
+        Set<Long> member = groups.findByMembers_IdOrderByNameAsc(userId).stream().map(UserGroup::getId).collect(Collectors.toSet());
+        Set<Long> editable = user.isAdmin() ? groups.findAll().stream().map(UserGroup::getId).collect(Collectors.toSet())
+                : groupService.isRestricted(user) ? Set.of() : member;
+        return new Access(user, member, editable);
+    }
+
+    private static SymbolDto forUser(SymbolEntity entity, Access access) {
+        return SymbolMapper.toDto(entity).withAccess(entity.getOwnerGroupId(), access.edits(entity));
+    }
+
+    /** The groups the user can put a symbol in ({id, name}): his groups (none for a student in educational mode); every group for an admin. */
+    @Transactional(readOnly = true)
+    public List<ProjectSummary.Ref> groupsFor(long userId) {
+        Access access = access(userId);
+        List<UserGroup> list = access.admin() ? groups.findAllByOrderByNameAsc() : groups.findByMembers_IdOrderByNameAsc(userId);
+        return list.stream().filter(group -> access.editableGroups().contains(group.getId()))
+                .map(group -> new ProjectSummary.Ref(group.getId(), group.getName())).toList();
+    }
+
+    private static void requireAdmin(Access access) {
+        if (!access.admin()) throw new LocalizedStatusException(HttpStatus.FORBIDDEN, "symbol.standardAdminOnly");
     }
 
     /**
@@ -97,18 +168,21 @@ public class SymbolService {
         if (!deleted.isEmpty()) log.info("    deleted by a user, not put back: {}", deleted);
     }
 
+    /** The symbols the user sees: the standard ones, his own and those of his groups. */
     @Transactional(readOnly = true)
-    public List<SymbolDto> list() {
+    public List<SymbolDto> list(long userId) {
+        Access access = access(userId);
         return repository.findAll().stream()
-                .filter(entity -> !isHidden(entity.getKey()))
+                .filter(entity -> !isHidden(entity.getKey()) && access.sees(entity))
                 .sorted(Comparator.comparingInt(SymbolEntity::getSortOrder).thenComparing(SymbolEntity::getName, String.CASE_INSENSITIVE_ORDER))
-                .map(SymbolMapper::toDto)
+                .map(entity -> forUser(entity, access))
                 .toList();
     }
 
     @Transactional(readOnly = true)
-    public SymbolDto get(String key) {
-        return SymbolMapper.toDto(findVisible(key));
+    public SymbolDto get(long userId, String key) {
+        Access access = access(userId);
+        return forUser(findVisible(access, key), access);
     }
 
     /** A new symbol of the user to start from: a fresh key and the default parents. */
@@ -117,14 +191,26 @@ public class SymbolService {
         return new SymbolDto(key, "", SymbolMapper.DEFAULT_CATEGORY, StandardSymbols.ELEMENT_KEYS, true, List.of(), null, 0, false, false, false);
     }
 
-    /** Creates or updates a symbol; for a standard symbol the result tells whether it still is the standard drawing. */
-    public SymbolDto save(String key, SymbolDto symbol) {
+    /**
+     * Creates or updates a symbol; for a standard symbol (administrators only) the result tells whether it still is the standard drawing.
+     * {@code symbol.group()} chooses where an own symbol belongs: null = personal symbol of the user, else a group he may put symbols in.
+     */
+    public SymbolDto save(long userId, String key, SymbolDto symbol) {
         validate(key, symbol);
+        Access access = access(userId);
         SymbolEntity entity = SymbolMapper.toEntity(
                 new SymbolDto(key, symbol.name(), symbol.category(), symbol.parents(), symbol.placeable(), symbol.shapes(), symbol.socket(), 0, false, false, symbol.details()));
         SymbolDto standard = standardOf(key);
+        SymbolEntity stored = repository.findById(key).orElse(null);
+        if (standard != null || stored != null && stored.isBuiltin()) {
+            requireAdmin(access);
+        } else if (stored != null) {
+            if (!access.sees(stored)) throw notFound(key);
+            if (!access.edits(stored)) throw new LocalizedStatusException(HttpStatus.FORBIDDEN, "symbol.notEditable", key);
+        }
+        if (standard == null && symbol.group() != null && !access.editableGroups().contains(symbol.group()))
+            throw new LocalizedStatusException(HttpStatus.FORBIDDEN, "symbol.groupNotAllowed");
         if (standard != null) {
-            SymbolEntity stored = repository.findById(key).orElse(null);
             repository.findById(DELETED_MARKER_PREFIX + key).ifPresent(repository::delete);
             entity.setBuiltin(true);
             entity.setStandardVersion(stored != null ? stored.getStandardVersion() : StandardSymbols.VERSION);
@@ -132,13 +218,17 @@ public class SymbolService {
             entity.setModified(!entity.sameDefinition(SymbolMapper.toEntity(standard)));
         } else {
             entity.setSortOrder(CUSTOM_SORT_ORDER);
+            entity.setOwner(userId, symbol.group());
         }
-        return SymbolMapper.toDto(repository.save(entity));
+        return forUser(repository.save(entity), access);
     }
 
     /** Deletes a symbol. A standard symbol leaves a hidden marker so that it does not come back at the next start; restore brings it back. */
-    public void delete(String key) {
-        SymbolEntity entity = findVisible(key);
+    public void delete(long userId, String key) {
+        Access access = access(userId);
+        SymbolEntity entity = findVisible(access, key);
+        if (entity.isBuiltin()) requireAdmin(access);
+        else if (!access.edits(entity)) throw new LocalizedStatusException(HttpStatus.FORBIDDEN, "symbol.notEditable", key);
         repository.delete(entity);
         if (entity.isBuiltin()) {
             SymbolEntity marker = SymbolMapper.toEntity(
@@ -152,8 +242,10 @@ public class SymbolService {
      * The current definition of a standard symbol becomes its standard: restore, restore-all and the seeding then go back to this drawing.
      * It is kept in a hidden row (key "std:" + key); the symbol itself is no longer marked as modified.
      */
-    public SymbolDto makeStandard(String key) {
-        SymbolEntity stored = findVisible(key);
+    public SymbolDto makeStandard(long userId, String key) {
+        Access access = access(userId);
+        requireAdmin(access);
+        SymbolEntity stored = findVisible(access, key);
         if (StandardSymbols.find(key) == null) throw new LocalizedStatusException(HttpStatus.CONFLICT, "symbol.onlyStandardCanBecomeStandard", key);
         SymbolDto current = SymbolMapper.toDto(stored);
         SymbolEntity chosen = SymbolMapper.toEntity(new SymbolDto(CHOSEN_STANDARD_PREFIX + key, current.name(), current.category(), current.parents(), current.placeable(),
@@ -161,7 +253,7 @@ public class SymbolService {
         chosen.setSortOrder(CUSTOM_SORT_ORDER);
         repository.save(chosen);
         stored.setModified(false);
-        return SymbolMapper.toDto(repository.save(stored));
+        return forUser(repository.save(stored), access);
     }
 
     /**
@@ -213,7 +305,9 @@ public class SymbolService {
     }
 
     /** Puts a standard symbol back to its standard drawing (also when the user changed or deleted it). */
-    public SymbolDto restore(String key) {
+    public SymbolDto restore(long userId, String key) {
+        Access access = access(userId);
+        requireAdmin(access);
         if (isHidden(key)) throw notFound(key);
         SymbolDto standard = standardOf(key);
         if (standard == null) {
@@ -221,22 +315,23 @@ public class SymbolService {
             throw notFound(key);
         }
         repository.findById(DELETED_MARKER_PREFIX + key).ifPresent(repository::delete);
-        return SymbolMapper.toDto(repository.save(asStandard(standard)));
+        return forUser(repository.save(asStandard(standard)), access);
     }
 
     /** Puts all standard symbols back to their standard drawings, also the deleted ones; the symbols of the user are left alone. */
-    public List<SymbolDto> restoreAll() {
+    public List<SymbolDto> restoreAll(long userId) {
+        requireAdmin(access(userId));
         for (SymbolDto standard : StandardSymbols.all()) {
             repository.findById(DELETED_MARKER_PREFIX + standard.key()).ifPresent(repository::delete);
             repository.save(asStandard(standardOf(standard.key())));
         }
-        return list();
+        return list(userId);
     }
 
-    /** The stored symbol with this key; hidden rows are not found. */
-    private SymbolEntity findVisible(String key) {
+    /** The stored symbol with this key, if the user may see it; hidden rows are not found. */
+    private SymbolEntity findVisible(Access access, String key) {
         if (isHidden(key)) throw notFound(key);
-        return repository.findById(key).orElseThrow(() -> notFound(key));
+        return repository.findById(key).filter(access::sees).orElseThrow(() -> notFound(key));
     }
 
     /** The standard definition of a symbol: the one the user chose with {@link #makeStandard}, else the one of the catalog; null for a symbol that is not a standard symbol. */
@@ -278,25 +373,18 @@ public class SymbolService {
         return key != null && KEY_PATTERN.matcher(key).matches() && !RESERVED_KEYS.contains(key) && !isHidden(key);
     }
 
-    /** @throws LocalizedStatusException 400 with the reason when the symbol cannot be stored */
+    /**
+     * @throws LocalizedStatusException 400 with the reason when the symbol cannot be stored: the constraints of {@link SymbolDto} (also
+     *                                   used for the shipped catalog, see CatalogRules), the key, the shapes and the number of sockets
+     */
     public static void validate(String key, SymbolDto symbol) {
         if (symbol == null) throw badRequest("symbol.missing");
         if (!isValidKey(key)) throw badRequest("symbol.invalidKey", key);
         if (symbol.key() != null && !symbol.key().equals(key)) throw badRequest("symbol.keyMismatch");
-        if (symbol.name() == null || symbol.name().isBlank()) throw badRequest("symbol.nameRequired");
-        if (symbol.name().trim().length() > MAX_NAME_LENGTH) throw badRequest("symbol.nameTooLong", MAX_NAME_LENGTH);
-        if (symbol.category() != null && symbol.category().trim().length() > MAX_CATEGORY_LENGTH) throw badRequest("symbol.categoryTooLong", MAX_CATEGORY_LENGTH);
-        if (symbol.shapes() == null || symbol.shapes().isEmpty()) throw badRequest("symbol.shapeRequired");
-        if (symbol.shapes().size() > MAX_SHAPES) throw badRequest("symbol.tooManyShapes", MAX_SHAPES);
+        Violations.check(symbol);
         for (Map<String, Object> shape : symbol.shapes()) {
             MessageSourceResolvable problem = SymbolShapes.problem(shape);
             if (problem != null) throw badRequest("symbol.invalidShape", problem);
-        }
-        if (symbol.parents() != null) {
-            if (symbol.parents().size() > MAX_PARENTS) throw badRequest("symbol.tooManyParents", MAX_PARENTS);
-            for (String parent : symbol.parents()) {
-                if (parent == null || !KEY_PATTERN.matcher(parent).matches()) throw badRequest("symbol.invalidParent", String.valueOf(parent));
-            }
         }
         Object socketCount = symbol.socket() == null ? null : symbol.socket().get("n");
         if (socketCount != null && !(socketCount instanceof Number count && count.intValue() >= MIN_SOCKETS && count.intValue() <= MAX_SOCKETS)) {

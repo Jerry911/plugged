@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 package com.pleysje.plugged.security;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -18,6 +19,7 @@ import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 import org.springframework.security.web.context.SecurityContextHolderFilter;
 import org.springframework.security.web.context.SecurityContextRepository;
+import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter;
 import org.springframework.security.web.csrf.CsrfFilter;
 import com.pleysje.plugged.logging.UserMdcFilter;
 import com.pleysje.plugged.repository.UserRepository;
@@ -31,17 +33,29 @@ import com.pleysje.plugged.repository.UserRepository;
  * </ul>
  * /api/admin/** is for administrators only. Which projects a user may see and change is decided by ProjectService. The session is a cookie (JSESSIONID); requests that change something carry the CSRF token of
  * the XSRF-TOKEN cookie in the X-XSRF-TOKEN header (see frontend/src/api/http.js). Without a session the API answers 401, not a redirect.
+ * <p>
+ * Every answer carries a Content-Security-Policy (plugged.content-security-policy, env var PLUGGED_CSP, default {@link #DEFAULT_CSP}; empty = none), a Referrer-Policy and
+ * the defaults of Spring Security (no framing, no sniffing; HSTS on HTTPS requests). Behind a reverse proxy that terminates HTTPS,
+ * server.forward-headers-strategy makes the requests count as HTTPS, so the cookies get the Secure flag (application.properties).
  */
 @Configuration
 public class SecurityConfig {
     public static final String ROLE_USER = "USER";
     public static final String ROLE_ADMIN = "ADMIN";
+    /** The Content-Security-Policy when plugged.content-security-policy is not set: only the own scripts, styles, images and API. */
+    public static final String DEFAULT_CSP = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; "
+            + "font-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'";
 
     /** Only in a web application (not in a run with spring.main.web-application-type=none, which has no HttpSecurity). */
     @Bean
     @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
-    public SecurityFilterChain securityFilterChain(HttpSecurity http, UserService userService, SecurityContextRepository contexts) throws Exception {
-        http.authorizeHttpRequests(requests -> requests
+    public SecurityFilterChain securityFilterChain(HttpSecurity http, UserService userService, SecurityContextRepository contexts,
+                                                   @Value("${plugged.content-security-policy:" + DEFAULT_CSP + "}") String contentSecurityPolicy) throws Exception {
+        http.headers(headers -> {
+                    headers.referrerPolicy(referrer -> referrer.policy(ReferrerPolicyHeaderWriter.ReferrerPolicy.SAME_ORIGIN));
+                    if (!contentSecurityPolicy.isBlank()) headers.contentSecurityPolicy(csp -> csp.policyDirectives(contentSecurityPolicy.trim()));
+                })
+                .authorizeHttpRequests(requests -> requests
                         .requestMatchers("/api/auth/**", "/api/info").permitAll()
                         .requestMatchers("/api/admin/**").hasRole(ROLE_ADMIN)
                         .requestMatchers("/api/**").authenticated()

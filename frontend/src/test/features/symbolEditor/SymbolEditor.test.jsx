@@ -17,7 +17,7 @@ const nOf = (k) => DEFAULTS.find((d) => d.k === k).shapes.length,
     mine = {k: 'custom:1', name: 'Mijn ding', cat: 'Eigen', parents: ['kring'], place: true, shapes: [{t: 'line', x1: 1, y1: 12, x2: 20, y2: 12}]}
 const fresh = {k: 'custom:nieuw', name: '', cat: 'Eigen', parents: ['kring'], place: true, shapes: []}
 // the callbacks answer like the library hook does: save and restore give the symbol of the backend (null when refused)
-const mount = (lib = DEFAULTS, ok = true) => {
+const mount = (lib = DEFAULTS, ok = true, groups = []) => {
     const f = {
         save: vi.fn(async (c) => (ok ? {...c, modified: c.builtin} : null)),
         remove: vi.fn(async () => true),
@@ -30,6 +30,7 @@ const mount = (lib = DEFAULTS, ok = true) => {
         ...render(
             <SymbolEditor
                 library={lib}
+                groups={groups}
                 onSave={f.save}
                 onRemove={f.remove}
                 onRestore={f.restore}
@@ -538,4 +539,79 @@ test('select tool: dragging a selected shape moves the whole selection on the gr
     dragTo(13, 20)
     release(13, 20)
     expect(lines()).toEqual(['16,4', '13,16', third])
+})
+
+describe('who may change what', () => {
+    // as the backend sends the library to somebody who is no administrator
+    const asUser = DEFAULTS.map((symbol) => ({...symbol, editable: false, group: null}))
+    const teamSymbol = {k: 'custom:team', name: 'Teamlamp', cat: 'Eigen', parents: ['kring'], place: true, shapes: [{t: 'circle', cx: 12, cy: 12, r: 5}], builtin: false, group: 7, editable: true}
+
+    test('a standard symbol is read-only for somebody who is no administrator: he duplicates it into an own symbol', async () => {
+        const f = mount([...asUser, teamSymbol], true, [{id: 7, name: 'Team'}])
+        expect(byId('comp-restore-all')).toBeNull()
+        pick('lichtpunt')
+        expect(getById('comp-read-only')).toHaveTextContent(t('symbolEditor.readOnlyStandard'))
+        for (const id of ['comp-save', 'comp-clear', 'comp-undo-shape', 'comp-restore', 'comp-make-standard', 'comp-delete', 'comp-tool-line'])
+            expect(byId(id)).toBeNull()
+        expect(getById('comp-fields')).toBeDisabled()
+        const shapes = DEFAULTS.find((symbol) => symbol.k === 'lichtpunt').shapes.length
+        fireEvent.click(getById('comp-drawing'), {clientX: 5, clientY: 5})
+        fireEvent.click(getById('comp-drawing'), {clientX: 50, clientY: 50})
+        fireEvent.click(getById('comp-duplicate'))
+        expect(byId('comp-read-only')).toBeNull()
+        expect(getById('comp-group')).toHaveValue('')
+        fireEvent.click(getById('comp-save'))
+        await waitFor(() => expect(f.save).toHaveBeenCalled())
+        expect(f.save.mock.calls[0][0]).toMatchObject({builtin: false, group: null, editable: true})
+        expect(f.save.mock.calls[0][0].k).toMatch(/^custom:/)
+        expect(f.save.mock.calls[0][0].shapes).toHaveLength(shapes)
+    })
+
+    test('an own symbol can be put in a group of the user', async () => {
+        const f = mount([...asUser, teamSymbol], true, [{id: 7, name: 'Team'}, {id: 8, name: 'Klas'}])
+        pick('custom:team')
+        expect(getById('comp-origin')).toHaveTextContent(t('symbolEditor.origin.group', {group: 'Team'}))
+        expect(getById('comp-group')).toHaveValue('7')
+        fireEvent.change(getById('comp-group'), {target: {value: '8'}})
+        fireEvent.click(getById('comp-save'))
+        await waitFor(() => expect(f.save).toHaveBeenCalled())
+        expect(f.save.mock.calls[0][0].group).toBe(8)
+        fireEvent.change(getById('comp-group'), {target: {value: ''}})
+        expect(getById('comp-group')).toHaveValue('')
+    })
+
+    test('a group symbol a student may not change is read-only too', () => {
+        mount([...asUser, {...teamSymbol, editable: false}], true, [])
+        pick('custom:team')
+        expect(getById('comp-read-only')).toHaveTextContent(t('symbolEditor.readOnlyGroup'))
+        expect(byId('comp-save')).toBeNull()
+        // the group he is not allowed to choose is still shown as where it belongs
+        expect(getById('comp-group')).toHaveValue('7')
+    })
+
+    test('without groups the choice is there but closed, with the reason', () => {
+        mount([...DEFAULTS, {...teamSymbol, group: null}])
+        pick('custom:team')
+        expect(getById('comp-group')).toBeDisabled()
+        expect(getById('comp-group')).toHaveValue('')
+        expect(getById('comp-group')).toHaveAttribute('title', t('symbolEditor.noGroups'))
+        expect(getById('comp-restore-all')).toBeInTheDocument()
+    })
+
+    test('a new own symbol can be put in a group right away', async () => {
+        const f = mount([...asUser], true, [{id: 7, name: 'Team'}])
+        fireEvent.click(getById('comp-new'))
+        await waitFor(() => getById('comp-group'))
+        expect(getById('comp-group')).not.toBeDisabled()
+        fireEvent.change(getById('comp-group'), {target: {value: '7'}})
+        expect(getById('comp-group')).toHaveValue('7')
+    })
+
+    test('opening the editor loads the groups again (they may have changed under Beheer)', () => {
+        const onOpen = vi.fn()
+        render(
+            <SymbolEditor library={DEFAULTS} groups={[]} onOpen={onOpen} onSave={vi.fn()} onRemove={vi.fn()} onRestore={vi.fn()} onRestoreAll={vi.fn()} onMakeStandard={vi.fn()} onTemplate={vi.fn()} />,
+        )
+        expect(onOpen).toHaveBeenCalledTimes(1)
+    })
 })

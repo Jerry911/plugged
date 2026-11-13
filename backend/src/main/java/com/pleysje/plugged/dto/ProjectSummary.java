@@ -12,4 +12,8 @@ public record ProjectSummary(Long id, String name, String updated, Ref owner, Li
     /** A user or a group as a project shows it: its id and its name. */
     public record Ref(long id, String name) {
     }
+
+    /** The answer of creating a project: its number and version (the version is also the ETag of the document). */
+    public record Created(long id, long version) {
+    }
 }

@@ -10,8 +10,10 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 class ProjectDocTest {
     @Test
     void constructorAndAccessors() {
-        var project = new ProjectDoc(3L, "{}");
-        assertEquals(3L, project.getId());
+        var project = new ProjectDoc("{}", "Naam");
+        assertNull(project.getId()); // the database gives the number
+        assertEquals("Naam", project.getName());
+        assertEquals(0, project.getVersion());
         assertEquals("{}", project.getJson());
         project.setJson("{\"a\":1}");
         assertEquals("{\"a\":1}", project.getJson());

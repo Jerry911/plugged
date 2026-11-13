@@ -371,10 +371,11 @@ function Editor({library, user, onLogout, onAccountDeleted}) {
         setFooterDialog(null)
         setExportOpen((open) => !open)
     }
-    // the shortcuts of the Project menu: Alt+S save, Alt+N new, Alt+L load, Alt+I import, Alt+E export (not for a student: see `restricted`).
+    // the shortcuts of the Project menu: Alt+S save, Alt+N new, Alt+L load, Alt+I import, Alt+E export (not for a student: see `restricted`),
+    // Alt+P print (Ctrl+P stays the browser's own, which prints the screen as it is).
     // Alt and not Ctrl: the browser keeps several Ctrl keys for itself (Ctrl+N a new window, Ctrl+L the address bar). Only Alt alone: with
     // Ctrl too it is AltGr on Windows (AltGr+E = €), with Shift or Cmd it is not ours either.
-    const projectShortcuts = {s: save, n: startNewProject, l: () => setLoadMenuRequest((count) => count + 1), i: openImport, e: openExport}
+    const projectShortcuts = {s: save, n: startNewProject, l: () => setLoadMenuRequest((count) => count + 1), i: openImport, e: openExport, p: () => setPrintJob('print')}
     useEffect(() => {
         const onKeyDown = (event) => {
             if (!event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return
@@ -482,6 +483,8 @@ function Editor({library, user, onLogout, onAccountDeleted}) {
                     onTrashChanged={onTrashChanged}
                     restricted={restricted}
                     onMaterials={() => setMaterialsOpen(true)}
+                    onPdf={() => setPrintJob('pdf')}
+                    onPrint={() => setPrintJob('print')}
                     locked={restricted}
                     onImport={openImport}
                     onExport={openExport}
@@ -538,16 +541,6 @@ function Editor({library, user, onLogout, onAccountDeleted}) {
                     </span>
                 )}
                 <input id="import-input" type="file" accept={IMPORT_ACCEPT} hidden onChange={importFile} />
-                <span className="sep" />
-                <button id="btn-pdf" onClick={() => setPrintJob('pdf')}>
-                    PDF
-                </button>
-                <button id="btn-print" title={t('app.print')} onClick={() => setPrintJob('print')}>
-                    <span className="bar-icon" aria-hidden="true">
-                        🖨
-                    </span>
-                    <span className="bar-text minor">{t('app.print')}</span>
-                </button>
                 <span className="sep" />
                 <LanguageSelect />
                 <button id="tab-info" className={tab === INFO_TAB ? 'on' : ''} title={t('tabs.infoTitle')} onClick={() => setTab(INFO_TAB)}>

@@ -168,13 +168,6 @@
     }
 }
 
-/* a smaller laptop screen: the language picker shows only its code (NL, FR, EN), the name is in the list */
-@media (max-width: 1400px) {
-    .bar .langsel {
-        max-width: 4.6em
-    }
-}
-
 /* ---- narrow screens (tablet upright, phone): the panels stand above and below the drawing instead of beside it ---- */
 @media (max-width: 900px) {
     .bar {

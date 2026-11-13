@@ -76,8 +76,8 @@ test.describe('a phone', () => {
         await app.open(backend, plan())
         // the less used buttons show only their icon; their text is the hover text
         expect((await page.locator('#top-bar').boundingBox()).height).toBeLessThan(140)
-        await expect(page.locator('#btn-print .bar-text')).toBeHidden()
-        await expect(page.locator('#btn-print')).toHaveAttribute('title', t('app.print'))
+        await expect(page.locator('#tab-account .bar-text')).toBeHidden()
+        expect([t('account.buttonTitle'), t('account.buttonTitleAdmin')]).toContain(await page.locator('#tab-account').getAttribute('title'))
         // nothing is wider than the screen
         expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390)
         // eendraadschema: the palette and Opbouw above the drawing, as wide as the screen

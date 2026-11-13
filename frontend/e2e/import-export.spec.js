@@ -7,14 +7,17 @@ import {edsFile, node, project, withCircuit} from './data.js'
 
 const pages = (pdf) => (pdf.toString('latin1').match(/\/Type\s*\/Page(?![s\w])/g) ?? []).length
 
+// PDF and Afdrukken are in the Project menu
+const pdfButton = (page) => ({click: async () => (await page.locator('#tab-project').click(), await page.locator('#btn-pdf').click())})
+
 test.describe('PDF and printing', () => {
-    test('the PDF button downloads a PDF named after the project with one page per sheet', async ({page, app, backend}) => {
+    test('Project → PDF downloaden downloads a PDF named after the project with one page per sheet', async ({page, app, backend}) => {
         const doc = withCircuit({
             footer: {titel: 'Villa', schaal: '1:50'},
             een: [...withCircuit().een, {id: 'e2', name: 'Tweede', tree: [node('A2', 'aansluiting', [node('B2', 'bord')])]}],
         })
         await app.open(backend, doc)
-        const [download] = await Promise.all([page.waitForEvent('download'), page.locator('#btn-pdf').click()])
+        const [download] = await Promise.all([page.waitForEvent('download'), pdfButton(page).click()])
         expect(download.suggestedFilename()).toBe('Villa.pdf')
         const pdf = readFileSync(await download.path())
         expect(pdf.subarray(0, 5).toString()).toBe('%PDF-')
@@ -24,13 +27,13 @@ test.describe('PDF and printing', () => {
     })
     test('without a title the file is called schema.pdf', async ({page, app, backend}) => {
         await app.open(backend, project({footer: {}}))
-        const [download] = await Promise.all([page.waitForEvent('download'), page.locator('#btn-pdf').click()])
+        const [download] = await Promise.all([page.waitForEvent('download'), pdfButton(page).click()])
         expect(download.suggestedFilename()).toBe('schema.pdf')
     })
     test('a wide board is exported on several pages', async ({page, app, backend}) => {
         const ks = Array.from({length: 16}, (_, i) => node('K' + i, 'kring', [node('S' + i, 'stopcontact')], {label: String.fromCharCode(65 + i), info: 'B16 2,5mm²'}))
         await app.open(backend, project({footer: {titel: 'Groot'}, een: [{id: 'e1', name: 'Groot', tree: [node('A', 'aansluiting', [node('B', 'bord', ks)])]}]}))
-        const [download] = await Promise.all([page.waitForEvent('download'), page.locator('#btn-pdf').click()])
+        const [download] = await Promise.all([page.waitForEvent('download'), pdfButton(page).click()])
         expect(pages(readFileSync(await download.path()))).toBe(3) // 2 sheets for the board + 1 plattegrond
     })
     test('Afdrukken opens the print dialog of the browser', async ({page, app, backend}) => {
@@ -39,6 +42,7 @@ test.describe('PDF and printing', () => {
             window.print = () => void window.__prints++
         })
         await app.open(backend, withCircuit())
+        await page.locator('#tab-project').click()
         await page.locator('#btn-print').click()
         await expect.poll(() => page.evaluate(() => window.__prints)).toBe(1)
         await expect(page.locator('.export svg.sheet')).toHaveCount(0)
@@ -47,10 +51,10 @@ test.describe('PDF and printing', () => {
         await app.open(backend, withCircuit())
         await page.emulateMedia({media: 'print'})
         await expect(page.locator('.bar.ui')).toBeHidden()
-        await expect(page.locator('#btn-pdf')).toBeHidden()
+        await expect(page.locator('#tab-project')).toBeHidden()
         await expect(page.locator('#eds-tree')).toBeHidden()
         await page.emulateMedia({media: 'screen'})
-        await expect(page.locator('#btn-pdf')).toBeVisible()
+        await expect(page.locator('#tab-project')).toBeVisible()
     })
 })
 

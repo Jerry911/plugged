@@ -174,7 +174,9 @@ test('Project opens the menu, clicking Project again closes it; the items are li
     fireEvent.click(btn)
     expect(btn).toHaveAttribute('aria-expanded', 'true')
     expect(getById('project-menu').querySelector('[role="menu"]')).toHaveAttribute('aria-label', t('projects.menu'))
-    expect([...document.querySelectorAll('#project-menu [role="menuitem"]')].map((b) => b.id)).toEqual(['btn-save', 'btn-saveas', 'btn-new', 'btn-load', 'btn-import', 'btn-export', 'btn-materials'])
+    expect([...document.querySelectorAll('#project-menu [role="menuitem"]')].map((b) => b.id)).toEqual(['btn-save', 'btn-saveas', 'btn-new', 'btn-load', 'btn-import', 'btn-export', 'btn-materials', 'btn-pdf', 'btn-print'])
+    // PDF and printing moved from the top bar into this menu
+    expect(getById('top-bar').querySelector('#btn-pdf')).toBe(getById('project-menu').querySelector('#btn-pdf'))
     // opening the menu is not a page switch: the drawing stays where it was
     getById('btn-footer')
     expect(byId('tab-een')).toHaveClass('on')
@@ -210,8 +212,8 @@ test('arrow keys move through the Project menu items', async () => {
     fireEvent.keyDown(byId('project-name'), {key: 'ArrowDown'})
     expect(document.activeElement).toBe(byId('btn-save'))
     fireEvent.keyDown(byId('btn-save'), {key: 'ArrowUp'})
-    expect(document.activeElement).toBe(byId('btn-materials'))
-    fireEvent.keyDown(byId('btn-materials'), {key: 'ArrowDown'})
+    expect(document.activeElement).toBe(byId('btn-print'))
+    fireEvent.keyDown(byId('btn-print'), {key: 'ArrowDown'})
     expect(document.activeElement).toBe(byId('btn-save'))
 })
 test('a project is saved with its name (in the document and as ?name=) and Alt+S saves too', async () => {
@@ -357,7 +359,7 @@ test('the shortcuts of the Project menu: Alt+S save, Alt+N new, Alt+L load, Alt+
     await statusIs(t('app.newProject'))
     expect(pageButton(1)).not.toHaveTextContent('Blad Tweede')
     // other keys stay with the browser
-    expect(press('p')).toBe(false)
+    expect(press('q')).toBe(false)
     expect(press('7', {code: 'Digit7'})).toBe(false)
     expect(press('x', {altKey: false})).toBe(false)
     toProject()
@@ -555,14 +557,23 @@ test('footer edits flow into the project', async () => {
 test('pdf, print, json export and json import', async () => {
     await mount()
     await act(async () => {})
+    // PDF and Afdrukken are in the Project menu, which closes when one is chosen
+    expect(byId('btn-pdf')).toBeNull()
+    fireEvent.click(getById('tab-project'))
     fireEvent.click(getById('btn-pdf'))
+    expect(byId('btn-pdf')).toBeNull()
     await waitFor(() => expect(makePdf).toHaveBeenCalled())
     expect(document.querySelectorAll('.export svg.sheet').length).toBe(0)
     makePdf.mockRejectedValueOnce(new Error('boom'))
+    fireEvent.click(getById('tab-project'))
     fireEvent.click(getById('btn-pdf'))
     await waitFor(() => expect(window.alert).toHaveBeenCalledWith(t('app.exportFailed', {reason: 'boom'})))
+    fireEvent.click(getById('tab-project'))
     fireEvent.click(getById('btn-print'))
-    await waitFor(() => expect(window.print).toHaveBeenCalled())
+    await waitFor(() => expect(window.print).toHaveBeenCalledTimes(1))
+    // Alt+P prints too
+    fireEvent.keyDown(window, {key: 'p', code: 'KeyP', altKey: true})
+    await waitFor(() => expect(window.print).toHaveBeenCalledTimes(2))
     exportAs('json')
     expect(HTMLAnchorElement.prototype.click).toHaveBeenCalled()
     fireEvent.change(byId('import-input'), {target: {files: []}})

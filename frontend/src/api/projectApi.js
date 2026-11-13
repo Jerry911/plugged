@@ -65,12 +65,6 @@ export const saveProject = async (id, project, {keepalive = false, onConflict} =
 
 export const deleteProject = async (id) => (await apiFetch(projectUrl(id), {method: 'DELETE'})).ok
 
-/** The ids of the stored projects. */
-export const fetchProjectIds = async () => {
-    const ids = await (await apiFetch('/api/projects')).json()
-    return Array.isArray(ids) ? ids : []
-}
-
 /**
  * [{id, name, updated, owner: {id, name}, groups: [{id, name}], mine, canManage}] of the projects the user may see. Throws when the list
  * cannot be loaded.

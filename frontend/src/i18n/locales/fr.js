@@ -1011,7 +1011,6 @@ export default {
         memberCount: '{count} membres',
         noMembers: 'Pas encore de membres.',
         addMember: 'Ajouter un membre',
-        choose: 'Choisissez un utilisateur…',
         memberAdded: '{name} est membre de {group}.',
         memberRemoved: '{name} n’est plus membre de {group}.',
         removeMember: 'Retirer {name} du groupe',
@@ -1049,7 +1048,6 @@ export default {
     },
     educational: {
         badge: 'Mode éducatif',
-        badgeTitle: 'Vous faites partie d’un groupe en mode éducatif : la vérification, l’importation et l’exportation sont désactivées.',
         locked: 'Non disponible en mode éducatif',
         switch: 'Mode éducatif',
         switchTitle: 'Les membres qui ne sont pas propriétaires (les étudiants) ne peuvent alors ni vérifier, ni importer, ni exporter, dans aucun projet.',

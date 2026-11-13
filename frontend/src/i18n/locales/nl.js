@@ -1015,7 +1015,6 @@ export default {
         memberCount: '{count} leden',
         noMembers: 'Nog geen leden.',
         addMember: 'Lid toevoegen',
-        choose: 'Kies een gebruiker…',
         memberAdded: '{name} is lid van {group}.',
         memberRemoved: '{name} is geen lid meer van {group}.',
         removeMember: '{name} uit de groep halen',
@@ -1053,7 +1052,6 @@ export default {
     },
     educational: {
         badge: 'Educatieve modus',
-        badgeTitle: 'Je zit in een groep in educatieve modus: controleren, importeren en exporteren zijn uitgeschakeld.',
         locked: 'Niet beschikbaar in de educatieve modus',
         switch: 'Educatieve modus',
         switchTitle: 'Leden die geen eigenaar zijn (studenten) kunnen dan niet controleren, importeren of exporteren, in geen enkel project.',

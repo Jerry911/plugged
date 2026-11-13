@@ -1010,7 +1010,6 @@ export default {
         memberCount: '{count} members',
         noMembers: 'No members yet.',
         addMember: 'Add member',
-        choose: 'Choose a user…',
         memberAdded: '{name} is a member of {group}.',
         memberRemoved: '{name} is no longer a member of {group}.',
         removeMember: 'Remove {name} from the group',
@@ -1048,7 +1047,6 @@ export default {
     },
     educational: {
         badge: 'Educational mode',
-        badgeTitle: 'You are in a group in educational mode: validating, importing and exporting are switched off.',
         locked: 'Not available in educational mode',
         switch: 'Educational mode',
         switchTitle: 'Members who are not owners (students) then cannot validate, import or export, in any project.',

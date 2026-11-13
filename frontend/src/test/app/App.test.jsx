@@ -222,6 +222,9 @@ test('a project is saved with its name (in the document and as ?name=) and Alt+S
     fireEvent.change(byId('project-name'), {target: {value: 'Woning Jan'}})
     fireEvent.click(byId('btn-save'))
     await statusIs(t('app.saved'))
+    // the message is a toast, not part of the top bar
+    expect(status().closest('.bar')).toBeNull()
+    expect(status().closest('.toast')).toHaveClass('shown')
     // a new project: the server gives it its number
     expect(puts()[0][0]).toBe('/api/projects?name=Woning%20Jan')
     expect(puts()[0][1].method).toBe('POST')

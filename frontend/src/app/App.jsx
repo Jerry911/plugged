@@ -23,6 +23,7 @@ import {copyProject, createProject, deleteProject, fetchProject, fetchProjectSum
 import {usePresence} from '../hooks/usePresence.js'
 import AccountDialog from '../features/account/AccountDialog.jsx'
 import MaterialsDialog from '../features/project/MaterialsDialog.jsx'
+import Toast, {useToast} from '../components/Toast.jsx'
 import {useHistory} from '../hooks/useHistory.js'
 import {useAutoSave} from '../hooks/useAutoSave.js'
 import {exportEds, importEds} from '../model/eds.js'
@@ -102,7 +103,7 @@ function Editor({library, user, onLogout, onAccountDeleted}) {
         savedSnapshot = useRef(JSON.stringify(initialProject)), // the project as last saved or loaded: tells whether there are unsaved changes
         [footerDialog, setFooterDialog] = useState(null),
         [tab, setTab] = useState(ONE_WIRE_TAB),
-        [statusMessage, setStatusMessage] = useState(''),
+        [toast, setStatusMessage] = useToast(),
         [accountOpen, setAccountOpen] = useState(false),
         [materialsOpen, setMaterialsOpen] = useState(false),
         [newerVersion, setNewerVersion] = useState(null), // somebody else saved the open project while it has unsaved changes here
@@ -538,7 +539,6 @@ function Editor({library, user, onLogout, onAccountDeleted}) {
                         </button>
                     </span>
                 )}
-                <span id="status-message">{statusMessage}</span>
                 <input id="import-input" type="file" accept={IMPORT_ACCEPT} hidden onChange={importFile} />
                 <span className="sep" />
                 <button id="btn-pdf" onClick={() => setPrintJob('pdf')}>
@@ -588,6 +588,7 @@ function Editor({library, user, onLogout, onAccountDeleted}) {
                     <span className="bar-text minor">{t('auth.logout')}</span>
                 </button>
             </div>
+            <Toast toast={toast} />
             {materialsOpen && <MaterialsDialog project={project} projectId={projectId} onClose={() => setMaterialsOpen(false)} />}
             {accountOpen && <AccountDialog user={user} onClose={() => setAccountOpen(false)} onDeleted={onAccountDeleted} />}
             {exportOpen && !restricted && <ExportDialog onExport={exportAs} onClose={() => setExportOpen(false)} />}

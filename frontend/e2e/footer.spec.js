@@ -45,7 +45,7 @@ test('clicking a cell of the footer opens the dialog on that field; empty cells 
     await app.open(backend, project({footer: {}}))
     await expect(page.locator('svg.sheet').first()).toContainText(t('sheet.clickToFill'))
     const cell = (field) => page.locator('#eds-sheet-1-drawing-footer-' + field)
-    await expect(page.locator('#eds-sheet-1-drawing .fcell')).toHaveCount(9)
+    await expect(page.locator('#eds-sheet-1-drawing .fcell')).toHaveCount(11)
     await cell('tekenaar').click()
     await expect(dialog(page)).toBeVisible()
     await expect(field(page, 'tekenaar')).toBeFocused()

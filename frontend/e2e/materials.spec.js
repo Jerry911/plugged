@@ -24,17 +24,18 @@ test('the bill of materials counts the eendraadschema and downloads as Excel and
     await expect(dialog).toHaveCount(0)
 })
 
-test('the measurements are printed on the sheet, the earth resistance at the earth symbol, and checked', async ({page, app, backend}) => {
+test('the measurements are always in the title block, to fill in by hand or in Kaderinfo', async ({page, app, backend}) => {
     await app.open(backend, withCircuit())
+    const sheet = page.locator('svg.sheet').first()
+    // nothing measured yet: three dotted lines to write on
+    await expect(sheet.locator('.sheet-measurement-blank')).toHaveCount(3)
     await page.locator('#btn-footer').click()
     await page.locator('#footer-aardingsweerstand').fill('45')
     await page.locator('#footer-isolatieweerstand').fill('250')
     await page.locator('#footer-meetdatum').fill('13/11/2026')
     await page.locator('#footer-aardingsweerstand').press('Escape')
-    const sheet = page.locator('svg.sheet').first()
-    await expect(sheet.locator('.sheet-measurements')).toHaveText(
-        [t('sheet.earthResistance', {value: '45'}), t('sheet.insulationResistance', {value: '250'}), t('sheet.measuredOn', {date: '13/11/2026'})].join(' · '),
-    )
+    await expect(sheet.locator('.sheet-measurement-value')).toHaveText(['45', '250', '13/11/2026'])
+    await expect(sheet.locator('.sheet-measurement-blank')).toHaveCount(0)
     const saved = await app.save(backend)
     expect(saved.footer).toMatchObject({aardingsweerstand: '45', isolatieweerstand: '250', meetdatum: '13/11/2026'})
 })

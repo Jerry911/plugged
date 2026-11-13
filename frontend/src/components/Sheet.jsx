@@ -1,7 +1,7 @@
 // Copyright 2026 Pleysier Jeroen
 // SPDX-License-Identifier: AGPL-3.0-only
 import {useTranslation} from '../i18n/I18nProvider.jsx'
-import {measurementParts} from '../model/measurements.js'
+import {MEASUREMENT_BOXES, measurementValue} from '../model/measurements.js'
 
 /** Font size (mm) of the titles of the footer (Titel, Adres, ...): the eendraadschema is never drawn with smaller text (see MM_PER_UNIT). */
 export const FOOTER_TITLE_FONT_SIZE = 2.2
@@ -15,8 +15,7 @@ const joinFilled = (parts, separator = ' ') => parts.filter((part) => part && St
  */
 export default function Sheet({project, number, total = 2, children, svgRef, onFooter, sheetId, ...svgProps}) {
     const {t} = useTranslation()
-    const footer = project.footer || {},
-        measurements = measurementParts(footer)
+    const footer = project.footer || {}
     // [x, width, field that opens when clicked, label, value]
     const cells = [
         [5, 70, 'ean', t('sheet.cells.ean'), footer.ean],
@@ -65,15 +64,34 @@ export default function Sheet({project, number, total = 2, children, svgRef, onF
                 ))}
                 <line x1="5" y1="198" x2="292" y2="198" />
                 <text x="6" y="203" fontSize="3" stroke="none">
-                    {footer.stelsel ? ' - ' + footer.stelsel : ''}
-                    {footer.dossier ? ' - ' + t('sheet.dossier', {number: footer.dossier}) : ''}
+                    {joinFilled([footer.stelsel, footer.dossier ? t('sheet.dossier', {number: footer.dossier}) : ''], ' - ')}
                 </text>
-                {/* the measurements for the inspection (Kaderinfo → Metingen), in the lower row under the address */}
-                {measurements.length > 0 && (
-                    <text className="sheet-measurements" x="76" y="202.8" fontSize="2.6" stroke="none">
-                        {measurements.join(' · ')}
-                    </text>
-                )}
+                {/* the measurements for the inspection (Kaderinfo → Metingen) in the lower row under the address and the owner: always there,
+                    with a dotted line to write on by hand where nothing is filled in yet (the inspector often measures them himself) */}
+                <g className="sheet-measurements" stroke="none">
+                    {MEASUREMENT_BOXES.map(({field, label, x, from, to, unit}) => {
+                        const value = measurementValue(footer, field)
+                        return (
+                            <g key={field} className={'sheet-measurement' + (value ? ' filled' : '')} data-field={field}>
+                                <text x={x} y="202.8" fontSize="2.6">
+                                    {t(label)}
+                                </text>
+                                {value ? (
+                                    <text className="sheet-measurement-value" x={(from + to) / 2} y="202.8" fontSize="3" textAnchor="middle">
+                                        {value}
+                                    </text>
+                                ) : (
+                                    <line className="sheet-measurement-blank" x1={from} y1="203.4" x2={to} y2="203.4" stroke="#000" strokeWidth=".2" strokeDasharray=".5 .7" />
+                                )}
+                                {unit && (
+                                    <text x={to + 1} y="202.8" fontSize="2.6">
+                                        {unit}
+                                    </text>
+                                )}
+                            </g>
+                        )
+                    })}
+                </g>
                 {/* the scale: its own box in the lower row, under the date */}
                 <text id={sheetId && sheetId + '-scale'} className="sheet-scale" x="236" y="203" fontSize="3" stroke="none">
                     <tspan fontSize={FOOTER_TITLE_FONT_SIZE} fill="#666">
@@ -93,18 +111,20 @@ export default function Sheet({project, number, total = 2, children, svgRef, onF
                         onClick={() => onFooter('dossier')}
                     />
                 )}
-                {onFooter && (
-                    <rect
-                        id={sheetId && `${sheetId}-footer-aardingsweerstand`}
-                        className="fcell"
-                        x="75"
-                        y="198"
-                        width="75"
-                        height="7"
-                        stroke="none"
-                        onClick={() => onFooter('aardingsweerstand')}
-                    />
-                )}
+                {onFooter &&
+                    MEASUREMENT_BOXES.map(({field, cell}) => (
+                        <rect
+                            key={field}
+                            id={sheetId && `${sheetId}-footer-${field}`}
+                            className="fcell"
+                            x={cell[0]}
+                            y="198"
+                            width={cell[1] - cell[0]}
+                            height="7"
+                            stroke="none"
+                            onClick={() => onFooter(field)}
+                        />
+                    ))}
                 {onFooter && (
                     <rect
                         id={sheetId && `${sheetId}-footer-schaal`}

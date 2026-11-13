@@ -168,6 +168,13 @@
     }
 }
 
+/* a smaller laptop screen: the language picker shows only its code (NL, FR, EN), the name is in the list */
+@media (max-width: 1400px) {
+    .bar .langsel {
+        max-width: 4.6em
+    }
+}
+
 /* ---- narrow screens (tablet upright, phone): the panels stand above and below the drawing instead of beside it ---- */
 @media (max-width: 900px) {
     .bar {
@@ -191,16 +198,6 @@
 
     .bar .bar-icon {
         display: inline
-    }
-
-    #status-message {
-        order: 99;
-        flex-basis: 100%;
-        font-size: 12px
-    }
-
-    #status-message:empty {
-        display: none
     }
 
     .row {
@@ -293,6 +290,46 @@
 
     /* the help with the mouse and keyboard (right click, Shift, Del) does not apply to a touch screen */
     #sit-help {
+        display: none
+    }
+}
+
+/* feedback (saved, loaded, ...) at the bottom right instead of in the top bar; it fades out and never catches a click */
+.toast {
+    position: fixed;
+    right: 16px;
+    bottom: 16px;
+    z-index: 1000;
+    max-width: min(420px, calc(100vw - 32px));
+    padding: 8px 14px;
+    border-radius: 6px;
+    background: #1f3a5f;
+    color: #fff;
+    font-size: 14px;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, .25);
+    pointer-events: none;
+    opacity: 0;
+    transform: translateY(8px);
+    transition: opacity .25s, transform .25s
+}
+
+.toast.shown {
+    opacity: 1;
+    transform: none
+}
+
+.toast:has(#status-message:empty) {
+    display: none
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .toast {
+        transition: none
+    }
+}
+
+@media print {
+    .toast {
         display: none
     }
 }

@@ -148,7 +148,7 @@ export default {
     },
     footer: {
         measurements: 'Mesures pour le contrôle',
-        measurementsHint: 'figurent dans le cartouche de chaque feuille, la résistance de terre aussi au symbole de terre',
+        measurementsHint: 'figurent toujours dans le cartouche de chaque feuille ; vides, une ligne reste pour les remplir à la main. La résistance de terre figure aussi au symbole de terre.',
         title: 'Cartouche',
         heading: 'Cartouche (en bas de chaque feuille)',
         fields: {
@@ -170,9 +170,7 @@ export default {
         },
     },
     sheet: {
-        earthResistance: 'Ra {value} Ω',
-        insulationResistance: 'Riso {value} MΩ',
-        measuredOn: 'mesuré le {date}',
+        measure: {earth: 'Ra', insulation: 'Riso', date: 'Mesuré le'},
         earthLabel: 'Ra = {value} Ω',
         cells: {
             ean: 'EAN',

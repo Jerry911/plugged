@@ -17,14 +17,19 @@ export const measuredValue = (text) => {
 /** A value as it is printed: the number as typed (comma or point), without a unit the user may have typed along. */
 const shown = (text) => String(text ?? '').trim().replace(/\s*(m?Ω|M?ohm|MΩ|ohm)\s*$/i, '')
 
-/** The measurements as short texts for the title block, e.g. ["Ra 25 Ω", "Riso 200 MΩ", "gemeten 13/11/2026"]; empty when none is filled in. */
-export const measurementParts = (footer = {}) => {
-    const parts = []
-    if (String(footer.aardingsweerstand ?? '').trim()) parts.push(t('sheet.earthResistance', {value: shown(footer.aardingsweerstand)}))
-    if (String(footer.isolatieweerstand ?? '').trim()) parts.push(t('sheet.insulationResistance', {value: shown(footer.isolatieweerstand)}))
-    if (parts.length && String(footer.meetdatum ?? '').trim()) parts.push(t('sheet.measuredOn', {date: footer.meetdatum.trim()}))
-    return parts
-}
+/**
+ * The boxes of the measurements in the lower row of the title block (mm on the A4 sheet): the label at x, the value (or a dotted line to
+ * write on) from `from` to `to`, the unit after it, and the clickable cell [start, end] that opens Kaderinfo on the field.
+ * Ra and Riso share the cell under the address (75-150), the date has the cell under the owner (150-200).
+ */
+export const MEASUREMENT_BOXES = [
+    {field: 'aardingsweerstand', label: 'sheet.measure.earth', x: 76, from: 81, to: 102, unit: 'Ω', cell: [75, 108]},
+    {field: 'isolatieweerstand', label: 'sheet.measure.insulation', x: 109, from: 116.5, to: 141, unit: 'MΩ', cell: [108, 150]},
+    {field: 'meetdatum', label: 'sheet.measure.date', x: 151, from: 168, to: 198.5, unit: '', cell: [150, 200]},
+]
+
+/** A measurement as it is printed: the value as typed, without a unit typed along (the sheet prints the unit itself); '' when empty. */
+export const measurementValue = (footer = {}, field) => (field === 'meetdatum' ? String(footer[field] ?? '').trim() : shown(footer[field]).trim())
 
 /** The text at the earth symbol, e.g. "Ra = 25 Ω"; null without an earth resistance. */
 export const earthLabel = (footer = {}) =>

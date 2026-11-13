@@ -148,7 +148,7 @@ export default {
     },
     footer: {
         measurements: 'Measurements for the inspection',
-        measurementsHint: 'printed in the title block of every sheet, the earth resistance also at the earth symbol',
+        measurementsHint: 'always in the title block of every sheet; left empty, a dotted line remains to fill in by hand. The earth resistance also appears at the earth symbol.',
         title: 'Title block',
         heading: 'Title block (at the bottom of every sheet)',
         fields: {
@@ -170,9 +170,7 @@ export default {
         },
     },
     sheet: {
-        earthResistance: 'Ra {value} Ω',
-        insulationResistance: 'Riso {value} MΩ',
-        measuredOn: 'measured {date}',
+        measure: {earth: 'Ra', insulation: 'Riso', date: 'Measured on'},
         earthLabel: 'Ra = {value} Ω',
         cells: {
             ean: 'EAN',

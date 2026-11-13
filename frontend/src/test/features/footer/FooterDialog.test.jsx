@@ -65,7 +65,7 @@ test('Sheet copes with empty footer', () => {
     expect(getById('s-number')).toHaveTextContent(t('sheet.pageOf', {number: 1, total: 2}))
 })
 
-const CLICKABLE_CELLS = ['ean', 'straat', 'eigenaar', 'tekenaar', 'datum', 'rev', 'dossier', 'aardingsweerstand', 'schaal']
+const CLICKABLE_CELLS = ['ean', 'straat', 'eigenaar', 'tekenaar', 'datum', 'rev', 'dossier', 'aardingsweerstand', 'isolatieweerstand', 'meetdatum', 'schaal']
 test('footer cells are clickable when onFooter is given and show hints for empty values', () => {
     const onFooter = vi.fn(),
         project = baseProject()
@@ -122,14 +122,18 @@ test('the measurements for the inspection are fields of their own and are printe
         MEASUREMENT_FIELDS.forEach((field) => expect(t('footer.fields.' + field)).not.toBe('footer.fields.' + field))
     }
     setLanguage('nl')
-    const {container} = render(<Sheet project={{...project, footer: {...project.footer, aardingsweerstand: '22', isolatieweerstand: '250', meetdatum: '13/11/2026'}}} number={1} total={1} sheetId="m" />)
-    expect(container.querySelector('.sheet-measurements')).toHaveTextContent(
-        [t('sheet.earthResistance', {value: '22'}), t('sheet.insulationResistance', {value: '250'}), t('sheet.measuredOn', {date: '13/11/2026'})].join(' · '),
-    )
-    const onFooter = vi.fn(),
-        {container: without} = render(<Sheet project={project} number={1} total={1} sheetId="n" onFooter={onFooter} />)
-    expect(without.querySelector('.sheet-measurements')).toBeNull()
-    // the cell opens Kaderinfo at the earth resistance
-    fireEvent.click(getById('n-footer-aardingsweerstand'))
-    expect(onFooter).toHaveBeenCalledWith('aardingsweerstand')
+    // filled in: the values (a unit typed along is not printed twice)
+    const {container} = render(<Sheet project={{...project, footer: {...project.footer, aardingsweerstand: '22 Ω', isolatieweerstand: '250', meetdatum: '13/11/2026'}}} number={1} total={1} />)
+    const values = [...container.querySelectorAll('.sheet-measurement-value')].map((value) => value.textContent)
+    expect(values).toEqual(['22', '250', '13/11/2026'])
+    expect(container.querySelector('.sheet-measurement-blank')).toBeNull()
+    expect(container.querySelector('.sheet-measurements')).toHaveTextContent(t('sheet.measure.earth') + '22Ω')
+    // not filled in: the labels and units with a dotted line to write on by hand
+    const {container: empty} = render(<Sheet project={project} number={1} total={1} />)
+    expect(empty.querySelectorAll('.sheet-measurement-blank')).toHaveLength(3)
+    expect(empty.querySelector('.sheet-measurements')).toHaveTextContent([t('sheet.measure.earth'), 'Ω', t('sheet.measure.insulation'), 'MΩ', t('sheet.measure.date')].join(''))
+    // partly filled in
+    const {container: part} = render(<Sheet project={{...project, footer: {...project.footer, isolatieweerstand: '500'}}} number={1} total={1} />)
+    expect(part.querySelectorAll('.sheet-measurement-blank')).toHaveLength(2)
+    expect(part.querySelector('[data-field="isolatieweerstand"]')).toHaveClass('filled')
 })

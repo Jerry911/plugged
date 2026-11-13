@@ -1,6 +1,6 @@
 // Copyright 2026 Pleysier Jeroen
 // SPDX-License-Identifier: AGPL-3.0-only
-import {earthLabel, measuredValue, measurementParts} from '../../model/measurements.js'
+import {earthLabel, measuredValue, measurementValue} from '../../model/measurements.js'
 import {sensitiveDifferentialsAtOrigin, verify} from '../../model/rules.js'
 import {t} from '../../i18n/translate.js'
 import {baseProject, node} from '../utils.jsx'
@@ -13,15 +13,12 @@ test('a measured value is read with a comma or a point, with or without unit', (
     expect(measuredValue(undefined)).toBeNull()
     expect(measuredValue('niet gemeten')).toBeNull()
 })
-test('the title block texts: only what is filled in, the date only with a value, a typed unit not twice', () => {
-    expect(measurementParts({})).toEqual([])
-    expect(measurementParts({meetdatum: '2026-11-13'})).toEqual([])
-    expect(measurementParts({aardingsweerstand: '25,4 Ω', isolatieweerstand: '200', meetdatum: ' 13/11/2026 '})).toEqual([
-        t('sheet.earthResistance', {value: '25,4'}),
-        t('sheet.insulationResistance', {value: '200'}),
-        t('sheet.measuredOn', {date: '13/11/2026'}),
-    ])
-    expect(measurementParts({isolatieweerstand: '500 MΩ'})).toEqual([t('sheet.insulationResistance', {value: '500'})])
+test('a printed value: as typed, without a unit typed along; empty when not filled in', () => {
+    expect(measurementValue({}, 'aardingsweerstand')).toBe('')
+    expect(measurementValue({aardingsweerstand: '25,4 Ω'}, 'aardingsweerstand')).toBe('25,4')
+    expect(measurementValue({isolatieweerstand: '500 MΩ'}, 'isolatieweerstand')).toBe('500')
+    expect(measurementValue({isolatieweerstand: '>999'}, 'isolatieweerstand')).toBe('>999')
+    expect(measurementValue({meetdatum: ' 13/11/2026 '}, 'meetdatum')).toBe('13/11/2026')
 })
 test('the earth label', () => {
     expect(earthLabel({})).toBeNull()
@@ -72,7 +69,7 @@ test('the earth messages exist in every language', async () => {
     for (const language of ['nl', 'fr', 'en']) {
         setLanguage(language)
         for (const key of ['earthNotMeasured', 'earthTooHigh', 'earthHigh']) expect(t('verify.rules.' + key)).not.toBe('verify.rules.' + key)
-        for (const key of ['earthResistance', 'insulationResistance', 'measuredOn', 'earthLabel']) expect(t('sheet.' + key)).not.toBe('sheet.' + key)
+        for (const key of ['measure.earth', 'measure.insulation', 'measure.date', 'earthLabel']) expect(t('sheet.' + key)).not.toBe('sheet.' + key)
     }
     setLanguage('nl')
 })

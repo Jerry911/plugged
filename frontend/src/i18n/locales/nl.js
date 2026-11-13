@@ -149,7 +149,7 @@ export default {
     },
     footer: {
         measurements: 'Metingen voor de keuring',
-        measurementsHint: 'komen in het kader van elk blad, de aardingsweerstand ook bij het aardingssymbool',
+        measurementsHint: 'staan altijd in het kader van elk blad; leeg blijft er een lijntje om met de hand in te vullen. De aardingsweerstand komt ook bij het aardingssymbool.',
         title: 'Kaderinfo',
         heading: 'Kaderinfo (onderaan elk blad)',
         fields: {
@@ -171,9 +171,7 @@ export default {
         },
     },
     sheet: {
-        earthResistance: 'Ra {value} Ω',
-        insulationResistance: 'Riso {value} MΩ',
-        measuredOn: 'gemeten {date}',
+        measure: {earth: 'Ra', insulation: 'Riso', date: 'Gemeten op'},
         earthLabel: 'Ra = {value} Ω',
         cells: {
             ean: 'EAN',

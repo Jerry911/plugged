@@ -31,9 +31,12 @@ const originKey = (symbol) =>
         ? symbol.modified
             ? 'symbolEditor.origin.modified'
             : 'symbolEditor.origin.standard'
-        : symbol.group != null
-          ? 'symbolEditor.origin.group'
-          : 'symbolEditor.origin.own'
+        : symbol.shareable === false
+          ? 'symbolEditor.origin.from'
+          : symbol.groups?.length
+            ? 'symbolEditor.origin.shared'
+            : 'symbolEditor.origin.own'
+const groupNames = (symbol) => (symbol.groups || []).map((group) => group.name).join(', ')
 
 /**
  * library = the symbols of the user (the standard ones, his own and those of his groups); the handlers call the backend (see
@@ -293,10 +296,18 @@ export default function SymbolEditor({library, groups = [], onOpen, onSave, onRe
         setOriginal(null)
         setMessage(t('symbolEditor.allRestored'))
     }
-    // a copy is always an own symbol of the user (personal; he can put it in one of his groups)
+    // a copy is always an own symbol of the user, shared with nobody yet
     const duplicate = () =>
-        open({...draft, k: 'custom:' + newId(), name: t('common.copyOf', {name: draft.name}), builtin: false, modified: false, v: 0, group: null, editable: true}, true)
-    const groupName = (id) => groups.find((group) => group.id === id)?.name ?? '#' + id
+        open(
+            {...draft, k: 'custom:' + newId(), name: t('common.copyOf', {name: draft.name}), builtin: false, modified: false, v: 0, groups: [], editable: true, shareable: true, owner: undefined},
+            true,
+        )
+    // sharing: the owner (or an administrator) chooses among his groups; a group the symbol is shared with that he is not in stays as it is
+    const canShare = draft?.shareable !== false,
+        sharedIds = new Set((draft?.groups || []).map((group) => group.id)),
+        shareOptions = [...groups, ...(draft?.groups || []).filter((shared) => !groups.some((group) => group.id === shared.id))],
+        toggleGroup = (group, on) =>
+            change({groups: on ? [...(draft.groups || []), {id: group.id, name: group.name}] : (draft.groups || []).filter((shared) => shared.id !== group.id)})
     // the selected shapes and the frame around them (indexes that no longer exist are left out)
     const chosen = draft ? selected.map((i) => draft.shapes[i]).filter(Boolean) : [],
         bounds = unionBounds(chosen)
@@ -393,7 +404,7 @@ export default function SymbolEditor({library, groups = [], onOpen, onSave, onRe
                             {dirty && <span id="comp-dirty">● {t('symbolEditor.unsaved')}</span>}
                             {message && <span id="comp-message">{message}</span>}
                             <small id="comp-origin" style={{marginLeft: 'auto'}}>
-                                {t(originKey(draft), {group: draft.group != null ? groupName(draft.group) : ''})}
+                                {t(originKey(draft), {groups: groupNames(draft) || t('symbolEditor.onlyMe'), owner: draft.owner || ''})}
                             </small>
                         </div>
                         <div className="cwork">
@@ -443,7 +454,7 @@ export default function SymbolEditor({library, groups = [], onOpen, onSave, onRe
                                                 </button>
                                             </>
                                         )}
-                                        {isStored && (
+                                        {isStored && (isStandard || canShare) && (
                                             <button id="comp-delete" className="danger" onClick={remove}>
                                                 {t('symbolEditor.delete')}
                                             </button>
@@ -604,29 +615,35 @@ export default function SymbolEditor({library, groups = [], onOpen, onSave, onRe
                                                 <option key={category} value={category} />
                                             ))}
                                         </datalist>
-                                        {!isStandard && (
-                                            <label>
-                                                {t('symbolEditor.belongsTo')}
-                                                <select
-                                                    id="comp-group"
-                                                    disabled={groups.length === 0 && draft.group == null}
-                                                    title={groups.length === 0 && draft.group == null ? t('symbolEditor.noGroups') : undefined}
-                                                    value={draft.group ?? ''}
-                                                    onChange={(event) => change({group: event.target.value === '' ? null : Number(event.target.value)})}
-                                                >
-                                                    <option value="">{t('symbolEditor.personal')}</option>
-                                                    {groups.map((group) => (
-                                                        <option key={group.id} value={group.id}>
-                                                            {t('symbolEditor.group', {group: group.name})}
-                                                        </option>
-                                                    ))}
-                                                    {draft.group != null && !groups.some((group) => group.id === draft.group) && (
-                                                        <option value={draft.group}>{t('symbolEditor.group', {group: groupName(draft.group)})}</option>
-                                                    )}
-                                                </select>
-                                            </label>
-                                        )}
                                     </div>
+                                    {!isStandard && (
+                                        <div id="comp-sharing" style={{margin: '8px 0'}}>
+                                            <b>{t('symbolEditor.sharedWith')}</b>
+                                            {shareOptions.length === 0 ? (
+                                                <small id="comp-no-groups" style={{display: 'block'}}>
+                                                    {t('symbolEditor.onlyMe')}. {t('symbolEditor.noGroups')}
+                                                </small>
+                                            ) : (
+                                                <>
+                                                    {shareOptions.map((group) => (
+                                                        <label key={group.id} style={{display: 'block'}}>
+                                                            <input
+                                                                id={'comp-share-' + group.id}
+                                                                type="checkbox"
+                                                                checked={sharedIds.has(group.id)}
+                                                                disabled={!canShare || !groups.some((own) => own.id === group.id)}
+                                                                onChange={(event) => toggleGroup(group, event.target.checked)}
+                                                            />{' '}
+                                                            {group.name}
+                                                        </label>
+                                                    ))}
+                                                    <small id="comp-sharing-hint" style={{display: 'block'}}>
+                                                        {!canShare ? t('symbolEditor.sharingOwnerOnly') : sharedIds.size === 0 ? t('symbolEditor.onlyMe') : t('symbolEditor.sharedHint')}
+                                                    </small>
+                                                </>
+                                            )}
+                                        </div>
+                                    )}
                                     <label style={{display: 'block', margin: '8px 0'}}>
                                         <input id="comp-placeable" type="checkbox" checked={draft.place} onChange={(event) => change({place: event.target.checked})} />{' '}
                                         {t('symbolEditor.placeable')}

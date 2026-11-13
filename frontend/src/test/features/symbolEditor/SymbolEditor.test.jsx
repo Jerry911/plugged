@@ -543,15 +543,17 @@ test('select tool: dragging a selected shape moves the whole selection on the gr
 
 describe('who may change what', () => {
     // as the backend sends the library to somebody who is no administrator
-    const asUser = DEFAULTS.map((symbol) => ({...symbol, editable: false, group: null}))
-    const teamSymbol = {k: 'custom:team', name: 'Teamlamp', cat: 'Eigen', parents: ['kring'], place: true, shapes: [{t: 'circle', cx: 12, cy: 12, r: 5}], builtin: false, group: 7, editable: true}
+    const asUser = DEFAULTS.map((symbol) => ({...symbol, editable: false}))
+    const mine = {k: 'custom:mijn', name: 'Mijn lamp', cat: 'Eigen', parents: ['kring'], place: true, shapes: [{t: 'circle', cx: 12, cy: 12, r: 5}], builtin: false, groups: [], editable: true, shareable: true, owner: 'Ik Zelf'}
+    const TEAM = {id: 7, name: 'Team'},
+        CLUB = {id: 8, name: 'Club'}
 
     test('a standard symbol is read-only for somebody who is no administrator: he duplicates it into an own symbol', async () => {
-        const f = mount([...asUser, teamSymbol], true, [{id: 7, name: 'Team'}])
+        const f = mount([...asUser, mine], true, [TEAM])
         expect(byId('comp-restore-all')).toBeNull()
         pick('lichtpunt')
         expect(getById('comp-read-only')).toHaveTextContent(t('symbolEditor.readOnlyStandard'))
-        for (const id of ['comp-save', 'comp-clear', 'comp-undo-shape', 'comp-restore', 'comp-make-standard', 'comp-delete', 'comp-tool-line'])
+        for (const id of ['comp-save', 'comp-clear', 'comp-undo-shape', 'comp-restore', 'comp-make-standard', 'comp-delete', 'comp-tool-line', 'comp-sharing'])
             expect(byId(id)).toBeNull()
         expect(getById('comp-fields')).toBeDisabled()
         const shapes = DEFAULTS.find((symbol) => symbol.k === 'lichtpunt').shapes.length
@@ -559,52 +561,73 @@ describe('who may change what', () => {
         fireEvent.click(getById('comp-drawing'), {clientX: 50, clientY: 50})
         fireEvent.click(getById('comp-duplicate'))
         expect(byId('comp-read-only')).toBeNull()
-        expect(getById('comp-group')).toHaveValue('')
+        expect(getById('comp-share-7')).not.toBeChecked()
         fireEvent.click(getById('comp-save'))
         await waitFor(() => expect(f.save).toHaveBeenCalled())
-        expect(f.save.mock.calls[0][0]).toMatchObject({builtin: false, group: null, editable: true})
+        expect(f.save.mock.calls[0][0]).toMatchObject({builtin: false, groups: [], editable: true, shareable: true})
         expect(f.save.mock.calls[0][0].k).toMatch(/^custom:/)
         expect(f.save.mock.calls[0][0].shapes).toHaveLength(shapes)
     })
 
-    test('an own symbol can be put in a group of the user', async () => {
-        const f = mount([...asUser, teamSymbol], true, [{id: 7, name: 'Team'}, {id: 8, name: 'Klas'}])
-        pick('custom:team')
-        expect(getById('comp-origin')).toHaveTextContent(t('symbolEditor.origin.group', {group: 'Team'}))
-        expect(getById('comp-group')).toHaveValue('7')
-        fireEvent.change(getById('comp-group'), {target: {value: '8'}})
+    test('the owner shares a symbol with several of his groups at once', async () => {
+        const f = mount([...asUser, mine], true, [CLUB, TEAM])
+        pick('custom:mijn')
+        expect(getById('comp-origin')).toHaveTextContent(t('symbolEditor.origin.own'))
+        expect(getById('comp-sharing-hint')).toHaveTextContent(t('symbolEditor.onlyMe'))
+        fireEvent.click(getById('comp-share-7'))
+        fireEvent.click(getById('comp-share-8'))
+        expect(getById('comp-origin')).toHaveTextContent(t('symbolEditor.origin.shared', {groups: 'Team, Club'}))
         fireEvent.click(getById('comp-save'))
         await waitFor(() => expect(f.save).toHaveBeenCalled())
-        expect(f.save.mock.calls[0][0].group).toBe(8)
-        fireEvent.change(getById('comp-group'), {target: {value: ''}})
-        expect(getById('comp-group')).toHaveValue('')
+        expect(f.save.mock.calls[0][0].groups.map((group) => group.id)).toEqual([7, 8])
+        fireEvent.click(getById('comp-share-7'))
+        expect(getById('comp-share-7')).not.toBeChecked()
+        expect(getById('comp-share-8')).toBeChecked()
     })
 
-    test('a group symbol a student may not change is read-only too', () => {
-        mount([...asUser, {...teamSymbol, editable: false}], true, [])
-        pick('custom:team')
+    test('a symbol of somebody else, shared with my group: I improve the drawing, but the sharing and deleting are his', () => {
+        mount([...asUser, {...mine, k: 'custom:van-jan', name: 'Van Jan', owner: 'Jan Peeters', shareable: false, groups: [TEAM, {id: 9, name: 'Elders'}]}], true, [TEAM])
+        pick('custom:van-jan')
+        expect(getById('comp-origin')).toHaveTextContent(t('symbolEditor.origin.from', {owner: 'Jan Peeters', groups: 'Team, Elders'}))
+        expect(getById('comp-save')).toBeInTheDocument()
+        expect(byId('comp-delete')).toBeNull()
+        expect(getById('comp-share-7')).toBeChecked()
+        expect(getById('comp-share-7')).toBeDisabled()
+        expect(getById('comp-share-9')).toBeChecked()
+        expect(getById('comp-sharing-hint')).toHaveTextContent(t('symbolEditor.sharingOwnerOnly'))
+    })
+
+    test('a shared symbol a student may not change is read-only too', () => {
+        mount([...asUser, {...mine, editable: false, shareable: false, owner: 'Juf', groups: [TEAM]}], true, [])
+        pick('custom:mijn')
         expect(getById('comp-read-only')).toHaveTextContent(t('symbolEditor.readOnlyGroup'))
         expect(byId('comp-save')).toBeNull()
-        // the group he is not allowed to choose is still shown as where it belongs
-        expect(getById('comp-group')).toHaveValue('7')
+        // the group it is shared with is still shown
+        expect(getById('comp-share-7')).toBeChecked()
     })
 
-    test('without groups the choice is there but closed, with the reason', () => {
-        mount([...DEFAULTS, {...teamSymbol, group: null}])
-        pick('custom:team')
-        expect(getById('comp-group')).toBeDisabled()
-        expect(getById('comp-group')).toHaveValue('')
-        expect(getById('comp-group')).toHaveAttribute('title', t('symbolEditor.noGroups'))
+    test('an administrator deletes a standard symbol (the backend says it is editable, and has no sharing)', () => {
+        mount(DEFAULTS.map((symbol) => ({...symbol, editable: true, shareable: false, groups: null})))
+        pick('lichtpunt')
+        expect(getById('comp-delete')).toBeInTheDocument()
+        expect(byId('comp-sharing')).toBeNull()
+    })
+
+    test('without groups the reason is shown instead of a choice', () => {
+        mount([...DEFAULTS, mine])
+        pick('custom:mijn')
+        expect(getById('comp-no-groups')).toHaveTextContent(t('symbolEditor.noGroups'))
+        expect(byId('comp-share-7')).toBeNull()
         expect(getById('comp-restore-all')).toBeInTheDocument()
     })
 
-    test('a new own symbol can be put in a group right away', async () => {
-        const f = mount([...asUser], true, [{id: 7, name: 'Team'}])
+    test('a new own symbol can be shared right away', async () => {
+        mount([...asUser], true, [TEAM])
         fireEvent.click(getById('comp-new'))
-        await waitFor(() => getById('comp-group'))
-        expect(getById('comp-group')).not.toBeDisabled()
-        fireEvent.change(getById('comp-group'), {target: {value: '7'}})
-        expect(getById('comp-group')).toHaveValue('7')
+        await waitFor(() => getById('comp-share-7'))
+        expect(getById('comp-share-7')).not.toBeDisabled()
+        fireEvent.click(getById('comp-share-7'))
+        expect(getById('comp-share-7')).toBeChecked()
     })
 
     test('opening the editor loads the groups again (they may have changed under Beheer)', () => {

@@ -9,18 +9,24 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.JoinTable;
+import jakarta.persistence.ManyToMany;
 import jakarta.persistence.OrderColumn;
 import jakarta.persistence.Table;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
+import org.hibernate.annotations.BatchSize;
 import org.hibernate.annotations.Fetch;
 import org.hibernate.annotations.FetchMode;
 
 /**
  * A symbol of the catalog: the standard symbols (builtin, seeded from {@link com.pleysje.plugged.catalog.StandardSymbols}, shared by everyone
- * and changed only by administrators) and the symbols the users made. A symbol of a user belongs either to that user ({@code owner_user_id})
- * or to a group ({@code owner_group_id}): only the user, or the members of the group, see and use it. The parents and the shapes are child tables (symbol_parents, symbol_shapes).
+ * and changed only by administrators) and the symbols the users made. A symbol of a user belongs to the user who made it
+ * ({@code owner_user_id}) and can be shared with any number of his groups (table {@code symbol_groups}), like a project: the members of
+ * those groups see and use it. The parents and the shapes are child tables (symbol_parents, symbol_shapes).
  * The column names are those of the existing databases: they do not follow the Java field names everywhere.
  */
 @Entity
@@ -74,12 +80,20 @@ public class SymbolEntity {
     @Column(name = "sock_n")
     private Integer socketCount;
 
-    /** the user a personal symbol belongs to (null for standard symbols, hidden rows and group symbols) */
+    /** the user an own symbol belongs to (null for standard symbols and hidden rows) */
     @Column(name = "owner_user_id")
     private Long ownerUserId;
-    /** the group a shared symbol belongs to (null for standard symbols, hidden rows and personal symbols) */
+    /** the groups the symbol is shared with (empty: only its owner uses it) */
+    @ManyToMany
+    @JoinTable(name = "symbol_groups", joinColumns = @JoinColumn(name = "symbol_key"), inverseJoinColumns = @JoinColumn(name = "group_id"))
+    @BatchSize(size = 500)
+    private Set<UserGroup> groups = new LinkedHashSet<>();
+    /**
+     * Only for databases of a test version in which a symbol belonged to one group: SymbolService#migrateGroupOwners turns it into a
+     * symbol shared with that group and empties this column.
+     */
     @Column(name = "owner_group_id")
-    private Long ownerGroupId;
+    private Long legacyOwnerGroupId;
 
     /** the symbol has the extended details input; null = not stored yet (symbols of before this option), see SymbolMapper#toDto */
     @Column(name = "has_details")
@@ -117,13 +131,10 @@ public class SymbolEntity {
     public void setSocketCount(Integer socketCount) { this.socketCount = socketCount; }
     public Boolean getDetails() { return details; }
     public Long getOwnerUserId() { return ownerUserId; }
-    public Long getOwnerGroupId() { return ownerGroupId; }
-
-    /** Personal symbol of this user (groupId null) or symbol of this group. */
-    public void setOwner(Long userId, Long groupId) {
-        this.ownerUserId = groupId == null ? userId : null;
-        this.ownerGroupId = groupId;
-    }
+    public void setOwnerUserId(Long ownerUserId) { this.ownerUserId = ownerUserId; }
+    public Set<UserGroup> getGroups() { return groups; }
+    public Long getLegacyOwnerGroupId() { return legacyOwnerGroupId; }
+    public void clearLegacyOwnerGroupId() { this.legacyOwnerGroupId = null; }
     public void setDetails(Boolean details) { this.details = details; }
 
     /** Same drawing and settings (name, category, placement, parents, shapes, socket parameters)? Flags and version are not compared. */

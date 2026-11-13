@@ -20,6 +20,8 @@ import com.pleysje.plugged.repository.UserRepository;
 import java.util.stream.Collectors;
 import java.util.Comparator;
 import java.util.List;
+import java.util.HashMap;
+import java.util.Collection;
 import java.util.Set;
 import java.util.Map;
 import java.util.UUID;
@@ -34,9 +36,10 @@ import org.springframework.transaction.annotation.Transactional;
  * <ul>
  *   <li>The <b>standard symbols</b> are shared by everyone. Only an administrator edits, deletes, restores them or makes a drawing the
  *       standard; the others use them (and can duplicate one into a symbol of their own).</li>
- *   <li>A <b>personal symbol</b> belongs to the user who made it: only he sees, changes and deletes it.</li>
- *   <li>A <b>group symbol</b> belongs to a group: its members see and use it; members who are no students in educational mode (see
- *       GroupService#isRestricted) and administrators change and delete it. An administrator can put a symbol in any group.</li>
+ *   <li>An <b>own symbol</b> belongs to the user who made it. He can share it with any number of his groups, like a project: the members
+ *       of those groups see and use it, and members who are no students in educational mode (see GroupService#isRestricted) also change
+ *       its drawing. Only the owner (or an administrator) changes the groups and deletes it. A student shares no symbols. An administrator
+ *       sees the symbols shared with any group and can share with any group.</li>
  * </ul>
  * A symbol the user may not see answers 404, as if it did not exist. Projects carry a copy of the own symbols they use (frontend), so a
  * shared project still draws correctly for somebody who does not have the symbol.
@@ -71,25 +74,38 @@ public class SymbolService {
 
     /**
      * What a user may do with the symbols: {@code memberGroups} the groups whose symbols he sees, {@code editableGroups} the groups whose
-     * symbols he changes and puts new symbols in.
+     * symbols he changes and that he can share a symbol with (his groups; none for a student; every group for an administrator).
      */
     record Access(AppUser user, Set<Long> memberGroups, Set<Long> editableGroups) {
         boolean admin() {
             return user.isAdmin();
         }
 
-        boolean sees(SymbolEntity entity) {
-            if (entity.isBuiltin()) return true;
-            if (entity.getOwnerGroupId() != null) return memberGroups.contains(entity.getOwnerGroupId()) || admin() && editableGroups.contains(entity.getOwnerGroupId());
-            if (entity.getOwnerUserId() != null) return entity.getOwnerUserId().equals(user.getId());
-            return admin(); // a symbol of before owners existed, until the primary administrator claims it
+        private boolean owns(SymbolEntity entity) {
+            return entity.getOwnerUserId() != null && entity.getOwnerUserId().equals(user.getId());
         }
 
+        private static boolean sharedWithAny(SymbolEntity entity, Set<Long> groupIds) {
+            for (UserGroup group : entity.getGroups()) if (groupIds.contains(group.getId())) return true;
+            return false;
+        }
+
+        boolean sees(SymbolEntity entity) {
+            if (entity.isBuiltin() || owns(entity)) return true;
+            if (sharedWithAny(entity, memberGroups) || admin() && !entity.getGroups().isEmpty()) return true;
+            return entity.getOwnerUserId() == null && admin(); // a symbol of before owners existed, until the primary administrator claims it
+        }
+
+        /** may change the drawing and the details */
         boolean edits(SymbolEntity entity) {
             if (entity.isBuiltin()) return admin();
-            if (entity.getOwnerGroupId() != null) return editableGroups.contains(entity.getOwnerGroupId());
-            if (entity.getOwnerUserId() != null) return entity.getOwnerUserId().equals(user.getId());
-            return admin();
+            return owns(entity) || sharedWithAny(entity, editableGroups) || shares(entity);
+        }
+
+        /** may change the groups and delete it */
+        boolean shares(SymbolEntity entity) {
+            if (entity.isBuiltin()) return false;
+            return owns(entity) || admin() && sees(entity);
         }
     }
 
@@ -102,11 +118,39 @@ public class SymbolService {
         return new Access(user, member, editable);
     }
 
-    private static SymbolDto forUser(SymbolEntity entity, Access access) {
-        return SymbolMapper.toDto(entity).withAccess(entity.getOwnerGroupId(), access.edits(entity));
+    private SymbolDto forUser(SymbolEntity entity, Access access) {
+        return forUser(entity, access, ownerNames(List.of(entity)));
     }
 
-    /** The groups the user can put a symbol in ({id, name}): his groups (none for a student in educational mode); every group for an admin. */
+    private static SymbolDto forUser(SymbolEntity entity, Access access, Map<Long, String> ownerNames) {
+        List<ProjectSummary.Ref> sharedWith = entity.getGroups().stream()
+                .sorted(Comparator.comparing(UserGroup::getName, String.CASE_INSENSITIVE_ORDER))
+                .map(group -> new ProjectSummary.Ref(group.getId(), group.getName())).toList();
+        return SymbolMapper.toDto(entity).withAccess(entity.isBuiltin() ? null : sharedWith, access.edits(entity), access.shares(entity),
+                entity.getOwnerUserId() == null ? null : ownerNames.get(entity.getOwnerUserId()));
+    }
+
+    /** "First name Surname" of the owners of these symbols, with one query. */
+    private Map<Long, String> ownerNames(Collection<SymbolEntity> entities) {
+        Set<Long> ids = entities.stream().map(SymbolEntity::getOwnerUserId).filter(java.util.Objects::nonNull).collect(Collectors.toSet());
+        Map<Long, String> names = new HashMap<>();
+        if (!ids.isEmpty()) for (AppUser owner : users.findAllById(ids)) names.put(owner.getId(), (owner.getName() + " " + owner.getSurname()).trim());
+        return names;
+    }
+
+    /**
+     * A test version let a symbol belong to one group instead of to a user: such a symbol is now shared with that group (and claimed by the
+     * primary administrator, like the other symbols without owner). Runs at start-up, after seeding.
+     */
+    public void migrateGroupOwners() {
+        for (SymbolEntity entity : repository.findByLegacyOwnerGroupIdNotNull()) {
+            groups.findById(entity.getLegacyOwnerGroupId()).ifPresent(entity.getGroups()::add);
+            entity.clearLegacyOwnerGroupId();
+            repository.save(entity);
+        }
+    }
+
+    /** The groups the user can share a symbol with ({id, name}): his groups (none for a student in educational mode); every group for an admin. */
     @Transactional(readOnly = true)
     public List<ProjectSummary.Ref> groupsFor(long userId) {
         Access access = access(userId);
@@ -172,11 +216,12 @@ public class SymbolService {
     @Transactional(readOnly = true)
     public List<SymbolDto> list(long userId) {
         Access access = access(userId);
-        return repository.findAll().stream()
+        List<SymbolEntity> visible = repository.findAll().stream()
                 .filter(entity -> !isHidden(entity.getKey()) && access.sees(entity))
                 .sorted(Comparator.comparingInt(SymbolEntity::getSortOrder).thenComparing(SymbolEntity::getName, String.CASE_INSENSITIVE_ORDER))
-                .map(entity -> forUser(entity, access))
                 .toList();
+        Map<Long, String> names = ownerNames(visible);
+        return visible.stream().map(entity -> forUser(entity, access, names)).toList();
     }
 
     @Transactional(readOnly = true)
@@ -193,7 +238,8 @@ public class SymbolService {
 
     /**
      * Creates or updates a symbol; for a standard symbol (administrators only) the result tells whether it still is the standard drawing.
-     * {@code symbol.group()} chooses where an own symbol belongs: null = personal symbol of the user, else a group he may put symbols in.
+     * {@code symbol.groups()} are the groups an own symbol is shared with, when the user may change that (the owner, an administrator):
+     * groups he cannot share with keep the state they had. A new symbol belongs to the user.
      */
     public SymbolDto save(long userId, String key, SymbolDto symbol) {
         validate(key, symbol);
@@ -208,8 +254,6 @@ public class SymbolService {
             if (!access.sees(stored)) throw notFound(key);
             if (!access.edits(stored)) throw new LocalizedStatusException(HttpStatus.FORBIDDEN, "symbol.notEditable", key);
         }
-        if (standard == null && symbol.group() != null && !access.editableGroups().contains(symbol.group()))
-            throw new LocalizedStatusException(HttpStatus.FORBIDDEN, "symbol.groupNotAllowed");
         if (standard != null) {
             repository.findById(DELETED_MARKER_PREFIX + key).ifPresent(repository::delete);
             entity.setBuiltin(true);
@@ -218,9 +262,28 @@ public class SymbolService {
             entity.setModified(!entity.sameDefinition(SymbolMapper.toEntity(standard)));
         } else {
             entity.setSortOrder(CUSTOM_SORT_ORDER);
-            entity.setOwner(userId, symbol.group());
+            entity.setOwnerUserId(stored == null ? Long.valueOf(userId) : stored.getOwnerUserId());
+            entity.getGroups().addAll(stored == null || access.shares(stored) ? sharing(access, stored, symbol.groupIds()) : stored.getGroups());
         }
         return forUser(repository.save(entity), access);
+    }
+
+    /**
+     * The groups a symbol is shared with after a save: of the groups the user can share with, those he asks for; the other groups keep
+     * their state (a group he left stays). 403 when he asks for a group he cannot share with.
+     */
+    private Set<UserGroup> sharing(Access access, SymbolEntity stored, Set<Long> requested) {
+        Set<UserGroup> result = new java.util.LinkedHashSet<>();
+        if (stored != null) for (UserGroup group : stored.getGroups()) if (!access.editableGroups().contains(group.getId())) result.add(group);
+        Set<Long> current = stored == null ? Set.of() : stored.getGroups().stream().map(UserGroup::getId).collect(Collectors.toSet());
+        for (Long id : requested) {
+            if (!access.editableGroups().contains(id)) {
+                if (current.contains(id)) continue;
+                throw new LocalizedStatusException(HttpStatus.FORBIDDEN, "symbol.groupNotAllowed");
+            }
+            result.add(groups.findById(id).orElseThrow(() -> new LocalizedStatusException(HttpStatus.FORBIDDEN, "symbol.groupNotAllowed")));
+        }
+        return result;
     }
 
     /** Deletes a symbol. A standard symbol leaves a hidden marker so that it does not come back at the next start; restore brings it back. */
@@ -228,7 +291,7 @@ public class SymbolService {
         Access access = access(userId);
         SymbolEntity entity = findVisible(access, key);
         if (entity.isBuiltin()) requireAdmin(access);
-        else if (!access.edits(entity)) throw new LocalizedStatusException(HttpStatus.FORBIDDEN, "symbol.notEditable", key);
+        else if (!access.shares(entity)) throw new LocalizedStatusException(HttpStatus.FORBIDDEN, "symbol.ownerOnly");
         repository.delete(entity);
         if (entity.isBuiltin()) {
             SymbolEntity marker = SymbolMapper.toEntity(

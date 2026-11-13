@@ -21,5 +21,6 @@ public class SymbolSeeder implements SmartInitializingSingleton {
     @Override
     public void afterSingletonsInstantiated() {
         service.seed();
+        service.migrateGroupOwners();
     }
 }

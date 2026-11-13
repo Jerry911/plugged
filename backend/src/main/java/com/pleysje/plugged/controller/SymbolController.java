@@ -26,10 +26,10 @@ import org.springframework.web.bind.annotation.RestController;
  * who may change what; changing a standard symbol is for administrators). Error messages are written in the language of the request
  * (Accept-Language). Keys can contain ':' (symbols of the users are "custom:...").
  * <ul>
- *   <li>GET /api/symbols: the symbols of the user, in catalog order (standard symbols first); each says its {@code group} and whether it is {@code editable}</li>
- *   <li>GET /api/symbols/groups: the groups the user can put a symbol in ({id, name})</li>
+ *   <li>GET /api/symbols: the symbols of the user, in catalog order (standard symbols first); each says the {@code groups} it is shared with, its {@code owner}, and whether it is {@code editable} and {@code shareable}</li>
+ *   <li>GET /api/symbols/groups: the groups the user can share a symbol with ({id, name})</li>
  *   <li>GET /api/symbols/template: a new, empty symbol of the user (fresh key, default parents)</li>
- *   <li>GET /api/symbols/{key}, PUT /api/symbols/{key} (create or update, 400 when invalid; {@code group} null = personal symbol), DELETE /api/symbols/{key} (a standard symbol is deleted too; POST restore brings it back)</li>
+ *   <li>GET /api/symbols/{key}, PUT /api/symbols/{key} (create or update, 400 when invalid; {@code groups}: the groups to share an own symbol with), DELETE /api/symbols/{key} (a standard symbol is deleted too; POST restore brings it back)</li>
  *   <li>POST /api/symbols/{key}/standard: the current drawing of a standard symbol becomes its standard (409 for an own symbol)</li>
  *   <li>POST /api/symbols/{key}/restore: back to the standard drawing; POST /api/symbols/restore: all standard symbols (returns the full list)</li>
  * </ul>

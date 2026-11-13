@@ -68,17 +68,14 @@ public class GroupService {
         return GroupDto.of(group);
     }
 
-    /**
-     * Removes a group: its projects stay with their owners, they are just no longer shared with it; its symbols become personal symbols of
-     * {@code actingAdminId}, the administrator who removes it.
-     */
+    /** Removes a group: its projects and symbols stay with their owners, they are just no longer shared with it. */
     @Transactional
-    public void delete(long actingAdminId, long id) {
+    public void delete(long id) {
         UserGroup group = find(id);
         int unshared = projects.unshareGroup(id);
-        int moved = symbols.groupToUser(id, actingAdminId);
+        int unsharedSymbols = symbols.unshareGroup(id);
         groups.delete(group);
-        log.info("Group {} deleted ({} project(s) no longer shared with it, {} symbol(s) now belong to user {})", id, unshared, moved, actingAdminId);
+        log.info("Group {} deleted ({} project(s) and {} symbol(s) no longer shared with it)", id, unshared, unsharedSymbols);
     }
 
     @Transactional

@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.transaction.annotation.Transactional;
+import java.util.List;
 
 /** The symbol catalog, by symbol key. */
 public interface SymbolRepository extends JpaRepository<SymbolEntity, String> {
@@ -17,7 +18,7 @@ public interface SymbolRepository extends JpaRepository<SymbolEntity, String> {
      */
     @Modifying
     @Transactional
-    @Query("update SymbolEntity s set s.ownerUserId = :userId where s.builtin = false and s.ownerUserId is null and s.ownerGroupId is null"
+    @Query("update SymbolEntity s set s.ownerUserId = :userId where s.builtin = false and s.ownerUserId is null"
             + " and s.key not like 'std:%' and s.key not like 'del:%'")
     int assignOwnerless(@Param("userId") long userId);
 
@@ -27,9 +28,12 @@ public interface SymbolRepository extends JpaRepository<SymbolEntity, String> {
     @Query("update SymbolEntity s set s.ownerUserId = :to where s.ownerUserId = :from")
     int changeOwner(@Param("from") long from, @Param("to") long to);
 
-    /** The symbols of a removed group become personal symbols of this user. */
+    /** A removed group: no symbol is shared with it any more (the symbols stay with their owners). */
     @Modifying
     @Transactional
-    @Query("update SymbolEntity s set s.ownerUserId = :userId, s.ownerGroupId = null where s.ownerGroupId = :groupId")
-    int groupToUser(@Param("groupId") long groupId, @Param("userId") long userId);
+    @Query(value = "delete from symbol_groups where group_id = :groupId", nativeQuery = true)
+    int unshareGroup(@Param("groupId") long groupId);
+
+    /** Symbols of a test version that belonged to one group (see SymbolEntity#getLegacyOwnerGroupId). */
+    List<SymbolEntity> findByLegacyOwnerGroupIdNotNull();
 }

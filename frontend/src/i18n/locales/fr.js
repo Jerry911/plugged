@@ -57,8 +57,6 @@ export default {
         unplacedTitle: 'Pas placé sur le plan de position',
         errorsTitle: 'Erreurs dans le schéma unifilaire',
         warningsTitle: 'Avertissements dans le schéma unifilaire',
-        admin: 'Gestion',
-        adminTitle: 'Gérer les utilisateurs et les groupes',
     },
     pages: {
         sheetName: 'Feuille {number}',
@@ -368,7 +366,7 @@ export default {
         origin: {standard: 'Symbole standard', modified: 'Symbole standard, modifié', own: 'Symbole personnel', shared: 'Symbole personnel, partagé avec {groups}', from: 'De {owner}, partagé avec {groups}'},
         readOnlyStandard: 'Symbole standard : seul un administrateur peut le modifier. Dupliquez-le pour en faire votre propre version.',
         readOnlyGroup: 'Symbole d’un groupe : en mode enseignement, vous pouvez l’utiliser mais pas le modifier. Dupliquez-le pour en faire votre propre version.',
-        noGroups: 'Vous ne faites encore partie d’aucun groupe. Un administrateur crée les groupes et choisit leurs membres sous Gestion → Groupes.',
+        noGroups: 'Vous ne faites encore partie d’aucun groupe. Un administrateur crée les groupes et choisit leurs membres sous Compte → Groupes.',
         sharedWith: 'Partagé avec',
         onlyMe: 'Je suis seul à utiliser ce symbole',
         sharedHint: 'Les membres des groupes cochés utilisent le symbole et peuvent améliorer le dessin.',
@@ -854,6 +852,9 @@ export default {
     },
     account: {
         button: 'Compte',
+        buttonTitle: 'Mon compte : changer le mot de passe, télécharger vos données, supprimer votre compte',
+        buttonTitleAdmin: 'Mon compte, et gérer les utilisateurs, les groupes et les symboles standard',
+        pageAdmin: 'Compte et gestion',
         title: 'Mon compte',
         changePassword: 'Changer le mot de passe',
         currentPassword: 'Mot de passe actuel',
@@ -943,7 +944,6 @@ export default {
         },
     },
     admin: {
-        title: 'Gestion',
         users: 'Utilisateurs',
         groups: 'Groupes',
         reload: 'Actualiser',

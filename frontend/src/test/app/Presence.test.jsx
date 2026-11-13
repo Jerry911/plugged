@@ -84,11 +84,12 @@ test('the count, with more than one other', async () => {
     expect(getById('presence').title).toContain('Carol Test')
 })
 
-test('the account dialog opens from the top bar', async () => {
+test('the Account page opens from the top bar, and the drawing comes back with its tab', async () => {
     backend({document: project('Blad 1'), version: 1, presence: () => ({others: [], version: 1})})
     await mount()
-    clickId('btn-account')
-    expect(getById('account-dialog')).toBeInTheDocument()
-    fireEvent.keyDown(getById('account-dialog'), {key: 'Escape'})
-    expect(byId('account-dialog')).toBeNull()
+    clickId('tab-account')
+    expect(getById('tab-account')).toHaveClass('on')
+    getById('account-panel')
+    clickId('tab-een')
+    expect(byId('account-page')).toBeNull()
 })

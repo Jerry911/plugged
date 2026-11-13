@@ -1,6 +1,6 @@
 // Copyright 2026 Pleysier Jeroen
 // SPDX-License-Identifier: AGPL-3.0-only
-// Beheer → Symbolen: the standard symbols for the next release. The catalog that ships with the application is the file
+// Account → Symbolen (administrators only): the standard symbols for the next release. The catalog that ships with the application is the file
 // backend/src/main/resources/catalog/standard-symbols.json; this panel downloads it as this installation has it (with the drawings
 // chosen with "make standard" in the Componenten tab) and shows what it would change.
 import {useCallback, useEffect, useState} from 'react'

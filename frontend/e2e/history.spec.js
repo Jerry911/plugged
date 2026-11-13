@@ -72,9 +72,10 @@ test('a temporary password of the administrator has to be replaced at the next s
     const user = await (await anonymous.post('/api/auth/register', {data: {name: 'Tijdelijk', surname: 'Test', email, password: 'geheim123'}, headers: {'X-XSRF-TOKEN': token}})).json()
     await anonymous.dispose()
     expect((await request.post(`/api/admin/users/${user.id}/approve`)).ok()).toBeTruthy()
-    // the administrator gives him a temporary password under Beheer → Gebruikers
+    // the administrator gives him a temporary password under Account → Gebruikers
     await app.open(backend)
-    await page.locator('#tab-admin').click()
+    await page.locator('#tab-account').click()
+    await page.locator('#admin-tab-users').click()
     await page.locator('#users-password-' + user.id).click()
     const message = await page.locator('#admin-message').textContent()
     const temporary = message.match(/[A-Za-z2-9]{4}-[A-Za-z2-9]{4}-[A-Za-z2-9]{4}/)[0]
@@ -94,7 +95,7 @@ test('a temporary password of the administrator has to be replaced at the next s
     await his.locator('#password-submit').click()
     await expect(his.locator('#tab-comp')).toBeVisible()
     // Mijn account: his data to download
-    await his.locator('#btn-account').click()
+    await his.locator('#tab-account').click()
     const download = his.waitForEvent('download')
     await his.locator('#account-export').click()
     expect((await download).suggestedFilename()).toBe('plugged-mijn-gegevens.json')

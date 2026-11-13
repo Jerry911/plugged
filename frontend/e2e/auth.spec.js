@@ -30,9 +30,10 @@ test('a new user registers, cannot sign in until the administrator approves, the
     await expect(visitor.locator('#auth-error')).toBeVisible()
     await expect(visitor.locator('#tab-comp')).toHaveCount(0)
 
-    // the administrator approves the account under Beheer → Gebruikers
+    // the administrator approves the account under Account → Gebruikers
     await app.open(backend)
-    await page.locator('#tab-admin').click()
+    await page.locator('#tab-account').click()
+    await page.locator('#admin-tab-users').click()
     const row = page.locator('#admin-users tr', {hasText: email})
     await row.locator('button.accent').click()
     await expect(page.locator('#admin-message')).toHaveText(t('users.approved', {name: 'Jan Peeters'}))
@@ -42,7 +43,11 @@ test('a new user registers, cannot sign in until the administrator approves, the
     await expect(visitor.locator('#tour-card')).toHaveAttribute('data-step', 'welkom')
     await visitor.locator('#tour-close').click()
     await expect(visitor.locator('#tour-card')).toHaveCount(0)
-    await expect(visitor.locator('#tab-admin')).toHaveCount(0)
+    // his Account page has only his own account
+    await visitor.locator('#tab-account').click()
+    await expect(visitor.locator('#account-panel')).toBeVisible()
+    await expect(visitor.locator('#admin-tab-users')).toHaveCount(0)
+    await expect(visitor.locator('#admin-tab-symbols')).toHaveCount(0)
     await visitor.locator('#btn-logout').click()
     await expect(visitor.locator('#auth-notice')).toHaveText(t('auth.signedOut'))
     await visitor.context().close()
@@ -87,9 +92,9 @@ const coworker = async ({browser, playwright, baseURL, request}, name) => {
 test('a project is private until its owner shares it with a group; members can open and save it, only the owner deletes it', async ({browser, playwright, baseURL, request, page, app, backend}) => {
     const alice = await coworker({browser, playwright, baseURL, request}, 'Alice'),
         bob = await coworker({browser, playwright, baseURL, request}, 'Bob')
-    // the administrator makes a group with both of them, under Beheer → Groepen
+    // the administrator makes a group with both of them, under Account → Groepen
     await app.open(backend)
-    await page.locator('#tab-admin').click()
+    await page.locator('#tab-account').click()
     await page.locator('#admin-tab-groups').click()
     const name = 'Team ' + Date.now()
     await page.locator('#groups-new-name').fill(name)

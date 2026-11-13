@@ -58,8 +58,6 @@ export default {
         unplacedTitle: 'Niet geplaatst op situatieschema',
         errorsTitle: 'Fouten in eendraadschema',
         warningsTitle: 'Waarschuwingen in eendraadschema',
-        admin: 'Beheer',
-        adminTitle: 'Gebruikers en groepen beheren',
     },
     pages: {
         sheetName: 'Blad {number}',
@@ -369,7 +367,7 @@ export default {
         origin: {standard: 'Standaardsymbool', modified: 'Standaardsymbool, aangepast', own: 'Eigen symbool', shared: 'Eigen symbool, gedeeld met {groups}', from: 'Van {owner}, gedeeld met {groups}'},
         readOnlyStandard: 'Standaardsymbool: alleen een beheerder kan het wijzigen. Dupliceer het om je eigen versie te maken.',
         readOnlyGroup: 'Symbool van een groep: in de onderwijsmodus kun je het gebruiken maar niet wijzigen. Dupliceer het om je eigen versie te maken.',
-        noGroups: 'Je zit nog in geen enkele groep. Een beheerder maakt groepen en kiest hun leden onder Beheer → Groepen.',
+        noGroups: 'Je zit nog in geen enkele groep. Een beheerder maakt groepen en kiest hun leden onder Account → Groepen.',
         sharedWith: 'Gedeeld met',
         onlyMe: 'Alleen ik gebruik dit symbool',
         sharedHint: 'De leden van de aangevinkte groepen gebruiken het symbool en kunnen de tekening verbeteren.',
@@ -858,6 +856,9 @@ export default {
     },
     account: {
         button: 'Account',
+        buttonTitle: 'Mijn account: wachtwoord wijzigen, je gegevens downloaden, je account verwijderen',
+        buttonTitleAdmin: 'Mijn account, en de gebruikers, groepen en standaardsymbolen beheren',
+        pageAdmin: 'Account en beheer',
         title: 'Mijn account',
         changePassword: 'Wachtwoord wijzigen',
         currentPassword: 'Huidig wachtwoord',
@@ -947,7 +948,6 @@ export default {
         },
     },
     admin: {
-        title: 'Beheer',
         users: 'Gebruikers',
         groups: 'Groepen',
         reload: 'Vernieuwen',

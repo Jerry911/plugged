@@ -1,6 +1,6 @@
 // Copyright 2026 Pleysier Jeroen
 // SPDX-License-Identifier: AGPL-3.0-only
-// The groups on the Beheer page: a new group, and per group its members (add one of the approved accounts, remove one), rename, remove.
+// The groups on the Account page (administrators only): a new group, and per group its members (add one of the approved accounts, remove one), rename, remove.
 import {useState} from 'react'
 import {useTranslation} from '../../i18n/I18nProvider.jsx'
 import {fullName} from './names.js'

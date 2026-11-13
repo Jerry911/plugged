@@ -57,8 +57,6 @@ export default {
         unplacedTitle: 'Not placed on the site plan',
         errorsTitle: 'Errors in the single-line diagram',
         warningsTitle: 'Warnings in the single-line diagram',
-        admin: 'Admin',
-        adminTitle: 'Manage users and groups',
     },
     pages: {
         sheetName: 'Sheet {number}',
@@ -367,7 +365,7 @@ export default {
         origin: {standard: 'Standard symbol', modified: 'Standard symbol, modified', own: 'Own symbol', shared: 'Own symbol, shared with {groups}', from: 'From {owner}, shared with {groups}'},
         readOnlyStandard: 'Standard symbol: only an administrator can change it. Duplicate it to make your own version.',
         readOnlyGroup: 'Symbol of a group: in educational mode you can use it but not change it. Duplicate it to make your own version.',
-        noGroups: 'You are not in any group yet. An administrator creates groups and chooses their members under Admin → Groups.',
+        noGroups: 'You are not in any group yet. An administrator creates groups and chooses their members under Account → Groups.',
         sharedWith: 'Shared with',
         onlyMe: 'Only I use this symbol',
         sharedHint: 'The members of the checked groups use the symbol and can improve the drawing.',
@@ -853,6 +851,9 @@ export default {
     },
     account: {
         button: 'Account',
+        buttonTitle: 'My account: change your password, download your data, delete your account',
+        buttonTitleAdmin: 'My account, and manage the users, groups and standard symbols',
+        pageAdmin: 'Account and administration',
         title: 'My account',
         changePassword: 'Change password',
         currentPassword: 'Current password',
@@ -942,7 +943,6 @@ export default {
         },
     },
     admin: {
-        title: 'Admin',
         users: 'Users',
         groups: 'Groups',
         reload: 'Refresh',

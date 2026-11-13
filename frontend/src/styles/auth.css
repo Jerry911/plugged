@@ -523,24 +523,22 @@
     gap: 10px
 }
 
-/* Mijn account */
-.accountdlg {
-    width: min(440px, 92vw);
-    max-height: 86vh;
-    overflow: auto
+/* Mijn account (the first tab of the Account page): a readable column, not the full width of the page */
+.accountpanel {
+    max-width: 480px
 }
 
-.accountdlg section {
+.accountpanel section {
     border-top: 1px solid #ddd;
     padding: 10px 0 4px
 }
 
-.accountdlg h3 {
+.accountpanel h3 {
     margin: 0 0 6px;
     font-size: 1em
 }
 
-.accountdlg .danger-zone p {
+.accountpanel .danger-zone p {
     margin: 4px 0 8px
 }
 

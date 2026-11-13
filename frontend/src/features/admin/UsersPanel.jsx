@@ -1,6 +1,6 @@
 // Copyright 2026 Pleysier Jeroen
 // SPDX-License-Identifier: AGPL-3.0-only
-// The accounts on the Beheer page: those waiting for approval first.
+// The accounts on the Account page (administrators only): those waiting for approval first.
 import {useTranslation} from '../../i18n/I18nProvider.jsx'
 import {fullName} from './names.js'
 

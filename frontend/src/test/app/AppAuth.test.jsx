@@ -29,26 +29,29 @@ const mount = async () => {
     await waitFor(() => getById('tab-comp'))
 }
 
-test('the administrator sees how many accounts wait for approval and opens Beheer', async () => {
+test('the administrator sees how many accounts wait for approval on Account, which then opens on the users', async () => {
     backend(ADMIN)
     await mount()
     // no name in the top bar; the name is only in the tooltip of Afmelden
     expect(byId('user-name')).toBeNull()
     expect(getById('top-bar')).not.toHaveTextContent('Jeroen Pleysier')
     expect(getById('btn-logout')).toHaveAttribute('title', t('auth.logoutTitle', {name: 'Jeroen Pleysier'}))
-    await waitFor(() => expect(getById('tab-admin-waiting')).toHaveTextContent('1'))
-    clickId('tab-admin')
+    await waitFor(() => expect(getById('tab-account-waiting')).toHaveTextContent('1'))
+    expect(getById('tab-account')).toHaveAttribute('title', t('account.buttonTitleAdmin'))
+    clickId('tab-account')
     await waitFor(() => getById('users-row-2'))
-    expect(getById('tab-admin')).toHaveClass('on')
+    expect(getById('tab-account')).toHaveClass('on')
+    expect(getById('admin-tab-users')).toHaveClass('on')
     getById('admin-tab-groups')
+    getById('account-tab-account')
 })
 
 test('no badge when nobody waits, or when the list cannot be loaded', async () => {
     backend(ADMIN, [ADMIN], 500)
     await mount()
-    getById('tab-admin')
+    getById('tab-account')
     await waitFor(() => expect(global.fetch).toHaveBeenCalledWith('/api/admin/users', expect.anything()))
-    expect(byId('tab-admin-waiting')).toBeNull()
+    expect(byId('tab-account-waiting')).toBeNull()
 })
 
 // an unsaved change: the project gets a name
@@ -57,10 +60,13 @@ const rename = () => {
     fireEvent.change(getById('project-name'), {target: {value: 'Woning Jan'}})
 }
 
-test('a user has no Beheer tab and signs out at once when everything is saved', async () => {
+test('a user has an Account page without the administration and signs out at once when everything is saved', async () => {
     backend({...JAN, approved: true})
     await mount()
-    expect(byId('tab-admin')).toBeNull()
+    expect(getById('tab-account')).toHaveAttribute('title', t('account.buttonTitle'))
+    clickId('tab-account')
+    getById('account-panel')
+    expect(byId('admin-tab-users')).toBeNull()
     expect(global.fetch.mock.calls.some((call) => call[0] === '/api/admin/users')).toBe(false)
     window.confirm = vi.fn(() => true)
     clickId('btn-logout')

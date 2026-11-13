@@ -1,14 +1,14 @@
 // Copyright 2026 Pleysier Jeroen
 // SPDX-License-Identifier: AGPL-3.0-only
 // The application: signing in first (AuthGate), then the top bar (project menu, tabs, undo/redo, Kaderinfo, PDF, print, language, Info,
-// Beheer (users and groups) for an administrator, Afmelden) and the tab that is open.
+// Account (own account; users, groups and symbols for an administrator), Afmelden) and the tab that is open.
 import {useCallback, useEffect, useMemo, useRef, useState} from 'react'
 import OneWireDiagram from '../features/oneWire/OneWireDiagram.jsx'
 import SituationSchema from '../features/situation/SituationSchema.jsx'
 import SymbolEditor from '../features/symbolEditor/SymbolEditor.jsx'
 import InfoPage from '../features/info/InfoPage.jsx'
 import AuthGate from '../features/auth/AuthGate.jsx'
-import AdminPage from '../features/admin/AdminPage.jsx'
+import AccountPage from '../features/account/AccountPage.jsx'
 import TeacherPage from '../features/admin/TeacherPage.jsx'
 import {fetchUsers} from '../api/authApi.js'
 import {ExportDialog, IMPORT_ACCEPT, importKind} from '../features/project/ExportDialog.jsx'
@@ -21,7 +21,6 @@ import {tourSteps} from '../features/tour/tourSteps.jsx'
 import {useSymbolLibrary} from '../api/useSymbolLibrary.js'
 import {copyProject, createProject, deleteProject, fetchProject, fetchProjectSummaries, restoreVersion, saveProject} from '../api/projectApi.js'
 import {usePresence} from '../hooks/usePresence.js'
-import AccountDialog from '../features/account/AccountDialog.jsx'
 import MaterialsDialog from '../features/project/MaterialsDialog.jsx'
 import Toast, {useToast} from '../components/Toast.jsx'
 import {useHistory} from '../hooks/useHistory.js'
@@ -44,7 +43,7 @@ const ONE_WIRE_TAB = 0,
     SITUATION_TAB = 1,
     COMPONENTS_TAB = 2,
     INFO_TAB = 3,
-    ADMIN_TAB = 4,
+    ACCOUNT_TAB = 4,
     TEACHER_TAB = 5
 // the editor opens with the most recently saved project of the user (null: none yet, a new project)
 const latestOwnProject = (summaries) => summaries.filter((summary) => summary.mine).sort((a, b) => (b.updated || '').localeCompare(a.updated || ''))[0] || null
@@ -104,7 +103,6 @@ function Editor({library, user, onLogout, onAccountDeleted}) {
         [footerDialog, setFooterDialog] = useState(null),
         [tab, setTab] = useState(ONE_WIRE_TAB),
         [toast, setStatusMessage] = useToast(),
-        [accountOpen, setAccountOpen] = useState(false),
         [materialsOpen, setMaterialsOpen] = useState(false),
         [newerVersion, setNewerVersion] = useState(null), // somebody else saved the open project while it has unsaved changes here
         [oneWirePage, setOneWirePage] = useState(0),
@@ -565,21 +563,22 @@ function Editor({library, user, onLogout, onAccountDeleted}) {
                         🎓 <span className="bar-text minor">{t('teacher.tab')}</span>
                     </button>
                 )}
-                {user.admin && (
-                    <button id="tab-admin" className={tab === ADMIN_TAB ? 'on' : ''} title={t('tabs.adminTitle')} onClick={() => setTab(ADMIN_TAB)}>
-                        ⚙ <span className="bar-text minor">{t('tabs.admin')}</span>
-                        {waitingUsers > 0 && (
-                            <span id="tab-admin-waiting" className="badge" title={t('users.pending', {count: waitingUsers})}>
-                                {waitingUsers}
-                            </span>
-                        )}
-                    </button>
-                )}
-                <button id="btn-account" title={t('account.title')} onClick={() => setAccountOpen((open) => !open)}>
+                {/* Account: a page for every user (his own account); an administrator also manages the users, groups and symbols there */}
+                <button
+                    id="tab-account"
+                    className={tab === ACCOUNT_TAB ? 'on' : ''}
+                    title={t(user.admin ? 'account.buttonTitleAdmin' : 'account.buttonTitle')}
+                    onClick={() => setTab(ACCOUNT_TAB)}
+                >
                     <span className="bar-icon" aria-hidden="true">
                         👤
                     </span>
                     <span className="bar-text minor">{t('account.button')}</span>
+                    {user.admin && waitingUsers > 0 && (
+                        <span id="tab-account-waiting" className="badge" title={t('users.pending', {count: waitingUsers})}>
+                            {waitingUsers}
+                        </span>
+                    )}
                 </button>
                 <button id="btn-logout" title={t('auth.logoutTitle', {name: `${user.name} ${user.surname}`})} onClick={signOut}>
                     <span className="bar-icon" aria-hidden="true">
@@ -590,7 +589,6 @@ function Editor({library, user, onLogout, onAccountDeleted}) {
             </div>
             <Toast toast={toast} />
             {materialsOpen && <MaterialsDialog project={project} projectId={projectId} onClose={() => setMaterialsOpen(false)} />}
-            {accountOpen && <AccountDialog user={user} onClose={() => setAccountOpen(false)} onDeleted={onAccountDeleted} />}
             {exportOpen && !restricted && <ExportDialog onExport={exportAs} onClose={() => setExportOpen(false)} />}
             {verifyOpen && !restricted && <VerifyPanel issues={issues} onGoTo={goToIssue} onClose={() => setVerifyOpen(false)} />}
             {footerDialog && (
@@ -632,7 +630,14 @@ function Editor({library, user, onLogout, onAccountDeleted}) {
                     </>
                 )}
                 {tab === INFO_TAB && <InfoPage onTour={startTour} />}
-                {tab === ADMIN_TAB && user.admin && <AdminPage currentUser={user} onUsersChange={countWaiting} />}
+                {tab === ACCOUNT_TAB && (
+                    <AccountPage
+                        currentUser={user}
+                        onDeleted={onAccountDeleted}
+                        onUsersChange={user.admin ? countWaiting : undefined}
+                        initialSection={user.admin && waitingUsers > 0 ? 'users' : 'account'}
+                    />
+                )}
                 {tab === TEACHER_TAB && !user.admin && <TeacherPage />}
                 {tab === COMPONENTS_TAB && (
                     <SymbolEditor

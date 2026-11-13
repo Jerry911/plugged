@@ -42,7 +42,7 @@ const groupNames = (symbol) => (symbol.groups || []).map((group) => group.name).
  * library = the symbols of the user (the standard ones, his own and those of his groups); the handlers call the backend (see
  * api/useSymbolLibrary.js): onSave(symbol), onRemove(key), onRestore(key), onRestoreAll(), onMakeStandard(key) and onTemplate() (a new,
  * empty symbol of the user). groups = the groups the user can put a symbol in ([{id, name}]); onOpen() is called when the editor opens
- * (it loads the groups again: they may have changed under Beheer).
+ * (it loads the groups again: they may have changed under Account).
  * A symbol the backend marks as not editable (a standard symbol for somebody who is no administrator, a group symbol for a student) is shown
  * read-only: it can only be duplicated into an own symbol.
  */
@@ -166,7 +166,7 @@ export default function SymbolEditor({library, groups = [], onOpen, onSave, onRe
         setBox(boxRef.current)
     }
     const dragging = !!box || moving
-    // the groups may have changed under Beheer since the app opened
+    // the groups may have changed under Account since the app opened
     useEffect(() => {
         onOpen?.()
     }, [onOpen])

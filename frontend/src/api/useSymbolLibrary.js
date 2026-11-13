@@ -16,7 +16,7 @@ export function useSymbolLibrary() {
     const [library, setLibraryState] = useState([]),
         [groups, setGroups] = useState([]), // the groups the user can put a symbol in ([{id, name}])
         [status, setStatus] = useState('loading') // 'loading' | 'ready' | 'error'
-    // the groups the user can put a symbol in; loaded again when Componenten opens (groups and members change under Beheer)
+    // the groups the user can put a symbol in; loaded again when Componenten opens (groups and members change under Account)
     const loadGroups = useCallback(async () => {
         try {
             const answer = await fetchOk('/api/symbols/groups'),

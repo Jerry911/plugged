@@ -174,7 +174,7 @@ test('Project opens the menu, clicking Project again closes it; the items are li
     fireEvent.click(btn)
     expect(btn).toHaveAttribute('aria-expanded', 'true')
     expect(getById('project-menu').querySelector('[role="menu"]')).toHaveAttribute('aria-label', t('projects.menu'))
-    expect([...document.querySelectorAll('#project-menu [role="menuitem"]')].map((b) => b.id)).toEqual(['btn-save', 'btn-saveas', 'btn-new', 'btn-load', 'btn-import', 'btn-export'])
+    expect([...document.querySelectorAll('#project-menu [role="menuitem"]')].map((b) => b.id)).toEqual(['btn-save', 'btn-saveas', 'btn-new', 'btn-load', 'btn-import', 'btn-export', 'btn-materials'])
     // opening the menu is not a page switch: the drawing stays where it was
     getById('btn-footer')
     expect(byId('tab-een')).toHaveClass('on')
@@ -210,8 +210,8 @@ test('arrow keys move through the Project menu items', async () => {
     fireEvent.keyDown(byId('project-name'), {key: 'ArrowDown'})
     expect(document.activeElement).toBe(byId('btn-save'))
     fireEvent.keyDown(byId('btn-save'), {key: 'ArrowUp'})
-    expect(document.activeElement).toBe(byId('btn-export'))
-    fireEvent.keyDown(byId('btn-export'), {key: 'ArrowDown'})
+    expect(document.activeElement).toBe(byId('btn-materials'))
+    fireEvent.keyDown(byId('btn-materials'), {key: 'ArrowDown'})
     expect(document.activeElement).toBe(byId('btn-save'))
 })
 test('a project is saved with its name (in the document and as ?name=) and Alt+S saves too', async () => {

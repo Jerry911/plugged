@@ -105,6 +105,8 @@ Everything under `/api/` needs a signed-in user (401 otherwise), except `/api/au
 - **Components**: the symbol library and a symbol editor.
 - **Controleer**: verification against guideline AREI limits.
 - **Export**: vector PDF (jsPDF + svg2pdf.js, A4 landscape, all sheets).
+- **Materiaallijst** (Project → Materiaallijst, `MaterialsDialog.jsx`, counted in `model/materials.js`): the bill of materials of the eendraadschema (all pages; the situatieschema does not count, it shows the same elements). Four sections: *Beveiliging* (main switch or main differential of the connection, the breakers / differentials / RCBOs of the circuits and separate differential and fuse elements, one line per article: kind, poles, rating and curve, sensitivity, type, breaking capacity, with the circuits that use it), *Kabels* (per cable designation with its circuits; the length is not in the drawing, so the column is empty to fill in), *Toestellen en elementen* (per symbol with its *Aantal*, splash-proof separately, and the number of socket outlets) and *Borden*. Download as Excel (`.xlsx`, written in `materialsExport.js`: no library besides fflate for the zip) or CSV (`;` and a byte order mark, so Excel in a Belgian locale opens it in columns). Not locked in educational mode: it is not the project.
+- **Metingen voor de keuring** (Kaderinfo): earth resistance (Ω), insulation resistance (MΩ) and the date of the measurement, stored in `project.footer` (`aardingsweerstand`, `isolatieweerstand`, `meetdatum`). They are printed in the title block of every sheet (lower row, under the address; click it to edit) and the earth resistance also under the earth symbol of the eendraadschema (`Ra = 24 Ω`).
 - **Undo/redo** (100 steps), **EDS import and export** with the online eendraadschema tool.
 - **Languages**: Dutch, French and English (picker in the top bar).
 
@@ -151,7 +153,7 @@ Everything under `/api/` needs a signed-in user (401 otherwise), except `/api/au
 
 ## Verification ("Controleer" button)
 `frontend/src/rules.jsx` checks the eendraadschema (all sheets) and returns errors / warnings / info; click an issue to jump to the node.
-Checks: hierarchy, aansluiting/aarding present, kring under a differentieel, differentieel sensitivity (max 30 mA with stopcontacten), empty bord/diff/kring, kring specs and cable-vs-protection table, max stopcontacten/lichtpunten per kring, appliances on their own kring, switches without lamp, duplicate kring names, incomplete footer, components missing on the situatieschema.
+Checks: hierarchy, aansluiting/aarding present, kring under a differentieel, differentieel sensitivity (max 30 mA with stopcontacten), empty bord/diff/kring, kring specs and cable-vs-protection table, max stopcontacten/lichtpunten per kring, appliances on their own kring, switches without lamp, duplicate kring names, incomplete footer, components missing on the situatieschema, the measured earth resistance (`model/measurements.js`): not filled in is info, up to 30 Ω is fine, above 30 Ω and up to 100 Ω a warning unless at least two differentials of at most 30 mA sit right after the main differential (`sensitiveDifferentialsAtOrigin`), above 100 Ω an error. The insulation resistance is printed, not judged.
 Limits are guideline values in `LIMITS` (rules.jsx): verify them against the current AREI before relying on them.
 
 ## Guided tour

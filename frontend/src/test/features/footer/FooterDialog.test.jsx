@@ -1,7 +1,7 @@
 // Copyright 2026 Pleysier Jeroen
 // SPDX-License-Identifier: AGPL-3.0-only
 import {fireEvent, render} from '@testing-library/react'
-import {FOOTER_FIELDS, FooterDialog, FooterForm} from '../../../features/footer/FooterDialog.jsx'
+import {FOOTER_FIELDS, FooterDialog, FooterForm, MEASUREMENT_FIELDS} from '../../../features/footer/FooterDialog.jsx'
 import Sheet from '../../../components/Sheet.jsx'
 import {setLanguage, t} from '../../../i18n/translate.js'
 import {baseProject, byId, getById} from '../../utils.jsx'
@@ -65,7 +65,7 @@ test('Sheet copes with empty footer', () => {
     expect(getById('s-number')).toHaveTextContent(t('sheet.pageOf', {number: 1, total: 2}))
 })
 
-const CLICKABLE_CELLS = ['ean', 'straat', 'eigenaar', 'tekenaar', 'datum', 'rev', 'dossier', 'schaal']
+const CLICKABLE_CELLS = ['ean', 'straat', 'eigenaar', 'tekenaar', 'datum', 'rev', 'dossier', 'aardingsweerstand', 'schaal']
 test('footer cells are clickable when onFooter is given and show hints for empty values', () => {
     const onFooter = vi.fn(),
         project = baseProject()
@@ -109,4 +109,27 @@ test('the labels of the sheet and the dialog follow the language', () => {
     expect(container.textContent).toContain('cliquez pour compléter')
     render(<FooterDialog project={baseProject()} setProject={() => {}} onClose={() => {}} />)
     expect(getById('footer-dialog').querySelector('label[for="footer-schaal"]')).toHaveTextContent('Échelle')
+})
+test('the measurements for the inspection are fields of their own and are printed in the title block', () => {
+    const setProject = vi.fn(),
+        project = baseProject()
+    render(<FooterForm project={project} setProject={setProject} />)
+    MEASUREMENT_FIELDS.forEach((field) => expect(getById('footer-measurements').querySelector('#footer-' + field)).toBeTruthy())
+    fireEvent.change(getById('footer-aardingsweerstand'), {target: {value: '22'}})
+    expect(setProject).toHaveBeenCalledWith({...project, footer: {...project.footer, aardingsweerstand: '22'}})
+    for (const language of ['nl', 'fr', 'en']) {
+        setLanguage(language)
+        MEASUREMENT_FIELDS.forEach((field) => expect(t('footer.fields.' + field)).not.toBe('footer.fields.' + field))
+    }
+    setLanguage('nl')
+    const {container} = render(<Sheet project={{...project, footer: {...project.footer, aardingsweerstand: '22', isolatieweerstand: '250', meetdatum: '13/11/2026'}}} number={1} total={1} sheetId="m" />)
+    expect(container.querySelector('.sheet-measurements')).toHaveTextContent(
+        [t('sheet.earthResistance', {value: '22'}), t('sheet.insulationResistance', {value: '250'}), t('sheet.measuredOn', {date: '13/11/2026'})].join(' · '),
+    )
+    const onFooter = vi.fn(),
+        {container: without} = render(<Sheet project={project} number={1} total={1} sheetId="n" onFooter={onFooter} />)
+    expect(without.querySelector('.sheet-measurements')).toBeNull()
+    // the cell opens Kaderinfo at the earth resistance
+    fireEvent.click(getById('n-footer-aardingsweerstand'))
+    expect(onFooter).toHaveBeenCalledWith('aardingsweerstand')
 })

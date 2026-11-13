@@ -45,7 +45,7 @@ test('clicking a cell of the footer opens the dialog on that field; empty cells 
     await app.open(backend, project({footer: {}}))
     await expect(page.locator('svg.sheet').first()).toContainText(t('sheet.clickToFill'))
     const cell = (field) => page.locator('#eds-sheet-1-drawing-footer-' + field)
-    await expect(page.locator('#eds-sheet-1-drawing .fcell')).toHaveCount(8)
+    await expect(page.locator('#eds-sheet-1-drawing .fcell')).toHaveCount(9)
     await cell('tekenaar').click()
     await expect(dialog(page)).toBeVisible()
     await expect(field(page, 'tekenaar')).toBeFocused()
@@ -56,6 +56,10 @@ test('clicking a cell of the footer opens the dialog on that field; empty cells 
     // the scale box opens the dialog on the scale
     await cell('schaal').click()
     await expect(field(page, 'schaal')).toBeFocused()
+    await page.locator('#footer-close').click()
+    // the cell of the measurements opens it on the earth resistance
+    await cell('aardingsweerstand').click()
+    await expect(field(page, 'aardingsweerstand')).toBeFocused()
     // fields that are gone from the kader
     await expect(page.locator('#footer-titel')).toHaveCount(0)
     await expect(page.locator('#footer-keurder')).toHaveCount(0)

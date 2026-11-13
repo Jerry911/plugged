@@ -583,3 +583,24 @@
 .pm-history td {
     padding: 2px 6px
 }
+
+/* the bill of materials */
+.materialsdlg {
+    width: min(640px, 94vw);
+    max-height: 86vh;
+    overflow: auto
+}
+
+.materialsdlg h3 {
+    margin: 10px 0 4px;
+    font-size: 1em
+}
+
+.matlist {
+    width: 100%
+}
+
+.matlist td.num {
+    text-align: right;
+    width: 4em
+}

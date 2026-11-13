@@ -8,6 +8,7 @@ import {t} from '../i18n/translate.js'
 import {flatten} from './tree.js'
 import {circuitMarks, nodeName, placeableNodes} from './project.js'
 import {sheetPlan} from './boardLayout.js'
+import {EARTH_LIMIT, EARTH_LIMIT_WITH_MEASURES, measuredValue} from './measurements.js'
 
 // cable: mm² -> max protective rating (A)
 export const LIMITS = {maxSockets: 8, maxLights: 8, maxDifferentialMilliamps: 30, cable: {1.5: 16, 2.5: 20, 4: 25, 6: 32, 10: 50, 16: 63}}
@@ -38,6 +39,29 @@ export const parseSpecs = (info = '') => {
         mA: sensitivity ? +sensitivity[1] : null,
     }
 }
+
+// the differentials of a circuit (or separate differential elements) and their sensitivity in mA (null: not a differential)
+const differentialSensitivity = (node) => {
+    if (node.type === 'diff') return parseSpecs(node.info).mA
+    if (node.type === 'kring' && ['differentieel', 'differentieelautomaat'].includes(node.p?.bescherming)) return Number(node.p?.delta) || parseSpecs(node.info).mA
+    return null
+}
+const PROTECTIVE_TYPES = new Set(['kring', 'diff', 'zekering'])
+/**
+ * How many differentials of at most 30 mA sit right after the main differential: in the tree, with no other circuit, fuse or sensitive
+ * differential between them and the connection (only boards, meters, ... and the main differential itself when it is drawn as an element).
+ */
+export const sensitiveDifferentialsAtOrigin = (nodes) =>
+    (nodes || []).reduce((count, node) => {
+        if (PROTECTIVE_TYPES.has(node.type)) {
+            const mA = differentialSensitivity(node)
+            if (mA != null && mA <= 30) return count + 1
+            // a separate main differential (e.g. 300 mA): the ones right after it count
+            if (node.type === 'diff' && mA != null) return count + sensitiveDifferentialsAtOrigin(node.children)
+            return count
+        }
+        return count + sensitiveDifferentialsAtOrigin(node.children)
+    }, 0)
 
 /** The number of issues per level. */
 export const summarize = (issues) => ({
@@ -174,6 +198,15 @@ export function verify(project) {
     const missingFields = REQUIRED_FOOTER_FIELDS.filter((key) => !(project.footer?.[key] || '').trim())
     if (missingFields.length)
         add('warn', 'footer', message('footerIncomplete', {fields: missingFields.map((key) => t('verify.footerFields.' + key)).join(', ')}))
+    // the measured earth resistance (Kaderinfo → Metingen): at most 30 Ω; up to 100 Ω only with at least two differentials of at most
+    // 30 mA right after the main differential
+    const earth = measuredValue(project.footer?.aardingsweerstand)
+    if (earth == null) add('info', 'measure.earth', message('earthNotMeasured'))
+    else if (earth > EARTH_LIMIT_WITH_MEASURES) add('error', 'measure.earth', message('earthTooHigh', {value: earth, max: EARTH_LIMIT_WITH_MEASURES}))
+    else if (earth > EARTH_LIMIT) {
+        const sensitive = project.een.reduce((count, page) => count + sensitiveDifferentialsAtOrigin(page.tree), 0)
+        if (sensitive < 2) add('warn', 'measure.earth', message('earthHigh', {value: earth, limit: EARTH_LIMIT, max: EARTH_LIMIT_WITH_MEASURES, count: sensitive}))
+    }
     const placed = new Set(
         project.sit
             .flatMap((page) => page.items)

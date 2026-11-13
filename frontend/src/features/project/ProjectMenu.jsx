@@ -23,6 +23,7 @@ const MENU_ICONS = {
     share: ['M16 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6z', 'M8 13a3 3 0 1 0 0-6 3 3 0 0 0 0 6z', 'M2 20c0-3 3-5 6-5s6 2 6 5', 'M14 15.5c.6-.3 1.3-.5 2-.5 3 0 6 2 6 5'],
     caret: ['M6 9l6 6 6-6'],
     history: ['M3 12a9 9 0 1 0 3-6.7', 'M3 4v4h4', 'M12 7v5l3 2'],
+    materials: ['M9 5h11M9 12h11M9 19h11', 'M4 5h.01M4 12h.01M4 19h.01'],
 }
 const MenuIcon = ({name}) => (
     <svg className="pm-ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
@@ -474,6 +475,7 @@ export default function ProjectMenu({
     restricted,
     onImport,
     onExport,
+    onMaterials,
 }) {
     const {t} = useTranslation()
     const [open, setOpen] = useState(false),
@@ -613,6 +615,7 @@ export default function ProjectMenu({
                         {/* educational mode: a student cannot import or export (see App.jsx) */}
                         {menuItem('btn-import', 'import', t('projects.import'), closeAndRun(onImport), {title: locked ? t('educational.locked') : t('projects.importTitle'), disabled: !!locked, hint: 'Alt+I'})}
                         {menuItem('btn-export', 'export', t('projects.export'), closeAndRun(onExport), {title: locked ? t('educational.locked') : t('projects.exportTitle'), disabled: !!locked, hint: 'Alt+E'})}
+                        {onMaterials && menuItem('btn-materials', 'materials', t('materials.menu'), closeAndRun(onMaterials), {title: t('materials.menuTitle')})}
                     </ul>
                 </div>
             )}

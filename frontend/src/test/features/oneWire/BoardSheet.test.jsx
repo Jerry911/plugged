@@ -150,3 +150,16 @@ test('the bus lies around the middle of the page for low circuits and goes down 
     expect(ys[7]).toBeLessThanOrEqual(lowest + 1e-9)
     expect(185 - (lowest + HEAD_DEPTH * MM_PER_UNIT)).toBeLessThanOrEqual(1.5)
 })
+test('the measured earth resistance is written at the earth symbol', () => {
+    const render1 = (footer, t1) => {
+        const project = {...baseProject(), een: [{id: 'e1', name: 'Blad 1', tree: t1}]}
+        project.footer = {...project.footer, ...footer}
+        const board = layoutBoard(project, project.een[0])
+        return render(<BoardSheet project={project} board={board} slice={sheetSlices(board)[0]} number={1} total={1} />).container
+    }
+    expect(render1({aardingsweerstand: '18'}, tree([kring('K')])).querySelector('.earth-resistance')).toHaveTextContent(t('sheet.earthLabel', {value: '18'}))
+    expect(render1({}, tree([kring('K')])).querySelector('.earth-resistance')).toBeNull()
+    // no earth drawn: no label either
+    const noEarth = [node('A', 'aansluiting', [node('B', 'bord', [kring('K')], {p: {geaard: false}})], {p: {bescherming: 'automatisch', polen: 2, amp: 40}})]
+    expect(render1({aardingsweerstand: '18'}, noEarth).querySelector('.earth-resistance')).toBeNull()
+})

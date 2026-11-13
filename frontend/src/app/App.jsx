@@ -22,6 +22,7 @@ import {useSymbolLibrary} from '../api/useSymbolLibrary.js'
 import {copyProject, createProject, deleteProject, fetchProject, fetchProjectSummaries, restoreVersion, saveProject} from '../api/projectApi.js'
 import {usePresence} from '../hooks/usePresence.js'
 import AccountDialog from '../features/account/AccountDialog.jsx'
+import MaterialsDialog from '../features/project/MaterialsDialog.jsx'
 import {useHistory} from '../hooks/useHistory.js'
 import {useAutoSave} from '../hooks/useAutoSave.js'
 import {exportEds, importEds} from '../model/eds.js'
@@ -103,6 +104,7 @@ function Editor({library, user, onLogout, onAccountDeleted}) {
         [tab, setTab] = useState(ONE_WIRE_TAB),
         [statusMessage, setStatusMessage] = useState(''),
         [accountOpen, setAccountOpen] = useState(false),
+        [materialsOpen, setMaterialsOpen] = useState(false),
         [newerVersion, setNewerVersion] = useState(null), // somebody else saved the open project while it has unsaved changes here
         [oneWirePage, setOneWirePage] = useState(0),
         [situationPage, setSituationPage] = useState(0),
@@ -134,6 +136,7 @@ function Editor({library, user, onLogout, onAccountDeleted}) {
     const goToIssue = (issue) => {
         // the first required field that is still empty
         if (issue.rule === 'footer') return openFooter(REQUIRED_FOOTER_FIELDS.find((key) => !(project.footer?.[key] || '').trim()) || 'eigenaar')
+        if (issue.rule === 'measure.earth') return openFooter('aardingsweerstand')
         if (issue.rule.startsWith('plan.')) return setTab(SITUATION_TAB)
         setTab(ONE_WIRE_TAB)
         if (issue.page != null) setOneWirePage(issue.page)
@@ -479,6 +482,7 @@ function Editor({library, user, onLogout, onAccountDeleted}) {
                     onRestoreVersion={restoreProjectVersion}
                     onTrashChanged={onTrashChanged}
                     restricted={restricted}
+                    onMaterials={() => setMaterialsOpen(true)}
                     locked={restricted}
                     onImport={openImport}
                     onExport={openExport}
@@ -584,6 +588,7 @@ function Editor({library, user, onLogout, onAccountDeleted}) {
                     <span className="bar-text minor">{t('auth.logout')}</span>
                 </button>
             </div>
+            {materialsOpen && <MaterialsDialog project={project} projectId={projectId} onClose={() => setMaterialsOpen(false)} />}
             {accountOpen && <AccountDialog user={user} onClose={() => setAccountOpen(false)} onDeleted={onAccountDeleted} />}
             {exportOpen && !restricted && <ExportDialog onExport={exportAs} onClose={() => setExportOpen(false)} />}
             {verifyOpen && !restricted && <VerifyPanel issues={issues} onGoTo={goToIssue} onClose={() => setVerifyOpen(false)} />}

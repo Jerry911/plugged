@@ -6,6 +6,7 @@ import SymbolGraphic from '../../symbols/SymbolGraphic.jsx'
 import Sheet from '../../components/Sheet.jsx'
 import {BUS_START_X, DRAWING_WIDTH, busPosition, sheetScale} from '../../model/boardLayout.js'
 import {useTranslation} from '../../i18n/I18nProvider.jsx'
+import {earthLabel} from '../../model/measurements.js'
 
 const SELECTED_COLOUR = '#0a6cff'
 const FONT_FAMILY = 'Verdana, DejaVu Sans, sans-serif'
@@ -160,7 +161,7 @@ const DrawnItem = ({item, selected, ghost, inGhostCircuit, onSelect, onDelete}) 
 }
 
 // The kWh meter and the main breaker come from the board layout as items made of library symbols (head.items); only the earth is drawn here.
-const BoardHead = ({head, selected, onSelect}) => {
+const BoardHead = ({head, selected, onSelect, earthText}) => {
     const earthSelected = !!selected && selected === head.groundId,
         colour = earthSelected ? SELECTED_COLOUR : '#000',
         earthClickable = head.groundId && onSelect ? {'data-nid': head.groundId, onClick: () => onSelect(head.groundId), style: {cursor: 'pointer'}} : {}
@@ -176,6 +177,12 @@ const BoardHead = ({head, selected, onSelect}) => {
                     <line x1="114" y1="56" x2="130" y2="56" />
                     <line x1="118" y1="62" x2="126" y2="62" />
                 </g>
+            )}
+            {/* the measured earth resistance (Kaderinfo → Metingen), under the earth symbol */}
+            {head.ground && earthText && (
+                <text className="earth-resistance" x="126" y="78" fontSize="10" textAnchor="middle" fontFamily={FONT_FAMILY}>
+                    {earthText}
+                </text>
             )}
             {head.items.map((item, index) => (
                 <DrawnItem key={index} item={item} selected={selected} onSelect={onSelect} />
@@ -210,7 +217,7 @@ export function BoardSheet({project, board, slice, number, total, selected, ghos
                     <line className="eds-bus" data-bus={board.bus.id} x1={busLeft} y1="0" x2={busRight} y2="0" stroke="transparent" strokeWidth="70" />
                 )}
                 <g transform={`translate(${headX},0)`}>
-                    <BoardHead head={board.head} selected={selected} onSelect={onSelect} />
+                    <BoardHead head={board.head} selected={selected} onSelect={onSelect} earthText={earthLabel(project.footer)} />
                 </g>
                 {board.circuits.slice(slice.from, slice.to).map((circuit) => (
                     <g key={circuit.node.id + '@' + circuit.x} transform={`translate(${circuit.x},0)`}>

@@ -1,6 +1,7 @@
 // Copyright 2026 Pleysier Jeroen
 // SPDX-License-Identifier: AGPL-3.0-only
 import {useTranslation} from '../i18n/I18nProvider.jsx'
+import {measurementParts} from '../model/measurements.js'
 
 /** Font size (mm) of the titles of the footer (Titel, Adres, ...): the eendraadschema is never drawn with smaller text (see MM_PER_UNIT). */
 export const FOOTER_TITLE_FONT_SIZE = 2.2
@@ -14,7 +15,8 @@ const joinFilled = (parts, separator = ' ') => parts.filter((part) => part && St
  */
 export default function Sheet({project, number, total = 2, children, svgRef, onFooter, sheetId, ...svgProps}) {
     const {t} = useTranslation()
-    const footer = project.footer || {}
+    const footer = project.footer || {},
+        measurements = measurementParts(footer)
     // [x, width, field that opens when clicked, label, value]
     const cells = [
         [5, 70, 'ean', t('sheet.cells.ean'), footer.ean],
@@ -66,6 +68,12 @@ export default function Sheet({project, number, total = 2, children, svgRef, onF
                     {footer.stelsel ? ' - ' + footer.stelsel : ''}
                     {footer.dossier ? ' - ' + t('sheet.dossier', {number: footer.dossier}) : ''}
                 </text>
+                {/* the measurements for the inspection (Kaderinfo → Metingen), in the lower row under the address */}
+                {measurements.length > 0 && (
+                    <text className="sheet-measurements" x="76" y="202.8" fontSize="2.6" stroke="none">
+                        {measurements.join(' · ')}
+                    </text>
+                )}
                 {/* the scale: its own box in the lower row, under the date */}
                 <text id={sheetId && sheetId + '-scale'} className="sheet-scale" x="236" y="203" fontSize="3" stroke="none">
                     <tspan fontSize={FOOTER_TITLE_FONT_SIZE} fill="#666">
@@ -83,6 +91,18 @@ export default function Sheet({project, number, total = 2, children, svgRef, onF
                         height="7"
                         stroke="none"
                         onClick={() => onFooter('dossier')}
+                    />
+                )}
+                {onFooter && (
+                    <rect
+                        id={sheetId && `${sheetId}-footer-aardingsweerstand`}
+                        className="fcell"
+                        x="75"
+                        y="198"
+                        width="75"
+                        height="7"
+                        stroke="none"
+                        onClick={() => onFooter('aardingsweerstand')}
                     />
                 )}
                 {onFooter && (

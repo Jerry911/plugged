@@ -64,3 +64,17 @@ test('somebody else saved in between: the save is refused and the caller is told
     expect(await saveProject(22, {}, {onConflict})).toBe(false)
     expect(onConflict).toHaveBeenCalledTimes(1)
 })
+
+test('presence messages are numbered upward, so the server can ignore a heartbeat that arrives after the leave', async () => {
+    const {leavePresence, reportPresence} = await import('../../api/projectApi.js')
+    global.fetch = vi.fn(async () => ({ok: true, status: 200, json: async () => ({others: [], version: 1})}))
+    await reportPresence(4, false)
+    await leavePresence(4)
+    await reportPresence(4, true)
+    const [first, leave, again] = global.fetch.mock.calls
+    const seqOf = (call) => (call[1].method === 'DELETE' ? Number(new URL(call[0], 'http://x').searchParams.get('seq')) : JSON.parse(call[1].body).seq)
+    expect(leave[1]).toMatchObject({method: 'DELETE', keepalive: true})
+    expect(seqOf(leave)).toBeGreaterThan(seqOf(first))
+    expect(seqOf(again)).toBeGreaterThan(seqOf(leave))
+    expect(JSON.parse(again[1].body)).toMatchObject({editing: true})
+})

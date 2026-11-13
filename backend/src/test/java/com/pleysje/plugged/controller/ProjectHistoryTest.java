@@ -189,4 +189,28 @@ class ProjectHistoryTest {
         mvc.perform(post("/api/projects/" + id + "/presence").with(as(alice)).contentType(MediaType.APPLICATION_JSON).content(report.formatted("", false)))
                 .andExpect(status().isBadRequest());
     }
+
+    @Test
+    void aHeartbeatThatArrivesAfterTheWindowLeftDoesNotBringItBack() throws Exception {
+        long id = create(alice, "{}");
+        share(id);
+        String report = "{\"window\":\"%s\",\"editing\":false,\"seq\":%d}";
+        mvc.perform(post("/api/projects/" + id + "/presence").with(as(bob)).contentType(MediaType.APPLICATION_JSON).content(report.formatted("w-bob", 1)))
+                .andExpect(status().isOk());
+        // Bob closes the window (message 3) while his heartbeat 2 is still on its way; it arrives last
+        mvc.perform(delete("/api/projects/" + id + "/presence").param("window", "w-bob").param("seq", "3").with(as(bob))).andExpect(status().isNoContent());
+        mvc.perform(post("/api/projects/" + id + "/presence").with(as(bob)).contentType(MediaType.APPLICATION_JSON).content(report.formatted("w-bob", 2)))
+                .andExpect(status().isOk());
+        mvc.perform(post("/api/projects/" + id + "/presence").with(as(alice)).contentType(MediaType.APPLICATION_JSON).content(report.formatted("w-alice", 1)))
+                .andExpect(jsonPath("$.others", hasSize(0)));
+        // the same window opens the project again later: its next message has a higher number and counts
+        mvc.perform(post("/api/projects/" + id + "/presence").with(as(bob)).contentType(MediaType.APPLICATION_JSON).content(report.formatted("w-bob", 4)))
+                .andExpect(status().isOk());
+        mvc.perform(post("/api/projects/" + id + "/presence").with(as(alice)).contentType(MediaType.APPLICATION_JSON).content(report.formatted("w-alice", 2)))
+                .andExpect(jsonPath("$.others[*].name", contains("Bob Test")));
+        // an editor without numbers (an older version) works as before
+        mvc.perform(delete("/api/projects/" + id + "/presence").param("window", "w-bob").with(as(bob))).andExpect(status().isNoContent());
+        mvc.perform(post("/api/projects/" + id + "/presence").with(as(alice)).contentType(MediaType.APPLICATION_JSON).content("{\"window\":\"w-alice\",\"editing\":false}"))
+                .andExpect(jsonPath("$.others", hasSize(0)));
+    }
 }

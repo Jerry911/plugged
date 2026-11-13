@@ -42,7 +42,7 @@ test('who else has the project open is shown in the top bar', async () => {
     expect(getById('presence')).toHaveClass('editing')
     expect(getById('presence').title).toContain(t('presence.unsaved'))
     const body = JSON.parse(global.fetch.mock.calls.find((call) => call[0] === '/api/projects/1/presence')[1].body)
-    expect(body).toEqual({window: expect.any(String), editing: false})
+    expect(body).toEqual({window: expect.any(String), editing: false, seq: expect.any(Number)})
 })
 
 test('nobody else: nothing is shown', async () => {

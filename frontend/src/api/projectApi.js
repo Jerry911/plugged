@@ -141,20 +141,24 @@ export const restoreVersion = (id, version) => call(projectUrl(id) + '/versions/
 
 // a random id of this browser window, so the server tells the windows apart (also two windows of one user)
 const WINDOW_ID = (globalThis.crypto?.randomUUID?.() || String(Math.random()).slice(2) + Date.now()).replace(/[^A-Za-z0-9_-]/g, '').slice(0, 64)
+// every presence message of this window gets the next number: a heartbeat still on its way when the window leaves arrives after the
+// leave, and the server ignores it by its lower number (otherwise it would show the window again until the timeout, 90 s)
+let presenceSeq = 0
 /**
  * This window has project `id` open (`editing`: with unsaved changes). Answers {others: [{name, editing, since, me}], version, savedBy}:
  * who else has it open, and the version in the database and who saved it; null when that is not known.
  */
 export const reportPresence = async (id, editing) => {
     try {
-        const response = await apiFetch(projectUrl(id) + '/presence', {method: 'POST', headers: JSON_HEADERS, body: JSON.stringify({window: WINDOW_ID, editing: !!editing})})
+        const response = await apiFetch(projectUrl(id) + '/presence', {method: 'POST', headers: JSON_HEADERS, body: JSON.stringify({window: WINDOW_ID, editing: !!editing, seq: ++presenceSeq})})
         return response.ok ? await response.json() : null
     } catch {
         return null
     }
 }
 /** This window closed project `id` (keepalive: also when the page closes). */
-export const leavePresence = (id) => Promise.resolve(apiFetch(projectUrl(id) + '/presence?window=' + WINDOW_ID, {method: 'DELETE', keepalive: true})).catch(() => {})
+export const leavePresence = (id) =>
+    Promise.resolve(apiFetch(projectUrl(id) + '/presence?window=' + WINDOW_ID + '&seq=' + ++presenceSeq, {method: 'DELETE', keepalive: true})).catch(() => {})
 /** The version number in an ETag ("3" -> 3), or null. */
 export const versionNumber = (etag) => {
     const number = Number(String(etag ?? '').replace(/^W\//, '').replace(/"/g, ''))

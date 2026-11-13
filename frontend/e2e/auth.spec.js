@@ -90,6 +90,8 @@ const coworker = async ({browser, playwright, baseURL, request}, name) => {
 }
 
 test('a project is private until its owner shares it with a group; members can open and save it, only the owner deletes it', async ({browser, playwright, baseURL, request, page, app, backend}) => {
+    // three users, and three times waiting for the presence heartbeat (every 10 s): more than the usual 30 s on a slower machine
+    test.slow()
     const alice = await coworker({browser, playwright, baseURL, request}, 'Alice'),
         bob = await coworker({browser, playwright, baseURL, request}, 'Bob')
     // the administrator makes a group with both of them, under Account → Groepen

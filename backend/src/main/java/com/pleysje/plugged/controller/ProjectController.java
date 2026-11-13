@@ -45,10 +45,10 @@ import org.springframework.web.bind.annotation.RestController;
  *   <li>POST /api/projects/{id}/copy?name=: a copy as a new own project; answers {id, version} (201)</li>
  *   <li>GET /api/projects/{id}/versions: the history [{version, name, savedAt, savedBy, size, current}]; GET .../versions/{version}: that
  *       document; POST .../versions/{version}/restore: saves it again as the newest version (new ETag)</li>
- *   <li>POST /api/projects/{id}/presence {window, editing}: this window has the project open (a heartbeat); answers {others: [{name,
+ *   <li>POST /api/projects/{id}/presence {window, editing, seq}: this window has the project open (a heartbeat); answers {others: [{name,
  *       editing, since, me}], version, savedBy, savedByMe}: who else has it open (me: another window of the same user), and the version in
- *       the database and who saved it. DELETE
- *       /api/projects/{id}/presence?window= when it closes.</li>
+ *       the database and who saved it. DELETE /api/projects/{id}/presence?window=&amp;seq= when it closes; a heartbeat with a lower seq
+ *       that arrives after it is ignored.</li>
  *   <li>PUT /api/projects/{id}/groups {groupIds}: the groups the project is shared with (owner or administrator)</li>
  * </ul>
  */
@@ -180,8 +180,11 @@ public class ProjectController {
         });
     }
 
-    /** The body of a presence report: the (random) id of the browser window and whether it has unsaved changes. */
-    public record Presence(String window, boolean editing) {
+    /**
+     * The body of a presence report: the (random) id of the browser window, whether it has unsaved changes and the number of this message
+     * (going up per window; optional), so a report that arrives after the window left is ignored (see PresenceService).
+     */
+    public record Presence(String window, boolean editing, Long seq) {
     }
 
     @PostMapping("/{id}/presence")
@@ -190,7 +193,7 @@ public class ProjectController {
         ProjectService.CurrentVersion current = projects.currentVersion(userId, id);
         AppUser user = projects.user(userId);
         String window = cleanWindow(body.window());
-        List<PresenceService.Viewer> others = presence.report(id, window, userId, (user.getName() + " " + user.getSurname()).trim(), body.editing());
+        List<PresenceService.Viewer> others = presence.report(id, window, body.seq(), userId, (user.getName() + " " + user.getSurname()).trim(), body.editing());
         Map<String, Object> answer = new java.util.LinkedHashMap<>();
         answer.put("others", others.stream().map(viewer -> Map.of("name", viewer.name(), "editing", viewer.editing(), "since", viewer.since(),
                 "me", viewer.userId() == userId)).toList());
@@ -201,8 +204,8 @@ public class ProjectController {
     }
 
     @DeleteMapping("/{id}/presence")
-    public ResponseEntity<Void> leave(@PathVariable long id, @RequestParam String window) {
-        presence.leave(id, cleanWindow(window));
+    public ResponseEntity<Void> leave(@PathVariable long id, @RequestParam String window, @RequestParam(required = false) Long seq) {
+        presence.leave(id, cleanWindow(window), seq);
         return ResponseEntity.noContent().build();
     }
 

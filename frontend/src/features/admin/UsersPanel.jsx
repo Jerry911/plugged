@@ -24,6 +24,7 @@ export default function UsersPanel({users, groups, currentUser, busy, actions}) 
                         <th>{t('users.groups')}</th>
                         <th>{t('users.registered')}</th>
                         <th>{t('users.lastLogin')}</th>
+                        <th className="num">{t('users.logins')}</th>
                         <th>{t('users.status')}</th>
                         <th />
                     </tr>
@@ -42,15 +43,16 @@ export default function UsersPanel({users, groups, currentUser, busy, actions}) 
                                     {groupsOf(user).join(', ') || '—'}
                                 </td>
                                 <td>{date(user.created)}</td>
-                                <td id={'users-login-' + user.id} className="userslogin" title={t('users.loginCount', {count: user.loginCount || 0})}>
-                                    {user.lastLogin ? (
-                                        <>
-                                            {moment(user.lastLogin)}
-                                            <small> · {user.loginCount}×</small>
-                                        </>
-                                    ) : (
-                                        <i>{t('users.neverSignedIn')}</i>
-                                    )}
+                                <td id={'users-login-' + user.id} className="userslogin">
+                                    {user.lastLogin ? moment(user.lastLogin) : <i>{t('users.neverSignedIn')}</i>}
+                                </td>
+                                <td
+                                    id={'users-logins-' + user.id}
+                                    className="num userslogins"
+                                    title={t('users.loginCount', {count: user.loginCount || 0})}
+                                    data-label={t('users.logins')}
+                                >
+                                    {user.loginCount || 0}
                                 </td>
                                 <td>
                                     <span id={'users-status-' + user.id} className={'userstag ' + (user.admin ? 'admin' : user.approved ? 'approved' : 'waiting')}>

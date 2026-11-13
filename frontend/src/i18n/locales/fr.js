@@ -852,6 +852,7 @@ export default {
     },
     account: {
         button: 'Compte',
+        roleUser: 'Utilisateur',
         buttonTitle: 'Mon compte : changer le mot de passe, télécharger vos données, supprimer votre compte',
         buttonTitleAdmin: 'Mon compte, et gérer les utilisateurs, les groupes et les symboles standard',
         pageAdmin: 'Compte et gestion',
@@ -987,6 +988,7 @@ export default {
         madeAdmin: '{name} est maintenant administrateur.',
         madeUser: '{name} est maintenant un utilisateur ordinaire.',
         lastLogin: 'Dernière connexion',
+        logins: 'Connexions',
         neverSignedIn: 'jamais',
         loginCount: 'Connecté {count} fois',
     },

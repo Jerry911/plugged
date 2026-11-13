@@ -90,11 +90,16 @@ describe('users', () => {
         expect(getById('users-groups-2')).toHaveTextContent('—')
         expect(getById('users-row-1')).toHaveTextContent(t('users.you'))
         // when each account last signed in, and how many times
-        expect(getById('users-login-1')).toHaveTextContent('3×')
-        expect(getById('users-login-1')).toHaveAttribute('title', t('users.loginCount', {count: 3}))
+        // the number of sign-ins has its own column, between the last sign-in and the status
+        expect(getById('users-logins-1')).toHaveTextContent('3')
+        expect(getById('users-logins-1')).toHaveAttribute('title', t('users.loginCount', {count: 3}))
+        expect(getById('users-login-1')).not.toHaveTextContent('3×')
+        expect(getById('users-login-1').nextElementSibling).toBe(getById('users-logins-1'))
+        expect(getById('users-logins-1').nextElementSibling).toContainElement(getById('users-status-1'))
+        expect([...getById('admin-users').querySelectorAll('th')].map((th) => th.textContent)).toContain(t('users.logins'))
         expect(getById('users-login-1')).toHaveTextContent(new Date('2026-11-04T14:11:00Z').toLocaleString('nl-BE', {dateStyle: 'short', timeStyle: 'short'}))
         expect(getById('users-login-2')).toHaveTextContent(t('users.neverSignedIn'))
-        expect(getById('users-login-2')).toHaveAttribute('title', t('users.loginCount', {count: 0}))
+        expect(getById('users-logins-2')).toHaveTextContent('0')
         expect(getById('admin-tab-users').querySelector('.badge')).toHaveTextContent('1')
         // the administrator himself: no buttons at all
         for (const id of ['users-approve-1', 'users-promote-1', 'users-demote-1', 'users-delete-1']) expect(byId(id)).toBeNull()
@@ -306,6 +311,7 @@ describe('the own account', () => {
         global.fetch = vi.fn(async () => json(null, 404))
         render(<AccountPage currentUser={account(2, 'Jan')} initialSection="users" />)
         expect(getById('account-page')).toHaveTextContent(t('account.title'))
+        expect(getById('account-role')).toHaveTextContent(t('account.roleUser'))
         expect(getById('account-who')).toHaveTextContent('Jan X · jan@example.be')
         for (const id of ['account-tab-account', 'admin-tab-users', 'admin-tab-groups', 'admin-tab-symbols', 'admin-reload']) expect(byId(id)).toBeNull()
         expect(global.fetch).not.toHaveBeenCalled()

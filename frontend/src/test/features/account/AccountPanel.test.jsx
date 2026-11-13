@@ -66,3 +66,10 @@ test('the primary administrator cannot remove his account', () => {
     expect(getById('account-delete-primary')).toHaveTextContent(t('account.deletePrimary'))
     expect(byId('account-delete-form')).toBeNull()
 })
+
+test('who is signed in, with his role, and every button in the same style', () => {
+    mount()
+    expect(getById('account-who')).toHaveTextContent('Jan Peeters · jan@example.be')
+    expect(getById('account-role')).toHaveTextContent(t('account.roleUser'))
+    for (const id of ['password-submit', 'account-export', 'account-delete']) expect(getById(id)).toHaveClass('accent')
+})

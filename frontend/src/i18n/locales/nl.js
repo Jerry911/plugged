@@ -856,6 +856,7 @@ export default {
     },
     account: {
         button: 'Account',
+        roleUser: 'Gebruiker',
         buttonTitle: 'Mijn account: wachtwoord wijzigen, je gegevens downloaden, je account verwijderen',
         buttonTitleAdmin: 'Mijn account, en de gebruikers, groepen en standaardsymbolen beheren',
         pageAdmin: 'Account en beheer',
@@ -991,6 +992,7 @@ export default {
         madeAdmin: '{name} is nu beheerder.',
         madeUser: '{name} is nu een gewone gebruiker.',
         lastLogin: 'Laatst aangemeld',
+        logins: 'Aanmeldingen',
         neverSignedIn: 'nog nooit',
         loginCount: '{count} keer aangemeld',
     },

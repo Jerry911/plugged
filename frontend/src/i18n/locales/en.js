@@ -851,6 +851,7 @@ export default {
     },
     account: {
         button: 'Account',
+        roleUser: 'User',
         buttonTitle: 'My account: change your password, download your data, delete your account',
         buttonTitleAdmin: 'My account, and manage the users, groups and standard symbols',
         pageAdmin: 'Account and administration',
@@ -986,6 +987,7 @@ export default {
         madeAdmin: '{name} is an administrator now.',
         madeUser: '{name} is an ordinary user now.',
         lastLogin: 'Last signed in',
+        logins: 'Sign-ins',
         neverSignedIn: 'never',
         loginCount: 'Signed in {count} times',
     },

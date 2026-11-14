@@ -6,6 +6,9 @@ import com.pleysje.plugged.dto.AuthRequests;
 import com.pleysje.plugged.logging.ApiLog;
 import com.pleysje.plugged.security.Authentications;
 import com.pleysje.plugged.service.AccountService;
+import jakarta.validation.Valid;
+import java.util.List;
+import java.util.Map;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 import java.nio.charset.StandardCharsets;
@@ -19,6 +22,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -27,6 +31,8 @@ import org.springframework.web.bind.annotation.RestController;
  * The own account of the signed-in user (GDPR):
  * <ul>
  *   <li>GET /api/account/export: everything stored about and by him, as a JSON file to download (see AccountService#export)</li>
+ *   <li>GET /api/account/rules: {disabled: [rule ids]}, the rules of Controleer he switched off; PUT /api/account/rules {disabled} sets them
+ *       (400 for an id that is not a rule id, or too many)</li>
  *   <li>DELETE /api/account {password}: removes his account and what is his, and signs him out (403 wrong password, 409 for the primary
  *       administrator)</li>
  * </ul>
@@ -52,6 +58,16 @@ public class AccountController {
                     .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment().filename("plugged-mijn-gegevens.json").build().toString())
                     .body(body);
         });
+    }
+
+    @GetMapping("/rules")
+    public Map<String, List<String>> rules(Authentication authentication) {
+        return Map.of("disabled", accounts.disabledRules(Authentications.userId(authentication)));
+    }
+
+    @PutMapping("/rules")
+    public Map<String, List<String>> setRules(@Valid @RequestBody AuthRequests.RuleSettings body, Authentication authentication) {
+        return ApiLog.run(log, "PUT /api/account/rules", "", () -> Map.of("disabled", accounts.setDisabledRules(Authentications.userId(authentication), body.disabled())));
     }
 
     @DeleteMapping

@@ -307,13 +307,18 @@ describe('temporary passwords', () => {
 })
 
 describe('the own account', () => {
-    test('an ordinary user: only his own account, no tabs, and no request for the users or groups', () => {
+    test('an ordinary user: his own account and his rules, nothing of the administration, no request for the users or groups', () => {
         global.fetch = vi.fn(async () => json(null, 404))
-        render(<AccountPage currentUser={account(2, 'Jan')} initialSection="users" />)
+        render(<AccountPage currentUser={account(2, 'Jan')} initialSection="users" disabledRules={['spd', 'kring.light']} />)
         expect(getById('account-page')).toHaveTextContent(t('account.title'))
         expect(getById('account-role')).toHaveTextContent(t('account.roleUser'))
         expect(getById('account-who')).toHaveTextContent('Jan X · jan@example.be')
-        for (const id of ['account-tab-account', 'admin-tab-users', 'admin-tab-groups', 'admin-tab-symbols', 'admin-reload']) expect(byId(id)).toBeNull()
+        for (const id of ['admin-tab-users', 'admin-tab-groups', 'admin-tab-symbols', 'admin-reload']) expect(byId(id)).toBeNull()
+        expect(getById('account-tab-account')).toHaveClass('on')
+        // the Controleregels tab, with the number of rules switched off
+        expect(getById('account-tab-rules')).toHaveTextContent('2')
+        clickId('account-tab-rules')
+        getById('rules-panel')
         expect(global.fetch).not.toHaveBeenCalled()
     })
     test('an administrator opens on his own account and has the users, groups and symbols as tabs', async () => {

@@ -8,7 +8,11 @@ const LEVEL_ICONS = {error: '✖', warn: '⚠', info: 'ℹ'}
 // a click that ends a text selection (dragging over a message to copy it) must not jump to the element
 const isSelectingText = () => !!window.getSelection?.()?.toString()
 
-export default function VerifyPanel({issues, onGoTo, onClose}) {
+/**
+ * `disabledCount` how many rules the user switched off; `onRules()` opens Account → Controleregels. `notApplicable` how many rules do not
+ * apply to this installation because it started before their date (`installationDate` as typed in Kaderinfo); `onInstallation()` opens it.
+ */
+export default function VerifyPanel({issues, onGoTo, onClose, disabledCount = 0, onRules, notApplicable = 0, installationDate = '', onInstallation}) {
     const {t} = useTranslation()
     const counts = summarize(issues)
     return (
@@ -39,6 +43,20 @@ export default function VerifyPanel({issues, onGoTo, onClose}) {
                     </li>
                 ))}
             </ul>
+            {notApplicable > 0 && (
+                <p>
+                    <button id="verify-not-applicable" className="linkbtn" onClick={onInstallation}>
+                        {t('verify.notApplicable', {count: notApplicable, date: installationDate})}
+                    </button>
+                </p>
+            )}
+            {disabledCount > 0 && (
+                <p>
+                    <button id="verify-disabled" className="linkbtn" onClick={onRules}>
+                        {t('verify.disabledNote', {count: disabledCount})}
+                    </button>
+                </p>
+            )}
             <small>{t('verify.disclaimer')}</small>
         </div>
     )

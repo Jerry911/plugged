@@ -124,15 +124,16 @@ test('only the eendraadschema is imported: the situatieschema is ignored', () =>
     expect(r.sit).toBeUndefined()
     expect(Object.keys(r).sort()).toEqual(['een', 'footer', 'stats'])
 })
-test('importEds decodes and converts; imported schema verifies without errors', () => {
+test('importEds decodes and converts; the imported schema verifies with only what the AREI asks of it', () => {
     const r = importEds(enc(J()))
     expect(r.stats.circuits).toBe(2)
     const p = {...baseProject(), ...r, footer: {...baseProject().footer, ...r.footer}, custom: []}
+    // the only error is a real one: circuit A feeds sockets behind the 300 mA main differential only, they go behind 30 mA (AREI 4.2.4.3 b)
     expect(
         verify(p)
             .filter((i) => i.level === 'error')
-            .map((i) => i.msg),
-    ).toEqual([])
+            .map((i) => i.rule),
+    ).toEqual(['kring.sensitive'])
 })
 test('socket symbol follows is_geaard / is_kinderveilig / is_halfwaterdicht', () => {
     const k = (o) => socketKey({type: 'Contactdoos', ...o})

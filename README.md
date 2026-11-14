@@ -103,7 +103,7 @@ Everything under `/api/` needs a signed-in user (401 otherwise), except `/api/au
 - **Eendraadschema**: multi-sheet A4 diagram with a bus, kWh meter, main differential and circuits; palette, properties panel and a collapsible tree (*Opbouw*).
 - **Situatieschema**: floor plan with walls, rooms, doors/windows, dimensions and the symbols of the eendraadschema.
 - **Components**: the symbol library and a symbol editor.
-- **Controleer**: verification against guideline AREI limits.
+- **Controleer**: verification against the AREI (Boek 1, version 07), each message with its article; see Verification below.
 - **Export**: vector PDF (jsPDF + svg2pdf.js, A4 landscape, all sheets) and printing, both in the **Project** menu (*PDF downloaden*, *Afdrukken* or Alt+P), not in the top bar.
 - **Materiaallijst** (Project → Materiaallijst, `MaterialsDialog.jsx`, counted in `model/materials.js`): the bill of materials of the eendraadschema (all pages; the situatieschema does not count, it shows the same elements). Four sections: *Beveiliging* (main switch or main differential of the connection, the breakers / differentials / RCBOs of the circuits and separate differential and fuse elements, one line per article: kind, poles, rating and curve, sensitivity, type, breaking capacity, with the circuits that use it), *Kabels* (per cable designation with its circuits; the length is not in the drawing, so the column is empty to fill in), *Toestellen en elementen* (per symbol with its *Aantal*, splash-proof separately, and the number of socket outlets) and *Borden*. Download as Excel (`.xlsx`, written in `materialsExport.js`: no library besides fflate for the zip) or CSV (`;` and a byte order mark, so Excel in a Belgian locale opens it in columns). Not locked in educational mode: it is not the project.
 - **Metingen voor de keuring** (Kaderinfo): earth resistance (Ω), insulation resistance (MΩ) and the date of the measurement, stored in `project.footer` (`aardingsweerstand`, `isolatieweerstand`, `meetdatum`). They are always in the title block of every sheet (lower row: Ra and Riso under the address, the date under the owner; click one to edit it): a value that is not filled in yet is a dotted line, so the inspector can write it on the printed schema by hand. A filled-in earth resistance is also written under the earth symbol of the eendraadschema (`Ra = 24 Ω`).
@@ -152,9 +152,46 @@ Everything under `/api/` needs a signed-in user (401 otherwise), except `/api/au
 - The frontend tests (`src/test/fixtures/standardSymbols.js`) and the fake backend of the browser tests read the same catalog file as their library, so they always test the symbols that ship; there is no copy to keep in step.
 
 ## Verification ("Controleer" button)
-`frontend/src/rules.jsx` checks the eendraadschema (all sheets) and returns errors / warnings / info; click an issue to jump to the node.
-Checks: hierarchy, aansluiting/aarding present, kring under a differentieel, differentieel sensitivity (max 30 mA with stopcontacten), empty bord/diff/kring, kring specs and cable-vs-protection table, max stopcontacten/lichtpunten per kring, appliances on their own kring, switches without lamp, duplicate kring names, incomplete footer, components missing on the situatieschema, the measured earth resistance (`model/measurements.js`): not filled in is info, up to 30 Ω is fine, above 30 Ω and up to 100 Ω a warning unless at least two differentials of at most 30 mA sit right after the main differential (`sensitiveDifferentialsAtOrigin`), above 100 Ω an error. The insulation resistance is printed, not judged.
-Limits are guideline values in `LIMITS` (rules.jsx): verify them against the current AREI before relying on them.
+`frontend/src/model/rules.js` checks the eendraadschema (all sheets) of a household installation against the AREI, Boek 1 (version 07 of 15/09/2026, in force from 01/11/2026) and returns errors / warnings / info; every message names the article it comes from, and clicking an issue jumps to the element.
+
+| Rule | AREI | Level |
+|---|---|---|
+| A differential of at most 300 mA at the origin: on the connection, or the first protection after it (a main fuse before it is fine) | 4.2.4.3 b | error |
+| Circuits with sockets, lighting, washing machine, dryer or dishwasher behind a differential of at most 30 mA (its own differentieel(automaat) counts) | 4.2.4.3 b | error |
+| At most 8 final circuits per differential of at most 30 mA | 4.2.4.3 b | error |
+| Earth resistance above 30 Ω: at least two 30 mA differentials right after the main one, at most 16 sockets / fixed appliances behind each, every other circuit behind at most 100 mA | 4.2.4.3 b | warn / error |
+| Earth resistance lower than 100 Ω (100 Ω itself is too high); not filled in yet is an info | 5.4.1 | error |
+| At most 8 sockets per circuit; with sockets on it, a fixed appliance or a group of lights under one switch counts as one socket (`circuitPoints`) | 5.3.5.2 b | error |
+| A circuit with only lights above 8 lights: a guideline, not an AREI requirement | – | info |
+| At least 2.5 mm², 1.5 mm² only without sockets | 5.2.1.2, table 5.1 | error |
+| Breaker and fuse rating for the section (table 4.11: 1.5 mm² 16 A / 10 A, 2.5 mm² 20 A / 16 A, 4 mm² 25 A / 20 A, 6 mm² 40 A / 32 A, 10 mm² 63 A / 50 A, 16 mm² 80 A / 63 A, 25 mm² 100 A / 80 A) | 4.4.1.4 | error |
+| Own circuit for washing machine, dishwasher, dryer, cooker / hob, oven and charging station; for boiler, airco, heating and microwave only from 2600 W, which the drawing does not show | 5.2.1.2, 7.22.3 | error / warn |
+| At least two lighting circuits in a home with more than two rooms (the drawing does not show the rooms) | 5.3.5.2 b | info |
+| Charging station: its own circuit with its own differential of at most 30 mA, not through a socket; a reminder when that differential is not type B (DC fault current) | 7.22.3, 7.22.4.1 | error / info |
+| Differentials at least type A (no AC) and breaking all poles; the one at the origin rated at least 40 A | 5.3.5.3 a, c | error |
+| Breaking capacity of breakers and fuses at least 3 kA (the *kortsl* property) | 5.3.3.1 e | error |
+| Single conductors (VOB, H07V, ...) not in the ground, not even in a duct, and not in a wall without conduit (*in buis*) | 5.2.9.2, 5.2.9.10 | error |
+| On the schema: a capital letter per circuit; per circuit the cable type, number of conductors and installation method; the type of every differential. One warning per kind, listing the circuits | 3.1.2.1 a, 3.1.2.2 a | warn |
+| In the title block: address (street, postcode, municipality), voltage and system (*stelsel*), version (*rev.*) and date, besides owner and drawer | 3.1.2 | warn |
+| Sockets drawn without earth contact | 5.3.5.2 b | warn |
+| Single sockets not drawn as child-safe: new sockets up to 16 A are IPXX-D since 01/03/2025 (double and triple socket symbols have no such variant) | 5.3.5.2 a | info |
+| PV panels or an inverter: warning signs, DC marking, earthing of the frames (2.5 / 4 mm²) | 7.112.2 | info |
+| Surge protection: advisable, not required in a household installation | 4.5 | info |
+
+Further: hierarchy, aansluiting / aarding present, empty bord / diff / kring, missing circuit specs, switches without lamp, duplicate circuit names, incomplete footer, components missing on the situatieschema. The insulation resistance is printed, not judged.
+Not checked, because the drawing does not show it: which room a circuit feeds and the volumes around a bath or shower (bathrooms need 30 mA too, 7.1.4.3, and sockets and switches are limited per volume, 7.1.5), the name, capacity and VAT number of the installer (3.1.2.1 a: on the schema too, there is no field for it yet), the power of an appliance, embedded floor heating (its own differential of at most 100 mA), cable lengths and voltage drop. Selectivity between differentials is only required for safety installations (5.5.7), so it is not a rule here.
+**Rules with a date**: several rules only apply to installations whose work on site started on or after a date, as the AREI states in its transitional provisions. *Kaderinfo → Installatie* has the field *Uitvoering begonnen* (`footer.installatiedatum`, not printed) that takes a date (01/06/2023), a month (06/2023) or only a year (2023), parsed by `model/installationDate.js`. A rule is left out for an installation that started before its date; when only a year or month is known that runs across the date, it is still reported with a note that it may not apply; an empty or unreadable field means a new installation (everything applies). The dates are in `RULE_CATALOG` (`since`) and on the Controleregels page:
+
+| From | Rules | AREI |
+|---|---|---|
+| 01/11/2022 | charging stations (own 30 mA differential, not through a socket, DC faults) | 7.22.1 |
+| 01/06/2023 | sockets and lighting behind 30 mA (washing machine, dryer and dishwasher always); at most 8 circuits per 30 mA differential; above 30 Ω the other circuits behind at most 100 mA | 6.5.8.1, 1 |
+| 01/03/2025 | child-safe sockets (IPXX-D) | 6.5.8.1, 2 |
+
+An installation started before 01/06/2020, when Book 1 came into force, gets an info: Controleer checks Book 1, an old installation falls under the derogations of part 8. The Controleer panel says how many rules do not apply and links to the field.
+
+**Controleregels** (Account → Controleregels, `features/account/RulesPanel.jsx`): every user switches rules off and on for himself; it applies to all his projects, and a rule that is off is left out of the list and the ✖ ⚠ counts (an empty schema is always reported). The rules come from `RULE_CATALOG` in `model/rules.js` (group, usual level, AREI article; names in `ruleSettings.rules.*`), and every change is saved at once: `GET /api/account/rules` answers `{disabled: [rule ids]}`, `PUT /api/account/rules {disabled}` sets them (400 `account.invalidRules` for an id that is not a rule id, or more than 200). They are stored in the table `user_disabled_rules`, are part of *Mijn gegevens downloaden* and go with the account. The Controleer panel says how many rules are off and links to the page. Every check goes through this catalog, also what the situatieschema shows: with *plan.unplaced* off the Situatieschema tab has no ⚠ count and the list of elements still to place is shown neutrally (as for a student in educational mode). A socket is any symbol with socket properties (`sock` in the catalog: `pe` earth contact, `kid` child-safe, `n` outlets), so a user's own socket symbol is checked like the standard ones and a multiple socket counts as one.
+The limits are in `LIMITS` in `model/rules.js`. A schema without errors is not an approved installation: the inspection by an accredited body decides.
 
 ## Guided tour
 - A new visitor gets a short guided tour (`Tour.jsx`, steps in `tourSteps.jsx`, styles in `styles/tour.css`): a dimmed page with the next control highlighted and a card that explains it. The tour walks through the palette, a first *Kring* and its *Eigenschappen*, a stopcontact, then the situatieschema: a first wall (two clicks), a second wall with a typed length (the person has to type about 15 m, which is too long for the default scale 1:50, so the application proposes a scale and the tour has the person choose it and confirm the wall), the *Kaderinfo* where the scale is shown and can be changed, a door, a symbol, the *Nergens geplaatst* panel and the properties of a symbol. Steps that ask the person to do something wait until they did it; "Sla over" skips such a step.

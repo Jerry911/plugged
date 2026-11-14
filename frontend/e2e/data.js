@@ -68,10 +68,10 @@ export const correct = () => {
                         'D',
                         'diff',
                         [
-                            node('K1', 'kring', [node('S1', 'stopcontact'), node('S2', 'stopcontact2')], {info: 'B16 2,5mm²'}),
-                            node('K2', 'kring', [node('SW', 'schakelaar', [node('L1', 'lichtpunt')])], {info: 'B10 1,5mm²'}),
+                            node('K1', 'kring', [node('S1', 'stopcontact_pekid'), node('S2', 'stopcontact2')], {info: 'B16 XVB Cca 3G2,5', p: {plaatsing: 'inwand'}}),
+                            node('K2', 'kring', [node('SW', 'schakelaar', [node('L1', 'lichtpunt')])], {info: 'B10 XVB Cca 3G1,5', p: {plaatsing: 'inwand'}}),
                         ],
-                        {info: '40A 30mA'},
+                        {info: '40A 30mA type A'},
                     ),
                     node('E', 'aarding'),
                 ]),
@@ -80,7 +80,8 @@ export const correct = () => {
     ]
     const ids = (ns) => ns.flatMap((n) => [n.id, ...ids(n.children)])
     return project({
-        footer: {titel: 'Woning', gemeente: 'Gent', eigenaar: 'Jan', tekenaar: 'Piet', datum: '2026-01-01'},
+        // everything the AREI asks on the schema (3.1.2)
+        footer: {titel: 'Woning', straat: 'Kerkstraat', nr: '12', postcode: '9000', gemeente: 'Gent', eigenaar: 'Jan', tekenaar: 'Piet', stelsel: '2x230V TT', rev: 'A', datum: '2026-01-01'},
         een: [{id: 'e1', name: 'Blad 1', tree}],
         sit: [{id: 's1', name: 'Plattegrond 1', walls: [], items: ids(tree).map((id) => ({id: 'i' + id, kind: 'sym', node: id, x: 1, y: 1}))}],
     })

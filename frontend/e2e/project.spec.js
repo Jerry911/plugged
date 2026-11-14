@@ -138,7 +138,7 @@ test.describe('the backend has no symbols', () => {
 
 test('the check button shows the number of errors and warnings of the schema', async ({page, app, backend}) => {
     await app.open(backend, flawed())
-    await expect(page.locator('#btn-verify')).toHaveText(/✖2.*⚠/)
+    await expect(page.locator('#btn-verify')).toHaveText(/✖3.*⚠/) // no earth, no differential at the origin, the circuit without differential
 })
 
 test('an own stored project is saved by itself once the user stops changing it, and when the tab is hidden', async ({page, app, backend}) => {

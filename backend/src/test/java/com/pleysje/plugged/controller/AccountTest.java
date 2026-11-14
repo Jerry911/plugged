@@ -10,12 +10,14 @@ import com.pleysje.plugged.repository.SymbolRepository;
 import com.pleysje.plugged.repository.UserGroupRepository;
 import com.pleysje.plugged.repository.UserRepository;
 import com.pleysje.plugged.security.LoginThrottle;
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.web.MockHttpSession;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.web.servlet.MockMvc;
@@ -23,6 +25,7 @@ import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
 import static org.hamcrest.Matchers.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
@@ -37,6 +40,8 @@ class AccountTest {
 
     @Autowired
     MockMvc mvc;
+    @Autowired
+    JdbcTemplate jdbc;
     @Autowired
     UserRepository users;
     @Autowired
@@ -165,5 +170,34 @@ class AccountTest {
         MockHttpSession session = signIn("admin@example.be", PASSWORD);
         send(delete("/api/account"), session, "{\"password\":\"" + PASSWORD + "\"}").andExpect(status().isConflict())
                 .andExpect(jsonPath("$.messageKey", is("account.primaryCannotLeave")));
+    }
+
+    @Test
+    void everyUserSwitchesRulesOfControleerOffForHimself() throws Exception {
+        MockHttpSession session = signIn("jan@example.be", PASSWORD), admin = signIn("admin@example.be", PASSWORD);
+        mvc.perform(get("/api/account/rules").session(session)).andExpect(status().isOk()).andExpect(jsonPath("$.disabled", hasSize(0)));
+        // sorted, without doubles
+        send(put("/api/account/rules"), session, "{\"disabled\":[\"kring.light\",\"spd\",\"kring.light\",\"docs.cableType\"]}")
+                .andExpect(status().isOk()).andExpect(jsonPath("$.disabled", contains("docs.cableType", "kring.light", "spd")));
+        mvc.perform(get("/api/account/rules").session(session)).andExpect(jsonPath("$.disabled", contains("docs.cableType", "kring.light", "spd")));
+        // only for himself
+        mvc.perform(get("/api/account/rules").session(admin)).andExpect(jsonPath("$.disabled", hasSize(0)));
+        // in his data
+        mvc.perform(get("/api/account/export").session(session)).andExpect(jsonPath("$.account.disabledRules", contains("docs.cableType", "kring.light", "spd")));
+        // all on again
+        send(put("/api/account/rules"), session, "{\"disabled\":[]}").andExpect(jsonPath("$.disabled", hasSize(0)));
+        // no rule ids, or none at all: refused
+        for (String body : List.of("{\"disabled\":[\"<script>\"]}", "{\"disabled\":[\"a.b.c\"]}", "{\"disabled\":[null]}", "{}"))
+            send(put("/api/account/rules"), session, body).andExpect(status().isBadRequest()).andExpect(jsonPath("$.messageKey", is("account.invalidRules")));
+        // signed out: nothing
+        mvc.perform(get("/api/account/rules")).andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void theRulesGoWithTheAccount() throws Exception {
+        MockHttpSession session = signIn("jan@example.be", PASSWORD);
+        send(put("/api/account/rules"), session, "{\"disabled\":[\"spd\"]}").andExpect(status().isOk());
+        send(delete("/api/account"), session, "{\"password\":\"" + PASSWORD + "\"}").andExpect(status().isNoContent());
+        assertEquals(0, jdbc.queryForObject("select count(*) from user_disabled_rules", Integer.class));
     }
 }

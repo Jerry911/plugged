@@ -10,7 +10,7 @@ import InfoPage from '../features/info/InfoPage.jsx'
 import AuthGate from '../features/auth/AuthGate.jsx'
 import AccountPage from '../features/account/AccountPage.jsx'
 import TeacherPage from '../features/admin/TeacherPage.jsx'
-import {fetchUsers} from '../api/authApi.js'
+import {fetchRuleSettings, fetchUsers} from '../api/authApi.js'
 import {ExportDialog, IMPORT_ACCEPT, importKind} from '../features/project/ExportDialog.jsx'
 import ProjectMenu from '../features/project/ProjectMenu.jsx'
 import {FooterDialog} from '../features/footer/FooterDialog.jsx'
@@ -26,7 +26,7 @@ import Toast, {useToast} from '../components/Toast.jsx'
 import {useHistory} from '../hooks/useHistory.js'
 import {useAutoSave} from '../hooks/useAutoSave.js'
 import {exportEds, importEds} from '../model/eds.js'
-import {REQUIRED_FOOTER_FIELDS, verify} from '../model/rules.js'
+import {REQUIRED_FOOTER_FIELDS, rulesNotApplicable, verify} from '../model/rules.js'
 import {unplacedNodes} from '../model/project.js'
 import {embedSymbols, OWN_CATEGORY, setLibrary, symbolName} from '../symbols/symbolLibrary.js'
 import {I18nProvider, useTranslation} from '../i18n/I18nProvider.jsx'
@@ -124,7 +124,17 @@ function Editor({library, user, onLogout, onAccountDeleted}) {
     // the messages are in the active language: check again when it changes
     // educational mode (see GroupService#isRestricted): a student gets no validation at all, and cannot import or export
     const restricted = !!user.restricted
-    const issues = useMemo(() => (restricted ? [] : verify(project)), [project, symbols, language, restricted]),
+    // the rules of Controleer this user switched off (Account → Controleregels); all on until they are loaded or when that fails
+    const [disabledRules, setDisabledRules] = useState([]),
+        [accountSection, setAccountSection] = useState(null)
+    useEffect(() => {
+        let live = true
+        fetchRuleSettings().then((result) => live && result.ok && setDisabledRules(result.disabled))
+        return () => {
+            live = false
+        }
+    }, [user.id])
+    const issues = useMemo(() => (restricted ? [] : verify(project, {disabled: disabledRules})), [project, symbols, language, restricted, disabledRules]),
         errorCount = issues.filter((issue) => issue.level === 'error').length,
         warningCount = issues.filter((issue) => issue.level === 'warn').length
     const openFooter = (field) => {
@@ -461,7 +471,9 @@ function Editor({library, user, onLogout, onAccountDeleted}) {
         if (type === 'eds') exportEdsFile()
         else exportJson()
     }
-    const unplacedCount = unplacedNodes(project).length,
+    // components still to place on the situatieschema: a warning only while the rule plan.unplaced is on (Account → Controleregels)
+    const unplacedRuleOff = disabledRules.includes('plan.unplaced'),
+        unplacedCount = unplacedRuleOff ? 0 : unplacedNodes(project).length,
         shownOneWirePage = Math.min(oneWirePage, project.een.length - 1),
         shownSituationPage = Math.min(situationPage, project.sit.length - 1)
     return (
@@ -561,7 +573,7 @@ function Editor({library, user, onLogout, onAccountDeleted}) {
                     id="tab-account"
                     className={tab === ACCOUNT_TAB ? 'on' : ''}
                     title={t(user.admin ? 'account.buttonTitleAdmin' : 'account.buttonTitle')}
-                    onClick={() => setTab(ACCOUNT_TAB)}
+                    onClick={() => (setAccountSection(null), setTab(ACCOUNT_TAB))}
                 >
                     <span className="bar-icon" aria-hidden="true">
                         👤
@@ -583,7 +595,18 @@ function Editor({library, user, onLogout, onAccountDeleted}) {
             <Toast toast={toast} />
             {materialsOpen && <MaterialsDialog project={project} projectId={projectId} onClose={() => setMaterialsOpen(false)} />}
             {exportOpen && !restricted && <ExportDialog onExport={exportAs} onClose={() => setExportOpen(false)} />}
-            {verifyOpen && !restricted && <VerifyPanel issues={issues} onGoTo={goToIssue} onClose={() => setVerifyOpen(false)} />}
+            {verifyOpen && !restricted && (
+                <VerifyPanel
+                    issues={issues}
+                    onGoTo={goToIssue}
+                    onClose={() => setVerifyOpen(false)}
+                    disabledCount={disabledRules.length}
+                    onRules={() => (setVerifyOpen(false), setAccountSection('rules'), setTab(ACCOUNT_TAB))}
+                    notApplicable={rulesNotApplicable(project).length}
+                    installationDate={(project.footer?.installatiedatum || '').trim()}
+                    onInstallation={() => openFooter('installatiedatum')}
+                />
+            )}
             {footerDialog && (
                 <FooterDialog key={footerDialog.openedAt} project={project} setProject={setProject} focus={footerDialog.field} onClose={() => setFooterDialog(null)} />
             )}
@@ -618,7 +641,7 @@ function Editor({library, user, onLogout, onAccountDeleted}) {
                             setProject={setProject}
                             pageIndex={shownSituationPage}
                             onFooter={openFooter}
-                            educational={restricted}
+                            neutral={restricted || unplacedRuleOff}
                         />
                     </>
                 )}
@@ -628,7 +651,9 @@ function Editor({library, user, onLogout, onAccountDeleted}) {
                         currentUser={user}
                         onDeleted={onAccountDeleted}
                         onUsersChange={user.admin ? countWaiting : undefined}
-                        initialSection={user.admin && waitingUsers > 0 ? 'users' : 'account'}
+                        initialSection={accountSection || (user.admin && waitingUsers > 0 ? 'users' : 'account')}
+                        disabledRules={disabledRules}
+                        onRulesChange={setDisabledRules}
                     />
                 )}
                 {tab === TEACHER_TAB && !user.admin && <TeacherPage />}

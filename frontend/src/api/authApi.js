@@ -71,6 +71,24 @@ export const exportMyData = async () => {
 /** {ok, error}: removes the own account and everything that is his, confirmed with the password. */
 export const deleteMyAccount = (password) => send('/api/account', {password}, 'DELETE')
 
+/** The rules of Controleer the user switched off (Account → Controleregels): {ok, disabled: [rule ids]} or {ok: false, error}. */
+export const fetchRuleSettings = async () => {
+    try {
+        const response = await apiFetch('/api/account/rules')
+        if (!response.ok) return {ok: false, error: await problem(response)}
+        const answer = await response.json()
+        return {ok: true, disabled: Array.isArray(answer?.disabled) ? answer.disabled : []}
+    } catch {
+        return {ok: false, error: t('auth.unreachable')}
+    }
+}
+
+/** Switches exactly these rules off for the user: {ok, disabled} (as the server stored them) or {ok: false, error}. */
+export const saveRuleSettings = async (disabled) => {
+    const result = await send('/api/account/rules', {disabled}, 'PUT')
+    return result.ok ? {ok: true, disabled: result.user?.disabled || []} : result
+}
+
 /** The accounts (those waiting for approval first). Throws when the list cannot be loaded. */
 export const fetchUsers = async () => {
     const response = await apiFetch('/api/admin/users')

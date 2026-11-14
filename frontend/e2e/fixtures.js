@@ -49,6 +49,7 @@ export class FakeBackend {
     symbolsDown = false // /api/symbols is not reachable
     gate = null // a promise the first symbol request waits for (to look at the loading state)
     info = {...testInfo} // GET /api/info: what the "test" profile of the real application says
+    disabledRules = [] // the rules of Controleer the user switched off
 
     async install(page) {
         await page.route(API_REQUEST, (route) => this.handle(route))
@@ -133,6 +134,11 @@ export class FakeBackend {
         if (path === '/api/auth/status') return json({setupRequired: false, adminEmail: testInfo.contactEmail, user: FAKE_USER})
         if (path === '/api/groups') return json([])
         if (path === '/api/info') return json(this.info)
+        // Account → Controleregels
+        if (path === '/api/account/rules') {
+            if (m === 'PUT') this.disabledRules = [...new Set(JSON.parse(req.postData()).disabled)].sort()
+            return json({disabled: this.disabledRules})
+        }
         return empty(404)
     }
 
@@ -216,6 +222,8 @@ class RealBackend {
         const list = await (await this.request.get('/api/symbols')).json()
         for (const s of list.filter((x) => !x.builtin)) await this.request.delete('/api/symbols/' + encodeURIComponent(s.k))
         await this.request.post('/api/symbols/restore')
+        // every rule of Controleer on again (a test may have switched some off)
+        await this.request.put('/api/account/rules', {data: {disabled: []}})
     }
     /** stores `doc` as project n of the test */
     async seed(n, doc) {

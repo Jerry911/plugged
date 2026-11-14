@@ -53,6 +53,21 @@ public class AccountService {
         return users.findById(userId).orElseThrow(() -> new LocalizedStatusException(HttpStatus.UNAUTHORIZED, "auth.signInRequired"));
     }
 
+    /** The rules of Controleer the user switched off, sorted. */
+    @Transactional(readOnly = true)
+    public java.util.List<String> disabledRules(long userId) {
+        return user(userId).getDisabledRules().stream().sorted().toList();
+    }
+
+    /** Switches off exactly these rules of Controleer for the user (the others on); answers them sorted, without doubles. */
+    @Transactional
+    public java.util.List<String> setDisabledRules(long userId, java.util.List<String> rules) {
+        AppUser user = user(userId);
+        user.setDisabledRules(rules);
+        log.info("User {} switched off {} rule(s) of Controleer", userId, user.getDisabledRules().size());
+        return user.getDisabledRules().stream().sorted().toList();
+    }
+
     /**
      * Everything stored about and by the user, as one JSON document: his account (not the password), his groups, his projects (also those in
      * the trash, with their documents; not their history) and his own symbols. Projects of others that are shared with him are not his: they
@@ -73,6 +88,8 @@ public class AccountService {
         account.put("loginCount", user.getLoginCount());
         account.put("admin", user.isAdmin());
         account.put("approved", user.isApproved());
+        ArrayNode disabledRules = account.putArray("disabledRules");
+        user.getDisabledRules().stream().sorted().forEach(disabledRules::add);
         ArrayNode groupList = out.putArray("groups");
         for (UserGroup group : groups.findByMembers_IdOrderByNameAsc(userId)) {
             ObjectNode node = groupList.addObject();

@@ -1,5 +1,6 @@
 // Copyright 2026 Pleysier Jeroen
 // SPDX-License-Identifier: AGPL-3.0-only
+import {useState} from 'react'
 import {fireEvent, render} from '@testing-library/react'
 import {FOOTER_FIELDS, FooterDialog, FooterForm, MEASUREMENT_FIELDS} from '../../../features/footer/FooterDialog.jsx'
 import Sheet from '../../../components/Sheet.jsx'
@@ -136,4 +137,21 @@ test('the measurements for the inspection are fields of their own and are printe
     const {container: part} = render(<Sheet project={{...project, footer: {...project.footer, isolatieweerstand: '500'}}} number={1} total={1} />)
     expect(part.querySelectorAll('.sheet-measurement-blank')).toHaveLength(2)
     expect(part.querySelector('[data-field="isolatieweerstand"]')).toHaveClass('filled')
+})
+
+test('the installation date: a date, a month or a year, read back with how many rules it leaves out', () => {
+    const Host = () => {
+        const [project, setProject] = useState(baseProject())
+        return <FooterForm project={project} setProject={setProject} />
+    }
+    render(<Host />)
+    expect(getById('footer-installation-note')).toHaveTextContent(t('footer.installationEmpty'))
+    fireEvent.change(getById('footer-installatiedatum'), {target: {value: '2021'}})
+    expect(getById('footer-installation-note')).toHaveTextContent(t('footer.installationRead', {date: t('footer.installationPeriod', {from: '01/01/2021', to: '31/12/2021'})}))
+    expect(getById('footer-installation-note')).toHaveTextContent(/\d+ regel/)
+    fireEvent.change(getById('footer-installatiedatum'), {target: {value: '01/02/2026'}})
+    expect(getById('footer-installation-note')).toHaveTextContent('01/02/2026')
+    expect(getById('footer-installation-note')).toHaveTextContent(t('footer.installationAll'))
+    fireEvent.change(getById('footer-installatiedatum'), {target: {value: 'lang geleden'}})
+    expect(getById('footer-installation-note')).toHaveClass('error')
 })

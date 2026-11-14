@@ -2,13 +2,19 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 package com.pleysje.plugged.entity;
 
+import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
+import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
 import jakarta.persistence.Table;
 import java.time.Instant;
+import java.util.Collection;
+import java.util.Set;
+import java.util.TreeSet;
 import org.hibernate.annotations.ColumnDefault;
 
 /**
@@ -60,6 +66,12 @@ public class AppUser {
     /** Moment until which the account cannot sign in after too many wrong passwords, ISO-8601; null = not locked. */
     @Column(length = 40)
     private String lockedUntil;
+
+    /** The rules of Controleer this user switched off for himself (rule ids such as 'kring.light'); removed with the account. */
+    @ElementCollection
+    @CollectionTable(name = "user_disabled_rules", joinColumns = @JoinColumn(name = "user_id"))
+    @Column(name = "rule", nullable = false, length = 40)
+    private Set<String> disabledRules = new TreeSet<>();
 
     protected AppUser() {
     }
@@ -178,5 +190,15 @@ public class AppUser {
     public void unlock() {
         failedLogins = 0;
         lockedUntil = null;
+    }
+
+    public Set<String> getDisabledRules() {
+        return disabledRules;
+    }
+
+    /** Replaces the rules this user switched off. */
+    public void setDisabledRules(Collection<String> rules) {
+        disabledRules.clear();
+        disabledRules.addAll(rules);
     }
 }

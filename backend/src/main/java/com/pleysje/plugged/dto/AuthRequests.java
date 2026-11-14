@@ -64,6 +64,17 @@ public final class AuthRequests {
     }
 
     /** Removing the own account: the password confirms it. */
+    /** The largest number of rules one request may switch off (there are about 50). */
+    public static final int MAX_DISABLED_RULES = 200;
+    /** A rule id: a word, or two joined by a dot ('earth', 'kring.light', 'docs.cableType'). */
+    public static final String RULE_PATTERN = "[a-z][A-Za-z]{0,24}(\\.[a-z][A-Za-z]{0,24})?";
+
+    /** PUT /api/account/rules: the rules of Controleer the user switches off (all others are on). */
+    public record RuleSettings(
+            @NotNull(message = "account.invalidRules") @Size(max = MAX_DISABLED_RULES, message = "account.invalidRules")
+            java.util.List<@NotNull(message = "account.invalidRules") @Pattern(regexp = RULE_PATTERN, message = "account.invalidRules") String> disabled) {
+    }
+
     public record DeleteAccount(String password) {
     }
 

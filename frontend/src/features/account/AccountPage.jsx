@@ -1,7 +1,7 @@
 // Copyright 2026 Pleysier Jeroen
 // SPDX-License-Identifier: AGPL-3.0-only
 // The Account page (the Account button of the top bar), for every user: Mijn account (password, download the data, remove the account;
-// AccountPanel.jsx). An administrator also manages here the accounts of everyone (approve a registration, make an account administrator
+// AccountPanel.jsx) and Controleregels (which rules of Controleer he wants checked; RulesPanel.jsx). An administrator also manages here the accounts of everyone (approve a registration, make an account administrator
 // or an ordinary user again, unlock it, give a temporary password, remove it), the groups of coworkers (create, rename, remove, choose the
 // members) and the standard symbols for the next release (SymbolsPanel.jsx). Those tabs, and the requests behind them, only exist for an
 // administrator. A project shared with a group can be opened and saved by its members (see ProjectMenu.jsx).
@@ -28,15 +28,19 @@ import GroupsPanel from '../admin/GroupsPanel.jsx'
 import SymbolsPanel from '../admin/SymbolsPanel.jsx'
 import {fullName} from '../admin/names.js'
 import AccountPanel from './AccountPanel.jsx'
+import RulesPanel from './RulesPanel.jsx'
 
 /**
- * `currentUser` = the signed-in user; `onDeleted()` after he removed his own account. For an administrator `onUsersChange(users)` is told
+ * `currentUser` = the signed-in user; `onDeleted()` after he removed his own account; `disabledRules` / `onRulesChange(disabled)` the rules
+ * of Controleer he switched off. For an administrator `onUsersChange(users)` is told
  * the accounts after every change (the top bar counts the waiting ones) and `initialSection` chooses the first tab ('users' when someone waits).
  */
-export default function AccountPage({currentUser, onDeleted, onUsersChange, initialSection = 'account'}) {
+const OWN_SECTIONS = ['account', 'rules']
+
+export default function AccountPage({currentUser, onDeleted, onUsersChange, initialSection = 'account', disabledRules = [], onRulesChange = () => {}}) {
     const {t} = useTranslation()
     const admin = !!currentUser.admin
-    const [section, setSection] = useState(admin ? initialSection : 'account'),
+    const [section, setSection] = useState(admin || OWN_SECTIONS.includes(initialSection) ? initialSection : 'account'),
         [users, setUsers] = useState(null),
         [groups, setGroups] = useState(null),
         [failed, setFailed] = useState(false),
@@ -102,37 +106,44 @@ export default function AccountPage({currentUser, onDeleted, onUsersChange, init
         <div id="account-page" className="adminpage">
             <div className="adminhead">
                 <h1>{t(admin ? 'account.pageAdmin' : 'account.title')}</h1>
-                {admin && section !== 'account' && (
+                {admin && !OWN_SECTIONS.includes(section) && (
                     <button id="admin-reload" onClick={load}>
                         ↻ {t('admin.reload')}
                     </button>
                 )}
             </div>
-            {admin && (
-                <nav className="admintabs" role="tablist" aria-label={t('account.pageAdmin')}>
-                    <button id="account-tab-account" role="tab" aria-selected={section === 'account'} className={section === 'account' ? 'on' : ''} onClick={() => setSection('account')}>
-                        {t('account.title')}
-                    </button>
-                    <button id="admin-tab-users" role="tab" aria-selected={section === 'users'} className={section === 'users' ? 'on' : ''} onClick={() => setSection('users')}>
-                        {t('admin.users')}
-                        {waiting > 0 && <span className="badge">{waiting}</span>}
-                    </button>
-                    <button id="admin-tab-groups" role="tab" aria-selected={section === 'groups'} className={section === 'groups' ? 'on' : ''} onClick={() => setSection('groups')}>
-                        {t('admin.groups')}
-                        {groups && <span className="admincount">{groups.length}</span>}
-                    </button>
-                    <button id="admin-tab-symbols" role="tab" aria-selected={section === 'symbols'} className={section === 'symbols' ? 'on' : ''} onClick={() => setSection('symbols')}>
-                        {t('admin.symbols')}
-                    </button>
-                </nav>
-            )}
+            <nav className="admintabs" role="tablist" aria-label={t(admin ? 'account.pageAdmin' : 'account.title')}>
+                <button id="account-tab-account" role="tab" aria-selected={section === 'account'} className={section === 'account' ? 'on' : ''} onClick={() => setSection('account')}>
+                    {t('account.title')}
+                </button>
+                <button id="account-tab-rules" role="tab" aria-selected={section === 'rules'} className={section === 'rules' ? 'on' : ''} onClick={() => setSection('rules')}>
+                    {t('ruleSettings.tab')}
+                    {disabledRules.length > 0 && <span className="admincount">{disabledRules.length}</span>}
+                </button>
+                {admin && (
+                    <>
+                        <button id="admin-tab-users" role="tab" aria-selected={section === 'users'} className={section === 'users' ? 'on' : ''} onClick={() => setSection('users')}>
+                            {t('admin.users')}
+                            {waiting > 0 && <span className="badge">{waiting}</span>}
+                        </button>
+                        <button id="admin-tab-groups" role="tab" aria-selected={section === 'groups'} className={section === 'groups' ? 'on' : ''} onClick={() => setSection('groups')}>
+                            {t('admin.groups')}
+                            {groups && <span className="admincount">{groups.length}</span>}
+                        </button>
+                        <button id="admin-tab-symbols" role="tab" aria-selected={section === 'symbols'} className={section === 'symbols' ? 'on' : ''} onClick={() => setSection('symbols')}>
+                            {t('admin.symbols')}
+                        </button>
+                    </>
+                )}
+            </nav>
             {section === 'account' && <AccountPanel user={currentUser} onDeleted={onDeleted} />}
-            {admin && section !== 'account' && message.text && (
+            {section === 'rules' && <RulesPanel disabled={disabledRules} onChange={onRulesChange} />}
+            {admin && !OWN_SECTIONS.includes(section) && message.text && (
                 <p id="admin-message" className={'authmsg ' + (message.kind === 'ok' ? 'info' : 'error')} role="status">
                     {message.text}
                 </p>
             )}
-            {admin && section !== 'account' && failed && (
+            {admin && !OWN_SECTIONS.includes(section) && failed && (
                 <p id="admin-failed" className="authmsg error">
                     {t('admin.loadFailed')}
                 </p>

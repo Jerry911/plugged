@@ -82,11 +82,11 @@ const ShowIcon = () => (
  * and the elements the user marked as not needed on the situatieschema.
  */
 /**
- * The elements of the eendraadschema that are not on the plan yet: click one to place it. In educational mode (`educational`, a student) it is
+ * The elements of the eendraadschema that are not on the plan yet: click one to place it. Shown neutrally (`neutral`: a student in educational mode, or a user who switched the rule plan.unplaced off) it is
  * the same list without any judgement: no warning styling or title, no counts and no "all placed" check (see App.jsx).
  */
 export const UnplacedPanel = forwardRef(function UnplacedPanel(
-    {project, unplaced, hidden, marks, open, onToggleOpen, showHidden, onToggleShowHidden, onPlace, onPlaceAll, onSetHidden, educational},
+    {project, unplaced, hidden, marks, open, onToggleOpen, showHidden, onToggleShowHidden, onPlace, onPlaceAll, onSetHidden, neutral},
     ref,
 ) {
     const {t} = useTranslation()
@@ -96,19 +96,19 @@ export const UnplacedPanel = forwardRef(function UnplacedPanel(
                 id="sit-unplaced-toggle"
                 className="paneltoggle"
                 aria-label={open ? t('situation.unplacedCollapse') : t('situation.unplacedOpen')}
-                title={open ? t('situation.collapse') : educational ? t('situation.elementsOpen') : t('situation.unplacedOpenCount', {count: unplaced.length})}
+                title={open ? t('situation.collapse') : neutral ? t('situation.elementsOpen') : t('situation.unplacedOpenCount', {count: unplaced.length})}
                 onClick={onToggleOpen}
             >
                 {open ? '>' : '<'}
                 {/* on a narrow screen the toggle is a bar under the drawing: it says what it opens */}
                 <span className="paneltoggle-text">{open ? t('situation.unplacedCollapse') : t('situation.unplacedOpen')}</span>
-                {!open && !educational && unplaced.length > 0 && <span className="badge">{unplaced.length}</span>}
+                {!open && !neutral && unplaced.length > 0 && <span className="badge">{unplaced.length}</span>}
             </button>
             {open && (
                 <>
                     {unplaced.length ? (
-                        <div className={(educational ? 'neutral' : 'warn') + ' fill-grow fill-col'} id="sit-unplaced">
-                            <span id="sit-unplaced-title">{educational ? t('situation.elementsTitle') : '⚠ ' + t('situation.unplacedTitle', {count: unplaced.length})}</span>
+                        <div className={(neutral ? 'neutral' : 'warn') + ' fill-grow fill-col'} id="sit-unplaced">
+                            <span id="sit-unplaced-title">{neutral ? t('situation.elementsTitle') : '⚠ ' + t('situation.unplacedTitle', {count: unplaced.length})}</span>
                             <div className="pal unplist fill-grow">
                                 {unplaced.map((node) => (
                                     <div key={node.id} className="unprow">
@@ -134,11 +134,11 @@ export const UnplacedPanel = forwardRef(function UnplacedPanel(
                                 ))}
                             </div>
                             <button id="sit-place-all" onClick={onPlaceAll}>
-                                {educational ? t('situation.placeAllNeutral') : t('situation.placeAll')}
+                                {neutral ? t('situation.placeAllNeutral') : t('situation.placeAll')}
                             </button>
                             <div className="unhint">{t('situation.hideHint')}</div>
                         </div>
-                    ) : educational ? (
+                    ) : neutral ? (
                         <div className="neutral" id="sit-nothing-to-place">
                             {t('situation.nothingToPlace')}
                         </div>

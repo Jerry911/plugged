@@ -1,6 +1,6 @@
 // Copyright 2026 Pleysier Jeroen
 // SPDX-License-Identifier: AGPL-3.0-only
-import {hiddenNodes, migrateWaterproof, placeableNodes, setNodeProperties, unplacedNodes} from '../../model/project.js'
+import {hiddenNodes, migrateSurgeProtection, migrateWaterproof, placeableNodes, setNodeProperties, unplacedNodes} from '../../model/project.js'
 import {flatten, newId, withNewIds} from '../../model/tree.js'
 import {baseProject, node} from '../utils.jsx'
 
@@ -67,4 +67,21 @@ test('setNodeProperties changes the properties of one component, wherever it han
         r = setNodeProperties(p, 's', {h: true})
     expect(flatten(r.een[0].tree).find((n) => n.id === 's').p).toEqual({aantal: 2, h: true})
     expect(flatten(r.een[0].tree).find((n) => n.id === 'k').p).toBeUndefined()
+})
+
+test('an overvoltage protection symbol in the main line becomes the setting of the aansluiting; what hangs under it stays', () => {
+    const board = node('B', 'bord', [node('K', 'kring')]),
+        series = {een: [{id: 'e', tree: [node('A', 'aansluiting', [node('SPD', 'overspanning', [board])], {p: {amp: 40}})]}]},
+        migrated = migrateSurgeProtection(series).een[0].tree[0]
+    expect(migrated.children.map((child) => child.id)).toEqual(['B'])
+    expect(migrated.children[0].children[0].id).toBe('K')
+    expect(migrated.p).toMatchObject({amp: 40, overspanning: true})
+    // next to the board, with nothing under it, and behind a meter
+    const beside = migrateSurgeProtection({een: [{id: 'e', tree: [node('A', 'aansluiting', [node('T', 'teller', [node('SPD', 'overspanning'), node('B', 'bord')])])]}]}).een[0].tree[0]
+    expect(beside.p.overspanning).toBe(true)
+    expect(beside.children[0].children.map((child) => child.id)).toEqual(['B'])
+    // a symbol under a board stays, and a project without one is left as it is
+    const under = {een: [{id: 'e', tree: [node('A', 'aansluiting', [node('B', 'bord', [node('SPD', 'overspanning')])])]}]}
+    expect(migrateSurgeProtection(under)).toEqual(under)
+    expect(migrateSurgeProtection({custom: []})).toEqual({custom: []})
 })

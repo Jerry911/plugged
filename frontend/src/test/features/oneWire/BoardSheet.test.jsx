@@ -163,3 +163,24 @@ test('the measured earth resistance is written at the earth symbol', () => {
     const noEarth = [node('A', 'aansluiting', [node('B', 'bord', [kring('K')], {p: {geaard: false}})], {p: {bescherming: 'automatisch', polen: 2, amp: 40}})]
     expect(render1({aardingsweerstand: '18'}, noEarth).querySelector('.earth-resistance')).toBeNull()
 })
+
+test('overvoltage protection (a setting of the aansluiting): a branch with the symbol of the library between the main breaker and the bus', () => {
+    const withSpd = tree([kring('K1', [node('s', 'stopcontact')])], {overspanning: true}),
+        picked = []
+    const [{container}] = sheets(withSpd, {onSelect: (id) => picked.push(id)})
+    // the rotated library symbol of the SPD belongs to the aansluiting: a click selects it
+    const rotated = [...container.querySelectorAll('g[data-nid="A"] g[transform^="rotate(90"]')]
+    expect(rotated).toHaveLength(1)
+    fireEvent.click(rotated[0])
+    expect(picked).toEqual(['A'])
+    // the main breaker, the meter and the earth are still drawn
+    expect(drawnTexts(container)).toEqual(expect.arrayContaining(['Δ300mA', '4P - 40A', 'kWh', '4x16']))
+    // the drawing uses the shapes of the 'overspanning' symbol (the rectangle of the varistor)
+    const project = {...baseProject(), een: [{id: 'e1', name: 'Blad 1', tree: withSpd}]},
+        symbolItems = layoutBoard(project, project.een[0]).head.items.filter((item) => item.kind === 'sym' && item.rotation === 90)
+    expect(symbolItems).toHaveLength(1)
+    expect(symbolItems[0].shapes.some((shape) => shape.t === 'rect')).toBe(true)
+    // without the setting nothing extra is drawn
+    const [{container: plain}] = sheets(tree([kring('K1')]))
+    expect(plain.querySelectorAll('g[transform^="rotate(90"]')).toHaveLength(0)
+})

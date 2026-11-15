@@ -231,6 +231,7 @@ export default {
         type: 'Type',
         chooseSymbol: '— choisissez un symbole —',
         earthed: 'Mis à la terre',
+        surgeProtection: 'Parafoudre',
         protection: 'Protection',
         protections: {automatisch: 'Disjoncteur', differentieel: 'Différentiel', geen: 'Aucune'},
         fields: {

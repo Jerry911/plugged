@@ -143,6 +143,12 @@ export const BREAKER_SIZE = (24 * 30) / Math.hypot(13 - 9.41, 14 - 4.13),
     METER_SIZE = (24 * 50) / 14,
     // the line of the kWh meter below the bus: low enough for a clear bend up to the lower contact (y 66) of the main breaker
     METER_Y = 96
+// the overvoltage protection in the head (a setting of the aansluiting): where its wire leaves the main line (just under the bus), its place
+// left of the main line, the size of its symbol and the wire between the main line and the symbol
+const SPD_Y = 12,
+    SPD_X = 156,
+    SPD_SIZE = 44,
+    SPD_WIRE = 5
 
 /** The drawn item of the breaker symbol `typeKey` with its pivot on (x, y). */
 export const breakerItem = (project, typeKey, x, y, extra = {}) => ({
@@ -633,6 +639,25 @@ export const headItems = (project, head) => {
     const out = [],
         id = head.id,
         meterUnit = METER_SIZE / 24
+    // Overvoltage protection (properties.overspanning): a branch off the main line between the main breaker and the bus: a wire to the left of
+    // the main line, the 'overspanning' symbol of the library turned down (its wire on top, its box below it) and an earth mark under it. It
+    // belongs to the aansluiting (a click selects it) and is drawn first, so the main breaker stays on top of it.
+    if (head.properties?.overspanning) {
+        const unit = SPD_SIZE / 24,
+            centreY = SPD_Y + SPD_WIRE + 11 * unit,
+            boxBottom = centreY + 1.25 * unit,
+            earthY = boxBottom + 8
+        if (!head.main) out.push(lineItem(197, 0, 197, SPD_Y))
+        out.push(
+            lineItem(197, SPD_Y, SPD_X, SPD_Y),
+            lineItem(SPD_X, SPD_Y, SPD_X, SPD_Y + SPD_WIRE),
+            {kind: 'sym', shapes: typeOf(project, 'overspanning').shapes, x: SPD_X, y: centreY, size: SPD_SIZE, rotation: 90, id},
+            lineItem(SPD_X, boxBottom, SPD_X, earthY),
+            lineItem(SPD_X - 10, earthY, SPD_X + 10, earthY),
+            lineItem(SPD_X - 6.5, earthY + 6, SPD_X + 6.5, earthY + 6),
+            lineItem(SPD_X - 3, earthY + 12, SPD_X + 3, earthY + 12),
+        )
+    }
     if (head.kwh) {
         // the symbol's box runs from x 35 to 85 and its supply line starts at x 10, the line carries on to the main breaker (or the end of the head)
         // (the head stays within HEAD_DEPTH below the bus, so the bus can go low on the sheet)

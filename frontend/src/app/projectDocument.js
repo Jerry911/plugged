@@ -3,7 +3,7 @@
 // A new project and the conversion of stored or imported documents (also of older formats) to the current format.
 import {defaultTree} from '../model/boardLayout.js'
 import {flatten, newId} from '../model/tree.js'
-import {migrateWaterproof} from '../model/project.js'
+import {migrateSurgeProtection, migrateWaterproof} from '../model/project.js'
 import {t} from '../i18n/translate.js'
 
 const today = () => new Date().toISOString().slice(0, 10)
@@ -42,4 +42,4 @@ const toCurrentFormat = (document) => {
 }
 
 /** A stored or imported document as a project of the current format. */
-export const normalizeProject = (document) => migrateWaterproof(toCurrentFormat(document))
+export const normalizeProject = (document) => migrateSurgeProtection(migrateWaterproof(toCurrentFormat(document)))

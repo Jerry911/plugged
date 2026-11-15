@@ -232,6 +232,7 @@ export default {
         type: 'Type',
         chooseSymbol: '— kies een symbool —',
         earthed: 'Geaard',
+        surgeProtection: 'Overspanningsbeveiliging',
         protection: 'Bescherming',
         protections: {automatisch: 'Automaat', differentieel: 'Differentieel', geen: 'Geen'},
         fields: {

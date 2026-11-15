@@ -72,11 +72,12 @@ const LEVEL_ORDER = {error: 0, warn: 1, info: 2}
 
 /** The rating (A), cable section (mm²) and sensitivity (mA) written in a specs text such as 'B16 2,5mm² 30mA' or 'XVB 3G2,5' or '4x16'. */
 export const parseSpecs = (info = '') => {
-    const rating = /(?:\b[BCDK]\s*(\d{1,3})\b)|(?:\b(\d{1,3})\s*A\b)/i.exec(info),
+    // 'B16', '16A', or, for a breaker without a curve, the bare number that circuitInfo() writes first: '6 2P XVB Cca 3G2,5'
+    const rating = /(?:\b[BCDK]\s*(\d{1,3})\b)|(?:\b(\d{1,3})\s*A\b)|(?:^\s*(\d{1,3})(?=\s+\d\s*P\b))/i.exec(info),
         section = /(\d+(?:[.,]\d+)?)\s*mm/i.exec(info) || /\dG(\d+(?:[.,]\d+)?)/i.exec(info) || /\b\d\s*[x×]\s*(\d+(?:[.,]\d+)?)\b/i.exec(info),
         sensitivity = /(\d+)\s*mA/i.exec(info)
     return {
-        amp: rating ? +(rating[1] || rating[2]) : null,
+        amp: rating ? +(rating[1] || rating[2] || rating[3]) : null,
         mm2: section ? parseFloat(section[1].replace(',', '.')) : null,
         mA: sensitivity ? +sensitivity[1] : null,
     }
@@ -333,7 +334,8 @@ export function verify(project, {disabled} = {}) {
     }
     if (!allNodes.some((node) => node.type === 'aansluiting')) add('error', 'tree.noConnection', message('noConnection'))
     if (!allNodes.some((node) => node.type === 'aarding' || (node.type === 'bord' && node.p?.geaard))) add('error', 'earth', message('noEarth'))
-    if (!allNodes.some((node) => node.type === 'overspanning')) add('info', 'spd', message('noSurgeProtection'))
+    // the overvoltage protection is a symbol in the tree or the setting of the aansluiting
+    if (!allNodes.some((node) => node.type === 'overspanning' || (node.type === 'aansluiting' && node.p?.overspanning))) add('info', 'spd', message('noSurgeProtection'))
     // the measured earth resistance (Kaderinfo → Metingen) changes what the circuits need (AREI 4.2.4.3 b)
     const earth = measuredValue(project.footer?.aardingsweerstand),
         highEarth = earth != null && earth > EARTH_LIMIT
@@ -372,10 +374,10 @@ export function verify(project, {disabled} = {}) {
                     parent
                         ? message('notAllowedUnder', {name, type: typeName, parent: parent.label, parentType: symbolName(typeOf(project, parent.type))})
                         : message('cannotStandAlone', {
-                            name,
-                            type: typeName,
-                            parents: symbolType.parents.map((key) => symbolName(typeOf(project, key))).join(t('verify.or')),
-                        }),
+                              name,
+                              type: typeName,
+                              parents: symbolType.parents.map((key) => symbolName(typeOf(project, key))).join(t('verify.or')),
+                          }),
                     page,
                     node,
                 )
@@ -485,9 +487,9 @@ export function verify(project, {disabled} = {}) {
             add('error', 'diff.circuits', message('differentialCircuits', {name, count: circuits.length, max: LIMITS.circuitsPerDifferential}), page, node)
         if (highEarth) {
             const behind = [node, ...flatten(node.children).filter((child) => child.type === 'kring')].reduce((sum, circuit) => {
-                const {sockets, fixed} = pointsOf(circuit.children)
-                return sum + sockets + fixed
-            }, 0)
+                    const {sockets, fixed} = pointsOf(circuit.children)
+                    return sum + sockets + fixed
+                }, 0)
             if (behind > LIMITS.socketsPerDifferentialHighEarth)
                 add('error', 'diff.highEarth', message('differentialHighEarth', {name, count: behind, max: LIMITS.socketsPerDifferentialHighEarth, value: earth, limit: EARTH_LIMIT}), page, node)
         }
@@ -514,7 +516,7 @@ export function verify(project, {disabled} = {}) {
                 'error',
                 'kring.sensitive',
                 message('circuitNeedsSensitive', {name, element: elementName(needs), mA: minimum, max: LIMITS.maxDifferentialMilliamps}) +
-                (socketsAndLighting === 'maybe' && !NEEDS_SENSITIVE_TYPES.has(needs.type) ? uncertain(SINCE_2023) : ''),
+                    (socketsAndLighting === 'maybe' && !NEEDS_SENSITIVE_TYPES.has(needs.type) ? uncertain(SINCE_2023) : ''),
                 page,
                 node,
             )
@@ -537,7 +539,10 @@ export function verify(project, {disabled} = {}) {
     const checkCircuit = (page, node, parent, ancestors, name, descendants) => {
         const unprotected = node.p?.bescherming === 'geen',
             countOf = (element) => Number(element.p?.aantal) || 1,
-            {amp, mm2} = parseSpecs(node.info),
+            // the cable section of a circuit in series behind another circuit (no cable of its own) is that of the circuit above it
+            amp = ratingOf(node),
+            {mm2: ownSection} = parseSpecs(node.info),
+            mm2 = ownSection ?? parseSpecs(cableOf(cableSource(node, ancestors))).mm2,
             ownElements = ownElementsOf(node.children), // only what this circuit feeds itself, not what hangs behind a nested breaker/differential/sub board
             consumers = ownElements.filter((element) => !CONTROL_TYPES.has(element.type)),
             {sockets, fixed} = pointsOf(node.children), // a multiple socket (stopcontact2/3, Aantal, an own symbol) counts as one
@@ -549,7 +554,8 @@ export function verify(project, {disabled} = {}) {
         else checkSensitiveNeed(page, node, ancestors, name)
         if (!descendants.length) add('warn', 'kring.empty', message('circuitEmpty', {name}), page, node)
         if (!unprotected && (amp == null || mm2 == null)) add('warn', 'kring.specs', message('circuitSpecsMissing', {name}), page, node)
-        else if (!unprotected && LIMITS.cable[mm2] && amp > LIMITS.cable[mm2])
+        // a section taken over from the circuit above is not compared with this breaker: the breaker above protects that cable (and is checked itself)
+        else if (!unprotected && ownSection != null && LIMITS.cable[mm2] && amp > LIMITS.cable[mm2])
             add('error', 'kring.cable', message('circuitCableTooSmall', {name, amp, mm2, max: LIMITS.cable[mm2]}), page, node)
         // AREI 5.2.1.2: at least 2.5 mm², 1.5 mm² only for a circuit without sockets
         if (mm2 != null && sockets && mm2 < LIMITS.minSectionWithSockets)

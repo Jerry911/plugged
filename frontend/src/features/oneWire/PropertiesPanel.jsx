@@ -142,6 +142,12 @@ export default function PropertiesPanel({
                     {t('oneWire.earthed')}
                 </label>
             )}
+            {node.type === 'aansluiting' && (
+                <label>
+                    <input id="eds-spd" type="checkbox" checked={!!properties.overspanning} onChange={(event) => onPropertyChange('overspanning', event.target.checked)} />{' '}
+                    {t('oneWire.surgeProtection')}
+                </label>
+            )}
             {node.type === 'kring' && (
                 <label>
                     {t('oneWire.protection')}

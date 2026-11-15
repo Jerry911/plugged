@@ -231,6 +231,7 @@ export default {
         type: 'Type',
         chooseSymbol: '— choose a symbol —',
         earthed: 'Earthed',
+        surgeProtection: 'Surge protection',
         protection: 'Protection',
         protections: {automatisch: 'Circuit breaker', differentieel: 'RCD', geen: 'None'},
         fields: {

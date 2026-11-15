@@ -27,7 +27,7 @@ import java.util.Map;
  */
 public final class StandardSymbols {
     /** The number the stored copies of standard symbols carry; raising it replaces every unedited copy at the next start. */
-    public static final int VERSION = 11;
+    public static final int VERSION = 13;
     /** The catalog file on the class path. */
     public static final String CATALOG = "catalog/standard-symbols.json";
 

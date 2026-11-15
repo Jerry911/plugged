@@ -71,6 +71,35 @@ export const migrateWaterproof = (project) => ({
         : {}),
 })
 
+// The overvoltage protection of the main line is a setting of the aansluiting (p.overspanning). A symbol 'overspanning' in the main line itself
+// (under the aansluiting, the meter, the main breaker or a differential: made by a previous version, with the board behind it) is converted when a
+// project is opened: the symbol goes, what hangs under it moves up one level and the aansluiting gets the setting. A symbol under a board stays.
+const MAIN_LINE = ['aansluiting', 'teller', 'hoofdschakelaar', 'diff']
+const liftSurgeProtection = (node, found) => {
+    const lift = (children) =>
+        children.flatMap((child) => {
+            if (child.type !== 'overspanning') return [child]
+            found.value = true
+            return lift(child.children || [])
+        })
+    return {...node, children: lift(node.children || []).map((child) => (MAIN_LINE.includes(child.type) ? liftSurgeProtection(child, found) : child))}
+}
+export const migrateSurgeProtection = (project) =>
+    project.een
+        ? {
+              ...project,
+              een: project.een.map((page) => ({
+                  ...page,
+                  tree: (page.tree || []).map((node) => {
+                      if (node.type !== 'aansluiting') return node
+                      const found = {value: false},
+                          lifted = liftSurgeProtection(node, found)
+                      return found.value ? {...lifted, p: {...lifted.p, overspanning: true}} : node
+                  }),
+              })),
+          }
+        : project
+
 // change the properties p of one element of the eendraadschema, wherever it is in the project
 const patchNodeProperties = (nodes, id, patch) =>
     nodes.map((node) => (node.id === id ? {...node, p: {...node.p, ...patch}} : {...node, children: patchNodeProperties(node.children || [], id, patch)}))

@@ -43,6 +43,14 @@ test('overspanning hint is informational and disappears when present', () => {
     get(p, 'B').children.push(node('O', 'overspanning'))
     expect(rule(p, 'spd')).toHaveLength(0)
 })
+test('overspanning hint also disappears when the aansluiting has the surge protection setting', () => {
+    const p = ok()
+    expect(rule(p, 'spd')).toHaveLength(1)
+    get(p, 'A').p = {...get(p, 'A').p, overspanning: true}
+    expect(rule(p, 'spd')).toHaveLength(0)
+    get(p, 'A').p.overspanning = false
+    expect(rule(p, 'spd')).toHaveLength(1)
+})
 test('empty schema is an error', () => {
     const p = baseProject()
     expect(verify(p)).toMatchObject([{rule: 'tree.empty', level: 'error'}])
@@ -582,6 +590,27 @@ describe('AREI Boek 1 (version 07): what the schema states and the devices on it
         get(p, 'K1B').info = 'B16'
         expect(rule(p, 'docs.conductors')[0].msg).toContain('K1B')
         expect(rule(p, 'docs.conductors')[0].msg).not.toContain('K1A')
+    })
+
+    test('a circuit in series behind another circuit has the cable section of that circuit; a breaker without curve (6 2P ...) has its rating', () => {
+        const p = ok()
+        get(p, 'K1').info = 'B25 XVB Cca 5G4'
+        get(p, 'K1').children.push(node('K1A', 'kring', [node('S9', 'stopcontact2')], {info: 'C40 4P'}))
+        // no section of its own: that of K1 (4 mm²) counts, and the 40 A of the second breaker is not compared with it (K1 protects that cable)
+        expect(rule(p, 'kring.specs').filter((i) => i.nodeId === 'K1A')).toHaveLength(0)
+        expect(rule(p, 'kring.cable').filter((i) => i.nodeId === 'K1A')).toHaveLength(0)
+        // nothing above to take it from: reported
+        get(p, 'K1').info = 'B25'
+        expect(rule(p, 'kring.specs').filter((i) => i.nodeId === 'K1A')).toHaveLength(1)
+        // a section of its own is still checked against its own breaker
+        get(p, 'K1').info = 'B25 XVB Cca 5G4'
+        get(p, 'K1A').info = 'C40 4P XVB Cca 3G2,5'
+        expect(rule(p, 'kring.cable').filter((i) => i.nodeId === 'K1A')).toHaveLength(1)
+        // the rating of a breaker without curve is the bare number in front: '6 2P XVB Cca 3G2,5' (an imported bell circuit)
+        expect(parseSpecs('6 2P XVB Cca 3G2,5')).toEqual({amp: 6, mm2: 2.5, mA: null})
+        expect(parseSpecs('2,5mm²').amp).toBe(null)
+        get(p, 'K2').info = '6 2P XVB Cca 3G2,5'
+        expect(rule(p, 'kring.specs').filter((i) => i.nodeId === 'K2')).toHaveLength(0)
     })
 
     test('5.3.5.3: a differential is at least type A, breaks all poles, and is at least 40 A at the origin', () => {

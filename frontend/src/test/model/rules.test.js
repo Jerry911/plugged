@@ -545,9 +545,43 @@ describe('AREI Boek 1 (version 07): what the schema states and the devices on it
         expect(docs['docs.placement'].msg).toContain('K2')
         expect(docs['docs.placement'].nodeId).toBe('K2')
         expect(docs['docs.letter'].level).toBe('warn')
+        // a mark only has to start with a capital letter: dots and further letters or digits are fine
+        for (const label of ['R.E.M', 'Z.P.V', 'PV', 'K1', 'LAADPAAL']) {
+            get(p, 'K1').label = label
+            expect(rule(p, 'docs.letter')).toHaveLength(0)
+        }
+        // a lowercase letter, a digit or a symbol first, or no mark at all, is still reported
+        for (const label of ['keuken', '1', '.A', '-', '']) {
+            get(p, 'K1').label = label
+            expect(rule(p, 'docs.letter')).toHaveLength(1)
+        }
         // the properties of a circuit drawn in the editor carry all of it
         get(p, 'K2').p = {plaatsing: 'opwand', kabel: 'XVB Cca 3G1,5'}
         expect(rule(p, 'docs.placement')).toHaveLength(0)
+    })
+
+    test('3.1.2.2: a circuit in series behind another circuit, without a cable of its own, runs on the cable of that circuit', () => {
+        const p = ok()
+        const first = node('K1A', 'kring', [node('SB', 'bord', [node('K1B', 'kring', [node('S3', 'stopcontact2')], {info: 'B16 XVB Cca 3G2,5', p: {plaatsing: 'inwand'}})])], {info: 'B16'})
+        get(p, 'K1').children.push(first)
+        get(p, 'K1').info = 'B25 XVB Cca 5G4'
+        expect(rule(p, 'docs.conductors')).toHaveLength(0)
+        expect(rule(p, 'docs.cableType')).toHaveLength(0)
+        expect(rule(p, 'docs.placement')).toHaveLength(0)
+        // a second one behind the first one: the nearest circuit above with a cable counts, the first one is only a pass-through
+        first.children.push(node('K1C', 'kring', [node('S4', 'stopcontact2')], {info: 'B10'}))
+        expect(rule(p, 'docs.conductors')).toHaveLength(0)
+        // nothing to take over: the circuit above has no cable either, so it is reported
+        get(p, 'K1').info = 'B25'
+        delete get(p, 'K1').p.plaatsing
+        const missing = rule(p, 'docs.conductors')[0]
+        expect(missing.msg).toContain('K1')
+        expect(missing.msg).toContain('K1A')
+        // a board ends the cable: K1B states its own cable, a circuit behind the board without one is not covered by K1
+        get(p, 'K1').info = 'B25 XVB Cca 5G4'
+        get(p, 'K1B').info = 'B16'
+        expect(rule(p, 'docs.conductors')[0].msg).toContain('K1B')
+        expect(rule(p, 'docs.conductors')[0].msg).not.toContain('K1A')
     })
 
     test('5.3.5.3: a differential is at least type A, breaks all poles, and is at least 40 A at the origin', () => {

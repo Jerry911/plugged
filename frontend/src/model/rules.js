@@ -372,10 +372,10 @@ export function verify(project, {disabled} = {}) {
                     parent
                         ? message('notAllowedUnder', {name, type: typeName, parent: parent.label, parentType: symbolName(typeOf(project, parent.type))})
                         : message('cannotStandAlone', {
-                              name,
-                              type: typeName,
-                              parents: symbolType.parents.map((key) => symbolName(typeOf(project, key))).join(t('verify.or')),
-                          }),
+                            name,
+                            type: typeName,
+                            parents: symbolType.parents.map((key) => symbolName(typeOf(project, key))).join(t('verify.or')),
+                        }),
                     page,
                     node,
                 )
@@ -449,9 +449,20 @@ export function verify(project, {disabled} = {}) {
     }
     // the cable of a circuit: on the schema with its type, number of conductors and installation method (AREI 3.1.2.2 a); single
     // conductors are not allowed in the ground (5.2.9.2) nor in a wall without conduit (5.2.9.10)
-    const checkCable = (page, node, name) => {
-        const cable = node.p?.kabel ?? node.info ?? '',
-            placement = node.p?.plaatsing || ''
+    // A circuit without a cable of its own, directly under another circuit (AC → AC1, Z → ZA: a second breaker in series), runs on the
+    // cable of that circuit: the type, the number of conductors and the installation method are taken from the nearest circuit above
+    // that states a cable. This stops at a board: a circuit behind a board starts a new cable.
+    const cableOf = (circuit) => circuit.p?.kabel ?? circuit.info ?? '',
+        statesCable = (circuit) => !!cableTypeOf(cableOf(circuit)) || hasConductorCount(cableOf(circuit))
+    const cableSource = (node, ancestors) => {
+        if (statesCable(node)) return node
+        for (let i = ancestors.length - 1; i >= 0 && ancestors[i].type === 'kring'; i--) if (statesCable(ancestors[i])) return ancestors[i]
+        return node
+    }
+    const checkCable = (page, node, name, ancestors) => {
+        const source = cableSource(node, ancestors),
+            cable = cableOf(source),
+            placement = node.p?.plaatsing || source.p?.plaatsing || ''
         if (!cableTypeOf(cable)) note('cableType', page, node, name)
         if (!hasConductorCount(cable)) note('conductors', page, node, name)
         if (!placement) note('placement', page, node, name)
@@ -474,9 +485,9 @@ export function verify(project, {disabled} = {}) {
             add('error', 'diff.circuits', message('differentialCircuits', {name, count: circuits.length, max: LIMITS.circuitsPerDifferential}), page, node)
         if (highEarth) {
             const behind = [node, ...flatten(node.children).filter((child) => child.type === 'kring')].reduce((sum, circuit) => {
-                    const {sockets, fixed} = pointsOf(circuit.children)
-                    return sum + sockets + fixed
-                }, 0)
+                const {sockets, fixed} = pointsOf(circuit.children)
+                return sum + sockets + fixed
+            }, 0)
             if (behind > LIMITS.socketsPerDifferentialHighEarth)
                 add('error', 'diff.highEarth', message('differentialHighEarth', {name, count: behind, max: LIMITS.socketsPerDifferentialHighEarth, value: earth, limit: EARTH_LIMIT}), page, node)
         }
@@ -503,7 +514,7 @@ export function verify(project, {disabled} = {}) {
                 'error',
                 'kring.sensitive',
                 message('circuitNeedsSensitive', {name, element: elementName(needs), mA: minimum, max: LIMITS.maxDifferentialMilliamps}) +
-                    (socketsAndLighting === 'maybe' && !NEEDS_SENSITIVE_TYPES.has(needs.type) ? uncertain(SINCE_2023) : ''),
+                (socketsAndLighting === 'maybe' && !NEEDS_SENSITIVE_TYPES.has(needs.type) ? uncertain(SINCE_2023) : ''),
                 page,
                 node,
             )
@@ -558,10 +569,11 @@ export function verify(project, {disabled} = {}) {
         if (dedicated.length && consumers.length > 1) add('error', 'kring.dedicated', message('dedicatedCircuit', {name, element: elementName(dedicated[0])}), page, node)
         else if (byPower.length && consumers.length > 1) add('warn', 'kring.dedicated', message('dedicatedByPower', {name, element: elementName(byPower[0])}), page, node)
         checkCharger(page, node, ancestors, name, ownElements)
-        // AREI 3.1.2.1 a: every circuit is marked with a capital letter
-        if (!/^[A-Z]+\d*$/.test((node.label || '').trim())) note('letter', page, node, name)
+        // AREI 3.1.2.1 a: every circuit is marked with a capital letter: the mark starts with one (A, K1, R.E.M, Z.P.V, LAADPAAL),
+        // never with a lowercase letter, a digit or a symbol, and an unnamed circuit has no mark at all
+        if (!/^\p{Lu}/u.test((node.label || '').trim())) note('letter', page, node, name)
         if (!unprotected) checkBreakingCapacity(page, node, name)
-        checkCable(page, node, name)
+        checkCable(page, node, name, ancestors)
         if (circuitNameCount[(node.label || '').trim().toLowerCase()] > 1) add('warn', 'kring.duplicate', message('duplicateCircuitName', {name}), page, node)
     }
     project.een.forEach((page) => walk(page, page.tree, null))

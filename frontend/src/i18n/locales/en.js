@@ -921,7 +921,6 @@ export default {
         title: 'QR code for the board',
         intro: 'Print this code and stick it on the board. It holds a link to the PDF of this project. Scanning it always shows the latest saved version, even when the schema changes later.',
         codeLabel: 'QR code for {name}',
-        addressNote: 'Use the address the application can be reached at by everybody: a code made on localhost does not work on a phone.',
         print: 'Print',
         downloadSvg: 'Download (SVG)',
         loading: 'Fetching the key of the QR code…',

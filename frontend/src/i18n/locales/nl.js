@@ -926,7 +926,6 @@ export default {
         title: 'QR-code voor het bord',
         intro: 'Print deze code en kleef hem op het bord. Hij bevat een link naar de PDF van dit project. Scannen toont altijd de laatst opgeslagen versie, ook als het schema later nog wijzigt.',
         codeLabel: 'QR-code voor {name}',
-        addressNote: 'Gebruik het adres waarop de toepassing voor iedereen bereikbaar is: een code gemaakt op localhost werkt niet op een telefoon.',
         print: 'Printen',
         downloadSvg: 'Downloaden (SVG)',
         loading: 'De sleutel van de QR-code wordt opgehaald…',

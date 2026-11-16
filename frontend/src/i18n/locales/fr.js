@@ -922,7 +922,6 @@ export default {
         title: 'Code QR pour le tableau',
         intro: 'Imprimez ce code et collez-le sur le tableau. Il contient un lien vers le PDF de ce projet. Le scanner affiche toujours la dernière version enregistrée, même si le schéma change par la suite.',
         codeLabel: 'Code QR pour {name}',
-        addressNote: 'Utilisez l’adresse à laquelle l’application est accessible à tous : un code créé sur localhost ne fonctionne pas sur un téléphone.',
         print: 'Imprimer',
         downloadSvg: 'Télécharger (SVG)',
         loading: 'Récupération de la clé du code QR…',

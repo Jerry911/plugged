@@ -191,6 +191,61 @@ public class ProjectService {
         return new Document(project.getJson(), project.getVersion());
     }
 
+    private static final java.security.SecureRandom RANDOM = new java.security.SecureRandom();
+
+    /** A new secret for a QR code: 256 random bits, as 43 URL-safe characters. */
+    static String newPublicKey() {
+        byte[] bytes = new byte[32];
+        RANDOM.nextBytes(bytes);
+        return java.util.Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
+    }
+
+    /**
+     * The secret of the QR code of a project the user may open; made the first time it is asked for and the same after that, so a printed
+     * code stays valid when the schema changes.
+     */
+    @Transactional
+    public String publicKey(long userId, long id) {
+        ProjectDoc project = openable(user(userId), id);
+        if (project.getPublicKey() == null) {
+            project.setPublicKey(newPublicKey());
+            projects.save(project);
+            log.info("Project {} got a QR code key", id);
+        }
+        return project.getPublicKey();
+    }
+
+    /** A new secret for the QR code (owner or primary administrator): the codes printed before stop working. */
+    @Transactional
+    public String renewPublicKey(long userId, long id) {
+        AppUser user = user(userId);
+        ProjectDoc project = openable(user, id);
+        if (!canManage(user, project)) throw new LocalizedStatusException(HttpStatus.FORBIDDEN, "project.notOwnerQrKey");
+        project.setPublicKey(newPublicKey());
+        projects.save(project);
+        log.info("Project {} got a new QR code key (user {})", id, user.getId());
+        return project.getPublicKey();
+    }
+
+    /**
+     * The newest saved document of a project for somebody who is not signed in (the QR code on a circuit board, see PublicController), when
+     * {@code key} is the secret of its QR code. A project that does not exist, is in the trash, has no QR code yet or is asked for with
+     * another key all answer 404: nothing tells them apart. Only for reading.
+     */
+    @Transactional(readOnly = true)
+    public Document publicDocument(long id, String key) {
+        ProjectDoc project = projects.findById(id).orElse(null);
+        if (project == null || project.isDeleted() || !keyMatches(project.getPublicKey(), key))
+            throw new LocalizedStatusException(HttpStatus.NOT_FOUND, "project.notFound", id);
+        return new Document(project.getJson(), project.getVersion());
+    }
+
+    /** Compares in constant time, so the time of the answer tells nothing about the key. */
+    private static boolean keyMatches(String stored, String given) {
+        if (stored == null || given == null) return false;
+        return java.security.MessageDigest.isEqual(stored.getBytes(java.nio.charset.StandardCharsets.UTF_8), given.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+    }
+
     /** A new project of the user; the database gives it its number. Answers the number and version. */
     @Transactional
     public ProjectSummary.Created create(long userId, String json, String name) {

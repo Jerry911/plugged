@@ -22,6 +22,9 @@ import {useSymbolLibrary} from '../api/useSymbolLibrary.js'
 import {copyProject, createProject, deleteProject, fetchProject, fetchProjectSummaries, restoreVersion, saveProject} from '../api/projectApi.js'
 import {usePresence} from '../hooks/usePresence.js'
 import MaterialsDialog from '../features/project/MaterialsDialog.jsx'
+import {QrDialog} from '../features/project/QrDialog.jsx'
+import SchemaPdfPage from '../features/project/SchemaPdfPage.jsx'
+import {schemaRequestFromSearch} from '../features/project/schemaLink.js'
 import Toast, {useToast} from '../components/Toast.jsx'
 import {useHistory} from '../hooks/useHistory.js'
 import {useAutoSave} from '../hooks/useAutoSave.js'
@@ -67,6 +70,14 @@ const shortcutLetter = (event) => {
 }
 
 export default function App() {
+    // opened from the QR code on a circuit board (/?schema=<number>&key=<secret>): the PDF of that project for anybody with the key, without signing in
+    const schema = schemaRequestFromSearch()
+    if (schema)
+        return (
+            <I18nProvider>
+                <SchemaPdfPage id={schema.id} secret={schema.key} />
+            </I18nProvider>
+        )
     return (
         <I18nProvider>
             <AuthGate>{({user, onLogout, onAccountDeleted}) => <LibraryGate user={user} onLogout={onLogout} onAccountDeleted={onAccountDeleted} />}</AuthGate>
@@ -104,6 +115,7 @@ function Editor({library, user, onLogout, onAccountDeleted}) {
         [tab, setTab] = useState(ONE_WIRE_TAB),
         [toast, setStatusMessage] = useToast(),
         [materialsOpen, setMaterialsOpen] = useState(false),
+        [qrOpen, setQrOpen] = useState(false),
         [newerVersion, setNewerVersion] = useState(null), // somebody else saved the open project while it has unsaved changes here
         [oneWirePage, setOneWirePage] = useState(0),
         [situationPage, setSituationPage] = useState(0),
@@ -497,6 +509,7 @@ function Editor({library, user, onLogout, onAccountDeleted}) {
                     onMaterials={() => setMaterialsOpen(true)}
                     onPdf={() => setPrintJob('pdf')}
                     onPrint={() => setPrintJob('print')}
+                    onQr={() => setQrOpen(true)}
                     locked={restricted}
                     onImport={openImport}
                     onExport={openExport}
@@ -594,6 +607,7 @@ function Editor({library, user, onLogout, onAccountDeleted}) {
             </div>
             <Toast toast={toast} />
             {materialsOpen && <MaterialsDialog project={project} projectId={projectId} onClose={() => setMaterialsOpen(false)} />}
+            {qrOpen && projectId != null && <QrDialog projectId={projectId} title={project.footer?.titel || project.name} onClose={() => setQrOpen(false)} />}
             {exportOpen && !restricted && <ExportDialog onExport={exportAs} onClose={() => setExportOpen(false)} />}
             {verifyOpen && !restricted && (
                 <VerifyPanel

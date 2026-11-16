@@ -7,9 +7,9 @@ import {BoardSheet} from '../oneWire/BoardSheet.jsx'
 import {SituationSheet} from '../situation/SituationSheet.jsx'
 import {sheetPlan} from '../../model/boardLayout.js'
 
-/** All sheets of the project, rendered for the PDF and for printing (see styles/print.css). */
-export const AllSheets = ({project}) => (
-    <div className="export">
+/** All sheets of the project, rendered for the PDF and for printing (see styles/print.css). `className`: where they are (off screen by default). */
+export const AllSheets = ({project, className = 'export'}) => (
+    <div className={className}>
         {sheetPlan(project).map((sheet) =>
             sheet.kind === 'een' ? (
                 <BoardSheet key={sheet.number} project={project} board={sheet.board} slice={sheet.slice} number={sheet.number} total={sheet.total} />
@@ -24,13 +24,22 @@ export const AllSheets = ({project}) => (
 const PAGE_WIDTH = 297,
     PAGE_HEIGHT = 210
 
-/** Turns the rendered sheets under `container` into a vector PDF (one A4 landscape page per sheet) and downloads it. */
-export async function makePdf(project, container) {
+/** Turns the rendered sheets under `container` into a vector PDF (one A4 landscape page per sheet); resolves to the jsPDF document. */
+export async function buildPdf(container) {
     const sheets = container.querySelectorAll('svg.sheet'),
         pdf = new jsPDF({orientation: 'landscape', unit: 'mm', format: 'a4'})
     for (let index = 0; index < sheets.length; index++) {
         if (index) pdf.addPage()
         await svg2pdf(sheets[index], pdf, {x: 0, y: 0, width: PAGE_WIDTH, height: PAGE_HEIGHT})
     }
-    pdf.save((project.footer.titel || 'schema') + '.pdf')
+    return pdf
+}
+
+/** The name of the PDF file of a project: the title of the title block. */
+export const pdfFileName = (project) => (project.footer?.titel || 'schema') + '.pdf'
+
+/** Turns the rendered sheets under `container` into a vector PDF (one A4 landscape page per sheet) and downloads it. */
+export async function makePdf(project, container) {
+    const pdf = await buildPdf(container)
+    pdf.save(pdfFileName(project))
 }

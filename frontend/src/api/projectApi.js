@@ -175,3 +175,8 @@ export const fetchInfo = async () => {
         return {donateUrl: '', contactEmail: ''}
     }
 }
+
+/** The secret in the QR code of project `id` (made the first time it is asked for): {ok, key} or {ok: false, error}. */
+export const fetchQrKey = (id) => call(projectUrl(id) + '/qr-key', 'GET')
+/** A new secret for the QR code (the codes printed before stop working): {ok, key} or {ok: false, error}. */
+export const renewQrKey = (id) => call(projectUrl(id) + '/qr-key', 'POST')

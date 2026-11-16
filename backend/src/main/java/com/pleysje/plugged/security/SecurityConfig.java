@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -30,6 +31,8 @@ import com.pleysje.plugged.repository.UserRepository;
  * <ul>
  *   <li>/api/auth/** : status, first start, registration, sign in and out</li>
  *   <li>/api/info : the donate link and contact address of the Info page</li>
+ *   <li>GET /api/public/** : what the page of a QR code on a circuit board needs (PublicController): anybody who scans it sees the newest
+ *       saved version of that project, without an account</li>
  * </ul>
  * /api/admin/** is for administrators only. Which projects a user may see and change is decided by ProjectService. The session is a cookie (JSESSIONID); requests that change something carry the CSRF token of
  * the XSRF-TOKEN cookie in the X-XSRF-TOKEN header (see frontend/src/api/http.js). Without a session the API answers 401, not a redirect.
@@ -57,6 +60,7 @@ public class SecurityConfig {
                 })
                 .authorizeHttpRequests(requests -> requests
                         .requestMatchers("/api/auth/**", "/api/info").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/public/**").permitAll()
                         .requestMatchers("/api/admin/**").hasRole(ROLE_ADMIN)
                         .requestMatchers("/api/**").authenticated()
                         .anyRequest().permitAll())

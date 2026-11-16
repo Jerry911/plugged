@@ -25,6 +25,7 @@ const MENU_ICONS = {
     history: ['M3 12a9 9 0 1 0 3-6.7', 'M3 4v4h4', 'M12 7v5l3 2'],
     materials: ['M9 5h11M9 12h11M9 19h11', 'M4 5h.01M4 12h.01M4 19h.01'],
     pdf: ['M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z', 'M14 3v5h5', 'M12 11v6M9.5 14.5 12 17l2.5-2.5'],
+    qr: ['M4 4h6v6H4z', 'M14 4h6v6h-6z', 'M4 14h6v6H4z', 'M14 14h3v3h-3z', 'M20 14v6h-6'],
     print: ['M7 9V3h10v6', 'M7 17H5a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2', 'M7 14h10v7H7z'],
 }
 const MenuIcon = ({name}) => (
@@ -480,6 +481,7 @@ export default function ProjectMenu({
     onMaterials,
     onPdf,
     onPrint,
+    onQr,
 }) {
     const {t} = useTranslation()
     const [open, setOpen] = useState(false),
@@ -621,8 +623,10 @@ export default function ProjectMenu({
                         {menuItem('btn-export', 'export', t('projects.export'), closeAndRun(onExport), {title: locked ? t('educational.locked') : t('projects.exportTitle'), disabled: !!locked, hint: 'Alt+E'})}
                         {onMaterials && menuItem('btn-materials', 'materials', t('materials.menu'), closeAndRun(onMaterials), {title: t('materials.menuTitle')})}
                         {/* PDF and printing stay for a student in educational mode: they are not the project */}
-                        {(onPdf || onPrint) && <li role="separator" className="pm-sepline" />}
+                        {(onPdf || onPrint || onQr) && <li role="separator" className="pm-sepline" />}
                         {onPdf && menuItem('btn-pdf', 'pdf', t('app.pdf'), closeAndRun(onPdf), {title: t('app.pdfTitle')})}
+                        {/* the QR code refers to the project number: a project that was never saved has none */}
+                        {onQr && menuItem('btn-qr', 'qr', t('qr.menu'), closeAndRun(onQr), {title: projectId ? t('qr.menuTitle') : t('qr.saveFirst'), disabled: !projectId})}
                         {onPrint && menuItem('btn-print', 'print', t('app.print'), closeAndRun(onPrint), {title: t('app.printTitle'), hint: 'Alt+P'})}
                     </ul>
                 </div>

@@ -17,7 +17,7 @@ public final class TestAccounts {
     private TestAccounts() {
     }
 
-    /** Removes projects, groups and accounts (in that order: projects point at groups, groups at accounts). The test contexts share one database. */
+    /** Removes projects, groups and accounts (in that order: projects point at groups, groups at accounts). Every test context has a database of its own (see src/test/resources/application.properties), the tests of one context share it. */
     public static void clean(UserGroupRepository groups, ProjectRepository projects, UserRepository users) {
         projects.deleteAll();
         groups.deleteAll();

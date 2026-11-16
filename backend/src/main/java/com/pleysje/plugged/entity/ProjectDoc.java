@@ -56,6 +56,13 @@ public class ProjectDoc {
     private Long deletedBy;
     /** The id of the user who owns the project (null only for projects saved before accounts existed, until they are given to the admin). */
     private Long ownerId;
+    /**
+     * The secret in the QR code of the project (null until a QR code is made): the public page only shows the project to somebody who knows it
+     * (see ProjectService#publicDocument). Not part of the document, so it is not exported or copied. Setting it is no new version either.
+     */
+    @OptimisticLock(excluded = true)
+    @Column(length = 64)
+    private String publicKey;
     /** Sharing is no new version of the document: an editor that has the project open can still save it. */
     @OptimisticLock(excluded = true)
     @ManyToMany
@@ -122,6 +129,14 @@ public class ProjectDoc {
         this.json = json;
         this.name = name;
         this.updated = java.time.Instant.now().toString();
+    }
+
+    public String getPublicKey() {
+        return publicKey;
+    }
+
+    public void setPublicKey(String publicKey) {
+        this.publicKey = publicKey;
     }
 
     public Long getOwnerId() {

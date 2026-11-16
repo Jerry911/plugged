@@ -1,0 +1,76 @@
+/* The page a QR code opens (SchemaPdfPage) and the QR label (QrDialog) */
+.schema-page {
+    padding: 8px;
+    max-width: 1140px;
+    margin: 0 auto
+}
+
+.schema-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 6px
+}
+
+.schema-note {
+    margin: 4px 0;
+    font-size: 13px;
+    color: #555
+}
+
+.schema-sheets {
+    display: flex;
+    flex-direction: column;
+    gap: 12px
+}
+
+.qr-preview svg {
+    display: block;
+    width: 200px;
+    max-width: 100%;
+    margin: 0 auto;
+    border: 1px solid #888
+}
+
+.qr-url {
+    margin: 6px 0;
+    font-size: 12px;
+    word-break: break-all;
+    user-select: all
+}
+
+/* the label that is printed: off screen, like the sheets of the PDF */
+.qr-print {
+    position: absolute;
+    left: -9999px;
+    top: 0
+}
+
+@media print {
+    .qr-print {
+        position: static;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 2mm;
+        width: 44mm;
+        padding: 10mm;
+        font: 10pt sans-serif
+    }
+
+    .qr-print svg {
+        width: 40mm;
+        height: 40mm
+    }
+
+    .schema-sheets .sheet {
+        display: block;
+        width: 297mm;
+        height: 210mm;
+        max-width: none;
+        border: 0;
+        box-shadow: none;
+        page-break-after: always
+    }
+}

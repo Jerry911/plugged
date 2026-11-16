@@ -36,6 +36,8 @@ import org.springframework.web.bind.annotation.RestController;
  * <ul>
  *   <li>GET /api/projects: the numbers of the projects the user may see</li>
  *   <li>GET /api/projects/summaries: [{id, name, updated, owner, groups, mine, canManage}] of those projects</li>
+ *   <li>GET /api/projects/{id}/qr-key: the secret in the QR code of the project (made the first time; any project the user may open);
+ *       POST /api/projects/{id}/qr-key makes a new one (owner or primary administrator): printed codes stop working</li>
  *   <li>POST /api/projects?name=: a new project, the server gives the number; answers {id, version} (201) and the version as ETag</li>
  *   <li>GET /api/projects/{id}: the document, its version in the ETag header; 404 for a project the user may not see</li>
  *   <li>PUT /api/projects/{id}: saves the document; the If-Match header must carry the version it is based on (428 without it, 409 when
@@ -90,6 +92,20 @@ public class ProjectController {
             ProjectService.Document document = projects.document(Authentications.userId(authentication), id);
             return ResponseEntity.ok().eTag(etag(document.version())).body(document.json());
         });
+    }
+
+    /** The secret in the QR code of the project (made the first time): {key}. Not cached. */
+    @GetMapping("/{id}/qr-key")
+    public ResponseEntity<Map<String, String>> qrKey(@PathVariable long id, Authentication authentication) {
+        return ApiLog.run(log, "GET /api/projects/{id}/qr-key", "id=" + id,
+                () -> ResponseEntity.ok().cacheControl(org.springframework.http.CacheControl.noStore()).body(Map.of("key", projects.publicKey(Authentications.userId(authentication), id))));
+    }
+
+    /** A new secret for the QR code (owner or primary administrator); the codes printed before stop working. */
+    @PostMapping("/{id}/qr-key")
+    public ResponseEntity<Map<String, String>> renewQrKey(@PathVariable long id, Authentication authentication) {
+        return ApiLog.run(log, "POST /api/projects/{id}/qr-key", "id=" + id,
+                () -> ResponseEntity.ok().cacheControl(org.springframework.http.CacheControl.noStore()).body(Map.of("key", projects.renewPublicKey(Authentications.userId(authentication), id))));
     }
 
     @PostMapping

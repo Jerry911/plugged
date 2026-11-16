@@ -224,6 +224,18 @@ public class SymbolService {
         return visible.stream().map(entity -> forUser(entity, access, names)).toList();
     }
 
+    /**
+     * The standard symbols (not those of the users, which a project carries a copy of, see project.symbols in the frontend) for somebody who
+     * is not signed in: they draw the schema a QR code opens (see PublicController).
+     */
+    @Transactional(readOnly = true)
+    public List<SymbolDto> standardSymbols() {
+        return repository.findAll().stream()
+                .filter(entity -> entity.isBuiltin() && !isHidden(entity.getKey()))
+                .sorted(Comparator.comparingInt(SymbolEntity::getSortOrder).thenComparing(SymbolEntity::getName, String.CASE_INSENSITIVE_ORDER))
+                .map(entity -> SymbolMapper.toDto(entity).withAccess(null, false, false, null)).toList();
+    }
+
     @Transactional(readOnly = true)
     public SymbolDto get(long userId, String key) {
         Access access = access(userId);

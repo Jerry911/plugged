@@ -722,6 +722,10 @@ export default {
                     text: 'Op het tabblad "Project" geef je het project een naam en bewaar je het met "Opslaan" (of Alt+S) op de server. "Opslaan als…" bewaart een kopie als nieuw project, "Nieuw" begint een leeg project en "Laden" toont de lijst met opgeslagen projecten, met naam en datum van de laatste keer opslaan. "Importeren" opent een .json (projectbestand) of een .eds. "Exporteren" laat je kiezen tussen .json en .eds. "PDF" maakt een vectoriële PDF (A4 liggend) van alle bladen, "Afdrukken" opent het afdrukvenster van je browser.',
                 },
                 {
+                    title: 'QR-code voor het verdeelbord',
+                    text: '"QR-code" in het menu "Project" (of Alt+Q) maakt een QR-code van het geopende project, en het QR-icoon achter een project in de lijst van "Laden" maakt de code van dat project zonder het te openen. Druk de code af (met naam en nummer van het project) of download hem als SVG-bestand en kleef hem op het verdeelbord. Hij bevat een link naar de PDF van het project, niet de PDF zelf: wie hem scant, ook zonder account, ziet de laatst bewaarde versie, ook als je het schema later nog wijzigt. Sla het project eerst op: de code verwijst naar het projectnummer. "Nieuwe sleutel" maakt een nieuw geheim en de codes die je al afdrukte werken niet meer; dat kan alleen de eigenaar van het project of de primaire beheerder.',
+                },
+                {
                     title: 'Taal kiezen',
                     text: 'Rechts in de bovenbalk kies je de taal van Plugged: Nederlands, Français of English. Je browser onthoudt die keuze. De namen van de standaardsymbolen volgen de taal; namen die je zelf intypt blijven zoals je ze schreef.',
                 },
@@ -735,6 +739,7 @@ export default {
                 {keys: 'Alt+L', text: 'lijst van projecten openen (laden)'},
                 {keys: 'Alt+I', text: 'importeren'},
                 {keys: 'Alt+E', text: 'exporteren'},
+                {keys: 'Alt+Q', text: 'QR-code van het geopende project'},
                 {keys: 'Alt+P', text: 'afdrukken'},
                 {keys: 'Ctrl+Y of Ctrl+Shift+Z', text: 'opnieuw'},
                 {keys: 'R', text: 'draait de selectie in het situatieschema'},
@@ -921,7 +926,8 @@ export default {
     },
     qr: {
         menu: 'QR-code',
-        menuTitle: 'QR-code van het schema, om op het verdeelbord te kleven',
+        menuTitle: 'QR-code van het schema, om op het verdeelbord te kleven (Alt+Q)',
+        rowTitle: 'QR-code van project {number}',
         saveFirst: 'Sla het project eerst op: de QR-code verwijst naar het projectnummer',
         title: 'QR-code voor het bord',
         intro: 'Print deze code en kleef hem op het bord. Hij bevat een link naar de PDF van dit project. Scannen toont altijd de laatst opgeslagen versie, ook als het schema later nog wijzigt.',

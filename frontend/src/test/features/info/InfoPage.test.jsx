@@ -20,6 +20,9 @@ describe('Info page', () => {
         for (const id of ['info-over', 'info-gebruik', 'info-faq', 'info-contact', 'info-steun']) expect(byId(id)).not.toBeNull()
         expect(getById('info-gebruik').querySelector('h2')).toHaveTextContent(t('info.usage.title'))
         expect(getById('info-gebruik').querySelector('h3')).toHaveTextContent(t('info.usage.shortcutsTitle'))
+        // the QR code of a project has its own paragraph, and Alt+Q is in the list of shortcuts
+        expect(getById('info-gebruik').textContent).toContain('Alt+Q')
+        expect(getById('info-gebruik').textContent).toContain(translation('info.usage.steps').find((step) => /QR/.test(step.title)).title)
         expect(document.querySelectorAll('details.faq').length).toBeGreaterThan(3)
         expect(getById('faq-1').querySelector('summary')).toHaveTextContent(translation('info.faq.questions')[0].question)
         await waitFor(() => expect(byId('donate-button')).toHaveAttribute('href', 'https://www.paypal.com/donate/?hosted_button_id=ABC'))

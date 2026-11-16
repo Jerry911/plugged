@@ -272,7 +272,7 @@ function TrashList({refreshKey, onChanged}) {
  * `onCopy(summary)` duplicates one, `onRestoreVersion(summary, version)` restores a version of its history, `onTrashChanged()` after a
  * project came out of the trash or was removed for good. `restricted`: a student only duplicates his own projects.
  */
-export function ProjectList({currentId, refreshKey, onLoad, onDelete, onCopy, onRestoreVersion, onTrashChanged, restricted}) {
+export function ProjectList({currentId, refreshKey, onLoad, onDelete, onCopy, onRestoreVersion, onTrashChanged, onQr, restricted}) {
     const {t, locale} = useTranslation()
     const [summaries, setSummaries] = useState(null),
         [failed, setFailed] = useState(false),
@@ -382,54 +382,61 @@ export function ProjectList({currentId, refreshKey, onLoad, onDelete, onCopy, on
                                 <td>{summary.id}</td>
                                 <td className="pm-when">{formatSaveMoment(summary.updated, locale)}</td>
                                 <td className="pm-acts">
-                                    <button id={'project-load-' + summary.id} title={t('projects.loadTitle', {number: summary.id})} onClick={() => onLoad(summary.id, summary)}>
-                                        {t('projects.load')}
-                                    </button>
-                                    {onCopy && (!restricted || summary.mine) && (
-                                        <button
-                                            id={'project-copy-' + summary.id}
-                                            title={t('projects.copyTitle')}
-                                            aria-label={t('projects.copyTitle')}
-                                            onClick={() => onCopy(summary)}
-                                        >
-                                            <MenuIcon name="saveas" />
+                                    <div className="pm-btns">
+                                        <button id={'project-load-' + summary.id} title={t('projects.loadTitle', {number: summary.id})} onClick={() => onLoad(summary.id, summary)}>
+                                            {t('projects.load')}
                                         </button>
-                                    )}
-                                    {onRestoreVersion && (
-                                        <button
-                                            id={'project-historybtn-' + summary.id}
-                                            title={t('projects.historyTitle')}
-                                            aria-label={t('projects.historyTitle')}
-                                            aria-expanded={panel?.id === summary.id && panel.kind === 'history'}
-                                            className={panel?.id === summary.id && panel.kind === 'history' ? 'on' : ''}
-                                            onClick={() => togglePanel(summary.id, 'history')}
-                                        >
-                                            <MenuIcon name="history" />
-                                        </button>
-                                    )}
-                                    {summary.canManage && (
-                                        <button
-                                            id={'project-sharebtn-' + summary.id}
-                                            title={t('projects.shareTitle')}
-                                            aria-label={t('projects.shareTitle')}
-                                            aria-expanded={panel?.id === summary.id && panel.kind === 'share'}
-                                            className={panel?.id === summary.id && panel.kind === 'share' ? 'on' : ''}
-                                            onClick={() => togglePanel(summary.id, 'share')}
-                                        >
-                                            <MenuIcon name="share" />
-                                        </button>
-                                    )}
-                                    {summary.canManage && (
-                                        <button
-                                            id={'project-delete-' + summary.id}
-                                            title={t('projects.deleteTitle', {number: summary.id})}
-                                            aria-label={t('projects.deleteLabel', {name: summary.name || t('projects.defaultName', {number: summary.id})})}
-                                            className="pm-del"
-                                            onClick={() => onDelete(summary)}
-                                        >
-                                            🗑
-                                        </button>
-                                    )}
+                                        {onCopy && (!restricted || summary.mine) && (
+                                            <button
+                                                id={'project-copy-' + summary.id}
+                                                title={t('projects.copyTitle')}
+                                                aria-label={t('projects.copyTitle')}
+                                                onClick={() => onCopy(summary)}
+                                            >
+                                                <MenuIcon name="saveas" />
+                                            </button>
+                                        )}
+                                        {onQr && (
+                                            <button id={'project-qr-' + summary.id} title={t('qr.rowTitle', {number: summary.id})} aria-label={t('qr.rowTitle', {number: summary.id})} onClick={() => onQr(summary)}>
+                                                <MenuIcon name="qr" />
+                                            </button>
+                                        )}
+                                        {onRestoreVersion && (
+                                            <button
+                                                id={'project-historybtn-' + summary.id}
+                                                title={t('projects.historyTitle')}
+                                                aria-label={t('projects.historyTitle')}
+                                                aria-expanded={panel?.id === summary.id && panel.kind === 'history'}
+                                                className={panel?.id === summary.id && panel.kind === 'history' ? 'on' : ''}
+                                                onClick={() => togglePanel(summary.id, 'history')}
+                                            >
+                                                <MenuIcon name="history" />
+                                            </button>
+                                        )}
+                                        {summary.canManage && (
+                                            <button
+                                                id={'project-sharebtn-' + summary.id}
+                                                title={t('projects.shareTitle')}
+                                                aria-label={t('projects.shareTitle')}
+                                                aria-expanded={panel?.id === summary.id && panel.kind === 'share'}
+                                                className={panel?.id === summary.id && panel.kind === 'share' ? 'on' : ''}
+                                                onClick={() => togglePanel(summary.id, 'share')}
+                                            >
+                                                <MenuIcon name="share" />
+                                            </button>
+                                        )}
+                                        {summary.canManage && (
+                                            <button
+                                                id={'project-delete-' + summary.id}
+                                                title={t('projects.deleteTitle', {number: summary.id})}
+                                                aria-label={t('projects.deleteLabel', {name: summary.name || t('projects.defaultName', {number: summary.id})})}
+                                                className="pm-del"
+                                                onClick={() => onDelete(summary)}
+                                            >
+                                                🗑
+                                            </button>
+                                        )}
+                                    </div>
                                 </td>
                             </tr>,
                             panel?.id === summary.id && (
@@ -612,6 +619,7 @@ export default function ProjectMenu({
                                         onCopy={onCopy}
                                         onRestoreVersion={onRestoreVersion}
                                         onTrashChanged={onTrashChanged}
+                                        onQr={onQr && ((summary) => (close(), onQr(summary)))}
                                         restricted={restricted}
                                     />
                                 </div>
@@ -626,7 +634,7 @@ export default function ProjectMenu({
                         {(onPdf || onPrint || onQr) && <li role="separator" className="pm-sepline" />}
                         {onPdf && menuItem('btn-pdf', 'pdf', t('app.pdf'), closeAndRun(onPdf), {title: t('app.pdfTitle')})}
                         {/* the QR code refers to the project number: a project that was never saved has none */}
-                        {onQr && menuItem('btn-qr', 'qr', t('qr.menu'), closeAndRun(onQr), {title: projectId ? t('qr.menuTitle') : t('qr.saveFirst'), disabled: !projectId})}
+                        {onQr && menuItem('btn-qr', 'qr', t('qr.menu'), closeAndRun(() => onQr()), {title: projectId ? t('qr.menuTitle') : t('qr.saveFirst'), disabled: !projectId, hint: 'Alt+Q'})}
                         {onPrint && menuItem('btn-print', 'print', t('app.print'), closeAndRun(onPrint), {title: t('app.printTitle'), hint: 'Alt+P'})}
                     </ul>
                 </div>

@@ -308,7 +308,7 @@ test('Nieuw starts an empty project that gets its number from the server when it
     await act(async () => {})
     expect(store.size).toBe(4)
 })
-test('the shortcuts of the Project menu: Alt+S save, Alt+N new, Alt+L load, Alt+I import, Alt+E export; Ctrl, Shift or AltGr leave them to the browser', async () => {
+test('the shortcuts of the Project menu: Alt+S save, Alt+N new, Alt+L load, Alt+I import, Alt+E export, Alt+Q QR code; Ctrl, Shift or AltGr leave them to the browser', async () => {
     projectsApi(new Map([[1, doc('Eerste', 'T1')], [2, doc('Tweede', 'T2')]]))
     await mount()
     await pageNamed('Blad Eerste')
@@ -322,9 +322,24 @@ test('the shortcuts of the Project menu: Alt+S save, Alt+N new, Alt+L load, Alt+
     await waitFor(() => getById('project-list'))
     expect(getById('btn-load')).toHaveAttribute('aria-expanded', 'true')
     expect(getById('btn-load')).toHaveTextContent('Alt+L')
+    // the QR icon behind a project makes the code of that project (not the open one) and closes the menu
+    fireEvent.click(getById('project-qr-1'))
+    expect(byId('project-menu')).toBeNull()
+    getById('qr-dialog')
+    expect(global.fetch).toHaveBeenCalledWith('/api/projects/1/qr-key', expect.anything())
+    fireEvent.click(getById('qr-close'))
+    expect(byId('qr-dialog')).toBeNull()
+    await act(async () => {})
+    press('l')
     fireEvent.click(await waitFor(() => getById('project-load-2')))
     await pageNamed('Blad Tweede')
     expect(byId('project-menu')).toBeNull()
+    // Alt+Q: the QR code of the open project
+    expect(press('q')).toBe(true)
+    getById('qr-dialog')
+    expect(global.fetch).toHaveBeenCalledWith('/api/projects/2/qr-key', expect.anything())
+    fireEvent.click(getById('qr-close'))
+    expect(byId('qr-dialog')).toBeNull()
     // Alt+E: the export dialog, a second time closes it again
     expect(press('E')).toBe(true)
     getById('export-confirm')
@@ -358,8 +373,11 @@ test('the shortcuts of the Project menu: Alt+S save, Alt+N new, Alt+L load, Alt+
     press('n')
     await statusIs(t('app.newProject'))
     expect(pageButton(1)).not.toHaveTextContent('Blad Tweede')
+    // a project that was never saved has no number, so no QR code
+    press('q')
+    expect(byId('qr-dialog')).toBeNull()
     // other keys stay with the browser
-    expect(press('q')).toBe(false)
+    expect(press('z')).toBe(false)
     expect(press('7', {code: 'Digit7'})).toBe(false)
     expect(press('x', {altKey: false})).toBe(false)
     toProject()
@@ -367,6 +385,7 @@ test('the shortcuts of the Project menu: Alt+S save, Alt+N new, Alt+L load, Alt+
     expect(getById('btn-new')).toHaveTextContent('Alt+N')
     expect(getById('btn-import')).toHaveTextContent('Alt+I')
     expect(getById('btn-export')).toHaveTextContent('Alt+E')
+    expect(getById('btn-qr')).toHaveTextContent('Alt+Q')
 })
 test('the editor opens the most recently saved own project, not a newer one of a coworker', async () => {
     const store = new Map([[1, doc('Eerste', 'T1')], [2, doc('Tweede', 'T2')], [3, doc('Derde', 'T3')]])

@@ -73,15 +73,13 @@ export function QrDialog({projectId, title, onClose}) {
                 )}
                 {!url && !error && (
                     <p id="qr-loading" className="pm-note">
-                        {t('qr.loading')}{url}
+                        {t('qr.loading')}
                     </p>
                 )}
                 {url && (
-                    <>
-                        <div className="qr-preview">
-                            <QrCode text={url} label={t('qr.codeLabel', {name: caption})} />
-                        </div>
-                    </>
+                    <div className="qr-preview">
+                        <QrCode text={url} label={t('qr.codeLabel', {name: caption})} />
+                    </div>
                 )}
                 <div className="tb" style={{marginTop: 8}}>
                     <button id="qr-print" className="accent" autoFocus disabled={!url} onClick={() => window.print()}>

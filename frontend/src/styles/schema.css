@@ -33,13 +33,6 @@
     border: 1px solid #888
 }
 
-.qr-url {
-    margin: 6px 0;
-    font-size: 12px;
-    word-break: break-all;
-    user-select: all
-}
-
 /* the label that is printed: off screen, like the sheets of the PDF */
 .qr-print {
     position: absolute;

@@ -225,3 +225,15 @@ describe('finding, duplicating, history and trash', () => {
         await waitFor(() => getById('project-list'))
     })
 })
+
+test('a QR icon behind each project asks for the QR code of that project; without onQr there is none', async () => {
+    backend({summaries: [summary(1), summary(2, {mine: false, canManage: false})]})
+    const onQr = vi.fn()
+    const {unmount} = await mount({onQr})
+    fireEvent.click(getById('project-qr-2'))
+    expect(onQr).toHaveBeenCalledWith(expect.objectContaining({id: 2}))
+    expect(getById('project-qr-1')).toHaveAttribute('title', t('qr.rowTitle', {number: 1}))
+    unmount()
+    await mount()
+    expect(byId('project-qr-1')).toBeNull()
+})

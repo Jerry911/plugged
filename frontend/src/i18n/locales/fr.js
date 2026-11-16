@@ -721,6 +721,10 @@ export default {
                     text: 'Dans le menu « Projet », vous donnez un nom au projet et l’enregistrez sur le serveur avec « Enregistrer » (ou Alt+S). « Enregistrer sous… » enregistre une copie comme nouveau projet, « Nouveau » commence un projet vide et « Charger » affiche la liste des projets enregistrés, avec leur nom et la date du dernier enregistrement. « Importer » ouvre un .json (fichier de projet) ou un .eds. « Exporter » vous laisse choisir entre .json et .eds. « PDF » crée un PDF vectoriel (A4 paysage) de toutes les feuilles, « Imprimer » ouvre la fenêtre d’impression de votre navigateur.',
                 },
                 {
+                    title: 'Code QR pour le tableau',
+                    text: '« Code QR » dans le menu « Projet » (ou Alt+Q) crée un code QR du projet ouvert, et l’icône QR derrière un projet dans la liste « Charger » crée le code de ce projet sans l’ouvrir. Imprimez le code (avec le nom et le numéro du projet) ou téléchargez-le en fichier SVG et collez-le sur le tableau. Il contient un lien vers le PDF du projet, pas le PDF lui-même : quiconque le scanne, même sans compte, voit la dernière version enregistrée, même si vous modifiez le schéma plus tard. Enregistrez d’abord le projet : le code renvoie au numéro du projet. « Nouvelle clé » crée un nouveau secret et les codes déjà imprimés cessent de fonctionner ; seuls le propriétaire du projet ou l’administrateur principal peuvent le faire.',
+                },
+                {
                     title: 'Choisir la langue',
                     text: 'À droite dans la barre supérieure, vous choisissez la langue de Plugged : Nederlands, Français ou English. Votre navigateur retient ce choix. Les noms des symboles standard suivent la langue ; les noms que vous tapez vous-même restent tels que vous les avez écrits.',
                 },
@@ -734,6 +738,7 @@ export default {
                 {keys: 'Alt+L', text: 'ouvrir la liste des projets (charger)'},
                 {keys: 'Alt+I', text: 'importer'},
                 {keys: 'Alt+E', text: 'exporter'},
+                {keys: 'Alt+Q', text: 'code QR du projet ouvert'},
                 {keys: 'Alt+P', text: 'imprimer'},
                 {keys: 'Ctrl+Y ou Ctrl+Maj+Z', text: 'rétablir'},
                 {keys: 'R', text: 'tourne la sélection dans le plan de position'},
@@ -917,7 +922,8 @@ export default {
     },
     qr: {
         menu: 'Code QR',
-        menuTitle: 'Code QR du schéma, à coller sur le tableau',
+        menuTitle: 'Code QR du schéma, à coller sur le tableau (Alt+Q)',
+        rowTitle: 'Code QR du projet {number}',
         saveFirst: 'Enregistrez d’abord le projet : le code QR renvoie au numéro du projet',
         title: 'Code QR pour le tableau',
         intro: 'Imprimez ce code et collez-le sur le tableau. Il contient un lien vers le PDF de ce projet. Le scanner affiche toujours la dernière version enregistrée, même si le schéma change par la suite.',

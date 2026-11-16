@@ -746,8 +746,16 @@
     text-align: right
 }
 
+/* the buttons of a project: three per row (Laden, copy, QR / history, share, delete) */
+.plist .pm-btns {
+    display: grid;
+    grid-template-columns: repeat(3, auto);
+    gap: 4px;
+    justify-content: end
+}
+
 .plist .pm-acts button {
-    margin-left: 4px
+    margin: 0
 }
 
 .plist .pm-del:hover {

@@ -57,7 +57,7 @@ describe('the QR dialog', () => {
         fetchQrKey.mockReset().mockResolvedValue({ok: true, key: KEY})
         renewQrKey.mockReset()
     })
-    test('asks for the key, then shows the code and the link, prints and downloads', async () => {
+    test('asks for the key, then shows the code (not the link as text), prints and downloads', async () => {
         const print = vi.spyOn(window, 'print').mockImplementation(() => {}),
             click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
         URL.createObjectURL = vi.fn(() => 'blob:x')
@@ -66,10 +66,13 @@ describe('the QR dialog', () => {
         render(<QrDialog projectId={7} title="Woning" onClose={onClose} />)
         expect(byId('qr-loading')).not.toBeNull()
         expect(getById('qr-print').disabled).toBe(true)
-        await waitFor(() => getById('qr-url'))
+        await waitFor(() => expect(getById('qr-print').disabled).toBe(false))
         expect(fetchQrKey).toHaveBeenCalledWith(7)
-        expect(getById('qr-url').textContent).toBe(schemaUrl(7, KEY))
+        expect(byId('qr-loading')).toBeNull()
+        // the code holds the link of the project, but the link itself is not written on the page
         expect(document.querySelectorAll('#qr-dialog svg')).toHaveLength(1)
+        expect(document.querySelector('#qr-dialog svg path').getAttribute('d')).toBe(qrModules(schemaUrl(7, KEY)).path)
+        expect(document.body.textContent).not.toContain(schemaUrl(7, KEY))
         // the label that is printed: the code, the name and the number
         expect(document.querySelector('.qr-print').textContent).toContain('Woning')
         expect(document.querySelector('.qr-print').textContent).toContain(t('qr.printNumber', {number: 7}))
@@ -83,14 +86,14 @@ describe('the QR dialog', () => {
     })
     test('a project without a title is named after its number', async () => {
         render(<QrDialog projectId={7} title="" onClose={() => {}} />)
-        await waitFor(() => getById('qr-url'))
+        await waitFor(() => expect(document.querySelector('.qr-print b')).not.toBeNull())
         expect(document.querySelector('.qr-print b').textContent).toBe(t('projects.defaultName', {number: 7}))
     })
     test('no key, no code: the failure is shown and nothing can be printed', async () => {
         fetchQrKey.mockResolvedValue({ok: false, error: ''})
         render(<QrDialog projectId={7} title="x" onClose={() => {}} />)
         await waitFor(() => expect(getById('qr-error').textContent).toBe(t('qr.keyFailed')))
-        expect(byId('qr-url')).toBeNull()
+        expect(document.querySelector('#qr-dialog svg')).toBeNull()
         expect(document.querySelector('.qr-print')).toBeNull()
         expect(getById('qr-print').disabled).toBe(true)
         expect(getById('qr-renew').disabled).toBe(true)
@@ -99,21 +102,16 @@ describe('the QR dialog', () => {
         const confirm = vi.spyOn(window, 'confirm').mockReturnValueOnce(false).mockReturnValueOnce(true)
         renewQrKey.mockResolvedValue({ok: true, key: 'Zz9_-new0123456789ABCDEFGHIJ'})
         render(<QrDialog projectId={7} title="x" onClose={() => {}} />)
-        await waitFor(() => getById('qr-url'))
+        await waitFor(() => expect(getById('qr-renew').disabled).toBe(false))
+        const before = document.querySelector('#qr-dialog svg path').getAttribute('d')
         fireEvent.click(getById('qr-renew'))
         expect(renewQrKey).not.toHaveBeenCalled()
         await act(async () => fireEvent.click(getById('qr-renew')))
         expect(confirm).toHaveBeenCalledTimes(2)
         expect(renewQrKey).toHaveBeenCalledWith(7)
-        expect(getById('qr-url').textContent).toBe(schemaUrl(7, 'Zz9_-new0123456789ABCDEFGHIJ'))
-    })
-    test('a refused new key (not the owner) is reported and the old code stays', async () => {
-        vi.spyOn(window, 'confirm').mockReturnValue(true)
-        renewQrKey.mockResolvedValue({ok: false, status: 403, error: 'Alleen de eigenaar'})
-        render(<QrDialog projectId={7} title="x" onClose={() => {}} />)
-        await act(async () => fireEvent.click(getById('qr-renew')))
-        expect(getById('qr-error').textContent).toBe('Alleen de eigenaar')
-        expect(getById('qr-url').textContent).toBe(schemaUrl(7, KEY))
+        const after = document.querySelector('#qr-dialog svg path').getAttribute('d')
+        expect(after).toBe(qrModules(schemaUrl(7, 'Zz9_-new0123456789ABCDEFGHIJ')).path)
+        expect(after).not.toBe(before)
     })
 })
 

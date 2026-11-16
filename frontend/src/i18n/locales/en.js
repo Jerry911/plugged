@@ -720,6 +720,10 @@ export default {
                     text: 'In the "Project" menu you give the project a name and store it on the server with "Save" (or Alt+S). "Save as…" stores a copy as a new project, "New" starts an empty project and "Load" shows the list of stored projects, with the name and the date they were last saved. "Import" opens a .json (project file) or an .eds. "Export" lets you choose between .json and .eds. "PDF" makes a vector PDF (A4 landscape) of all sheets, "Print" opens the print window of your browser.',
                 },
                 {
+                    title: 'QR code for the circuit board',
+                    text: '"QR code" in the "Project" menu (or Alt+Q) makes a QR code of the open project, and the QR icon behind a project in the "Load" list makes the code of that project without opening it. Print the code (it comes with the name and number of the project) or download it as an SVG file and stick it on the circuit board. It holds a link to the PDF of the project, not the PDF itself: whoever scans it, also without an account, sees the latest saved version, even when you change the schema later. Save the project first: the code refers to the project number. "New key" makes a new secret and the codes you already printed stop working; only the owner of the project or the primary administrator can do that.',
+                },
+                {
                     title: 'Choosing the language',
                     text: 'On the right of the top bar you choose the language of Plugged: Nederlands, Français or English. Your browser remembers that choice. The names of the standard symbols follow the language; names you type yourself stay as you wrote them.',
                 },
@@ -733,6 +737,7 @@ export default {
                 {keys: 'Alt+L', text: 'open the list of projects (load)'},
                 {keys: 'Alt+I', text: 'import'},
                 {keys: 'Alt+E', text: 'export'},
+                {keys: 'Alt+Q', text: 'QR code of the open project'},
                 {keys: 'Alt+P', text: 'print'},
                 {keys: 'Ctrl+Y or Ctrl+Shift+Z', text: 'redo'},
                 {keys: 'R', text: 'rotates the selection on the site plan'},
@@ -916,7 +921,8 @@ export default {
     },
     qr: {
         menu: 'QR code',
-        menuTitle: 'QR code of the schema, to stick on the circuit board',
+        menuTitle: 'QR code of the schema, to stick on the circuit board (Alt+Q)',
+        rowTitle: 'QR code of project {number}',
         saveFirst: 'Save the project first: the QR code refers to the project number',
         title: 'QR code for the board',
         intro: 'Print this code and stick it on the board. It holds a link to the PDF of this project. Scanning it always shows the latest saved version, even when the schema changes later.',

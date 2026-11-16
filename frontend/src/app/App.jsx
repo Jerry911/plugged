@@ -115,7 +115,7 @@ function Editor({library, user, onLogout, onAccountDeleted}) {
         [tab, setTab] = useState(ONE_WIRE_TAB),
         [toast, setStatusMessage] = useToast(),
         [materialsOpen, setMaterialsOpen] = useState(false),
-        [qrOpen, setQrOpen] = useState(false),
+        [qrTarget, setQrTarget] = useState(null), // {id, title} of the project whose QR code is shown: the open one (Project menu, Alt+Q) or one from the list
         [newerVersion, setNewerVersion] = useState(null), // somebody else saved the open project while it has unsaved changes here
         [oneWirePage, setOneWirePage] = useState(0),
         [situationPage, setSituationPage] = useState(0),
@@ -388,16 +388,21 @@ function Editor({library, user, onLogout, onAccountDeleted}) {
     }
     // the project the user is in was put in the trash or restored from it elsewhere: nothing to do here, the list is reloaded
     const onTrashChanged = () => setProjectListKey((key) => key + 1)
+    // the QR code of a project from the list (its summary), or of the open project when called without one; a project that was never saved has no number
+    const openQr = (summary) => {
+        if (summary?.id != null) setQrTarget({id: summary.id, title: summary.name})
+        else if (projectId != null) setQrTarget({id: projectId, title: project.footer?.titel || project.name})
+    }
     const openImport = () => document.getElementById('import-input').click()
     const openExport = () => {
         setFooterDialog(null)
         setExportOpen((open) => !open)
     }
     // the shortcuts of the Project menu: Alt+S save, Alt+N new, Alt+L load, Alt+I import, Alt+E export (not for a student: see `restricted`),
-    // Alt+P print (Ctrl+P stays the browser's own, which prints the screen as it is).
+    // Alt+Q QR code, Alt+P print (Ctrl+P stays the browser's own, which prints the screen as it is).
     // Alt and not Ctrl: the browser keeps several Ctrl keys for itself (Ctrl+N a new window, Ctrl+L the address bar). Only Alt alone: with
     // Ctrl too it is AltGr on Windows (AltGr+E = €), with Shift or Cmd it is not ours either.
-    const projectShortcuts = {s: save, n: startNewProject, l: () => setLoadMenuRequest((count) => count + 1), i: openImport, e: openExport, p: () => setPrintJob('print')}
+    const projectShortcuts = {s: save, n: startNewProject, l: () => setLoadMenuRequest((count) => count + 1), i: openImport, e: openExport, q: () => openQr(), p: () => setPrintJob('print')}
     useEffect(() => {
         const onKeyDown = (event) => {
             if (!event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return
@@ -509,7 +514,7 @@ function Editor({library, user, onLogout, onAccountDeleted}) {
                     onMaterials={() => setMaterialsOpen(true)}
                     onPdf={() => setPrintJob('pdf')}
                     onPrint={() => setPrintJob('print')}
-                    onQr={() => setQrOpen(true)}
+                    onQr={openQr}
                     locked={restricted}
                     onImport={openImport}
                     onExport={openExport}
@@ -607,7 +612,7 @@ function Editor({library, user, onLogout, onAccountDeleted}) {
             </div>
             <Toast toast={toast} />
             {materialsOpen && <MaterialsDialog project={project} projectId={projectId} onClose={() => setMaterialsOpen(false)} />}
-            {qrOpen && projectId != null && <QrDialog projectId={projectId} title={project.footer?.titel || project.name} onClose={() => setQrOpen(false)} />}
+            {qrTarget && <QrDialog projectId={qrTarget.id} title={qrTarget.title} onClose={() => setQrTarget(null)} />}
             {exportOpen && !restricted && <ExportDialog onExport={exportAs} onClose={() => setExportOpen(false)} />}
             {verifyOpen && !restricted && (
                 <VerifyPanel

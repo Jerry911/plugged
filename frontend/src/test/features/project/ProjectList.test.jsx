@@ -27,9 +27,20 @@ const backend = ({summaries, groups = [], groupsStatus = 200, shareAnswer = null
 const mount = async (props = {}) => {
     const onLoad = vi.fn(),
         onDelete = vi.fn()
-    render(<ProjectList currentId={1} refreshKey={0} onLoad={onLoad} onDelete={onDelete} {...props} />)
+
+    const rendered = render(
+        <ProjectList
+            currentId={1}
+            refreshKey={0}
+            onLoad={onLoad}
+            onDelete={onDelete}
+            {...props}
+        />
+    )
+
     await waitFor(() => getById('project-list'))
-    return {onLoad, onDelete}
+
+    return {onLoad, onDelete, unmount: rendered.unmount}
 }
 const shareRequests = () => global.fetch.mock.calls.filter((call) => call[0].endsWith('/groups') && call[1]?.method === 'PUT')
 

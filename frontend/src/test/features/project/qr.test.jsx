@@ -111,7 +111,6 @@ describe('the QR dialog', () => {
         vi.spyOn(window, 'confirm').mockReturnValue(true)
         renewQrKey.mockResolvedValue({ok: false, status: 403, error: 'Alleen de eigenaar'})
         render(<QrDialog projectId={7} title="x" onClose={() => {}} />)
-        await waitFor(() => getById('qr-url'))
         await act(async () => fireEvent.click(getById('qr-renew')))
         expect(getById('qr-error').textContent).toBe('Alleen de eigenaar')
         expect(getById('qr-url').textContent).toBe(schemaUrl(7, KEY))

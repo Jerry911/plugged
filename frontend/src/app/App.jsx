@@ -661,6 +661,8 @@ function Editor({library, user, onLogout, onAccountDeleted}) {
                             pageIndex={shownSituationPage}
                             onFooter={openFooter}
                             neutral={restricted || unplacedRuleOff}
+                            onPageIndex={setSituationPage}
+                            onStatus={setStatusMessage}
                         />
                     </>
                 )}

@@ -73,3 +73,132 @@
     color: #666;
     font-size: 11px
 }
+
+/* Situatieschema → Sjabloon: the templates as cards with a preview of every floor */
+.templatedlg {
+    width: min(980px, 96vw);
+    max-height: 90vh;
+    overflow: auto
+}
+
+.tplintro {
+    margin: 6px 0 12px;
+    color: #3b4a5c;
+    line-height: 1.45
+}
+
+.tplgrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 14px
+}
+
+.tplcard {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    background: #fff;
+    border: 1px solid #dde3ea;
+    border-radius: 8px;
+    padding: 12px 14px;
+    box-shadow: 0 1px 2px rgba(31, 58, 95, .06)
+}
+
+.tplcard.blocked {
+    opacity: .6
+}
+
+.tplcard h3 {
+    margin: 0;
+    font-size: 1.05em;
+    color: #1f3a5f
+}
+
+.tplfloors {
+    display: flex;
+    gap: 8px
+}
+
+.tplfloors figure {
+    flex: 1;
+    margin: 0;
+    min-width: 0
+}
+
+.tplfloors figcaption {
+    font-size: 12px;
+    color: #5a6b80;
+    text-align: center
+}
+
+.tplfloor {
+    width: 100%;
+    height: auto;
+    max-height: 150px;
+    background: #f7f9fb;
+    border-radius: 4px
+}
+
+.tplfloor line {
+    stroke: #1f3a5f;
+    stroke-width: .12;
+    stroke-linecap: square
+}
+
+.tplfloor text {
+    fill: #5a6b80;
+    font-family: system-ui, sans-serif
+}
+
+.tpldesc, .tplfacts, .tplscale, .tplplace {
+    margin: 0;
+    font-size: 13px;
+    line-height: 1.4
+}
+
+.tplfacts, .tplplace {
+    color: #5a6b80
+}
+
+.tplscale.warn {
+    color: #b26a00
+}
+
+.tplscale.error {
+    color: #c62828
+}
+
+.tplcard .accent, .sitempty .accent {
+    align-self: flex-start;
+    margin-top: auto;
+    background: #ffd54a;
+    border: 1px solid #e0b400;
+    border-radius: 4px;
+    font: inherit;
+    font-weight: 700;
+    padding: 6px 16px;
+    cursor: pointer
+}
+
+.tplcard .accent:disabled {
+    cursor: default;
+    opacity: .5
+}
+
+/* an empty sheet of the situatieschema: an invitation to start from a template */
+.sitempty {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 0 0 8px;
+    padding: 8px 12px;
+    background: #fffbea;
+    border: 1px solid #f0d77a;
+    border-radius: 6px
+}
+
+@media print {
+    .sitempty {
+        display: none
+    }
+}

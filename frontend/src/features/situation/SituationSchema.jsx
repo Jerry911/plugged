@@ -25,6 +25,8 @@ import {
 } from '../../model/geometry.js'
 import {useTranslation} from '../../i18n/I18nProvider.jsx'
 import {DEFAULT_ITEM_SIZE, SituationSheet} from './SituationSheet.jsx'
+import TemplateDialog from './TemplateDialog.jsx'
+import {hasDrawing, templatePages} from '../../model/planTemplates.js'
 import {IconButton, PropertiesBox} from '../../components/PropertiesBox.jsx'
 import {TOOLBAR_ICONS} from '../oneWire/icons.jsx'
 import {useFillHeight} from '../../hooks/useFillHeight.js'
@@ -41,7 +43,10 @@ const ARROW_DIRECTIONS = {ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -
 const isOpening = (item) => item.kind === 'door' || item.kind === 'window'
 const movedWall = (wall, dx, dy) => ({...wall, x1: wall.x1 + dx, y1: wall.y1 + dy, x2: wall.x2 + dx, y2: wall.y2 + dy})
 
-export default function SituationSchema({project, setProject, pageIndex, onFooter, neutral}) {
+/**
+ * `onPageIndex(index)` shows another sheet (after a template added sheets); `onStatus(text)` a message for the user (a toast).
+ */
+export default function SituationSchema({project, setProject, pageIndex, onFooter, neutral, onPageIndex = () => {}, onStatus = () => {}}) {
     const {t} = useTranslation()
     const page = project.sit[pageIndex],
         {walls, items} = page,
@@ -57,6 +62,7 @@ export default function SituationSchema({project, setProject, pageIndex, onFoote
         [drag, setDrag] = useState(null),
         [selectionBox, setSelectionBox] = useState(null),
         [typedDimension, setTypedDimension] = useState(''),
+        [templateOpen, setTemplateOpen] = useState(false),
         [, forceRender] = useState(0),
         [panelOpen, setPanelOpen] = useState(true),
         [search, setSearch] = useState(''),
@@ -453,6 +459,27 @@ export default function SituationSchema({project, setProject, pageIndex, onFoote
     useFillHeight(leftPanel)
     useFillHeight(rightPanel)
     const wallInputKey = (wall) => `${wall.id}:${wall.x1},${wall.y1},${wall.x2},${wall.y2}`
+    // a starter template (TemplateDialog): its first floor on this sheet when it is empty, the other floors (or all of them, when this
+    // sheet has a drawing) on new sheets right after it; a template that needs a larger scale sets the scale of the project
+    const insertTemplate = (template, templateScale) => {
+        const floors = templatePages(template, templateScale, t, newId),
+            onThisPage = !hasDrawing([page])
+        setProject((current) => {
+            const sit = [...current.sit],
+                index = current.sit.findIndex((candidate) => candidate.id === page.id),
+                [first, ...rest] = floors,
+                added = (onThisPage ? rest : floors).map((floor) => ({id: newId(), ...floor}))
+            if (onThisPage) sit[index] = {...sit[index], ...first}
+            sit.splice(index + 1, 0, ...added)
+            return {...current, sit, ...(templateScale !== scale ? {footer: {...current.footer, schaal: '1:' + templateScale}} : {})}
+        })
+        setTemplateOpen(false)
+        setSelection([])
+        setTool('select')
+        onPageIndex(onThisPage ? pageIndex : pageIndex + 1)
+        onStatus(t('templates.inserted', {name: t('templates.names.' + template.id)}))
+    }
+    const pageEmpty = !walls.length && !items.length
     return (
         <div className="row">
             <div className="side ui sticky-side fill" ref={leftPanel}>
@@ -462,6 +489,9 @@ export default function SituationSchema({project, setProject, pageIndex, onFoote
                             {t('situation.tools.' + name)}
                         </button>
                     ))}
+                    <button id="sit-template" title={t('templates.buttonTitle')} onClick={() => setTemplateOpen(true)}>
+                        ⌂ {t('templates.button')}
+                    </button>
                 </div>
                 <p id="sit-help">{t('situation.help')}</p>
                 {selectedItem && (
@@ -637,6 +667,15 @@ export default function SituationSchema({project, setProject, pageIndex, onFoote
                 />
             </div>
             <div className="main">
+                {pageEmpty && (
+                    <div id="sit-empty" className="sitempty">
+                        <span>{t('templates.emptyHint')}</span>
+                        <button id="sit-empty-template" className="accent" onClick={() => setTemplateOpen(true)}>
+                            ⌂ {t('templates.emptyButton')}
+                        </button>
+                    </div>
+                )}
+                {templateOpen && <TemplateDialog project={project} pageIndex={pageIndex} onChoose={insertTemplate} onClose={() => setTemplateOpen(false)} />}
                 <div style={{position: 'relative'}}>
                     <ZoomPane zoom={zoom} rightPan>
                         <div style={{width: `${zoom * 100}%`}}>

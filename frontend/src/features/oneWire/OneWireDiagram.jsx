@@ -128,7 +128,9 @@ export default function OneWireDiagram({project, setProject, pageIndex, focus, o
         [draggedType, setDraggedType] = useState(null),
         [dropTarget, setDropTarget] = useState(null),
         drawing = useRef(null),
-        sidePanel = useRef(null)
+        sidePanel = useRef(null),
+        // an element added with a click in the palette: the drawing scrolls to it (it may land on another sheet, e.g. the end of a long bus)
+        [revealId, setRevealId] = useState(null)
     // a focus (e.g. the message of a check): select the element and scroll the drawing to it (when it is drawn on this sheet), then report it as handled
     useEffect(() => {
         if (!focus) return
@@ -141,6 +143,12 @@ export default function OneWireDiagram({project, setProject, pageIndex, focus, o
         }
         onFocused?.()
     }, [focus])
+    useEffect(() => {
+        if (revealId == null) return
+        const drawn = drawing.current?.querySelector(`[data-nid="${String(revealId).replace(/["\\]/g, '\\$&')}"]`)
+        if (drawn) setTimeout(() => centerInView(drawn), 50)
+        setRevealId(null)
+    }, [revealId, project])
     const unfold = (ids) =>
         setFolded((current) => (ids.some((id) => current.has(id)) ? new Set([...current].filter((id) => !ids.includes(id))) : current))
     const toggleFold = (id) =>
@@ -209,6 +217,14 @@ export default function OneWireDiagram({project, setProject, pageIndex, focus, o
         const symbolType = clickedType.k === 'bord' && selected && CIRCUIT_TYPES.includes(selected.type) ? typeOfKey('subbord') : clickedType
         let node = newNodeOf(symbolType)
         if (!symbolType.parents.length) return setTree([...tree, node])
+        // a circuit while an element of a circuit is selected: the next circuit, right after that one (on the same board)
+        const selectedCircuit = selected && symbolType.k === 'kring' ? drawnCircuitOf(tree, selected.id) : null,
+            circuitParent = selectedCircuit && parentOf(tree, selectedCircuit.id)
+        if (circuitParent && symbolType.parents.includes(circuitParent.type)) {
+            setTree(addSibling(tree, selectedCircuit.id, node))
+            setSelectedId(node.id)
+            return setRevealId(node.id)
+        }
         const parent = parentFor(symbolType)
         // a differentieel on a board would group circuits and is not drawn while it has none: like a drop, it makes a circuit protected by a
         // differentieel instead (under a circuit it stays a differentieel, drawn on the line)
@@ -223,7 +239,8 @@ export default function OneWireDiagram({project, setProject, pageIndex, focus, o
         }
         setTree(replaceNode(tree, parent.id, (target) => [{...target, children: [...target.children, node]}]))
         unfold([parent.id])
-        if (DISTRIBUTION_TYPES.includes(symbolType.k)) setSelectedId(node.id)
+        if (DISTRIBUTION_TYPES.includes(symbolType.k) || node.type === 'kring') setSelectedId(node.id)
+        setRevealId(node.id)
     }
     // dropped from the palette: a differentieel makes a new circuit (a kring) that is protected by a differentieel, just like an automaat makes a circuit
     const newDroppedNode = (symbolType) => {

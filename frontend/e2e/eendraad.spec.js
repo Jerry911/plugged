@@ -386,3 +386,87 @@ test('a dropped Differentieel is drawn as a differentieel (Δ30mA, Type A), and 
     ])
     expect(saved.een[0].tree[0].children[0].children).toHaveLength(circuitsOnBus)
 })
+
+test.describe('a click in the palette places a circuit next in line, and it is shown', () => {
+    // a long board: its bus runs over several sheets
+    const longBoard = () => {
+        const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+        const circuits = Array.from({length: 24}, (_, index) =>
+            node('K' + index, 'kring', [node('S' + index, 'stopcontact'), node('L' + index, 'lichtpunt')], {
+                label: letters[index],
+                info: 'B16 2P XVB Cca 3G2,5',
+                p: {bescherming: 'automatisch', polen: 2, amp: 16, curve: 'B', kabel: 'XVB Cca 3G2,5'},
+            }),
+        )
+        return project({een: [{id: 'e1', name: 'Blad 1', tree: [node('A', 'aansluiting', [node('B', 'bord', circuits)])]}]})
+    }
+    const click = async (app, key) => {
+        const button = app.paletteButton(key)
+        await button.evaluate((element) => (element.closest('details').open = true))
+        await button.click()
+    }
+    const onSheet = (page, id) => page.locator(`svg.sheet [data-nid="${id}"]`).first()
+    const busOf = (saved) => saved.een[0].tree[0].children[0].children
+
+    test('on a small board: an automaat and a differentieel are drawn on the bus at once', async ({page, app, backend}) => {
+        await app.open(backend, project())
+        await click(app, 'kring')
+        let saved = await app.save(backend)
+        const circuit = busOf(saved).at(-1)
+        expect(circuit).toMatchObject({type: 'kring', label: 'A'})
+        await expect(onSheet(page, circuit.id)).toBeVisible()
+        await expect(page.locator('#eds-props')).toBeVisible() // it is selected
+        // nothing selected: a differentieel becomes the next circuit, drawn with its Δ30mA
+        await page.locator('#eds-props-close, #eds-close').first().click().catch(() => {})
+        await page.keyboard.press('Escape')
+        await page.locator('svg.sheet').first().click({position: {x: 5, y: 5}})
+        await click(app, 'diff')
+        saved = await app.save(backend)
+        const differential = busOf(saved).at(-1)
+        expect(differential).toMatchObject({type: 'kring', p: {bescherming: 'differentieel'}})
+        await expect(onSheet(page, differential.id)).toBeVisible()
+        await expect(page.locator('#eds-sheet-1 text', {hasText: 'Δ30mA'}).first()).toBeVisible()
+    })
+
+    test('on a bus over several sheets: with nothing selected the new circuit is the last one, and the drawing scrolls to it', async ({page, app, backend}) => {
+        await app.open(backend, longBoard())
+        await expect.poll(() => page.locator('svg.sheet').count()).toBeGreaterThan(2)
+        // the end of the bus is on the last sheet, below the first: not in view
+        await expect(onSheet(page, 'K23')).not.toBeInViewport()
+        await click(app, 'kring')
+        const saved = await app.save(backend),
+            circuit = busOf(saved).at(-1)
+        expect(busOf(saved)).toHaveLength(25)
+        expect(circuit).toMatchObject({type: 'kring', label: 'Y'})
+        await expect(onSheet(page, circuit.id)).toBeInViewport()
+        await expect(page.locator('#eds-label')).toHaveValue('Y')
+    })
+
+    test('with a circuit selected: the new circuit comes right after it, and is shown', async ({page, app, backend}) => {
+        await app.open(backend, longBoard())
+        await onSheet(page, 'S2').click()
+        await click(app, 'kring')
+        let saved = await app.save(backend)
+        expect(busOf(saved).map((circuit) => circuit.id).indexOf('K2')).toBe(2)
+        const added = busOf(saved)[3]
+        expect(added).toMatchObject({type: 'kring', label: 'Y'})
+        await expect(onSheet(page, added.id)).toBeInViewport()
+        // a circuit far down the bus, on a later sheet
+        await onSheet(page, 'S20').scrollIntoViewIfNeeded()
+        await onSheet(page, 'S20').click()
+        await click(app, 'kring')
+        saved = await app.save(backend)
+        const index = busOf(saved).map((circuit) => circuit.id).indexOf('K20')
+        expect(busOf(saved)[index + 1]).toMatchObject({type: 'kring', label: 'Z'})
+        await expect(onSheet(page, busOf(saved)[index + 1].id)).toBeInViewport()
+    })
+
+    test('a differentieel clicked with nothing selected on a long bus is drawn, at the end, and shown', async ({page, app, backend}) => {
+        await app.open(backend, longBoard())
+        await click(app, 'diff')
+        const saved = await app.save(backend),
+            differential = busOf(saved).at(-1)
+        expect(differential).toMatchObject({type: 'kring', p: {bescherming: 'differentieel', delta: 30}})
+        await expect(onSheet(page, differential.id)).toBeInViewport()
+    })
+})

@@ -820,3 +820,31 @@ test('after a zoom the sheet stays on the screen: zoomed in at the top with the 
         vi.unstubAllGlobals()
     }
 })
+
+describe('a circuit clicked in the palette comes next in line', () => {
+    const board = () =>
+        withTree([node('A', 'aansluiting', [node('B', 'bord', [node('K1', 'kring', [node('S1', 'stopcontact')], {label: 'A'}), node('K2', 'kring', [node('S2', 'stopcontact')], {label: 'B'})])])])
+    test('right after the circuit of the selected element, selected and on the same board', () => {
+        const {container, spy} = mount(OneWireDiagram, board(), {pageIndex: 0})
+        pick(container, 'S1')
+        fireEvent.click(pal('kring'))
+        const circuits = find(spy.project.een[0].tree, 'B').children
+        expect(circuits.map((circuit) => circuit.id)[0]).toBe('K1')
+        expect(circuits[1]).toMatchObject({type: 'kring', label: 'C'})
+        expect(circuits[2].id).toBe('K2')
+        expect(getById('eds-label')).toHaveValue('C')
+    })
+    test('with the circuit itself selected the same; with nothing selected at the end of the board', () => {
+        const {container, spy} = mount(OneWireDiagram, board(), {pageIndex: 0})
+        pick(container, 'K1')
+        fireEvent.click(pal('kring'))
+        expect(find(spy.project.een[0].tree, 'B').children.map((circuit) => circuit.label)).toEqual(['A', 'C', 'B'])
+    })
+    test('with nothing selected it is drawn at the end of the board (the browser tests check that the drawing scrolls to it)', () => {
+        const {spy} = mount(OneWireDiagram, board(), {pageIndex: 0})
+        fireEvent.click(pal('kring'))
+        const added = find(spy.project.een[0].tree, 'B').children.at(-1)
+        expect(added).toMatchObject({type: 'kring', label: 'C'})
+        expect(document.querySelector(`svg.sheet [data-nid="${added.id}"]`)).not.toBeNull()
+    })
+})

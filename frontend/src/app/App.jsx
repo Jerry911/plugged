@@ -113,7 +113,8 @@ function Editor({library, user, onLogout, onAccountDeleted}) {
     const {project, setProject, reset, undo, redo, canUndo, canRedo} = useHistory(initialProject),
         savedSnapshot = useRef(JSON.stringify(initialProject)), // the project as last saved or loaded: tells whether there are unsaved changes
         [footerDialog, setFooterDialog] = useState(null),
-        [tab, setTab] = useState(ONE_WIRE_TAB),
+        // a link to the Info page (/#info, public) opens it also for somebody who is signed in
+        [tab, setTab] = useState(() => (window.location.hash === '#info' ? INFO_TAB : ONE_WIRE_TAB)),
         [toast, setStatusMessage] = useToast(),
         [materialsOpen, setMaterialsOpen] = useState(false),
         [qrTarget, setQrTarget] = useState(null), // {id, title} of the project whose QR code is shown: the open one (Project menu, Alt+Q) or one from the list

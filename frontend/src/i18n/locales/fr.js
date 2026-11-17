@@ -745,6 +745,8 @@ export default {
             free: 'Gratuit et logiciel libre (AGPL-3.0), sans publicité.',
             source: 'Code source sur GitHub',
             donateHint: 'Plugged est gratuit. Une petite contribution aide à poursuivre son développement.',
+            visitorHint: 'Pour dessiner, il faut un compte : inscrivez-vous, et dès qu’un administrateur approuve votre compte, vous pouvez vous connecter.',
+            visitorHintNoRegister: 'Pour dessiner, il faut un compte de cette installation.',
             imageAlt: 'Le schéma unifilaire dans Plugged',
         },
         sections: {
@@ -1272,6 +1274,9 @@ export default {
             noAdminEmail:
                 'Aucune adresse e-mail n’est configurée pour l’administrateur. Démarrez Plugged avec la variable d’environnement PLUGGED_ADMIN_EMAIL (p. ex. PLUGGED_ADMIN_EMAIL=vous@exemple.be) et rechargez cette page.',
         },
+        infoLink: 'Info',
+        infoTeaser: 'Qu’est-ce que Plugged et que pouvez-vous en faire ?',
+        infoTeaserLink: 'Lire les informations (sans compte)',
         login: {
             title: 'Connexion',
             submit: 'Se connecter',

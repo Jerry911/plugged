@@ -746,6 +746,8 @@ export default {
             free: 'Gratis en vrije software (AGPL-3.0), zonder reclame.',
             source: 'Broncode op GitHub',
             donateHint: 'Plugged is gratis. Met een kleine bijdrage help je het verder te ontwikkelen.',
+            visitorHint: 'Om te tekenen heb je een account nodig: registreer je, en zodra een beheerder je account goedkeurt kan je aanmelden.',
+            visitorHintNoRegister: 'Om te tekenen heb je een account nodig van deze installatie.',
             imageAlt: 'Het eendraadschema in Plugged',
         },
         sections: {
@@ -818,7 +820,7 @@ export default {
                 },
                 {
                     id: 'samenwerken',
-                    title: 'Samen aan een project werken',
+                    title: 'Samen aan een project',
                     text: 'Heeft iemand anders hetzelfde project open, dan zie je dat in de bovenbalk (👥, oranje als die persoon nog niet-opgeslagen wijzigingen heeft).',
                     points: [
                         'Slaat die persoon op, dan laadt de nieuwe versie bij jou meteen, tenzij jij zelf iets onbewaard hebt: dan krijg je ze aangeboden.',
@@ -1276,6 +1278,9 @@ export default {
             noAdminEmail:
                 'Er is geen e-mailadres voor de beheerder ingesteld. Start Plugged met de omgevingsvariabele PLUGGED_ADMIN_EMAIL (bv. PLUGGED_ADMIN_EMAIL=jij@voorbeeld.be) en laad deze pagina opnieuw.',
         },
+        infoLink: 'Info',
+        infoTeaser: 'Wat is Plugged en wat kan je ermee?',
+        infoTeaserLink: 'Lees de info (geen account nodig)',
         login: {
             title: 'Aanmelden',
             submit: 'Aanmelden',

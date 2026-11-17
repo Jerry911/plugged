@@ -8,15 +8,35 @@ import LanguageSelect from '../../i18n/LanguageSelect.jsx'
 import {changePassword, login, logout, register, setupAdmin} from '../../api/authApi.js'
 
 /** The top bar (name and language) and a card in the middle of the page. */
-export function AuthLayout({children}) {
+/**
+ * The page around signing in, registering and the public Info page: the brand, links and the language. `onInfo` shows a link to the
+ * Info page (which needs no account); on the Info page itself (`wide`) `onLogin` and `onRegister` lead back.
+ */
+export function AuthLayout({children, onInfo, onLogin, onRegister, wide}) {
+    const {t} = useTranslation()
     return (
         <div className="authpage">
             <div className="bar ui authbar">
                 <span className="authbrand">Plugged</span>
                 <span style={{flex: 1}} />
+                {onInfo && (
+                    <a id="auth-info-link" className="authbarlink" href="#info" onClick={onInfo}>
+                        ⓘ {t('auth.infoLink')}
+                    </a>
+                )}
+                {onLogin && (
+                    <a id="auth-login-link" className="authbarlink" href="#" onClick={onLogin}>
+                        {t('auth.login.title')}
+                    </a>
+                )}
+                {onRegister && (
+                    <a id="auth-register-link" className="authbarlink" href="#register" onClick={onRegister}>
+                        {t('auth.register.title')}
+                    </a>
+                )}
                 <LanguageSelect />
             </div>
-            <main className="authmain">{children}</main>
+            <main className={'authmain' + (wide ? ' wide' : '')}>{children}</main>
         </div>
     )
 }
@@ -151,7 +171,7 @@ export function ChangePasswordScreen({user, onDone, onLogout}) {
 }
 
 /** First start: the details of the administrator. The email address is the one of PLUGGED_ADMIN_EMAIL and cannot be changed. */
-export function SetupScreen({adminEmail, onDone}) {
+export function SetupScreen({adminEmail, onDone, onInfo}) {
     const {t} = useTranslation()
     const [name, setName] = useState(''),
         [surname, setSurname] = useState(''),
@@ -167,7 +187,7 @@ export function SetupScreen({adminEmail, onDone}) {
             return result
         })
     return (
-        <AuthLayout>
+        <AuthLayout onInfo={onInfo}>
             <form id="setup-form" className="authcard" onSubmit={onSubmit} noValidate>
                 <h1>{t('auth.setup.title')}</h1>
                 <p className="authintro">{t('auth.setup.intro')}</p>
@@ -228,16 +248,27 @@ export function LoginForm({email: initialEmail = '', notice, onLogin, onRegister
     )
 }
 
-export function LoginScreen(props) {
+export function LoginScreen({onInfo, ...props}) {
+    const {t} = useTranslation()
     return (
-        <AuthLayout>
-            <LoginForm {...props} />
+        <AuthLayout onInfo={onInfo}>
+            <div className="authstack">
+                <LoginForm {...props} />
+                {onInfo && (
+                    <p id="auth-info-teaser" className="authteaser">
+                        {t('auth.infoTeaser')}{' '}
+                        <a id="link-info" href="#info" onClick={onInfo}>
+                            {t('auth.infoTeaserLink')}
+                        </a>
+                    </p>
+                )}
+            </div>
         </AuthLayout>
     )
 }
 
 /** A new account. It can sign in once the administrator has approved it: `onRegistered(email)` goes back to signing in. */
-export function RegisterScreen({onRegistered, onLogin}) {
+export function RegisterScreen({onRegistered, onLogin, onInfo}) {
     const {t} = useTranslation()
     const [name, setName] = useState(''),
         [surname, setSurname] = useState(''),
@@ -253,7 +284,7 @@ export function RegisterScreen({onRegistered, onLogin}) {
             return result
         })
     return (
-        <AuthLayout>
+        <AuthLayout onInfo={onInfo}>
             <form id="register-form" className="authcard" onSubmit={onSubmit} noValidate>
                 <h1>{t('auth.register.title')}</h1>
                 <p className="authintro">{t('auth.register.intro')}</p>

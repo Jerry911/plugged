@@ -221,9 +221,10 @@ const Points = ({items, className}) =>
 
 /**
  * The server tells what this installation offers: a PayPal link (plugged.donate.paypal-url) and the address of the contact form
- * (plugged.admin.email). onTour starts the guided tour.
+ * (plugged.admin.email). onTour starts the guided tour. `visitor`: somebody who is not signed in (the page is public, #info): instead of
+ * the tour the top offers signing in and, when `onRegister` is given, registering.
  */
-export default function InfoPage({onTour}) {
+export default function InfoPage({onTour, visitor, onLogin, onRegister}) {
     const {t} = useTranslation()
     const [info, setInfo] = useState({donateUrl: '', contactEmail: ''}),
         [enlarged, setEnlarged] = useState(null)
@@ -246,6 +247,16 @@ export default function InfoPage({onTour}) {
                     <p className="tagline">{t('info.hero.tagline')}</p>
                     <p className="herofree">{t('info.hero.free')}</p>
                     <div className="heroactions">
+                        {visitor && onLogin && (
+                            <a id="info-login" className="herobutton" href="#" onClick={onLogin}>
+                                {t('auth.login.title')}
+                            </a>
+                        )}
+                        {visitor && onRegister && (
+                            <a id="info-register" className="herobutton outline" href="#register" onClick={onRegister}>
+                                {t('auth.register.title')}
+                            </a>
+                        )}
                         {onTour && (
                             <button id="btn-tour" className="accent" onClick={onTour}>
                                 ▶ {t('info.startTour')}
@@ -255,6 +266,7 @@ export default function InfoPage({onTour}) {
                         <SourceLink id="source-link" />
                     </div>
                     {onTour && <p className="tourhint">{t('info.tourHint')}</p>}
+                    {visitor && <p className="tourhint">{t(onRegister ? 'info.hero.visitorHint' : 'info.hero.visitorHintNoRegister')}</p>}
                     <p className="donatehint">{t('info.hero.donateHint')}</p>
                 </div>
                 <Shot name="eendraadschema" alt={t('info.hero.imageAlt')} onOpen={setEnlarged} />

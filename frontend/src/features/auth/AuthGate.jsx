@@ -1,17 +1,20 @@
 // Copyright 2026 Pleysier Jeroen
 // SPDX-License-Identifier: AGPL-3.0-only
-// Who is using the application. Before the editor: the first start (no administrator yet), else signing in or registering (#register).
+// Who is using the application. Before the editor: the first start (no administrator yet), else signing in, registering (#register) or
+// reading the Info page (#info), which is public: anyone can read what Plugged is without an account.
 // The editor gets the signed-in user and a way to sign out. When the session ends during the work (a 401 of the API), the sign-in form
 // opens on top of the editor, so nothing that was not saved yet is lost.
 import {useCallback, useEffect, useState} from 'react'
 import {useTranslation} from '../../i18n/I18nProvider.jsx'
 import {fetchAuthStatus, logout} from '../../api/authApi.js'
 import {onUnauthorized} from '../../api/http.js'
-import {ChangePasswordScreen, LoginForm, LoginScreen, RegisterScreen, SetupScreen} from './AuthScreens.jsx'
+import {AuthLayout, ChangePasswordScreen, LoginForm, LoginScreen, RegisterScreen, SetupScreen} from './AuthScreens.jsx'
+import InfoPage from '../info/InfoPage.jsx'
 
 const REGISTER_HASH = '#register'
+export const INFO_HASH = '#info'
 export const STATUS_REFRESH_MS = 60_000
-const screenOfHash = () => (window.location.hash === REGISTER_HASH ? 'register' : 'login')
+const screenOfHash = () => (window.location.hash === REGISTER_HASH ? 'register' : window.location.hash === INFO_HASH ? 'info' : 'login')
 
 /** `children({user, onLogout})` renders the application for the signed-in user. */
 export default function AuthGate({children}) {
@@ -59,8 +62,9 @@ export default function AuthGate({children}) {
     }, [signedInId])
     const go = (target) => (event) => {
         event?.preventDefault()
-        history.replaceState(null, '', target === 'register' ? REGISTER_HASH : window.location.pathname + window.location.search)
+        history.replaceState(null, '', target === 'register' ? REGISTER_HASH : target === 'info' ? INFO_HASH : window.location.pathname + window.location.search)
         setScreen(target)
+        window.scrollTo?.(0, 0)
     }
     const signedIn = (user) => {
         setNotice(null)
@@ -87,11 +91,19 @@ export default function AuthGate({children}) {
                 </button>
             </div>
         )
-    if (state.setupRequired) return <SetupScreen adminEmail={state.adminEmail} onDone={signedIn} />
+    // the Info page needs no account (also not before the first administrator exists)
+    if (!state.user && screen === 'info')
+        return (
+            <AuthLayout wide onLogin={go('login')} onRegister={state.setupRequired ? undefined : go('register')}>
+                <InfoPage visitor onLogin={go('login')} onRegister={state.setupRequired ? undefined : go('register')} />
+            </AuthLayout>
+        )
+    if (state.setupRequired) return <SetupScreen adminEmail={state.adminEmail} onDone={signedIn} onInfo={go('info')} />
     if (!state.user) {
         if (screen === 'register')
             return (
                 <RegisterScreen
+                    onInfo={go('info')}
                     onLogin={go('login')}
                     onRegistered={(email) => {
                         setNotice({text: t('auth.register.done'), email})
@@ -99,7 +111,7 @@ export default function AuthGate({children}) {
                     }}
                 />
             )
-        return <LoginScreen key={notice?.email} email={notice?.email} notice={notice?.text} onLogin={signedIn} onRegister={go('register')} />
+        return <LoginScreen key={notice?.email} email={notice?.email} notice={notice?.text} onLogin={signedIn} onRegister={go('register')} onInfo={go('info')} />
     }
     // signed in with a temporary password of the administrator: a new one first
     if (state.user.mustChangePassword)

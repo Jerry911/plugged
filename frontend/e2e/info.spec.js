@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // The Info tab (about, how to, faq, contact, donate) and the combined import / export buttons of the top bar.
 import {readFileSync} from 'node:fs'
-import {test, expect, testInfo, t} from './fixtures.js'
+import {test, expect, testInfo, t, REAL} from './fixtures.js'
 import {edsFile, project, withCircuit} from './data.js'
 
 test.describe('Info page', () => {
@@ -150,5 +150,59 @@ test.describe('import and export buttons', () => {
         await app.open(backend)
         await page.locator('#import-input').setInputFiles({name: 'kapot.json', mimeType: 'application/json', buffer: Buffer.from('geen json')})
         await expect.poll(() => dialogs.messages.at(-1)).toBe(t('app.invalidProjectFile'))
+    })
+})
+
+test.describe('Info page without an account', () => {
+    /** A browser of somebody without a session (in the fake: the server says nobody is signed in). */
+    const visitor = async (browser, baseURL, backend) => {
+        const context = await browser.newContext({baseURL, locale: 'nl-BE'}),
+            page = await context.newPage()
+        await backend.install(page)
+        if (!REAL)
+            await page.route('**/api/auth/status', (route) =>
+                route.fulfill({status: 200, contentType: 'application/json', body: JSON.stringify({setupRequired: false, adminEmail: testInfo.contactEmail, user: null})}),
+            )
+        return {page, close: () => context.close()}
+    }
+    test('anybody can read it: from the sign-in page, or straight from the address /#info', async ({browser, baseURL, backend}) => {
+        const {page, close} = await visitor(browser, baseURL, backend)
+        await page.goto('/')
+        await expect(page.locator('#login-form')).toBeVisible()
+        await page.locator('#link-info').click()
+        await expect(page.locator('#info-page')).toBeVisible()
+        await expect(page).toHaveURL(/#info$/)
+        // everything is there, with its screenshots, the donate button and the source code
+        await expect(page.locator('#info-functies article.feature')).toHaveCount(9)
+        await expect(page.locator('#donate-button')).toBeInViewport()
+        await expect(page.locator('#donate-button')).toHaveAttribute('href', testInfo.donateUrl)
+        await expect(page.locator('#source-link')).toHaveAttribute('href', 'https://github.com/Jerry911/plugged')
+        await expect.poll(() => page.locator('#info-hero img').evaluate((image) => image.complete && image.naturalWidth)).toBeGreaterThan(1000)
+        await expect(page.locator('#btn-tour')).toHaveCount(0)
+        // the language can be chosen there too
+        await page.locator('#language-select').selectOption('en')
+        await expect(page.locator('#info-functies h2')).toHaveText('What can you do with Plugged?')
+        await page.locator('#language-select').selectOption('nl')
+        // and from there to signing in or registering
+        await page.locator('#info-register').click()
+        await expect(page.locator('#register-form')).toBeVisible()
+        await page.locator('#auth-info-link').click()
+        await expect(page.locator('#info-page')).toBeVisible()
+        await page.locator('#info-login').click()
+        await expect(page.locator('#login-form')).toBeVisible()
+        // straight from the address, e.g. a link in a mail or on a website
+        await page.goto('/#info')
+        await expect(page.locator('#info-page')).toBeVisible()
+        await expect(page.locator('#login-form')).toHaveCount(0)
+        await close()
+    })
+    test('somebody who is signed in and opens /#info gets the Info tab of the editor', async ({page, app, backend}) => {
+        await backend.seed(1, withCircuit())
+        await page.goto('/#info')
+        await expect(page.locator('#tab-info')).toHaveClass(/on/)
+        await expect(page.locator('#info-page')).toBeVisible()
+        await expect(page.locator('#btn-tour')).toBeVisible()
+        await expect(page.locator('#info-login')).toHaveCount(0)
+        void app
     })
 })

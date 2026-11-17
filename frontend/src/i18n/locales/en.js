@@ -744,6 +744,8 @@ export default {
             free: 'Free and open source software (AGPL-3.0), without ads.',
             source: 'Source code on GitHub',
             donateHint: 'Plugged is free. A small contribution helps to keep developing it.',
+            visitorHint: 'To draw you need an account: register, and as soon as an administrator approves your account you can sign in.',
+            visitorHintNoRegister: 'To draw you need an account of this installation.',
             imageAlt: 'The single-line diagram in Plugged',
         },
         sections: {
@@ -1271,6 +1273,9 @@ export default {
             noAdminEmail:
                 'No email address is configured for the administrator. Start Plugged with the environment variable PLUGGED_ADMIN_EMAIL (e.g. PLUGGED_ADMIN_EMAIL=you@example.com) and reload this page.',
         },
+        infoLink: 'Info',
+        infoTeaser: 'What is Plugged and what can you do with it?',
+        infoTeaserLink: 'Read the info (no account needed)',
         login: {
             title: 'Sign in',
             submit: 'Sign in',

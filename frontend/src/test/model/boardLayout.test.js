@@ -31,6 +31,7 @@ import {
     connectionReach,
 } from '../../model/boardLayout.js'
 import {setLanguage} from '../../i18n/translate.js'
+import {typeOf} from '../../symbols/symbolLibrary.js'
 import {flatten} from '../../model/tree.js'
 import {FOOTER_TITLE_FONT_SIZE} from '../../components/Sheet.jsx'
 import {baseProject, node} from '../utils.jsx'
@@ -87,6 +88,43 @@ test('layoutCircuit draws stem, breaker, circuitLetter, specs and cable', () => 
     expect(syms(c.items)).toHaveLength(1)
     expect(c.minY).toBeLessThan(-215)
     expect(c.w).toBeGreaterThanOrEqual(86)
+})
+describe('a circuit protected by a differentieel (Bescherming differentieel, as a dropped Differentieel makes it)', () => {
+    const shapesOf = (key) => typeOf(baseProject(), key).shapes
+    const differential = (extra = {}, kids = []) =>
+        kring('A', kids, {bescherming: 'differentieel', polen: 2, amp: 25, curve: '', delta: 30, diffType: 'A', kortsl: '', ...extra}, {label: 'A'})
+    test('is drawn with the differentieel symbol and its specs: Δ30mA, 2P - 25A, Type A (not as an automaat)', () => {
+        const c = layoutCircuit(baseProject(), differential()),
+            breaker = c.items.filter((i) => i.breaker)
+        expect(breaker).toHaveLength(1)
+        expect(breaker[0].shapes).toEqual(shapesOf('diff')) // (the same drawing as an automaat in the standard library, but an installation may change it)
+        const t = texts(c.items).map((x) => x.text)
+        expect(t).toEqual(expect.arrayContaining(['Δ30mA', '2P - 25A', 'Type A', 'XVB Cca 3G2,5']))
+        expect(t.some((x) => /Curve/.test(x))).toBe(false)
+        expect(t).not.toContain('3000')
+    })
+    test('a differentieelautomaat (from an EDS file) shows its curve too; a typed short-circuit rating is kept', () => {
+        const t = texts(layoutCircuit(baseProject(), differential({bescherming: 'differentieelautomaat', curve: 'C', amp: 16, kortsl: 6})).items).map((x) => x.text)
+        expect(t).toEqual(expect.arrayContaining(['Δ30mA', '2P - 16A', 'Curve C', 'Type A', '6000']))
+    })
+    test('switched back to automaat it is a plain breaker again', () => {
+        const c = layoutCircuit(baseProject(), differential({bescherming: 'automatisch', curve: 'B'}))
+        expect(c.items.find((i) => i.breaker).shapes).toEqual(shapesOf('kring'))
+        expect(texts(c.items).map((x) => x.text)).not.toContain('Δ30mA')
+    })
+    test('under another circuit it lies on the line with the differentieel symbol and the same specs', () => {
+        const inner = node('K2', 'kring', [], {label: 'K2', p: {bescherming: 'differentieel', polen: 2, amp: 40, delta: 300, diffType: 'A', kabel: 'XVB Cca 3G6'}}),
+            c = layoutCircuit(baseProject(), kring('AC', [inner])),
+            onTheLine = c.items.find((i) => i.breaker && i.id === 'K2')
+        expect(onTheLine.rotation).toBe(90)
+        expect(onTheLine.shapes).toEqual(shapesOf('diff'))
+        expect(texts(c.items).filter((x) => x.id === 'K2').map((x) => x.text)).toEqual(['Δ300mA', '2P - 40A', 'Type A', 'XVB Cca 3G6', 'K2'])
+    })
+    test('a sub board under it is drawn after it, as with a differentieel from an EDS file', () => {
+        const c = layoutCircuit(baseProject(), differential({}, [node('T', 'subbord', [], {label: 'Tuinhuis'})]))
+        expect(c.items.find((i) => i.breaker).shapes).toEqual(shapesOf('diff'))
+        expect(c.items.some((i) => i.kind === 'rect' && i.id === 'T')).toBe(true)
+    })
 })
 test('layoutCircuit without protection has no breaker or specs; info is the fallback spec text', () => {
     const none = layoutCircuit(baseProject(), kring('K', [], {bescherming: 'geen'}, {label: 'K'}))

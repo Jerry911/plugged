@@ -177,6 +177,9 @@ const ratingText = (poles, amps) => `${poles || 2}P - ${amps}A`
  * The lines next to the breaker of a differentieel, like the differentieel of the aansluiting: 'Δ30mA', '4P - 40A', ('Curve C' of a
  * differentieelautomaat), 'Type A'. A differentieel without these properties (typed in by hand) shows its info instead.
  */
+/** Is this circuit protected by a differentieel (Bescherming differentieel, or differentieelautomaat from an EDS file)? */
+export const isDifferentialProtection = (properties = {}) => properties.bescherming === 'differentieel' || properties.bescherming === 'differentieelautomaat'
+
 export const differentialSpecs = (properties = {}, info = '') =>
     properties.delta || properties.amp
         ? [
@@ -392,7 +395,7 @@ const INLINE_BREAKER_WIDTH = 64
 const inlineSpecs = (node) => {
     const properties = node.p || {},
         specs =
-            node.type === 'diff'
+            node.type === 'diff' || (node.type === 'kring' && isDifferentialProtection(properties))
                 ? differentialSpecs(properties, node.info)
                 : properties.amp
                   ? [ratingText(properties.polen, properties.amp), properties.curve ? curveText(properties.curve) : '']
@@ -401,8 +404,8 @@ const inlineSpecs = (node) => {
 }
 
 function drawInlineBreaker(project, node, x, y, out) {
-    const isDifferential = node.type === 'diff',
-        properties = node.p || {},
+    const properties = node.p || {},
+        isDifferential = node.type === 'diff' || (node.type === 'kring' && isDifferentialProtection(properties)),
         gridUnit = BREAKER_SIZE / 24,
         centreX = x + INLINE_BREAKER_WIDTH / 2,
         pivotX = centreX - 2 * gridUnit
@@ -569,12 +572,15 @@ export function layoutCircuit(project, node) {
         // the name sits left of the placement symbols
         nameX = stemX - 14 - (withPlacement ? PLACEMENT_WIDTH : 0),
         unprotected = properties.bescherming === 'geen',
+        // a circuit protected by a differentieel (a differentieel that is a circuit of its own, or a kring with Bescherming differentieel):
+        // the differentieel symbol and its specs (Δ30mA, 2P - 25A, Type A), like the differentieel of the aansluiting
+        differential = node.diff || isDifferentialProtection(properties),
         cable = properties.kabel || '',
         // the specs of the breaker and its short-circuit rating stand next to each other right of the stem, a bit above the bus; the cable
         // stands above them along the stem
         specs = unprotected
             ? []
-            : node.diff
+            : differential
               ? differentialSpecs(properties, node.info)
               : properties.amp
                 ? [ratingText(properties.polen, properties.amp), properties.curve ? curveText(properties.curve) : null]
@@ -598,7 +604,7 @@ export function layoutCircuit(project, node) {
         // (with its filled block, see the kring symbol), the line carries on above the lever
         out.push(
             lineItem(stemX, 0, stemX, -30),
-            breakerItem(project, node.diff ? 'diff' : 'kring', stemX, -30),
+            breakerItem(project, differential ? 'diff' : 'kring', stemX, -30),
             lineItem(stemX, -30 - BREAKER_TIP, stemX, topY),
         )
     }

@@ -24,6 +24,11 @@ import ZoomControls from '../../components/ZoomControls.jsx'
 import {useTranslation} from '../../i18n/I18nProvider.jsx'
 import {BoardSheet} from './BoardSheet.jsx'
 import {DISTRIBUTION_TYPES} from './elementFields.js'
+
+// what a circuit is (a verdeelbord clicked while one is selected becomes the sub board it feeds) and what a board is (a differentieel clicked
+// onto one becomes a circuit protected by a differentieel)
+const CIRCUIT_TYPES = ['kring', 'diff'],
+    BOARD_TYPES = ['bord', 'subbord']
 import SymbolPalette from './SymbolPalette.jsx'
 import PropertiesPanel from './PropertiesPanel.jsx'
 import StructureTree from './StructureTree.jsx'
@@ -193,10 +198,15 @@ export default function OneWireDiagram({project, setProject, pageIndex, focus, o
         return node
     }
     // a click in the palette
-    const addFromPalette = (symbolType) => {
-        const node = newNodeOf(symbolType)
+    const addFromPalette = (clickedType) => {
+        // a verdeelbord while a circuit is selected: the board that circuit feeds, a sub board under it (as when it is dropped on the circuit)
+        const symbolType = clickedType.k === 'bord' && selected && CIRCUIT_TYPES.includes(selected.type) ? typeOfKey('subbord') : clickedType
+        let node = newNodeOf(symbolType)
         if (!symbolType.parents.length) return setTree([...tree, node])
         const parent = parentFor(symbolType)
+        // a differentieel on a board would group circuits and is not drawn while it has none: like a drop, it makes a circuit protected by a
+        // differentieel instead (under a circuit it stays a differentieel, drawn on the line)
+        if (symbolType.k === 'diff' && BOARD_TYPES.includes(parent?.type)) node = newDroppedNode(symbolType)
         if (!parent) {
             if (free && !selected) return setTree([...tree, node])
             return alert(
@@ -297,9 +307,12 @@ export default function OneWireDiagram({project, setProject, pageIndex, focus, o
                     : tree.length
                       ? {id: tree.at(-1).id, mode: 'after', zone: 'bus'}
                       : {id: null, mode: 'root', zone: 'bus'},
-            onCircuit = (circuit, hitArea) => {
+            onCircuit = (circuit, hitArea, onIt = false) => {
                 if (!makesCircuit) {
                     if (key === 'zekering') return {id: circuit.id, mode: 'before', zone: 'circuit'}
+                    // a verdeelbord right on a circuit (its stem, letter or area): the board that circuit feeds, a sub board (on the bus or in
+                    // the empty space it stays part of the main line)
+                    if (key === 'bord' && onIt) return {id: circuit.id, mode: 'after', zone: 'circuit', as: 'subbord'}
                     return MAIN_LINE_TYPES.includes(key) || key === 'bord' ? onBus() : {id: circuit.id, mode: 'after', zone: 'circuit'}
                 }
                 const box = (hitArea || sheetElement?.querySelector?.(`[data-hit="${circuit.id}"]`))?.getBoundingClientRect()
@@ -326,7 +339,7 @@ export default function OneWireDiagram({project, setProject, pageIndex, focus, o
         }
         const circuit = circuitOf(tree, target.id)
         if (!circuit) return onBus() // the head: the main line
-        if (target.id === circuit.id) return onCircuit(circuit, element.hasAttribute('data-hit') ? element : null) // the circuit itself: its area, stem or letter
+        if (target.id === circuit.id) return onCircuit(circuit, element.hasAttribute('data-hit') ? element : null, true) // the circuit itself: its area, stem or letter
         if (makesCircuit) return onCircuit(circuit)
         const splitsInHalves = element.tagName.toLowerCase() !== 'text',
             box = element.getBoundingClientRect()
@@ -342,7 +355,7 @@ export default function OneWireDiagram({project, setProject, pageIndex, focus, o
         if (!target) return dropTarget && setDropTarget(null)
         event.preventDefault()
         if (event.dataTransfer) event.dataTransfer.dropEffect = 'copy'
-        if (!dropTarget || dropTarget.id !== target.id || dropTarget.mode !== target.mode || dropTarget.sheetNumber !== sheetNumber)
+        if (!dropTarget || dropTarget.id !== target.id || dropTarget.mode !== target.mode || dropTarget.as !== target.as || dropTarget.sheetNumber !== sheetNumber)
             setDropTarget({...target, sheetNumber})
     }
     const onDragLeave = (event) => {
@@ -352,13 +365,13 @@ export default function OneWireDiagram({project, setProject, pageIndex, focus, o
         const target = dropTargetAt(event)
         if (!target) return stopDrag()
         event.preventDefault()
-        insertSymbol(target.id, target.mode, draggedType)
+        insertSymbol(target.id, target.mode, target.as ? typeOfKey(target.as) : draggedType)
         stopDrag()
     }
     // what the sheet would look like after the drop: the whole sheet is laid out again with the new element in it (drawn in blue)
     const dropPreview = (() => {
         if (!dropTarget || !draggedType) return null
-        const ghost = {...newDroppedNode(draggedType), id: GHOST_ID},
+        const ghost = {...newDroppedNode(dropTarget.as ? typeOfKey(dropTarget.as) : draggedType), id: GHOST_ID},
             previewProject = {
                 ...project,
                 een: project.een.map((existing, index) => (index === pageIndex ? {...existing, tree: insertAt(tree, dropTarget.id, dropTarget.mode, ghost)} : existing)),

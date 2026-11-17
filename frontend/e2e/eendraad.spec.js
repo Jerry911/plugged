@@ -345,3 +345,32 @@ test.describe('the drawing', () => {
         expect(types(saved.een[0].tree).filter((t) => t === 'bord')).toHaveLength(2)
     })
 })
+
+test('a dropped Differentieel is drawn as a differentieel (Δ30mA, Type A), and a Verdeelbord dropped on it becomes the sub board it feeds', async ({page, app, backend}) => {
+    await app.open(backend, project())
+    const drag = async (key, target) => {
+        const button = app.paletteButton(key)
+        await button.evaluate((element) => (element.closest('details').open = true))
+        const box = await target.boundingBox()
+        await button.hover()
+        await page.mouse.down()
+        await page.mouse.move(box.x + 2, box.y + 2, {steps: 3})
+        await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2, {steps: 8})
+        await expect(page.locator('#eds-drop-preview')).toBeVisible()
+        await page.mouse.up()
+        await expect(page.locator('#eds-drop-preview')).toHaveCount(0)
+    }
+    await drag('diff', page.locator('[data-bus]').first())
+    let saved = await app.save(backend)
+    const board = saved.een[0].tree[0].children[0],
+        differential = board.children.at(-1)
+    expect(differential).toMatchObject({type: 'kring', p: {bescherming: 'differentieel', delta: 30, diffType: 'A'}})
+    const sheetTexts = () => page.locator('#eds-sheet-1 text').allTextContents()
+    expect(await sheetTexts()).toEqual(expect.arrayContaining(['Δ30mA', '2P - 25A', 'Type A']))
+    expect((await sheetTexts()).some((text) => /Curve/.test(text))).toBe(false)
+    await drag('bord', page.locator(`[data-stem="${differential.id}"]`).first())
+    saved = await app.save(backend)
+    const fed = saved.een[0].tree[0].children[0].children.find((child) => child.id === differential.id)
+    expect(fed.children.map((child) => child.type)).toEqual(['subbord'])
+    expect(saved.een[0].tree[0].children[0].children.filter((child) => child.type === 'bord')).toHaveLength(0)
+})

@@ -1,5 +1,6 @@
 // Copyright 2026 Pleysier Jeroen
 // SPDX-License-Identifier: AGPL-3.0-only
+import {flatten} from '../../../model/tree.js'
 import {createEvent, fireEvent} from '@testing-library/react'
 import OneWireDiagram, {keepZoomAnchor, zoomAnchorOf} from '../../../features/oneWire/OneWireDiagram.jsx'
 import {findNode as find, rotateNode as rotate} from '../../../model/tree.js'
@@ -655,6 +656,52 @@ test('a differentieel makes a new circuit (a kring that is protected by a differ
     fireEvent.change(byId('eds-protection'), {target: {value: 'automatisch'}})
     expect(bord().children[1].p.bescherming).toBe('automatisch')
     expect(byId('eds-field-curve')).not.toBeNull()
+})
+describe('a differentieel and the board it feeds', () => {
+    test('a dropped differentieel is drawn with Δ30mA and Type A, not as an automaat', () => {
+        const {container, spy} = mount(OneWireDiagram, circ(), {pageIndex: 0})
+        fireEvent.dragStart(pal('diff'))
+        fireEvent.drop(container.querySelector('[data-bus="B"]'), {clientX: 10})
+        const dk = find(spy.project.een[0].tree, 'B').children[1],
+            textsOfCircuit = [...container.querySelectorAll('#eds-sheet-1 text')].map((text) => text.textContent)
+        expect(dk.p.bescherming).toBe('differentieel')
+        expect(textsOfCircuit).toEqual(expect.arrayContaining(['Δ30mA', '2P - 25A', 'Type A']))
+    })
+    test('a verdeelbord dropped right on a circuit becomes the sub board it feeds (also on a differentieel)', () => {
+        const {container, spy} = mount(OneWireDiagram, circ(), {pageIndex: 0})
+        fireEvent.dragStart(pal('diff'))
+        fireEvent.drop(container.querySelector('[data-bus="B"]'), {clientX: 10})
+        const dk = find(spy.project.een[0].tree, 'B').children[1]
+        fireEvent.dragStart(pal('bord'))
+        fireEvent.dragOver(container.querySelector(`[data-stem="${dk.id}"]`), {clientX: 10})
+        expect(container.querySelector('#eds-drop-preview')).not.toBeNull()
+        fireEvent.drop(container.querySelector(`[data-stem="${dk.id}"]`), {clientX: 10})
+        expect(find(spy.project.een[0].tree, dk.id).children.map((c) => c.type)).toEqual(['subbord'])
+        // the same on an automaat, by its letter
+        fireEvent.dragStart(pal('bord'))
+        fireEvent.drop(container.querySelector('[data-stem="K"]'), {clientX: 10})
+        expect(find(spy.project.een[0].tree, 'K').children.map((c) => c.type)).toEqual(['schakelaar', 'subbord'])
+        // the main board is untouched: no second verdeelbord appeared
+        expect(flatten(spy.project.een[0].tree).filter((n) => n.type === 'bord')).toHaveLength(1)
+    })
+    test('clicking Differentieel in the palette makes the same visible circuit; under a selected circuit it stays a differentieel on the line', () => {
+        const {container, spy} = mount(OneWireDiagram, circ(), {pageIndex: 0})
+        fireEvent.click(pal('diff'))
+        const added = find(spy.project.een[0].tree, 'B').children[1]
+        expect(added).toMatchObject({type: 'kring', p: {bescherming: 'differentieel', delta: 30, diffType: 'A'}})
+        expect([...container.querySelectorAll('#eds-sheet-1 text')].map((text) => text.textContent)).toContain('Δ30mA')
+        fireEvent.click(container.querySelector('[data-nid="K"]'))
+        fireEvent.click(pal('diff'))
+        expect(find(spy.project.een[0].tree, 'K').children.map((c) => c.type)).toEqual(['schakelaar', 'diff'])
+    })
+    test('clicking Verdeelbord with a circuit selected hangs a sub board under that circuit', () => {
+        const {container, spy} = mount(OneWireDiagram, circ(), {pageIndex: 0})
+        fireEvent.click(pal('diff'))
+        const dk = find(spy.project.een[0].tree, 'B').children[1]
+        fireEvent.click(container.querySelector(`[data-nid="${dk.id}"]`))
+        fireEvent.click(pal('bord'))
+        expect(find(spy.project.een[0].tree, dk.id).children.map((c) => c.type)).toEqual(['subbord'])
+    })
 })
 test('anywhere on the sheet works: above the bus the nearest circuit counts, below it the bus', () => {
     const {container, spy} = mount(OneWireDiagram, circ(), {pageIndex: 0}),

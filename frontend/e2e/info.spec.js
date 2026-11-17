@@ -10,10 +10,58 @@ test.describe('Info page', () => {
         await app.open(backend)
         await page.locator('#tab-info').click()
         await expect(page.locator('#info-page')).toBeVisible()
-        await expect(page.locator('#info-gebruik h2')).toBeVisible()
+        await expect(page.locator('#info-functies h2')).toBeVisible()
         await page.locator('#tab-een').click()
         await expect(page.locator('#info-page')).toHaveCount(0)
         await expect(page.locator('svg.sheet').first()).toBeVisible()
+    })
+    test('the donate button and the source code are at the top, visible without scrolling, and again at the bottom', async ({page, app, backend}) => {
+        await app.open(backend)
+        await page.locator('#tab-info').click()
+        await expect(page.locator('#donate-button')).toBeInViewport()
+        await expect(page.locator('#source-link')).toBeInViewport()
+        await expect(page.locator('#source-link')).toHaveAttribute('href', 'https://github.com/Jerry911/plugged')
+        await expect(page.locator('#btn-tour')).toBeInViewport()
+        // the navigation leads to the support section, with the same buttons
+        await page.locator('#nav-info-steun').click()
+        await expect(page.locator('#donate-button-bottom')).toBeInViewport()
+        await expect(page.locator('#donate-button-bottom')).toHaveAttribute('href', testInfo.donateUrl)
+        await expect(page.locator('#source-link-bottom')).toHaveAttribute('href', 'https://github.com/Jerry911/plugged')
+    })
+    for (const language of ['nl', 'fr', 'en']) {
+        test(`every screenshot exists in ${language} and is shown in the language of the application`, async ({page, app, backend}) => {
+            await page.addInitScript((lang) => localStorage.setItem('plugged.language', lang), language)
+            await app.open(backend)
+            await page.locator('#tab-info').click()
+            const sources = await page.locator('.shot img').evaluateAll((images) => images.map((image) => image.getAttribute('src')))
+            expect(sources).toHaveLength(13)
+            for (const src of new Set(sources)) {
+                expect(src).toContain(`/info/${language}/`)
+                const response = await page.request.get(src)
+                expect(response.ok(), src).toBeTruthy()
+                const body = await response.body()
+                expect(body.subarray(0, 4).toString(), src).toBe('RIFF') // WebP
+                expect(body.subarray(8, 12).toString(), src).toBe('WEBP')
+            }
+            // the picture at the top is really drawn by the browser
+            await expect.poll(() => page.locator('#info-hero img').evaluate((image) => image.complete && image.naturalWidth)).toBeGreaterThan(1000)
+            await expect(page.locator('.shot')).toHaveCount(sources.length) // none missing
+        })
+    }
+    test('a screenshot opens large and closes again', async ({page, app, backend}) => {
+        await app.open(backend)
+        await page.locator('#tab-info').click()
+        await page.locator('#shot-situatieschema').scrollIntoViewIfNeeded()
+        await page.locator('#shot-situatieschema').click()
+        await expect(page.locator('#info-lightbox img')).toBeVisible()
+        const large = await page.locator('#info-lightbox img').boundingBox(),
+            small = await page.locator('#shot-situatieschema img').boundingBox()
+        expect(large.width).toBeGreaterThan(small.width * 1.5)
+        await page.keyboard.press('Escape')
+        await expect(page.locator('#info-lightbox')).toHaveCount(0)
+        await page.locator('#shot-situatieschema').click()
+        await page.locator('#info-lightbox-close').click()
+        await expect(page.locator('#info-lightbox')).toHaveCount(0)
     })
     test('faq entries fold open', async ({page, app, backend}) => {
         await app.open(backend)

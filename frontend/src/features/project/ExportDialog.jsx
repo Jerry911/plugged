@@ -5,7 +5,8 @@ import {useTranslation} from '../../i18n/I18nProvider.jsx'
 
 // The file types the project can be exported as (labels and hints: export.types.<id>). Import needs no dialog: the file picker accepts all
 // of them (IMPORT_ACCEPT) and importKind() decides from the name (or, failing that, the content) what kind of file was chosen.
-export const EXPORT_TYPES = ['json', 'eds']
+// csv and png: all pages in a zip file (see pagesExport.js); they cannot be imported again
+export const EXPORT_TYPES = ['json', 'eds', 'csv', 'png']
 export const IMPORT_ACCEPT = '.json,.eds'
 
 /** 'eds' or 'json': by extension, and for a file without a known extension by the "EDS" header of the format. */

@@ -1,0 +1,152 @@
+{
+  "en": {
+    "componenten": [
+      1440,
+      760
+    ],
+    "controleregels": [
+      1440,
+      900
+    ],
+    "controleren": [
+      1440,
+      900
+    ],
+    "educatief": [
+      1440,
+      300
+    ],
+    "eendraadschema": [
+      1440,
+      900
+    ],
+    "exporteren": [
+      400,
+      365
+    ],
+    "groepen": [
+      1440,
+      520
+    ],
+    "materiaallijst": [
+      660,
+      794
+    ],
+    "projecten": [
+      780,
+      509
+    ],
+    "qr": [
+      400,
+      356
+    ],
+    "situatieschema": [
+      1440,
+      900
+    ],
+    "sjablonen": [
+      1000,
+      830
+    ]
+  },
+  "fr": {
+    "componenten": [
+      1440,
+      760
+    ],
+    "controleregels": [
+      1440,
+      900
+    ],
+    "controleren": [
+      1440,
+      900
+    ],
+    "educatief": [
+      1440,
+      300
+    ],
+    "eendraadschema": [
+      1440,
+      900
+    ],
+    "exporteren": [
+      400,
+      379
+    ],
+    "groepen": [
+      1440,
+      520
+    ],
+    "materiaallijst": [
+      660,
+      794
+    ],
+    "projecten": [
+      779,
+      552
+    ],
+    "qr": [
+      400,
+      356
+    ],
+    "situatieschema": [
+      1440,
+      900
+    ],
+    "sjablonen": [
+      1000,
+      830
+    ]
+  },
+  "nl": {
+    "componenten": [
+      1440,
+      760
+    ],
+    "controleregels": [
+      1440,
+      900
+    ],
+    "controleren": [
+      1440,
+      900
+    ],
+    "educatief": [
+      1440,
+      300
+    ],
+    "eendraadschema": [
+      1440,
+      900
+    ],
+    "exporteren": [
+      400,
+      379
+    ],
+    "groepen": [
+      1440,
+      520
+    ],
+    "materiaallijst": [
+      660,
+      794
+    ],
+    "projecten": [
+      779,
+      535
+    ],
+    "qr": [
+      400,
+      385
+    ],
+    "situatieschema": [
+      1440,
+      900
+    ],
+    "sjablonen": [
+      1000,
+      830
+    ]
+  }
+}

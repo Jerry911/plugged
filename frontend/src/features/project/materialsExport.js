@@ -34,8 +34,11 @@ const csvCell = (value) => {
     return /[;"\r\n]/.test(text) ? '"' + text.replace(/"/g, '""') + '"' : text
 }
 
+/** Rows of cells as CSV text: ";" between the cells, a byte order mark in front (so Excel in a Belgian locale opens it in columns). */
+export const csvText = (rows) => '﻿' + rows.map((cells) => cells.map(csvCell).join(';')).join('\r\n') + '\r\n'
+
 /** The list as CSV text (with a byte order mark). */
-export const materialsCsv = (bom, project) => '﻿' + materialsRows(bom, project).map((row) => row.cells.map(csvCell).join(';')).join('\r\n') + '\r\n'
+export const materialsCsv = (bom, project) => csvText(materialsRows(bom, project).map((row) => row.cells))
 
 const xml = (text) =>
     String(text)

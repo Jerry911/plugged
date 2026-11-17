@@ -1,7 +1,7 @@
 // Copyright 2026 Pleysier Jeroen
 // SPDX-License-Identifier: AGPL-3.0-only
 import {fireEvent, render, waitFor} from '@testing-library/react'
-import Info, {ContactForm, mailtoUrl} from '../../../features/info/InfoPage.jsx'
+import Info, {ContactForm, EDUCATIONAL_IMAGE, FEATURE_IMAGES, imageUrl, mailtoUrl, ROLE_IMAGE, SECTIONS, SOURCE_URL} from '../../../features/info/InfoPage.jsx'
 import {ExportDialog, EXPORT_TYPES, importKind} from '../../../features/project/ExportDialog.jsx'
 import {setLanguage, t, translation} from '../../../i18n/translate.js'
 import {byId, getById} from '../../utils.jsx'
@@ -14,15 +14,17 @@ const fill = (name = 'Jan', message = 'Mooie tool!') => {
 }
 
 describe('Info page', () => {
-    test('shows about, how-to, faq, contact and donate sections', async () => {
+    test('shows every section, each in the navigation', async () => {
         api({donateUrl: 'https://www.paypal.com/donate/?hosted_button_id=ABC', contactEmail: 'me@example.be'})
         render(<Info />)
-        for (const id of ['info-over', 'info-gebruik', 'info-faq', 'info-contact', 'info-steun']) expect(byId(id)).not.toBeNull()
-        expect(getById('info-gebruik').querySelector('h2')).toHaveTextContent(t('info.usage.title'))
-        expect(getById('info-gebruik').querySelector('h3')).toHaveTextContent(t('info.usage.shortcutsTitle'))
-        // the QR code of a project has its own paragraph, and Alt+Q is in the list of shortcuts
-        expect(getById('info-gebruik').textContent).toContain('Alt+Q')
-        expect(getById('info-gebruik').textContent).toContain(translation('info.usage.steps').find((step) => /QR/.test(step.title)).title)
+        expect(SECTIONS).toEqual(['info-over', 'info-functies', 'info-rollen', 'info-educatief', 'info-sneltoetsen', 'info-faq', 'info-contact', 'info-steun'])
+        for (const id of SECTIONS) {
+            expect(byId(id)).not.toBeNull()
+            expect(getById('nav-' + id)).toHaveTextContent(t('info.sections.' + id))
+        }
+        // the shortcuts, with the QR code (Alt+Q)
+        expect(getById('info-sneltoetsen').querySelectorAll('kbd')).toHaveLength(translation('info.shortcuts.items').length)
+        expect(getById('info-sneltoetsen').textContent).toContain('Alt+Q')
         expect(document.querySelectorAll('details.faq').length).toBeGreaterThan(3)
         expect(getById('faq-1').querySelector('summary')).toHaveTextContent(translation('info.faq.questions')[0].question)
         await waitFor(() => expect(byId('donate-button')).toHaveAttribute('href', 'https://www.paypal.com/donate/?hosted_button_id=ABC'))
@@ -36,8 +38,10 @@ describe('Info page', () => {
         try {
             render(<Info />)
             expect(getById('info-over').textContent).toMatch(/QR/)
-            const qrStep = translation('info.usage.steps').find((step) => /QR/.test(step.title))
-            expect(qrStep.text).toMatch(/Alt\+Q/)
+            const qrStep = translation('info.features.items').find((feature) => feature.id === 'qr')
+            expect(qrStep.title).toMatch(/QR/)
+            expect(getById('feature-qr').textContent).toContain('Alt')
+            expect(qrStep.text).toMatch(/\[\[Alt\]\]\+\[\[Q\]\]/)
             // the FAQ answers what somebody who scans sees, whether a change needs a new code, and where the code works
             const questions = translation('info.faq.questions').filter((question) => /QR/.test(question.question))
             expect(questions.length).toBeGreaterThanOrEqual(3)
@@ -92,6 +96,86 @@ describe('Info page', () => {
         await waitFor(() => expect(global.fetch).toHaveBeenCalled())
         expect(byId('contact-disabled')).not.toBeNull()
     })
+    test('the donate button is at the top and again at the bottom, next to the link to the source code', async () => {
+        api({donateUrl: 'https://www.paypal.com/donate/?hosted_button_id=ABC', contactEmail: ''})
+        render(<Info onTour={() => {}} />)
+        await waitFor(() => expect(byId('donate-button')).toHaveAttribute('href', 'https://www.paypal.com/donate/?hosted_button_id=ABC'))
+        // at the top: in the header, before the navigation and the first section
+        expect(getById('info-hero').contains(byId('donate-button'))).toBe(true)
+        expect(byId('donate-button').compareDocumentPosition(byId('info-over')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+        expect(byId('donate-button')).toHaveClass('big')
+        expect(byId('donate-button-bottom')).toHaveAttribute('href', 'https://www.paypal.com/donate/?hosted_button_id=ABC')
+        expect(getById('info-steun').contains(byId('donate-button-bottom'))).toBe(true)
+        // the navigation has its own button to the support section
+        expect(byId('nav-info-steun')).toHaveClass('navdonate')
+        for (const id of ['source-link', 'source-link-bottom']) {
+            expect(byId(id)).toHaveAttribute('href', SOURCE_URL)
+            expect(byId(id)).toHaveAttribute('target', '_blank')
+            expect(byId(id).getAttribute('rel')).toContain('noopener')
+            expect(byId(id)).toHaveTextContent(t('info.hero.source'))
+        }
+        expect(SOURCE_URL).toBe('https://github.com/Jerry911/plugged')
+        // and About says where the source code is
+        expect(getById('info-over').textContent).toContain('GitHub')
+    })
+    test('every feature has its text and points, and its screenshots where it has them', () => {
+        api(null)
+        render(<Info />)
+        const features = translation('info.features.items')
+        expect(features.map((feature) => feature.id)).toEqual(Object.keys(FEATURE_IMAGES))
+        for (const feature of features) {
+            const article = getById('feature-' + feature.id)
+            expect(article.querySelector('h3')).toHaveTextContent(feature.title)
+            expect(article.querySelectorAll('.points li')).toHaveLength(feature.points?.length ?? 0)
+            expect([...article.querySelectorAll('.shot img')].map((image) => image.getAttribute('src'))).toEqual(FEATURE_IMAGES[feature.id].map((name) => imageUrl('nl', name)))
+            article.querySelectorAll('.shot img').forEach((image) => {
+                expect(image).toHaveAttribute('loading', 'lazy')
+                // its size is known before it loads, so the page does not shift
+                expect(Number(image.getAttribute('width'))).toBeGreaterThan(100)
+                expect(Number(image.getAttribute('height'))).toBeGreaterThan(100)
+                expect(image).toHaveAttribute('alt', feature.title)
+            })
+        }
+        expect(getById('info-rollen').querySelector('.shot img').getAttribute('src')).toBe(imageUrl('nl', ROLE_IMAGE))
+        expect(getById('info-educatief').querySelector('.shot img').getAttribute('src')).toBe(imageUrl('nl', EDUCATIONAL_IMAGE))
+    })
+    test('a click on a screenshot shows it large; Escape, the cross or a click closes it again', () => {
+        api(null)
+        render(<Info />)
+        fireEvent.click(byId('shot-qr'))
+        expect(getById('info-lightbox').querySelector('img').getAttribute('src')).toBe(imageUrl('nl', 'qr'))
+        expect(byId('info-lightbox')).toHaveAttribute('aria-label', translation('info.features.items').find((feature) => feature.id === 'qr').title)
+        fireEvent.keyDown(document.body, {key: 'Escape'})
+        expect(byId('info-lightbox')).toBeNull()
+        fireEvent.click(byId('shot-projecten'))
+        fireEvent.click(byId('info-lightbox-close'))
+        expect(byId('info-lightbox')).toBeNull()
+        fireEvent.click(byId('shot-groepen'))
+        fireEvent.click(byId('info-lightbox'))
+        expect(byId('info-lightbox')).toBeNull()
+    })
+    test('a screenshot that is missing (not made yet) leaves no empty frame', () => {
+        api(null)
+        render(<Info />)
+        fireEvent.error(byId('shot-componenten').querySelector('img'))
+        expect(byId('shot-componenten')).toBeNull()
+        expect(getById('feature-componenten').querySelector('h3')).not.toBeNull()
+    })
+    test('roles, groups and the educational mode: what a student cannot and can do', () => {
+        api(null)
+        render(<Info />)
+        expect([...document.querySelectorAll('.role h3')].map((title) => title.textContent)).toEqual(translation('info.roles.items').map((role) => role.title))
+        expect(getById('info-educatief').querySelectorAll('.cannot li')).toHaveLength(translation('info.educational.cannot').length)
+        expect(getById('info-educatief').querySelectorAll('.can li')).toHaveLength(translation('info.educational.can').length)
+        // the things the question was about: no checking, no import or export, and PDF and print stay
+        expect(getById('info-educatief').querySelector('.cannot').textContent).toMatch(/controleren/i)
+        expect(getById('info-educatief').querySelector('.cannot').textContent).toMatch(/exporteren/i)
+        expect(getById('info-educatief').querySelector('.can').textContent).toMatch(/PDF/)
+        // bold text is shown bold, not with its stars
+        expect(getById('info-educatief').textContent).not.toContain('**')
+        expect(getById('info-functies').textContent).not.toContain('**')
+        expect(getById('info-rollen').textContent).not.toContain('**')
+    })
     test('missing fields in /api/info are treated as not configured', async () => {
         api({})
         render(<Info />)
@@ -144,19 +228,33 @@ describe('Contact form', () => {
 })
 
 describe('Info page in other languages', () => {
-    test('every section, step, shortcut and question is translated', async () => {
+    test('every section, feature, role, shortcut and question is translated, with the same structure', async () => {
         api(null)
         for (const [language, title] of [
-            ['fr', 'Comment utiliser Plugged ?'],
-            ['en', 'How to use Plugged'],
+            ['fr', 'Que pouvez-vous faire avec Plugged ?'],
+            ['en', 'What can you do with Plugged?'],
         ]) {
             setLanguage(language)
-            const {unmount} = render(<Info onTour={() => {}} />)
-            expect(getById('info-gebruik').querySelector('h2')).toHaveTextContent(title)
-            expect(document.querySelectorAll('#info-gebruik ol.steps li')).toHaveLength(translation('info.usage.steps', 'nl').length)
-            expect(document.querySelectorAll('details.faq')).toHaveLength(translation('info.faq.questions', 'nl').length)
-            expect(getById('btn-tour')).toHaveTextContent(t('info.startTour'))
-            unmount()
+            try {
+                const {unmount} = render(<Info onTour={() => {}} />)
+                expect(getById('info-functies').querySelector('h2')).toHaveTextContent(title)
+                const ids = (lang) => translation('info.features.items', lang).map((feature) => feature.id)
+                expect(ids(language)).toEqual(ids('nl'))
+                translation('info.features.items', language).forEach((feature, index) =>
+                    expect(feature.points?.length ?? 0, feature.id).toBe(translation('info.features.items', 'nl')[index].points?.length ?? 0),
+                )
+                expect(document.querySelectorAll('article.feature')).toHaveLength(ids('nl').length)
+                expect(document.querySelectorAll('.role')).toHaveLength(translation('info.roles.items', 'nl').length)
+                expect(translation('info.educational.cannot', language)).toHaveLength(translation('info.educational.cannot', 'nl').length)
+                expect(getById('info-sneltoetsen').querySelectorAll('kbd')).toHaveLength(translation('info.shortcuts.items', 'nl').length)
+                expect(document.querySelectorAll('details.faq')).toHaveLength(translation('info.faq.questions', 'nl').length)
+                expect(getById('btn-tour')).toHaveTextContent(t('info.startTour'))
+                // the screenshots are those of the language
+                expect(byId('shot-eendraadschema').querySelector('img').getAttribute('src')).toBe(imageUrl(language, 'eendraadschema'))
+                unmount()
+            } finally {
+                setLanguage('nl')
+            }
         }
     })
 })
@@ -166,8 +264,16 @@ describe('Export dialog and import detection', () => {
         const onExport = vi.fn(),
             onClose = vi.fn()
         render(<ExportDialog onExport={onExport} onClose={onClose} />)
-        expect(EXPORT_TYPES).toEqual(['json', 'eds'])
+        expect(EXPORT_TYPES).toEqual(['json', 'eds', 'csv', 'png'])
+        // every type has its label and hint
+        for (const id of EXPORT_TYPES) expect(byId('export-type-' + id).closest('label').textContent).toContain(t(`export.types.${id}.label`))
+        for (const id of ['csv', 'png']) {
+            fireEvent.click(byId('export-type-' + id))
+            fireEvent.click(byId('export-confirm'))
+            expect(onExport).toHaveBeenLastCalledWith(id)
+        }
         expect(document.activeElement).toBe(byId('export-type-json'))
+        fireEvent.click(byId('export-type-json'))
         fireEvent.click(byId('export-confirm'))
         expect(onExport).toHaveBeenLastCalledWith('json')
         fireEvent.click(byId('export-type-eds'))

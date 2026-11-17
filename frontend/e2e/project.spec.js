@@ -35,8 +35,11 @@ test('a saved project is still there after reloading the page', async ({page, ap
 test('shows a message when saving fails', async ({page, app, backend}) => {
     backend.failSave = true
     await app.open(backend)
-    await page.keyboard.press('Alt+s')
-    await expect(page.locator('#status-message', {hasText: t('app.saveFailed')})).toBeVisible()
+    // right after opening the editor may still be starting: press again until the attempt is made (every attempt fails)
+    await expect(async () => {
+        await page.keyboard.press('Alt+s')
+        await expect(page.locator('#status-message', {hasText: t('app.saveFailed')})).toBeVisible({timeout: 1500})
+    }).toPass({timeout: 10_000})
 })
 
 test('an old project (tree + plan) is migrated when it is loaded', async ({page, app, backend}) => {

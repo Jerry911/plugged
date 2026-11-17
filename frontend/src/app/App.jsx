@@ -16,6 +16,7 @@ import ProjectMenu from '../features/project/ProjectMenu.jsx'
 import {FooterDialog} from '../features/footer/FooterDialog.jsx'
 import VerifyPanel from '../features/verify/VerifyPanel.jsx'
 import {AllSheets, makePdf} from '../features/project/pdfExport.jsx'
+import {pagesCsvZip, pagesZipName, sheetsPngZip} from '../features/project/pagesExport.js'
 import Tour, {markTourSeen, tourSeen} from '../features/tour/Tour.jsx'
 import {tourSteps} from '../features/tour/tourSteps.jsx'
 import {useSymbolLibrary} from '../api/useSymbolLibrary.js'
@@ -230,7 +231,12 @@ function Editor({library, user, onLogout, onAccountDeleted}) {
         ;(async () => {
             try {
                 if (job === 'pdf') await makePdf(project, printArea.current)
-                else window.print()
+                else if (job === 'png') {
+                    // every sheet as a picture: the sheets are rendered off screen (AllSheets below), drawn on a canvas and zipped
+                    const fileName = pagesZipName(project, 'png')
+                    download(await sheetsPngZip(project, printArea.current), 'application/zip', fileName)
+                    setStatusMessage(t('pagesExport.done', {file: fileName}))
+                } else window.print()
             } catch (error) {
                 window.alert(t('app.exportFailed', {reason: error.message}))
             } finally {
@@ -486,6 +492,11 @@ function Editor({library, user, onLogout, onAccountDeleted}) {
         setExportOpen(false)
         if (restricted) return
         if (type === 'eds') exportEdsFile()
+        else if (type === 'csv') {
+            const fileName = pagesZipName(project, 'csv')
+            download(pagesCsvZip(project), 'application/zip', fileName)
+            setStatusMessage(t('pagesExport.done', {file: fileName}))
+        } else if (type === 'png') setPrintJob('png')
         else exportJson()
     }
     // components still to place on the situatieschema: a warning only while the rule plan.unplaced is on (Account → Controleregels)

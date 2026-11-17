@@ -1,14 +1,35 @@
 // Copyright 2026 Pleysier Jeroen
 // SPDX-License-Identifier: AGPL-3.0-only
-// The Info tab: about, how to use, shortcuts, FAQ, contact form (opens the visitor's own mail program) and the donate button.
+// The Info tab: what Plugged is and does (with screenshots), accounts, groups and roles, the educational mode, shortcuts, FAQ, contact
+// form (opens the visitor's own mail program), the source code and the donate button (at the top and at the bottom).
 import {useEffect, useState} from 'react'
 import {fetchInfo} from '../../api/projectApi.js'
 import {useTranslation} from '../../i18n/I18nProvider.jsx'
-import RichText from '../../i18n/RichText.jsx'
+import RichText, {renderInline} from '../../i18n/RichText.jsx'
 import {translation} from '../../i18n/translate.js'
+import SCREENSHOT_SIZES from './screenshotSizes.json'
 
-const SECTIONS = ['info-over', 'info-gebruik', 'info-faq', 'info-contact', 'info-steun']
+/** Where the source code is (AGPL: whoever uses Plugged can get it). */
+export const SOURCE_URL = 'https://github.com/Jerry911/plugged'
+
+export const SECTIONS = ['info-over', 'info-functies', 'info-rollen', 'info-educatief', 'info-sneltoetsen', 'info-faq', 'info-contact', 'info-steun']
 const scrollToSection = (id) => document.getElementById(id)?.scrollIntoView?.({behavior: 'smooth', block: 'start'})
+
+// The screenshots of every feature (in public/info/<language>/<name>.webp, made by e2e/info-screenshots.spec.js)
+export const FEATURE_IMAGES = {
+    eendraadschema: ['eendraadschema'],
+    situatieschema: ['situatieschema', 'sjablonen'],
+    controleren: ['controleren', 'controleregels'],
+    projecten: ['projecten'],
+    samenwerken: [],
+    componenten: ['componenten'],
+    qr: ['qr'],
+    export: ['materiaallijst', 'exporteren'],
+    talen: [],
+}
+export const ROLE_IMAGE = 'groepen'
+export const EDUCATIONAL_IMAGE = 'educatief'
+export const imageUrl = (language, name) => `${import.meta.env.BASE_URL}info/${language}/${name}.webp`
 
 /** The form does not send anything: it opens the visitor's own mail program with a new message to the address of this installation. */
 export const mailtoUrl = (to, name, message) =>
@@ -48,13 +69,90 @@ export const ContactForm = ({to}) => {
     )
 }
 
+/** The donate button: the PayPal link of this installation, or disabled with the setting to fill in. */
+const DonateButton = ({id, url, big}) => {
+    const {t} = useTranslation()
+    const className = 'donate' + (big ? ' big' : '')
+    return url ? (
+        <a id={id} className={className} href={url} target="_blank" rel="noopener noreferrer">
+            ♥ {t('info.support.donate')}
+        </a>
+    ) : (
+        <button id={id} className={className} disabled title={t('info.support.notConfigured')}>
+            ♥ {t('info.support.donate')}
+        </button>
+    )
+}
+
+const SourceLink = ({id}) => {
+    const {t} = useTranslation()
+    return (
+        <a id={id} className="sourcelink" href={SOURCE_URL} target="_blank" rel="noopener noreferrer">
+            <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
+                <path
+                    fill="currentColor"
+                    d="M8 0a8 8 0 0 0-2.53 15.59c.4.07.55-.17.55-.38v-1.33c-2.23.48-2.7-1.07-2.7-1.07-.36-.92-.89-1.17-.89-1.17-.73-.5.06-.49.06-.49.8.06 1.23.83 1.23.83.72 1.22 1.87.87 2.33.67.07-.52.28-.87.5-1.07-1.78-.2-3.65-.89-3.65-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.6 7.6 0 0 1 4 0c1.53-1.03 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.28.82 2.15 0 3.07-1.87 3.75-3.66 3.95.29.25.54.73.54 1.48v2.2c0 .21.15.46.55.38A8 8 0 0 0 8 0Z"
+                />
+            </svg>
+            {t('info.hero.source')}
+        </a>
+    )
+}
+
+/** A screenshot: shown small, a click opens it large. Hidden when the picture is missing (e.g. not made yet for a new language). */
+const Shot = ({name, alt, onOpen}) => {
+    const {t, language} = useTranslation()
+    const [missing, setMissing] = useState(false)
+    if (missing) return null
+    const src = imageUrl(language, name),
+        // its size, so the page does not shift while it loads (and a jump from the navigation lands where it should)
+        [width, height] = SCREENSHOT_SIZES[language]?.[name] || SCREENSHOT_SIZES.nl?.[name] || []
+    return (
+        <figure className="shot">
+            <button type="button" id={'shot-' + name} className="shotbutton" onClick={() => onOpen({src, alt})} title={t('info.features.enlarge')}>
+                <img src={src} alt={alt} loading="lazy" width={width} height={height} onError={() => setMissing(true)} />
+            </button>
+        </figure>
+    )
+}
+
+/** A large screenshot over the page; Escape, a click on it or the cross closes it. */
+const Lightbox = ({image, onClose}) => {
+    const {t} = useTranslation()
+    useEffect(() => {
+        const onKeyDown = (event) => event.key === 'Escape' && onClose()
+        addEventListener('keydown', onKeyDown)
+        return () => removeEventListener('keydown', onKeyDown)
+    }, [onClose])
+    return (
+        <div id="info-lightbox" className="lightbox" role="dialog" aria-modal="true" aria-label={image.alt} onClick={onClose}>
+            <img src={image.src} alt={image.alt} />
+            <button id="info-lightbox-close" type="button" aria-label={t('info.features.close')} onClick={onClose}>
+                ✕
+            </button>
+        </div>
+    )
+}
+
+const Points = ({items, className}) =>
+    items?.length ? (
+        <ul className={className}>
+            {items.map((item, index) => (
+                <li key={index}>
+                    {renderInline(item)}
+                </li>
+            ))}
+        </ul>
+    ) : null
+
 /**
  * The server tells what this installation offers: a PayPal link (plugged.donate.paypal-url) and the address of the contact form
  * (plugged.admin.email). onTour starts the guided tour.
  */
 export default function InfoPage({onTour}) {
     const {t} = useTranslation()
-    const [info, setInfo] = useState({donateUrl: '', contactEmail: ''})
+    const [info, setInfo] = useState({donateUrl: '', contactEmail: ''}),
+        [enlarged, setEnlarged] = useState(null)
     useEffect(() => {
         let live = true
         fetchInfo().then((answer) => live && setInfo(answer))
@@ -62,23 +160,36 @@ export default function InfoPage({onTour}) {
             live = false
         }
     }, [])
-    const steps = translation('info.usage.steps'),
-        shortcuts = translation('info.usage.shortcuts'),
+    const features = translation('info.features.items'),
+        roles = translation('info.roles.items'),
+        shortcuts = translation('info.shortcuts.items'),
         questions = translation('info.faq.questions')
     return (
         <div id="info-page" className="infopage">
-            <h1>Plugged</h1>
-            {onTour && (
-                <p className="tourcta">
-                    <button id="btn-tour" className="accent" onClick={onTour}>
-                        ▶ {t('info.startTour')}
-                    </button>
-                    <span>{t('info.tourHint')}</span>
-                </p>
-            )}
+            <header id="info-hero" className="infohero">
+                <div className="herotext">
+                    <h1>Plugged</h1>
+                    <p className="tagline">{t('info.hero.tagline')}</p>
+                    <p className="herofree">{t('info.hero.free')}</p>
+                    <div className="heroactions">
+                        {onTour && (
+                            <button id="btn-tour" className="accent" onClick={onTour}>
+                                ▶ {t('info.startTour')}
+                            </button>
+                        )}
+                        <DonateButton id="donate-button" url={info.donateUrl} big />
+                        <SourceLink id="source-link" />
+                    </div>
+                    {onTour && <p className="tourhint">{t('info.tourHint')}</p>}
+                    <p className="donatehint">{t('info.hero.donateHint')}</p>
+                </div>
+                <Shot name="eendraadschema" alt={t('info.hero.imageAlt')} onOpen={setEnlarged} />
+            </header>
+
             <nav className="infonav" aria-label={t('info.navigation')}>
                 {SECTIONS.map((id) => (
-                    <button key={id} id={'nav-' + id} onClick={() => scrollToSection(id)}>
+                    <button key={id} id={'nav-' + id} className={id === 'info-steun' ? 'navdonate' : ''} onClick={() => scrollToSection(id)}>
+                        {id === 'info-steun' ? '♥ ' : ''}
                         {t('info.sections.' + id)}
                     </button>
                 ))}
@@ -90,17 +201,81 @@ export default function InfoPage({onTour}) {
                 <p className="note">{t('info.about.note')}</p>
             </section>
 
-            <section id="info-gebruik">
-                <h2>{t('info.usage.title')}</h2>
-                <ol className="steps">
-                    {steps.map((step, index) => (
-                        <li key={index} id={'info-step-' + (index + 1)}>
-                            <b>{step.title}</b>
-                            <p>{step.text}</p>
-                        </li>
+            <section id="info-functies">
+                <h2>{t('info.features.title')}</h2>
+                <p>{t('info.features.intro')}</p>
+                {features.map((feature, index) => {
+                    const images = FEATURE_IMAGES[feature.id] || []
+                    return (
+                        <article key={feature.id} id={'feature-' + feature.id} className={'feature' + (images.length ? '' : ' noimage') + (index % 2 ? ' flip' : '')}>
+                            <div className="featuretext">
+                                <h3>
+                                    <span className="featureicon" aria-hidden="true">
+                                        {feature.icon}
+                                    </span>
+                                    {feature.title}
+                                </h3>
+                                <RichText text={feature.text} />
+                                <Points items={feature.points} className="points" />
+                            </div>
+                            {images.length > 0 && (
+                                <div className="featureshots">
+                                    {images.map((name) => (
+                                        <Shot key={name} name={name} alt={feature.title} onOpen={setEnlarged} />
+                                    ))}
+                                </div>
+                            )}
+                        </article>
+                    )
+                })}
+            </section>
+
+            <section id="info-rollen">
+                <h2>{t('info.roles.title')}</h2>
+                <p>{t('info.roles.intro')}</p>
+                <div className="roles">
+                    {roles.map((role, index) => (
+                        <div key={index} className="role" id={'role-' + (index + 1)}>
+                            <div className="roleicon" aria-hidden="true">
+                                {role.icon}
+                            </div>
+                            <h3>{role.title}</h3>
+                            <p>{renderInline(role.text)}</p>
+                        </div>
                     ))}
-                </ol>
-                <h3>{t('info.usage.shortcutsTitle')}</h3>
+                </div>
+                <div className="twocolumns">
+                    <div>
+                        <h3>{t('info.roles.groupsTitle')}</h3>
+                        <Points items={translation('info.roles.groups')} className="points" />
+                    </div>
+                    <div>
+                        <h3>{t('info.roles.accountTitle')}</h3>
+                        <Points items={translation('info.roles.account')} className="points" />
+                    </div>
+                </div>
+                <Shot name={ROLE_IMAGE} alt={t('info.roles.imageAlt')} onOpen={setEnlarged} />
+            </section>
+
+            <section id="info-educatief">
+                <h2>🎓 {t('info.educational.title')}</h2>
+                <p>{renderInline(t('info.educational.intro'))}</p>
+                <div className="twocolumns">
+                    <div className="cannot">
+                        <h3>✖ {t('info.educational.cannotTitle')}</h3>
+                        <Points items={translation('info.educational.cannot')} className="points" />
+                    </div>
+                    <div className="can">
+                        <h3>✔ {t('info.educational.canTitle')}</h3>
+                        <Points items={translation('info.educational.can')} className="points" />
+                    </div>
+                </div>
+                <p>{renderInline(t('info.educational.teacher'))}</p>
+                <Shot name={EDUCATIONAL_IMAGE} alt={t('info.educational.imageAlt')} onOpen={setEnlarged} />
+            </section>
+
+            <section id="info-sneltoetsen">
+                <h2>{t('info.shortcuts.title')}</h2>
                 <dl className="keys">
                     {shortcuts.map((shortcut) => (
                         <div key={shortcut.keys}>
@@ -135,19 +310,16 @@ export default function InfoPage({onTour}) {
                 )}
             </section>
 
-            <section id="info-steun">
-                <h2>{t('info.support.title')}</h2>
+            <section id="info-steun" className="supportbox">
+                <h2>♥ {t('info.support.title')}</h2>
                 <p>{t('info.support.text')}</p>
-                {info.donateUrl ? (
-                    <a id="donate-button" className="donate" href={info.donateUrl} target="_blank" rel="noopener noreferrer">
-                        {t('info.support.donate')}
-                    </a>
-                ) : (
-                    <button id="donate-button" className="donate" disabled title={t('info.support.notConfigured')}>
-                        {t('info.support.donate')}
-                    </button>
-                )}
+                <div className="heroactions">
+                    <DonateButton id="donate-button-bottom" url={info.donateUrl} big />
+                    <SourceLink id="source-link-bottom" />
+                </div>
+                <p className="cstatus">{t('info.support.contribute')}</p>
             </section>
+            {enlarged && <Lightbox image={enlarged} onClose={() => setEnlarged(null)} />}
         </div>
     )
 }

@@ -5,7 +5,9 @@ import {QrDialog} from '../../../features/project/QrDialog.jsx'
 import SchemaPdfPage from '../../../features/project/SchemaPdfPage.jsx'
 import {qrModules, qrSvgFile, schemaRequestFromSearch, schemaUrl} from '../../../features/project/schemaLink.js'
 import {t} from '../../../i18n/translate.js'
-import {baseProject, byId, getById} from '../../utils.jsx'
+import {baseProject, byId, getById, node} from '../../utils.jsx'
+import {setLibrary} from '../../../symbols/symbolLibrary.js'
+import standard from '../../fixtures/standardSymbols.js'
 
 const fetchPublicSchema = vi.fn(),
     fetchPublicSymbols = vi.fn(async () => []),
@@ -52,6 +54,31 @@ describe('the link of a QR code', () => {
     })
 })
 
+describe('the link of a QR code on another address', () => {
+    test('keeps the path the application is served on (a sub folder), and only that', () => {
+        const at = (href) => schemaUrl(12, KEY, {href})
+        expect(at('https://plugged.example.be/plugged/?schema=3&key=old#sit')).toBe('https://plugged.example.be/plugged/?schema=12&key=' + KEY)
+        expect(at('http://192.168.1.20:8080/')).toBe('http://192.168.1.20:8080/?schema=12&key=' + KEY)
+        expect(schemaRequestFromSearch(new URL(at('https://x.be/a/b/')).search)).toEqual({id: 12, key: KEY})
+    })
+    test('a project number that is not a positive whole number opens nothing', () => {
+        for (const search of ['?schema=0&key=' + KEY, '?schema=-3&key=' + KEY, '?schema=1.5&key=' + KEY, '?schema=abc', '?schema=', '?schema=1234567890123456789'])
+            expect(schemaRequestFromSearch(search), search).toBeNull()
+    })
+    test('the same link always gives the same code; another key gives another code', () => {
+        expect(qrModules(schemaUrl(7, KEY)).path).toBe(qrModules(schemaUrl(7, KEY)).path)
+        expect(qrModules(schemaUrl(7, KEY)).path).not.toBe(qrModules(schemaUrl(7, 'Zz9_-new0123456789ABCDEFGHIJ')).path)
+    })
+    test('the downloaded file is a valid SVG of 4 mm per module, quiet zone included', () => {
+        const file = qrSvgFile(schemaUrl(7, KEY)),
+            {size} = qrModules(schemaUrl(7, KEY)),
+            parsed = new DOMParser().parseFromString(file, 'image/svg+xml')
+        expect(parsed.querySelector('parsererror')).toBeNull()
+        expect(parsed.documentElement.getAttribute('width')).toBe((size + 8) * 4 + 'mm')
+        expect(parsed.documentElement.getAttribute('viewBox')).toBe(`0 0 ${size + 8} ${size + 8}`)
+    })
+})
+
 describe('the QR dialog', () => {
     beforeEach(() => {
         fetchQrKey.mockReset().mockResolvedValue({ok: true, key: KEY})
@@ -84,6 +111,13 @@ describe('the QR dialog', () => {
         fireEvent.click(getById('qr-close'))
         expect(onClose).toHaveBeenCalledTimes(2)
     })
+    test('Escape closes the dialog also when the focus is not in it (opened with Alt+Q, before the key arrived)', async () => {
+        const onClose = vi.fn()
+        render(<QrDialog projectId={7} title="x" onClose={onClose} />)
+        fireEvent.keyDown(document.body, {key: 'Escape'})
+        expect(onClose).toHaveBeenCalledTimes(1)
+        await waitFor(() => expect(getById('qr-print').disabled).toBe(false))
+    })
     test('a project without a title is named after its number', async () => {
         render(<QrDialog projectId={7} title="" onClose={() => {}} />)
         await waitFor(() => expect(document.querySelector('.qr-print b')).not.toBeNull())
@@ -97,6 +131,37 @@ describe('the QR dialog', () => {
         expect(document.querySelector('.qr-print')).toBeNull()
         expect(getById('qr-print').disabled).toBe(true)
         expect(getById('qr-renew').disabled).toBe(true)
+    })
+    test('the code is asked for the project of the dialog: another project, another request', async () => {
+        const {rerender} = render(<QrDialog projectId={7} title="x" onClose={() => {}} />)
+        await waitFor(() => expect(getById('qr-print').disabled).toBe(false))
+        rerender(<QrDialog projectId={8} title="y" onClose={() => {}} />)
+        await waitFor(() => expect(fetchQrKey).toHaveBeenCalledWith(8))
+        await waitFor(() => expect(document.querySelector('#qr-dialog svg path').getAttribute('d')).toBe(qrModules(schemaUrl(8, KEY)).path))
+    })
+    test('the download is an SVG file named after the project number', async () => {
+        let downloaded
+        vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function () {
+            downloaded = this.download
+        })
+        URL.createObjectURL = vi.fn(() => 'blob:x')
+        URL.revokeObjectURL = vi.fn()
+        render(<QrDialog projectId={42} title="x" onClose={() => {}} />)
+        await waitFor(() => expect(getById('qr-download').disabled).toBe(false))
+        fireEvent.click(getById('qr-download'))
+        expect(downloaded).toBe('qr-42.svg')
+        expect(URL.createObjectURL.mock.calls[0][0].type).toBe('image/svg+xml')
+    })
+    test('a refused new key (not the owner) keeps the old code and says why', async () => {
+        vi.spyOn(window, 'confirm').mockReturnValue(true)
+        renewQrKey.mockResolvedValue({ok: false, error: 'Alleen de eigenaar'})
+        render(<QrDialog projectId={7} title="x" onClose={() => {}} />)
+        await waitFor(() => expect(getById('qr-renew').disabled).toBe(false))
+        const before = document.querySelector('#qr-dialog svg path').getAttribute('d')
+        await act(async () => fireEvent.click(getById('qr-renew')))
+        expect(getById('qr-error').textContent).toBe('Alleen de eigenaar')
+        expect(document.querySelector('#qr-dialog svg path').getAttribute('d')).toBe(before)
+        expect(getById('qr-renew').disabled).toBe(false)
     })
     test('a new key replaces the code, after asking', async () => {
         const confirm = vi.spyOn(window, 'confirm').mockReturnValueOnce(false).mockReturnValueOnce(true)
@@ -133,6 +198,37 @@ describe('the page a QR code opens', () => {
         await act(async () => fireEvent.click(getById('schema-pdf')))
         expect(svg2pdf).toHaveBeenCalledTimes(document.querySelectorAll('svg.sheet').length)
         expect(save).toHaveBeenCalledWith('T.pdf')
+    })
+    test('an own symbol of the owner is drawn from the copy the project carries, not as a question mark', async () => {
+        // whoever scans gets the standard symbols from the server, none of the owner's own
+        fetchPublicSymbols.mockResolvedValueOnce(standard)
+        const doc = {
+            ...baseProject(),
+            een: [{id: 'e1', name: 'Blad 1', tree: [node('M', 'aansluiting', [node('B', 'bord', [node('K', 'kring', [node('K1', 'custom:qrtest')])])])]}],
+            symbols: [{k: 'custom:qrtest', name: 'Eigen lamp', cat: 'Eigen', parents: ['kring'], place: true, shapes: [{t: 'circle', cx: 12, cy: 12, r: 7.25}]}],
+        }
+        fetchPublicSchema.mockResolvedValue(doc)
+        render(<SchemaPdfPage id={7} secret={KEY} />)
+        await waitFor(() => getById('schema-title'))
+        expect([...document.querySelectorAll('svg.sheet circle')].some((circle) => circle.getAttribute('r') === '7.25')).toBe(true)
+        setLibrary(standard)
+    })
+    test('the project is only read: the page never saves or changes it', async () => {
+        const doc = baseProject(),
+            before = JSON.stringify(doc)
+        fetchPublicSchema.mockResolvedValue(doc)
+        render(<SchemaPdfPage id={7} secret={KEY} />)
+        await waitFor(() => getById('schema-title'))
+        await act(async () => fireEvent.click(getById('schema-pdf')))
+        expect(JSON.stringify(doc)).toBe(before)
+        expect(fetchQrKey).not.toHaveBeenCalled()
+    })
+    test('without a title the page is named after the project number', async () => {
+        fetchPublicSchema.mockResolvedValue({...baseProject(), footer: {}})
+        render(<SchemaPdfPage id={7} secret={KEY} />)
+        await waitFor(() => getById('schema-title'))
+        expect(getById('schema-title').textContent).toBe(t('projects.defaultName', {number: 7}))
+        expect(byId('schema-editor')).not.toBeNull()
     })
     test('a failing PDF is reported', async () => {
         fetchPublicSchema.mockResolvedValue(baseProject())

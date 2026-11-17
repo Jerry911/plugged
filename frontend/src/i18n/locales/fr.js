@@ -700,8 +700,16 @@ export default {
             project: {
                 title: 'N’oubliez pas d’enregistrer',
                 body: [
-                    'Une fois enregistré, Plugged enregistre aussi automatiquement votre propre projet après une modification. Sous **Projet**, vous enregistrez ([[Alt]]+[[S]]), commencez un nouveau projet ([[Alt]]+[[N]]), en chargez un autre ([[Alt]]+[[L]]), ou importez ([[Alt]]+[[I]]) et exportez ([[Alt]]+[[E]]) (.json ou .eds). À droite de la barre se trouvent **PDF**, **Imprimer** et le choix de la langue.',
+                    'Une fois enregistré, Plugged enregistre aussi automatiquement votre propre projet après une modification. Sous **Projet**, vous enregistrez ([[Alt]]+[[S]]), commencez un nouveau projet ([[Alt]]+[[N]]), en chargez un autre ([[Alt]]+[[L]]), ou importez ([[Alt]]+[[I]]) et exportez ([[Alt]]+[[E]]) (.json ou .eds). Ce même menu contient aussi **Télécharger le PDF** et **Imprimer**.',
                 ],
+            },
+            qr: {
+                title: 'Un code QR pour le tableau électrique',
+                body: [
+                    'Toujours sous **Projet** : **Code QR** ([[Alt]]+[[Q]]). Imprimez le code et collez-le sur le tableau. Qui le scanne plus tard, un électricien ou l’organisme de contrôle, voit tout de suite le schéma et peut en faire un PDF, sans compte.',
+                    'Le code montre toujours la dernière version enregistrée : si vous modifiez le schéma, inutile d’imprimer un nouveau code. Enregistrez d’abord le projet.',
+                ],
+                example: 'Exemple de code imprimé',
             },
             klaar: {
                 title: 'Terminé ! L’aide se trouve sous Info',
@@ -728,7 +736,8 @@ export default {
         about: {
             title: 'À propos de Plugged',
             paragraphs: [
-                'Plugged est un programme gratuit pour dessiner dans votre navigateur des schémas électriques conformes au RGIE belge : un schéma unifilaire sur plusieurs feuilles, un plan de position, une bibliothèque de symboles que vous pouvez compléter vous-même, un contrôle des règles principales et l’exportation en PDF vectoriel. Les fichiers depuis et vers l’eendraadschema en ligne (.eds) sont pris en charge. Plugged est disponible en néerlandais, en français et en anglais.',
+                'Plugged est un programme gratuit pour dessiner dans votre navigateur des schémas électriques conformes au RGIE belge : un schéma unifilaire sur plusieurs feuilles, un plan de position, une bibliothèque de symboles que vous pouvez compléter vous-même, un contrôle des règles principales, l’exportation en PDF vectoriel et un code QR à coller sur le tableau électrique. Les fichiers depuis et vers l’eendraadschema en ligne (.eds) sont pris en charge. Plugged est disponible en néerlandais, en français et en anglais.',
+                'Le code QR sur le tableau mène au schéma de cette installation. Qui le scanne avec un smartphone, un électricien ou l’organisme de contrôle par exemple, voit les feuilles et peut en faire un PDF, même sans compte Plugged. Le code renvoie au projet et non à un PDF figé : si vous modifiez le schéma et l’enregistrez, le même code imprimé montre la nouvelle version. Il suffit donc de l’imprimer une seule fois.',
                 'Réalisé par Jeroen Pleysier. Plugged est un logiciel libre sous licence GNU Affero General Public License v3.0 : vous pouvez l’utiliser, le modifier et le diffuser, tant que chaque version modifiée reste disponible avec son code source sous la même licence.',
             ],
             note: 'Plugged est un outil d’aide. Les contrôles sont des valeurs indicatives et ne remplacent ni le contrôle par un organisme agréé ni la consultation du RGIE.',
@@ -766,7 +775,7 @@ export default {
                 },
                 {
                     title: 'Code QR pour le tableau',
-                    text: '« Code QR » dans le menu « Projet » (ou Alt+Q) crée un code QR du projet ouvert, et l’icône QR derrière un projet dans la liste « Charger » crée le code de ce projet sans l’ouvrir. Imprimez le code (avec le nom et le numéro du projet) ou téléchargez-le en fichier SVG et collez-le sur le tableau. Il contient un lien vers le PDF du projet, pas le PDF lui-même : quiconque le scanne, même sans compte, voit la dernière version enregistrée, même si vous modifiez le schéma plus tard. Enregistrez d’abord le projet : le code renvoie au numéro du projet. « Nouvelle clé » crée un nouveau secret et les codes déjà imprimés cessent de fonctionner ; seuls le propriétaire du projet ou l’administrateur principal peuvent le faire.',
+                    text: 'Enregistrez d’abord le projet, puis choisissez « Code QR » dans le menu « Projet » (ou Alt+Q). L’icône QR derrière un projet dans la liste « Charger » crée le code de ce projet sans l’ouvrir. Imprimez le code (avec le nom et le numéro du projet en dessous) ou téléchargez-le comme image (SVG) et collez-le sur le tableau. Quiconque le scanne, même sans compte, voit toujours la dernière version enregistrée du schéma. Si un code tombe entre de mauvaises mains, choisissez « Nouvelle clé » : les codes déjà collés sur un tableau ne fonctionnent plus et vous en imprimez un nouveau. Seuls le propriétaire du projet ou l’administrateur principal peuvent le faire.',
                 },
                 {
                     title: 'Choisir la langue',
@@ -793,7 +802,19 @@ export default {
             questions: [
                 {
                     question: 'Mon travail est-il enregistré automatiquement ?',
-                    answer: 'Non. Le projet n’est enregistré sur le serveur que lorsque vous cliquez sur « Enregistrer ». Faites aussi de temps en temps une sauvegarde via Exporter → Fichier de projet (.json).',
+                    answer: 'Un nouveau projet pas encore : enregistrez-le d’abord une fois avec « Enregistrer » (Alt+S). Ensuite, Plugged enregistre votre propre projet tout seul après chaque modification ; un message apparaît brièvement en bas à droite. Faites aussi de temps en temps une sauvegarde via Exporter → Fichier de projet (.json).',
+                },
+                {
+                    question: 'Que voit la personne qui scanne le code QR du tableau ?',
+                    answer: 'Les feuilles du schéma (schéma unifilaire et plan de position) telles qu’elles ont été enregistrées en dernier, avec des boutons pour en faire un PDF ou les imprimer. Aucun compte n’est nécessaire. Elle ne peut rien modifier et ne voit pas vos autres projets.',
+                },
+                {
+                    question: 'Dois-je imprimer un nouveau code QR quand je modifie le schéma ?',
+                    answer: 'Non. Le code renvoie au projet, pas à un PDF figé : enregistrez vos modifications et la personne qui scanne voit tout de suite la nouvelle version. Un nouveau code n’est nécessaire que si vous choisissez volontairement « Nouvelle clé », par exemple parce qu’une photo du code circule ; les anciens codes ne fonctionnent alors plus. Un projet dans la corbeille n’est plus visible via le code non plus.',
+                },
+                {
+                    question: 'Le code QR fonctionne-t-il partout ?',
+                    answer: 'Le code contient l’adresse à laquelle vous utilisiez Plugged quand vous l’avez créé. Si Plugged ne tourne que dans votre propre réseau (une adresse comme localhost ou 192.168.…), le code ne fonctionne que là. Créez donc le code via l’adresse à laquelle Plugged est accessible de l’extérieur.',
                 },
                 {
                     question: 'Puis-je enregistrer plusieurs projets ?',

@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // The steps about the scale: when are they finished? (the tour polls these functions, see Tour.jsx)
 import {tourSteps} from '../../../features/tour/tourSteps.jsx'
-import {setLanguage} from '../../../i18n/translate.js'
+import {setLanguage, translation} from '../../../i18n/translate.js'
 
 const TOUR_STEPS = tourSteps()
 
@@ -118,4 +118,43 @@ test('every step has a title and a body in every language; the texts follow the 
     setLanguage('en')
     expect(tourSteps()[0].title).toBe('Welcome to Plugged 👋')
     expect(tourSteps().at(-1).extra.label).toBe('Start an empty project')
+})
+
+describe('the QR code for the circuit board, near the end of the tour', () => {
+    test('comes right after the Project menu and right before the last card', () => {
+        const ids = TOUR_STEPS.map((s) => s.id)
+        expect(ids.slice(-3)).toEqual(['project', 'qr', 'klaar'])
+    })
+    test('points at the Project menu, where the QR code is made, and only explains (nothing to do: the project may not be saved yet)', () => {
+        const s = step('qr')
+        expect(s.target).toBe('#tab-project')
+        expect(s.watch).toBeUndefined()
+        expect(s.tab).toBeUndefined() // shown on whatever tab the person is
+    })
+    test('shows a small example code that holds the address of the application itself, never a schema', async () => {
+        const {render} = await import('@testing-library/react')
+        const {qrModules} = await import('../../../features/project/schemaLink.js')
+        const {container} = render(<>{tourSteps().find((s) => s.id === 'qr').body}</>) // in the active language
+        const code = container.querySelector('.tour-qr svg')
+        expect(code).not.toBeNull()
+        expect(code.getAttribute('aria-label')).toBe(translation('tour.steps.qr.example'))
+        const address = window.location.origin + window.location.pathname
+        expect(address).not.toMatch(/schema=/)
+        expect(code.querySelector('path').getAttribute('d')).toBe(qrModules(address).path)
+        expect(container.querySelector('figcaption').textContent).toBe(translation('tour.steps.qr.example'))
+        expect(container.textContent).toContain('Alt') // the shortcut Alt+Q is in the text
+    })
+    test.each(['nl', 'fr', 'en'])('has its texts in %s, which mention the QR code', (language) => {
+        setLanguage(language)
+        try {
+            const s = tourSteps().find((x) => x.id === 'qr')
+            expect(s.title).toMatch(/QR/)
+            expect(translation('tour.steps.qr.body').join(' ')).toMatch(/QR/)
+            expect(translation('tour.steps.qr.example')).toBeTruthy()
+            // the Project step no longer sends the person to the top bar for PDF and printing: they are in the Project menu
+            expect(translation('tour.steps.project.body').join(' ')).not.toMatch(/(rechts in de balk|à droite de la barre|on the right of the bar)/i)
+        } finally {
+            setLanguage('nl')
+        }
+    })
 })

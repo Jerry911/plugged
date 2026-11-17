@@ -233,3 +233,27 @@
         display: none
     }
 }
+
+/* the QR step: a small example of the printed code beside the text */
+.tour-qr {
+    display: flow-root;
+}
+.tour-qr figure {
+    float: right;
+    width: 84px;
+    margin: 2px 0 6px 12px;
+    text-align: center;
+}
+.tour-qr figure svg {
+    display: block;
+    width: 84px;
+    height: 84px;
+    border: 1px solid #d6d6d6;
+    border-radius: 4px;
+}
+.tour-qr figcaption {
+    font-size: 10px;
+    line-height: 1.2;
+    margin-top: 3px;
+    opacity: 0.75;
+}

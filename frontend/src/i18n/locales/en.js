@@ -699,8 +699,16 @@ export default {
             project: {
                 title: 'Do not forget to save',
                 body: [
-                    'Once stored, Plugged also saves your own project automatically after a change. Under **Project** you save ([[Alt]]+[[S]]), start a new project ([[Alt]]+[[N]]), load another one ([[Alt]]+[[L]]), or import ([[Alt]]+[[I]]) and export ([[Alt]]+[[E]]) (.json or .eds). On the right of the bar are **PDF**, **Print** and the choice of language.',
+                    'Once stored, Plugged also saves your own project automatically after a change. Under **Project** you save ([[Alt]]+[[S]]), start a new project ([[Alt]]+[[N]]), load another one ([[Alt]]+[[L]]), or import ([[Alt]]+[[I]]) and export ([[Alt]]+[[E]]) (.json or .eds). The same menu also holds **Download PDF** and **Print**.',
                 ],
+            },
+            qr: {
+                title: 'A QR code for the circuit board',
+                body: [
+                    'Also under **Project**: **QR code** ([[Alt]]+[[Q]]). Print the code and stick it on the circuit board. Whoever scans it later, an electrician or the inspector, sees the schema right away and can make a PDF of it, without an account.',
+                    'The code always shows the latest saved version: when you change the schema, there is no need to print a new code. Do save the project first.',
+                ],
+                example: 'Example of a printed code',
             },
             klaar: {
                 title: 'Done! Help is under Info',
@@ -727,7 +735,8 @@ export default {
         about: {
             title: 'About Plugged',
             paragraphs: [
-                'Plugged is a free program to draw electrical diagrams according to the Belgian AREI in your browser: a single-line diagram over several sheets, a site plan on a floor plan, a library of symbols you can extend yourself, a check of the main rules and export to vector PDF. Files from and to the online eendraadschema (.eds) are supported. Plugged is available in Dutch, French and English.',
+                'Plugged is a free program to draw electrical diagrams according to the Belgian AREI in your browser: a single-line diagram over several sheets, a site plan on a floor plan, a library of symbols you can extend yourself, a check of the main rules, export to vector PDF and a QR code to stick on the circuit board. Files from and to the online eendraadschema (.eds) are supported. Plugged is available in Dutch, French and English.',
+                'The QR code on the board leads to the schema of that installation. Whoever scans it with a smartphone, an electrician or the inspector for example, sees the sheets and can make a PDF of them, even without a Plugged account. The code points to the project and not to a fixed PDF: when you change the schema and save it, the same printed code shows the new version. So you only have to print it once.',
                 'Made by Jeroen Pleysier. Plugged is free software under the GNU Affero General Public License v3.0: you may use, change and distribute it, as long as every changed version stays available with its source code under the same licence.',
             ],
             note: 'Plugged is a tool. The checks are guideline values and do not replace the inspection by an accredited body or consulting the AREI.',
@@ -765,7 +774,7 @@ export default {
                 },
                 {
                     title: 'QR code for the circuit board',
-                    text: '"QR code" in the "Project" menu (or Alt+Q) makes a QR code of the open project, and the QR icon behind a project in the "Load" list makes the code of that project without opening it. Print the code (it comes with the name and number of the project) or download it as an SVG file and stick it on the circuit board. It holds a link to the PDF of the project, not the PDF itself: whoever scans it, also without an account, sees the latest saved version, even when you change the schema later. Save the project first: the code refers to the project number. "New key" makes a new secret and the codes you already printed stop working; only the owner of the project or the primary administrator can do that.',
+                    text: 'Save the project first, then choose "QR code" in the "Project" menu (or Alt+Q). The QR icon behind a project in the "Load" list makes the code of that project without opening it. Print the code (with the name and number of the project under it) or download it as an image (SVG) and stick it on the circuit board. Whoever scans it, also without an account, always sees the latest saved version of the schema. If a code falls into the wrong hands, choose "New key": the codes already on a board stop working and you print a new one. Only the owner of the project or the primary administrator can do that.',
                 },
                 {
                     title: 'Choosing the language',
@@ -792,7 +801,19 @@ export default {
             questions: [
                 {
                     question: 'Is my work saved automatically?',
-                    answer: 'No. The project is only stored on the server when you click "Save". Also make a backup now and then through Export → Project file (.json).',
+                    answer: 'A new project not yet: save it once with "Save" (Alt+S) first. After that Plugged saves your own project by itself after every change; a message shows briefly at the bottom right. Also make a backup now and then through Export → Project file (.json).',
+                },
+                {
+                    question: 'What does somebody who scans the QR code on the board see?',
+                    answer: 'The sheets of the schema (single-line diagram and site plan) as they were last saved, with buttons to make a PDF of them or print them. No account is needed. They cannot change anything and do not see your other projects.',
+                },
+                {
+                    question: 'Do I have to print a new QR code when I change the schema?',
+                    answer: 'No. The code points to the project, not to a fixed PDF: save your changes and whoever scans sees the new version right away. A new code is only needed when you choose "New key" on purpose, for example because a photo of the code is going around; the old codes then stop working. A project in the trash cannot be seen through the code either.',
+                },
+                {
+                    question: 'Does the QR code work everywhere?',
+                    answer: 'The code holds the address you used Plugged on when you made it. If Plugged only runs in your own network (an address such as localhost or 192.168.…), the code only works there. So make the code through the address on which Plugged can be reached from outside.',
                 },
                 {
                     question: 'Can I store several projects?',

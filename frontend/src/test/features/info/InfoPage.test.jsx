@@ -30,6 +30,26 @@ describe('Info page', () => {
         expect(byId('donate-button').getAttribute('rel')).toContain('noopener')
         await waitFor(() => getById('contact-name'))
     })
+    test.each(['nl', 'fr', 'en'])('explains the QR code for the circuit board in plain words (%s): in About, in How to use and in the FAQ', (language) => {
+        api(null)
+        setLanguage(language)
+        try {
+            render(<Info />)
+            expect(getById('info-over').textContent).toMatch(/QR/)
+            const qrStep = translation('info.usage.steps').find((step) => /QR/.test(step.title))
+            expect(qrStep.text).toMatch(/Alt\+Q/)
+            // the FAQ answers what somebody who scans sees, whether a change needs a new code, and where the code works
+            const questions = translation('info.faq.questions').filter((question) => /QR/.test(question.question))
+            expect(questions.length).toBeGreaterThanOrEqual(3)
+            questions.forEach((question) => expect(document.body.textContent).toContain(question.question))
+            // not too technical: no talk of headers, endpoints or keys in hexadecimal
+            ;[getById('info-over').textContent, qrStep.text, ...questions.map((question) => question.answer)].forEach((text) =>
+                expect(text).not.toMatch(/X-Schema-Key|\/api\/|endpoint|header|localStorage/i),
+            )
+        } finally {
+            setLanguage('nl')
+        }
+    })
     test('the tour button at the top starts the tour whenever the person wants, and is absent when there is no tour', () => {
         api(null)
         const start = vi.fn()

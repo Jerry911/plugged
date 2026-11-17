@@ -701,8 +701,16 @@ export default {
             project: {
                 title: 'Vergeet niet op te slaan',
                 body: [
-                    'Eenmaal opgeslagen bewaart Plugged je eigen project ook automatisch na een wijziging. Onder **Project** sla je op ([[Alt]]+[[S]]), begin je een nieuw project ([[Alt]]+[[N]]), laad je een ander ([[Alt]]+[[L]]) of importeer ([[Alt]]+[[I]]) en exporteer je ([[Alt]]+[[E]]) (.json of .eds). Rechts in de balk staan **PDF**, **Afdrukken** en de keuze van de taal.',
+                    'Eenmaal opgeslagen bewaart Plugged je eigen project ook automatisch na een wijziging. Onder **Project** sla je op ([[Alt]]+[[S]]), begin je een nieuw project ([[Alt]]+[[N]]), laad je een ander ([[Alt]]+[[L]]) of importeer ([[Alt]]+[[I]]) en exporteer je ([[Alt]]+[[E]]) (.json of .eds). In datzelfde menu staan ook **PDF downloaden** en **Afdrukken**.',
                 ],
+            },
+            qr: {
+                title: 'Een QR-code voor op het verdeelbord',
+                body: [
+                    'Ook onder **Project**: **QR-code** ([[Alt]]+[[Q]]). Druk de code af en kleef hem op het verdeelbord. Wie hem later scant, een elektricien of de keurder, ziet meteen het schema en kan er een PDF van maken, zonder account.',
+                    'De code toont altijd de laatst opgeslagen versie: pas je het schema aan, dan hoef je geen nieuwe code af te drukken. Sla het project wel eerst op.',
+                ],
+                example: 'Voorbeeld van een afgedrukte code',
             },
             klaar: {
                 title: 'Klaar! Hulp vind je onder Info',
@@ -729,7 +737,8 @@ export default {
         about: {
             title: 'Over Plugged',
             paragraphs: [
-                "Plugged is een gratis programma om elektrische schema's volgens het Belgische AREI te tekenen in je browser: een eendraadschema met meerdere bladen, een situatieschema op plattegrond, een bibliotheek met symbolen die je zelf kan uitbreiden, een controle op de belangrijkste regels en export naar vectoriële PDF. Bestanden van en naar het online eendraadschema (.eds) worden ondersteund. Plugged is beschikbaar in het Nederlands, het Frans en het Engels.",
+                "Plugged is een gratis programma om elektrische schema's volgens het Belgische AREI te tekenen in je browser: een eendraadschema met meerdere bladen, een situatieschema op plattegrond, een bibliotheek met symbolen die je zelf kan uitbreiden, een controle op de belangrijkste regels, export naar vectoriële PDF en een QR-code om op het verdeelbord te kleven. Bestanden van en naar het online eendraadschema (.eds) worden ondersteund. Plugged is beschikbaar in het Nederlands, het Frans en het Engels.",
+                'De QR-code op het bord leidt naar het schema van die installatie. Wie hem scant met een smartphone, een elektricien of de keurder bijvoorbeeld, ziet de bladen en kan er een PDF van maken, ook zonder account bij Plugged. De code verwijst naar het project en niet naar een vaste PDF: pas je het schema aan en sla je het op, dan toont dezelfde geprinte code de nieuwe versie. Je hoeft hem dus maar één keer af te drukken.',
                 'Gemaakt door Jeroen Pleysier. Plugged is vrije software onder de GNU Affero General Public License v3.0: je mag het gebruiken, aanpassen en verspreiden, zolang elke aangepaste versie onder dezelfde licentie met broncode beschikbaar blijft.',
             ],
             note: 'Plugged is een hulpmiddel. De controles zijn richtwaarden en vervangen de keuring door een erkend organisme of de raadpleging van het AREI niet.',
@@ -767,7 +776,7 @@ export default {
                 },
                 {
                     title: 'QR-code voor het verdeelbord',
-                    text: '"QR-code" in het menu "Project" (of Alt+Q) maakt een QR-code van het geopende project, en het QR-icoon achter een project in de lijst van "Laden" maakt de code van dat project zonder het te openen. Druk de code af (met naam en nummer van het project) of download hem als SVG-bestand en kleef hem op het verdeelbord. Hij bevat een link naar de PDF van het project, niet de PDF zelf: wie hem scant, ook zonder account, ziet de laatst bewaarde versie, ook als je het schema later nog wijzigt. Sla het project eerst op: de code verwijst naar het projectnummer. "Nieuwe sleutel" maakt een nieuw geheim en de codes die je al afdrukte werken niet meer; dat kan alleen de eigenaar van het project of de primaire beheerder.',
+                    text: 'Sla het project eerst op en kies dan "QR-code" in het menu "Project" (of Alt+Q). Het QR-icoon achter een project in de lijst van "Laden" maakt de code van dat project zonder het te openen. Druk de code af (met de naam en het nummer van het project eronder) of download hem als afbeelding (SVG) en kleef hem op het verdeelbord. Wie hem scant, ook zonder account, ziet altijd de laatst opgeslagen versie van het schema. Raakt een code in verkeerde handen, kies dan "Nieuwe sleutel": de codes die al op een bord hangen werken dan niet meer en je drukt een nieuwe af. Dat kan alleen de eigenaar van het project of de hoofdbeheerder.',
                 },
                 {
                     title: 'Taal kiezen',
@@ -794,7 +803,7 @@ export default {
             questions: [
                 {
                     question: 'Wordt mijn werk automatisch bewaard?',
-                    answer: 'Nee. Pas als je op "Opslaan" klikt, wordt het project bewaard op de server. Maak daarnaast af en toe een back-up via Exporteren → Projectbestand (.json).',
+                    answer: 'Een nieuw project nog niet: bewaar het eerst één keer met "Opslaan" (Alt+S). Daarna slaat Plugged je eigen project na elke wijziging vanzelf op; rechtsonder verschijnt dan even een melding. Maak daarnaast af en toe een back-up via Exporteren → Projectbestand (.json).',
                 },
                 {
                     question: 'Kan ik meerdere projecten bewaren?',
@@ -823,6 +832,18 @@ export default {
                 {
                     question: 'Wat is het verschil tussen PDF en Afdrukken?',
                     answer: 'PDF downloadt een vectorbestand van alle bladen. Afdrukken stuurt dezelfde bladen naar het afdrukvenster van je browser, bijvoorbeeld om ze op papier te zetten.',
+                },
+                {
+                    question: 'Wat ziet iemand die de QR-code op het bord scant?',
+                    answer: 'De bladen van het schema (eendraadschema en situatieschema) zoals ze het laatst opgeslagen werden, met knoppen om er een PDF van te maken of ze af te drukken. Daarvoor is geen account nodig. Hij kan niets wijzigen en ziet je andere projecten niet.',
+                },
+                {
+                    question: 'Moet ik een nieuwe QR-code afdrukken als ik het schema aanpas?',
+                    answer: 'Nee. De code verwijst naar het project, niet naar een vaste PDF: sla je wijzigingen op en wie scant, ziet meteen de nieuwe versie. Een nieuwe code is alleen nodig als je bewust "Nieuwe sleutel" kiest, bijvoorbeeld omdat een foto van de code rondgaat; de oude codes werken dan niet meer. Een project in de prullenbak is via de code ook niet meer te zien.',
+                },
+                {
+                    question: 'Werkt de QR-code overal?',
+                    answer: 'De code bevat het adres waarop je Plugged gebruikt toen je hem maakte. Draait Plugged alleen in je eigen netwerk (bv. een adres als localhost of 192.168.…), dan werkt de code ook alleen daar. Maak de code dus aan via het adres waarop Plugged van buitenaf bereikbaar is.',
                 },
                 {
                     question: 'Kan ik Plugged in een andere taal gebruiken?',

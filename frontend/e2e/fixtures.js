@@ -50,6 +50,10 @@ export class FakeBackend {
     gate = null // a promise the first symbol request waits for (to look at the loading state)
     info = {...testInfo} // GET /api/info: what the "test" profile of the real application says
     disabledRules = [] // the rules of Controleer the user switched off
+    qrKeys = new Map() // project id -> the secret of its QR code (made the first time it is asked for)
+    newQrKey() {
+        return Array.from({length: 32}, () => 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-'[Math.floor(Math.random() * 64)]).join('')
+    }
 
     async install(page) {
         await page.route(API_REQUEST, (route) => this.handle(route))
@@ -69,6 +73,12 @@ export class FakeBackend {
             // working together (usePresence): in the fake nobody else is ever there
             if (path.endsWith('/presence')) return m === 'POST' ? json({others: [], version: 0, savedBy: null, savedByMe: true}) : empty()
             const id = Number(path.split('/')[3])
+            // the QR code: GET gives the secret (made the first time), POST a new one
+            if (path.endsWith('/qr-key')) {
+                if (!this.projects.has(id)) return empty(404)
+                if (m === 'POST' || !this.qrKeys.has(id)) this.qrKeys.set(id, this.newQrKey())
+                return json({key: this.qrKeys.get(id)})
+            }
             // a new project: the server gives the next number
             if (!path.split('/')[3] && m === 'POST') {
                 if (this.failSave) return empty(500)
@@ -131,6 +141,13 @@ export class FakeBackend {
                 return json(s)
             }
         }
+        // the page a QR code opens: the newest saved project for whoever has its secret, and the standard symbols
+        if (path.startsWith('/api/public/schemas/')) {
+            const id = Number(path.split('/')[4]),
+                key = req.headers()['x-schema-key']
+            return this.projects.has(id) && key && this.qrKeys.get(id) === key ? json(this.projects.get(id)) : empty(404)
+        }
+        if (path === '/api/public/symbols') return json(this.symbols.filter((s) => s.builtin))
         if (path === '/api/auth/status') return json({setupRequired: false, adminEmail: testInfo.contactEmail, user: FAKE_USER})
         if (path === '/api/groups') return json([])
         if (path === '/api/info') return json(this.info)
@@ -154,6 +171,11 @@ export class FakeBackend {
     /** the stored project with this number (in the fake: the same as project n of the test) */
     async stored(number) {
         return this.projects.get(number)
+    }
+    /** the secret in the QR code of project n (made when it is asked for the first time) */
+    async qrKey(n = 1) {
+        if (!this.qrKeys.has(n)) this.qrKeys.set(n, this.newQrKey())
+        return this.qrKeys.get(n)
     }
     async addSymbol(sym) {
         this.symbols.push({cat: 'Eigen', parents: ['kring'], place: true, v: 0, builtin: false, modified: false, ...sym})
@@ -230,6 +252,12 @@ class RealBackend {
         const r = await this.request.post('/api/projects' + (doc.name ? '?name=' + encodeURIComponent(doc.name) : ''), {data: JSON.stringify(doc), headers: {'Content-Type': 'application/json'}})
         expect(r.ok()).toBeTruthy()
         this.numbers.set(n, (await r.json()).id)
+    }
+    /** the secret in the QR code of project n, as its owner gets it */
+    async qrKey(n = 1) {
+        const r = await this.request.get('/api/projects/' + this.id(n) + '/qr-key')
+        expect(r.ok(), 'the QR key: ' + (await r.text())).toBeTruthy()
+        return (await r.json()).key
     }
     async saved(n = 1) {
         const r = await this.request.get('/api/projects/' + this.id(n))

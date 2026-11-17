@@ -48,6 +48,13 @@ export function QrDialog({projectId, title, onClose}) {
             live = false
         }
     }, [projectId])
+    // Escape closes the dialog wherever the focus is (opened with Alt+Q or from the menu, the focus is not in the dialog yet: the print
+    // button only becomes enabled when the key is there)
+    useEffect(() => {
+        const onKeyDown = (event) => event.key === 'Escape' && onClose()
+        addEventListener('keydown', onKeyDown)
+        return () => removeEventListener('keydown', onKeyDown)
+    }, [onClose])
     const renew = async () => {
         if (!window.confirm(t('qr.confirmRenew'))) return
         setBusy(true)
@@ -58,7 +65,7 @@ export function QrDialog({projectId, title, onClose}) {
         caption = title || t('projects.defaultName', {number: projectId})
     return (
         <>
-            <div id="qr-dialog" className="dlg ui" role="dialog" aria-label={t('qr.title')} onKeyDown={(event) => event.key === 'Escape' && onClose()}>
+            <div id="qr-dialog" className="dlg ui" role="dialog" aria-label={t('qr.title')}>
                 <div className="tb">
                     <b>{t('qr.title')}</b>
                     <button id="qr-close" className="sheetInfoBtn" title={t('common.close')} onClick={onClose}>

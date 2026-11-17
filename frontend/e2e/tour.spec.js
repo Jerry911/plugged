@@ -222,6 +222,17 @@ test('the whole tour: a circuit, a stopcontact, walls with a typed length and a 
     const cb = await box(card(page))
     for (const [x, y] of drawn) expect(hits(cb, await app.sheetPoint(x, y))).toBe(false)
 
+    // near the end: the QR code for the circuit board, on the Project menu where it is made, with a small example code
+    await advanceTo(page, 'qr')
+    await expect(page.locator('#tour-title')).toHaveText(t('tour.steps.qr.title'))
+    await expect(page.locator('#tour-try')).toHaveCount(0) // only explains: the project of the tour is not saved yet
+    await expect(card(page).locator('.tour-qr svg')).toBeVisible()
+    await expect(card(page).locator('.tour-qr figcaption')).toHaveText(t('tour.steps.qr.example'))
+    const projectMenu = await box(page.locator('#tab-project')),
+        qrSpot = await spotBox(page)
+    expect(hits(qrSpot, {x: projectMenu.x + projectMenu.width / 2, y: projectMenu.y + projectMenu.height / 2})).toBe(true)
+    expect(overlap(await box(card(page)), qrSpot)).toBe(false)
+
     await advanceTo(page, 'klaar')
     await primary(page).click()
     await expect(card(page)).toHaveCount(0)
@@ -367,6 +378,7 @@ for (const [w, h] of [[1500, 1000], [1024, 700], [800, 600]]) {
             if (name === 'klaar') break
             await primary(page).click()
         }
-        expect(seen).toHaveLength(22)
+        expect(seen).toHaveLength(23)
+        expect(seen.slice(-3)).toEqual(['project', 'qr', 'klaar']) // the QR code for the circuit board comes near the end
     })
 }

@@ -6,6 +6,7 @@ import {FIT_SHEET_LENGTH, parseLength, scaleOf} from '../../model/geometry.js'
 import {flatten} from '../../model/tree.js'
 import {translation} from '../../i18n/translate.js'
 import RichText from '../../i18n/RichText.jsx'
+import {QrCode} from '../project/QrDialog.jsx'
 
 const countNodes = (project, matches) => project.een.reduce((sum, page) => sum + flatten(page.tree).filter(matches).length, 0)
 const countItems = (project, matches) => project.sit.reduce((sum, page) => sum + page.items.filter(matches).length, 0)
@@ -14,6 +15,8 @@ const FOOTER_DIALOG = '#footer-dialog'
 // the Kaderinfo steps: the second one is finished by closing the dialog, but only when it was seen open (a skipped first step must not finish it)
 let footerDialogSeen = false
 const tourTarget = (name) => `[data-tour="${name}"]`
+// what the example code of the QR step holds: the address of this application itself (scanning it opens Plugged, never somebody's schema)
+const exampleQrText = () => window.location.origin + window.location.pathname
 
 // The texts of a step in the active language: title, body (paragraphs with **bold** and [[keys]]) and the optional missing, done, next and
 // extra label.
@@ -140,6 +143,26 @@ export const tourSteps = () => [
     },
     {id: 'eigenschappen-situatie', tab: 1, target: '#sit-props', place: 'corner', ...textsOf('eigenschappen-situatie')},
     {id: 'project', target: '#tab-project', place: 'bottom', ...textsOf('project')},
+    // near the end, on purpose: the QR code for the circuit board, with a small example of what gets printed
+    (() => {
+        const texts = textsOf('qr'),
+            example = translation('tour.steps.qr.example')
+        return {
+            id: 'qr',
+            target: '#tab-project',
+            place: 'bottom',
+            ...texts,
+            body: (
+                <div className="tour-qr">
+                    <figure>
+                        <QrCode text={exampleQrText()} label={example} />
+                        <figcaption>{example}</figcaption>
+                    </figure>
+                    {texts.body}
+                </div>
+            ),
+        }
+    })(),
     {
         id: 'klaar',
         target: '#tab-info',

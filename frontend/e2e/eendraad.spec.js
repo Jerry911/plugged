@@ -373,4 +373,16 @@ test('a dropped Differentieel is drawn as a differentieel (Δ30mA, Type A), and 
     const fed = saved.een[0].tree[0].children[0].children.find((child) => child.id === differential.id)
     expect(fed.children.map((child) => child.type)).toEqual(['subbord'])
     expect(saved.een[0].tree[0].children[0].children.filter((child) => child.type === 'bord')).toHaveLength(0)
+    // an automaat and a differentieel dropped on the Onderbord become its circuits, not circuits of the main bus
+    const subBoard = fed.children[0],
+        circuitsOnBus = saved.een[0].tree[0].children[0].children.length
+    await drag('kring', page.locator(`[data-nid="${subBoard.id}"]`).first())
+    await drag('diff', page.locator(`[data-nid="${subBoard.id}"]`).first())
+    saved = await app.save(backend)
+    const inSubBoard = saved.een[0].tree[0].children[0].children.find((child) => child.id === differential.id).children[0].children
+    expect(inSubBoard.map((child) => [child.type, child.p.bescherming])).toEqual([
+        ['kring', 'automatisch'],
+        ['kring', 'differentieel'],
+    ])
+    expect(saved.een[0].tree[0].children[0].children).toHaveLength(circuitsOnBus)
 })

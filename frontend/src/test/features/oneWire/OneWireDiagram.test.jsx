@@ -703,6 +703,44 @@ describe('a differentieel and the board it feeds', () => {
         expect(find(spy.project.een[0].tree, dk.id).children.map((c) => c.type)).toEqual(['subbord'])
     })
 })
+describe('dropping a circuit onto a sub board', () => {
+    const withSubBoard = (circuits = []) =>
+        withTree([node('A', 'aansluiting', [node('B', 'bord', [node('K', 'kring', [node('SB', 'subbord', circuits, {label: 'Tuinhuis'})])])])])
+    test.each(['kring', 'diff'])('a %s dropped on an empty Onderbord becomes its first circuit, not a circuit on the main bus', (key) => {
+        const {container, spy} = mount(OneWireDiagram, withSubBoard(), {pageIndex: 0})
+        fireEvent.dragStart(pal(key))
+        fireEvent.dragOver(container.querySelector('[data-nid="SB"]'), {clientX: 10})
+        expect(container.querySelector('#eds-drop-preview')).not.toBeNull()
+        fireEvent.drop(container.querySelector('[data-nid="SB"]'), {clientX: 10})
+        expect(find(spy.project.een[0].tree, 'SB').children.map((c) => c.type)).toEqual(['kring'])
+        expect(find(spy.project.een[0].tree, 'B').children.map((c) => c.id)).toEqual(['K'])
+    })
+    test('on an Onderbord that already has circuits the new one becomes its last circuit', () => {
+        const {container, spy} = mount(OneWireDiagram, withSubBoard([node('Z1', 'kring', [], {label: 'Z1'})]), {pageIndex: 0})
+        fireEvent.dragStart(pal('kring'))
+        fireEvent.drop(container.querySelector('[data-nid="SB"]'), {clientX: 10})
+        expect(find(spy.project.een[0].tree, 'SB').children.map((c) => c.id)[0]).toBe('Z1')
+        expect(find(spy.project.een[0].tree, 'SB').children).toHaveLength(2)
+    })
+    test('a sub board fed by a differentieel (as an EDS file gives it): circuits go into it, and next to the differentieel, never onto the main line', () => {
+        const tree = withTree([
+            node('A', 'aansluiting', [
+                node('B', 'bord', [node('D', 'diff', [node('SB', 'subbord', [node('Z1', 'kring', [], {label: 'Z1'})], {label: 'Tuinhuis'})], {label: 'ZB', p: {polen: 2, amp: 40, delta: 30, diffType: 'A'}}), node('K', 'kring')]),
+            ]),
+        ])
+        const {container, spy} = mount(OneWireDiagram, tree, {pageIndex: 0})
+        fireEvent.dragStart(pal('kring'))
+        fireEvent.drop(container.querySelector('[data-nid="SB"]'), {clientX: 10})
+        expect(find(spy.project.een[0].tree, 'SB').children).toHaveLength(2)
+        // on the stem of the differentieel that feeds the sub board: a circuit right next to it (not the last circuit of the main bus)
+        fireEvent.dragStart(pal('diff'))
+        fireEvent.drop(container.querySelector('[data-stem="D"]'), {clientX: 10})
+        const onBoard = find(spy.project.een[0].tree, 'B').children
+        expect(onBoard.map((c) => c.type)).toEqual(['diff', 'kring', 'kring'])
+        expect(onBoard[1].p.bescherming).toBe('differentieel')
+        expect(onBoard[2].id).toBe('K')
+    })
+})
 test('anywhere on the sheet works: above the bus the nearest circuit counts, below it the bus', () => {
     const {container, spy} = mount(OneWireDiagram, circ(), {pageIndex: 0}),
         sheet = () => container.querySelector('svg.sheet'),

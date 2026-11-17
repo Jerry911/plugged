@@ -3,7 +3,7 @@
 // The eendraadschema tab: the palette, the Eigenschappen panel and the Opbouw list on the left, the drawn sheets of the page on the right.
 import {useEffect, useLayoutEffect, useRef, useState} from 'react'
 import {allTypes, EMPTY_TYPE, symbolName, typeOf} from '../../symbols/symbolLibrary.js'
-import {circuitInfo, defaultProperties, nextCircuitLetter, sheetPlan} from '../../model/boardLayout.js'
+import {BOX_TYPES, circuitInfo, isDiffCircuit, defaultProperties, nextCircuitLetter, sheetPlan} from '../../model/boardLayout.js'
 import {
     ancestorIdsOf,
     findNode,
@@ -18,7 +18,7 @@ import {
     updateNode,
     withNewIds,
 } from '../../model/tree.js'
-import {addSibling, circuitOf, emptyChoices, insertAt, insertTypes, parentOf, siblingTypes} from '../../model/insertion.js'
+import {addSibling, emptyChoices, insertAt, insertTypes, parentOf, siblingTypes} from '../../model/insertion.js'
 import ZoomPane from '../../components/ZoomPane.jsx'
 import ZoomControls from '../../components/ZoomControls.jsx'
 import {useTranslation} from '../../i18n/I18nProvider.jsx'
@@ -29,6 +29,12 @@ import {DISTRIBUTION_TYPES} from './elementFields.js'
 // onto one becomes a circuit protected by a differentieel)
 const CIRCUIT_TYPES = ['kring', 'diff'],
     BOARD_TYPES = ['bord', 'subbord']
+// the circuit an element is drawn in: the nearest kring, or a differentieel that is drawn as a circuit of its own (one that feeds a sub board,
+// as an EDS file gives it); null for the main line
+const drawnCircuitOf = (tree, id) => {
+    for (let node = findNode(tree, id); node; node = parentOf(tree, node.id)) if (node.type === 'kring' || isDiffCircuit(node)) return node
+    return null
+}
 import SymbolPalette from './SymbolPalette.jsx'
 import PropertiesPanel from './PropertiesPanel.jsx'
 import StructureTree from './StructureTree.jsx'
@@ -337,7 +343,10 @@ export default function OneWireDiagram({project, setProject, pageIndex, focus, o
             })
             return nearest ? onCircuit(nearest.circuit, nearest.hitArea) : onBus()
         }
-        const circuit = circuitOf(tree, target.id)
+        // a circuit (kring, differentieel) dropped on a sub board (its box, or the board drawn with its circuits): its last circuit, not next
+        // to the circuit or differentieel that feeds the sub board, nor on the main line
+        if (makesCircuit && BOX_TYPES.has(target.type)) return {id: target.id, mode: 'after', zone: 'element'}
+        const circuit = drawnCircuitOf(tree, target.id)
         if (!circuit) return onBus() // the head: the main line
         if (target.id === circuit.id) return onCircuit(circuit, element.hasAttribute('data-hit') ? element : null, true) // the circuit itself: its area, stem or letter
         if (makesCircuit) return onCircuit(circuit)

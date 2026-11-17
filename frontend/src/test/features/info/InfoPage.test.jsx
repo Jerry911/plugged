@@ -264,10 +264,10 @@ describe('Export dialog and import detection', () => {
         const onExport = vi.fn(),
             onClose = vi.fn()
         render(<ExportDialog onExport={onExport} onClose={onClose} />)
-        expect(EXPORT_TYPES).toEqual(['json', 'eds', 'csv', 'png'])
+        expect(EXPORT_TYPES).toEqual(['json', 'eds', 'svg', 'png'])
         // every type has its label and hint
         for (const id of EXPORT_TYPES) expect(byId('export-type-' + id).closest('label').textContent).toContain(t(`export.types.${id}.label`))
-        for (const id of ['csv', 'png']) {
+        for (const id of ['svg', 'png']) {
             fireEvent.click(byId('export-type-' + id))
             fireEvent.click(byId('export-confirm'))
             expect(onExport).toHaveBeenLastCalledWith(id)

@@ -1,20 +1,9 @@
 // Copyright 2026 Pleysier Jeroen
 // SPDX-License-Identifier: AGPL-3.0-only
-// Export of all pages as a zip: CSV files (one per page) and PNG images (one per sheet).
+// Export of all sheets as a zip: SVG drawings or PNG images, one per sheet.
 import {render} from '@testing-library/react'
 import {strFromU8, unzipSync} from 'fflate'
-import {
-    oneWireRows,
-    pagesCsvFiles,
-    pagesCsvZip,
-    pagesZipName,
-    pngSize,
-    safeFileName,
-    sheetFileNames,
-    sheetsPngZip,
-    situationRows,
-    standaloneSvg,
-} from '../../../features/project/pagesExport.js'
+import {pagesZipName, pngSize, safeFileName, sheetFileNames, sheetsPngZip, sheetsSvgZip, sheetToSvg, standaloneSvg, zipFiles} from '../../../features/project/pagesExport.js'
 import {AllSheets} from '../../../features/project/pdfExport.jsx'
 import {sheetPlan} from '../../../model/boardLayout.js'
 import {setLanguage, t} from '../../../i18n/translate.js'
@@ -23,7 +12,6 @@ import {baseProject, node} from '../../utils.jsx'
 vi.mock('jspdf', () => ({jsPDF: class {}}))
 vi.mock('svg2pdf.js', () => ({svg2pdf: async () => {}}))
 
-const BOM = '\ufeff'
 const house = () => ({
     ...baseProject(),
     footer: {titel: 'Villa Zon', schaal: '1:50'},
@@ -61,74 +49,48 @@ const house = () => ({
     ],
 })
 
-describe('CSV', () => {
-    afterEach(() => setLanguage('nl'))
-    test('an eendraadschema page: a header, then every element in tree order with its level, marking, element and properties', () => {
-        const rows = oneWireRows(house(), house().een[0])
-        expect(rows[0]).toEqual(['level', 'marking', 'element', 'label', 'protection', 'poles', 'current', 'curve', 'sensitivity', 'diffType', 'cable', 'text', 'info'].map((column) => t('pagesExport.oneWire.' + column)))
-        const byLevel = rows.slice(1).map((row) => [row[0], row[1], row[3]])
-        expect(byLevel).toEqual([
-            [1, '', 'M'],
-            [2, '', 'B'],
-            [3, 'A', ''], // a circuit: its letter is the marking
-            [4, 'A1', 'Keuken; links'],
-            [4, 'A2', 'L'],
-            [3, 'D', ''],
-            [4, 'D1', 'W'],
+describe('SVG', () => {
+    test('a sheet as an SVG file of its own: XML, A4 landscape in millimetres, the same drawing', () => {
+        const {container} = render(<AllSheets project={house()} />),
+            svg = container.querySelector('svg.sheet'),
+            text = strFromU8(sheetToSvg(svg))
+        expect(text.startsWith('<?xml version="1.0" encoding="UTF-8"?>\n<svg')).toBe(true)
+        const file = new DOMParser().parseFromString(text, 'image/svg+xml')
+        expect(file.querySelector('parsererror')).toBeNull()
+        const root = file.documentElement
+        expect(root.namespaceURI).toBe('http://www.w3.org/2000/svg')
+        expect(root.getAttribute('width')).toBe('297mm')
+        expect(root.getAttribute('height')).toBe('210mm')
+        expect(root.getAttribute('viewBox')).toBe('0 0 297 210')
+        // everything that is drawn is in it: the same elements, the texts of the sheet
+        expect(root.querySelectorAll('*').length).toBe(svg.querySelectorAll('*').length)
+        expect(root.textContent).toContain('Keuken; links')
+        // the sheet on the page keeps its own size
+        expect(svg.getAttribute('width')).toBeNull()
+    })
+    test('the zip holds one SVG per sheet, named and ordered as the PNG files', async () => {
+        const {container} = render(<AllSheets project={house()} />),
+            unzipped = unzipSync(await sheetsSvgZip(house(), container))
+        expect(Object.keys(unzipped)).toEqual(sheetFileNames(house(), 'svg'))
+        expect(Object.keys(unzipped)).toEqual([
+            `01 ${t('pagesExport.oneWireFile')} - Hoofd.svg`,
+            `02 ${t('pagesExport.situationFile')} - Gelijkvloers.svg`,
+            `03 ${t('pagesExport.situationFile')} - Verdieping-zolder.svg`, // no "/" in a file name
         ])
-        const circuitA = rows[3],
-            circuitD = rows[6]
-        expect(circuitA.slice(4, 11)).toEqual([t('oneWire.protections.automatisch'), 2, 16, 'B', '', '', 'XVB Cca 3G2,5'])
-        expect(circuitD.slice(4, 11)).toEqual([t('oneWire.protections.differentieel'), 2, 25, '', 30, 'A', 'XVB Cca 3G2,5'])
-        expect(rows[4][2]).toMatch(/stopcontact/i) // the element is the name of its symbol
-    })
-    test('a situatieschema page: walls with their real length at the scale, then the symbols, doors and texts', () => {
-        const rows = situationRows(house(), house().sit[0])
-        expect(rows[0][0]).toBe(t('pagesExport.situation.kind'))
-        const [wall, socket, light, door, text] = rows.slice(1)
-        expect(wall).toEqual([t('pagesExport.kinds.wall'), '', '', '40', '40', '140', '40', '5', '', '', '']) // 100 mm at 1:50 = 5 m
-        expect(socket.slice(0, 5)).toEqual([t('pagesExport.kinds.sym'), expect.stringMatching(/stopcontact/i), 'A1', '50', '60'])
-        expect(socket[8]).toBe('90')
-        expect(socket[10]).toBe('Keuken; links') // the label of its element
-        expect(light[2]).toBe('Eigen') // a marking typed on the plan wins
-        expect(door[0]).toBe(t('pagesExport.kinds.door'))
-        expect(door[9]).toBe('10')
-        expect(text).toEqual([t('pagesExport.kinds.text'), '', '', '70', '100', '', '', '', '0', '4', 'Keuken "oost"'])
-    })
-    test('numbers use the decimal separator of the language', () => {
-        const project = {...house(), sit: [{id: 's', name: 'P', walls: [{id: 'w', x1: 0, y1: 0, x2: 70, y2: 0}], items: []}]}
-        expect(situationRows(project, project.sit[0])[1][7]).toBe('3,5')
-        setLanguage('en')
-        expect(situationRows(project, project.sit[0])[1][7]).toBe('3.5')
-        expect(situationRows(project, project.sit[0])[0][0]).toBe('Kind')
-    })
-    test('one file per page, numbered in the order of the pages, as CSV for Excel: byte order mark, ";", quotes where needed', () => {
-        const files = pagesCsvFiles(house())
-        expect(Object.keys(files)).toEqual([
-            `01 ${t('pagesExport.oneWireFile')} - Hoofd.csv`,
-            `02 ${t('pagesExport.situationFile')} - Gelijkvloers.csv`,
-            `03 ${t('pagesExport.situationFile')} - Verdieping-zolder.csv`, // no "/" in a file name
-        ])
-        const first = files[Object.keys(files)[0]]
-        expect(first.startsWith(BOM)).toBe(true)
-        expect(first.split('\r\n')[0]).toBe(BOM + oneWireRows(house(), house().een[0])[0].join(';'))
-        expect(first).toContain('"Keuken; links"')
-        expect(files[Object.keys(files)[1]]).toContain('"Keuken ""oost"""')
-        // an empty page still has its header row
-        expect(files[Object.keys(files)[2]].trim().split('\r\n')).toHaveLength(1)
-    })
-    test('the zip holds exactly those files', () => {
-        const unzipped = unzipSync(pagesCsvZip(house())),
-            files = pagesCsvFiles(house())
-        expect(Object.keys(unzipped)).toEqual(Object.keys(files))
-        for (const [name, text] of Object.entries(files)) {
-            expect([...unzipped[name].subarray(0, 3)]).toEqual([0xef, 0xbb, 0xbf]) // the byte order mark, in UTF-8
-            expect(BOM + strFromU8(unzipped[name])).toBe(text.startsWith(BOM) ? text : BOM + text)
-        }
+        const sheets = container.querySelectorAll('svg.sheet')
+        Object.values(unzipped).forEach((bytes, index) => {
+            const root = new DOMParser().parseFromString(strFromU8(bytes), 'image/svg+xml').documentElement
+            expect(root.getAttribute('width')).toBe('297mm')
+            expect(root.querySelectorAll('*').length).toBe(sheets[index].querySelectorAll('*').length)
+        })
     })
     test('the names follow the language', () => {
         setLanguage('fr')
-        expect(Object.keys(pagesCsvFiles(house()))[1]).toBe('02 Plan de position - Gelijkvloers.csv')
+        try {
+            expect(sheetFileNames(house(), 'svg')[1]).toBe('02 Plan de position - Gelijkvloers.svg')
+        } finally {
+            setLanguage('nl')
+        }
     })
 })
 
@@ -196,8 +158,17 @@ describe('PNG', () => {
     })
 })
 
+test('a PNG is stored as it is in the zip, an SVG is compressed', () => {
+    const drawing = new TextEncoder().encode('<svg>' + 'x'.repeat(5000) + '</svg>'),
+        picture = new Uint8Array(5000).fill(7)
+    const zipped = zipFiles({'a.svg': drawing, 'b.png': picture})
+    expect(zipped.length).toBeLessThan(5000 + 400) // the SVG (5011 bytes) shrinks to a few dozen, the PNG (5000 bytes) is stored
+    expect(zipped.length).toBeGreaterThan(5000)
+    expect([...unzipSync(zipped)['b.png']]).toEqual([...picture])
+})
+
 test('file names: the title of the kader, and nothing a file system refuses', () => {
-    expect(pagesZipName(house(), 'csv')).toBe('Villa Zon-csv.zip')
+    expect(pagesZipName(house(), 'svg')).toBe('Villa Zon-svg.zip')
     expect(pagesZipName({...house(), footer: {}}, 'png')).toBe('schema-png.zip')
     expect(safeFileName('a/b\\c:d*e?"f"<g>|h')).toBe('a-b-c-d-e-f-g-h')
     expect(safeFileName('   ')).toBe('-')

@@ -144,9 +144,9 @@ export default {
                 label: 'Schéma unifilaire (.eds)',
                 hint: 'Uniquement le schéma unifilaire et l’adresse. Le plan de position n’est pas repris.',
             },
-            csv: {
-                label: 'Toutes les feuilles en CSV (.zip)',
-                hint: 'Un zip avec un fichier CSV par feuille : les éléments du schéma unifilaire, les murs et symboles du plan de position. À ouvrir dans Excel.',
+            svg: {
+                label: 'Toutes les feuilles en SVG (.zip)',
+                hint: 'Un zip avec un dessin SVG par feuille (vectoriel, A4 paysage), comme dans le PDF. À retravailler par ex. dans Inkscape ou Illustrator.',
             },
             png: {
                 label: 'Toutes les feuilles en image (PNG, .zip)',
@@ -159,10 +159,6 @@ export default {
         pngFailed: 'Une feuille n’a pas pu être dessinée en image.',
         oneWireFile: 'Schéma unifilaire',
         situationFile: 'Plan de position',
-        rcbo: 'Disjoncteur différentiel',
-        oneWire: {level: 'Niveau', marking: 'Repère', element: 'Élément', label: 'Libellé', protection: 'Protection', poles: 'Pôles', current: 'Courant (A)', curve: 'Courbe', sensitivity: 'Différentiel (mA)', diffType: 'Type', cable: 'Câble', text: 'Nom (texte)', info: 'Spécifications'},
-        situation: {kind: 'Sorte', element: 'Élément', marking: 'Repère', x: 'X (mm)', y: 'Y (mm)', x2: 'X2 (mm)', y2: 'Y2 (mm)', length: 'Longueur (m)', rotation: 'Rotation (°)', size: 'Taille (mm)', text: 'Texte'},
-        kinds: {wall: 'Mur', sym: 'Symbole', door: 'Porte', window: 'Fenêtre', text: 'Texte', other: 'Autre'},
     },
     footer: {
         installation: 'Installation',
@@ -860,7 +856,7 @@ export default {
                     text: 'Sous **Projet** se trouve tout ce qu’il faut pour emporter votre schéma.',
                     points: [
                         '**PDF** (vectoriel, A4 paysage) et **Imprimer** de toutes les feuilles ([[Alt]]+[[P]]).',
-                        '**Exporter** ([[Alt]]+[[E]]) : un fichier de projet (.json), un .eds pour l’eendraadschema en ligne, ou toutes les feuilles en **CSV** ou en image **PNG** dans un fichier zip.',
+                        '**Exporter** ([[Alt]]+[[E]]) : un fichier de projet (.json), un .eds pour l’eendraadschema en ligne, ou toutes les feuilles en dessin **SVG** ou en image **PNG** dans un fichier zip.',
                         '**Importer** ([[Alt]]+[[I]]) un .json ou un .eds.',
                         'La **liste de matériel** : protections, câbles, prises, interrupteurs et appareils, comptés à partir du schéma, en Excel ou CSV.',
                     ],
@@ -913,7 +909,7 @@ export default {
             cannotTitle: 'Les élèves ne peuvent pas',
             cannot: [
                 '**contrôler leur schéma** : pas de bouton Contrôler ni de compteurs d’erreurs et d’avertissements ; sur le plan de position, la liste des éléments à placer est une simple liste sans avertissement ;',
-                '**importer ou exporter** (.json, .eds, CSV, PNG), pour ne pas reprendre le travail d’autres ni l’emporter vers une autre installation ;',
+                '**importer ou exporter** (.json, .eds, SVG, PNG), pour ne pas reprendre le travail d’autres ni l’emporter vers une autre installation ;',
                 'créer un projet qui a déjà du contenu, ni partager des symboles propres.',
             ],
             canTitle: 'Les élèves peuvent',

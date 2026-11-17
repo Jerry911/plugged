@@ -144,9 +144,9 @@ export default {
                 label: 'Single-line diagram (.eds)',
                 hint: 'Only the single-line diagram and the address. The site plan is not included.',
             },
-            csv: {
-                label: 'All sheets as CSV (.zip)',
-                hint: 'A zip with one CSV file per sheet: the elements of the single-line diagram, the walls and symbols of the site plan. Opens in Excel.',
+            svg: {
+                label: 'All sheets as SVG (.zip)',
+                hint: 'A zip with one SVG drawing per sheet (vector, A4 landscape), as in the PDF. To edit further in e.g. Inkscape or Illustrator.',
             },
             png: {
                 label: 'All sheets as images (PNG, .zip)',
@@ -159,10 +159,6 @@ export default {
         pngFailed: 'A sheet could not be drawn as an image.',
         oneWireFile: 'Single-line diagram',
         situationFile: 'Site plan',
-        rcbo: 'RCBO',
-        oneWire: {level: 'Level', marking: 'Marking', element: 'Element', label: 'Label', protection: 'Protection', poles: 'Poles', current: 'Current (A)', curve: 'Curve', sensitivity: 'Residual current (mA)', diffType: 'Type', cable: 'Cable', text: 'Name (text)', info: 'Specifications'},
-        situation: {kind: 'Kind', element: 'Element', marking: 'Marking', x: 'X (mm)', y: 'Y (mm)', x2: 'X2 (mm)', y2: 'Y2 (mm)', length: 'Length (m)', rotation: 'Rotation (°)', size: 'Size (mm)', text: 'Text'},
-        kinds: {wall: 'Wall', sym: 'Symbol', door: 'Door', window: 'Window', text: 'Text', other: 'Other'},
     },
     footer: {
         installation: 'Installation',
@@ -859,7 +855,7 @@ export default {
                     text: 'Under **Project** you find everything to take your schema with you.',
                     points: [
                         '**PDF** (vector, A4 landscape) and **Print** of all sheets ([[Alt]]+[[P]]).',
-                        '**Export** ([[Alt]]+[[E]]): a project file (.json), an .eds for the online eendraadschema, or all sheets as **CSV** or as **PNG** images in a zip file.',
+                        '**Export** ([[Alt]]+[[E]]): a project file (.json), an .eds for the online eendraadschema, or all sheets as **SVG** drawings or as **PNG** images in a zip file.',
                         '**Import** ([[Alt]]+[[I]]) a .json or an .eds.',
                         'The **bill of materials**: protection devices, cables, sockets, switches and appliances, counted from the diagram, as Excel or CSV.',
                     ],
@@ -912,7 +908,7 @@ export default {
             cannotTitle: 'Students cannot',
             cannot: [
                 '**check their schema**: no Check button and no counts of errors and warnings; on the site plan the list of elements still to place is a plain list without warning;',
-                '**import or export** (.json, .eds, CSV, PNG), so they do not take over the work of others or take it to another installation;',
+                '**import or export** (.json, .eds, SVG, PNG), so they do not take over the work of others or take it to another installation;',
                 'create a project that already has content, or share own symbols.',
             ],
             canTitle: 'Students can',

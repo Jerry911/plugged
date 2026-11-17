@@ -32,8 +32,10 @@ const writeSizes = () => execFileSync('python3', ['-c', SIZES_SCRIPT, OUT, SIZES
 const LANGUAGES = ['nl', 'fr', 'en']
 
 test.skip(!RUN, 'makes the screenshots of the Info page: INFO_SCREENSHOTS=1')
-// one after the other: every picture also rewrites the file with the sizes
+// one after the other, and after every test the file with the sizes is written again (not after every picture: the editor must not
+// wait, it reports itself to the server every 10 s and would load the project again)
 test.describe.configure({mode: 'serial'})
+test.afterEach(() => writeSizes())
 test.use({viewport: {width: 1440, height: 900}, deviceScaleFactor: 1})
 test.setTimeout(180_000)
 
@@ -218,7 +220,6 @@ const shoot = async (target, language, name) => {
         png.replace(/\.png$/, '.webp'),
     ])
     rmSync(png)
-    writeSizes()
 }
 // a part of the page: the union of the boxes of `locators` (with a margin), or the top `height` pixels
 const shootArea = async (page, language, name, {locators = [], height} = {}) => {
@@ -234,7 +235,6 @@ const shootArea = async (page, language, name, {locators = [], height} = {}) => 
     await page.screenshot({path: png, clip, animations: 'disabled'})
     execFileSync('python3', ['-c', 'import sys; from PIL import Image; Image.open(sys.argv[1]).save(sys.argv[2], "WEBP", quality=82, method=6)', png, png.replace(/\.png$/, '.webp')])
     rmSync(png)
-    writeSizes()
 }
 const json = (body) => ({
     status: 200,

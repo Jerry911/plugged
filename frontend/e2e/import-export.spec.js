@@ -95,7 +95,7 @@ test.describe('importing an .eds file', () => {
     })
 })
 
-test.describe('all pages as CSV or PNG (a zip file)', () => {
+test.describe('all sheets as SVG or PNG (a zip file)', () => {
     const doc = () =>
         withCircuit({
             footer: {titel: 'Villa', schaal: '1:50'},
@@ -118,29 +118,49 @@ test.describe('all pages as CSV or PNG (a zip file)', () => {
     }
     const unzipped = async (download) => unzipSync(new Uint8Array(readFileSync(await download.path())))
 
-    test('CSV: one file per page with the elements, walls and symbols, readable by Excel', async ({page, app, backend}) => {
+    test('SVG: one vector drawing per sheet, A4 landscape in mm, that a browser draws on its own', async ({page, app, backend}) => {
         await app.open(backend, doc())
-        const download = await exportAs(page, 'csv')
-        expect(download.suggestedFilename()).toBe('Villa-csv.zip')
-        await expect(app.status()).toHaveText(t('pagesExport.done', {file: 'Villa-csv.zip'}))
+        const download = await exportAs(page, 'svg')
+        expect(download.suggestedFilename()).toBe('Villa-svg.zip')
+        await expect(app.status()).toHaveText(t('pagesExport.done', {file: 'Villa-svg.zip'}))
         const files = await unzipped(download),
             names = Object.keys(files)
         expect(names).toEqual([
-            `01 ${t('pagesExport.oneWireFile')} - Hoofd.csv`,
-            `02 ${t('pagesExport.oneWireFile')} - Garage.csv`,
-            `03 ${t('pagesExport.situationFile')} - Gelijkvloers.csv`,
+            `01 ${t('pagesExport.oneWireFile')} - Hoofd.svg`,
+            `02 ${t('pagesExport.oneWireFile')} - Garage.svg`,
+            `03 ${t('pagesExport.situationFile')} - Gelijkvloers.svg`,
         ])
-        const text = (name) => strFromU8(files[name]),
-            rows = (name) => text(name).replace(/^﻿/, '').trim().split('\r\n').map((line) => line.split(';'))
-        expect([...files[names[0]].subarray(0, 3)]).toEqual([0xef, 0xbb, 0xbf])
-        const main = rows(names[0])
-        expect(main[0][0]).toBe(t('pagesExport.oneWire.level'))
-        expect(main.map((row) => row[1])).toEqual(expect.arrayContaining(['K1', 'K2']))
-        expect(main.find((row) => row[1] === 'K1')[3]).toBe('Keuken stopcontact')
-        const plan = rows(names[2])
-        expect(plan[1][0]).toBe(t('pagesExport.kinds.wall'))
-        expect(plan[1][7]).toBe('5') // 100 mm at 1:50
-        expect(plan[2]).toEqual(expect.arrayContaining([t('pagesExport.kinds.sym'), 'K1', '60']))
+        for (const name of names) {
+            const text = strFromU8(files[name])
+            expect(text.startsWith('<?xml version="1.0" encoding="UTF-8"?>'), name).toBe(true)
+            // opened on its own (without the stylesheets of Plugged): valid, its size in mm, and mostly white paper with the drawing on it
+            const result = await page.evaluate(async (source) => {
+                const file = new DOMParser().parseFromString(source, 'image/svg+xml')
+                if (file.querySelector('parsererror')) return {error: true}
+                const root = file.documentElement,
+                    image = new Image()
+                image.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(source)
+                await image.decode()
+                const canvas = document.createElement('canvas')
+                canvas.width = 1123
+                canvas.height = 794
+                const context = canvas.getContext('2d')
+                context.fillStyle = '#fff'
+                context.fillRect(0, 0, canvas.width, canvas.height)
+                context.drawImage(image, 0, 0, canvas.width, canvas.height)
+                const {data} = context.getImageData(0, 0, canvas.width, canvas.height)
+                let dark = 0
+                for (let index = 0; index < data.length; index += 4) if (data[index] + data[index + 1] + data[index + 2] < 300) dark++
+                return {width: root.getAttribute('width'), height: root.getAttribute('height'), viewBox: root.getAttribute('viewBox'), texts: root.textContent, dark: dark / (data.length / 4)}
+            }, text)
+            expect(result.error, name).toBeUndefined()
+            expect([result.width, result.height, result.viewBox], name).toEqual(['297mm', '210mm', '0 0 297 210'])
+            expect(result.dark, name).toBeGreaterThan(0.002)
+            expect(result.dark, name).toBeLessThan(0.1)
+        }
+        // the texts of the drawing are text in the file (a vector drawing, not a picture)
+        expect(strFromU8(files[names[0]])).toContain('Keuken stopcontact')
+        await expect(page.locator('.export svg.sheet')).toHaveCount(0)
     })
 
     test('PNG: one picture per sheet, A4 landscape at 150 dpi, with the drawing on it', async ({page, app, backend}) => {

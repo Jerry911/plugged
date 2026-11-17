@@ -145,9 +145,9 @@ export default {
                 label: 'Eendraadschema (.eds)',
                 hint: 'Enkel het eendraadschema en het adres. Het situatieschema wordt niet meegenomen.',
             },
-            csv: {
-                label: 'Alle bladen als CSV (.zip)',
-                hint: 'Een zip met één CSV-bestand per blad: de elementen van het eendraadschema, de muren en symbolen van het situatieschema. Te openen in Excel.',
+            svg: {
+                label: 'Alle bladen als SVG (.zip)',
+                hint: 'Een zip met één SVG-tekening per blad (vectorieel, A4 liggend), zoals in de PDF. Verder te bewerken in bv. Inkscape of Illustrator.',
             },
             png: {
                 label: 'Alle bladen als afbeelding (PNG, .zip)',
@@ -160,10 +160,6 @@ export default {
         pngFailed: 'Een blad kon niet als afbeelding getekend worden.',
         oneWireFile: 'Eendraadschema',
         situationFile: 'Situatieschema',
-        rcbo: 'Differentieelautomaat',
-        oneWire: {level: 'Niveau', marking: 'Kenmerk', element: 'Element', label: 'Label', protection: 'Bescherming', poles: 'Polen', current: 'Stroom (A)', curve: 'Curve', sensitivity: 'Differentieel (mA)', diffType: 'Type', cable: 'Kabel', text: 'Naam (tekst)', info: 'Specificaties'},
-        situation: {kind: 'Soort', element: 'Element', marking: 'Kenmerk', x: 'X (mm)', y: 'Y (mm)', x2: 'X2 (mm)', y2: 'Y2 (mm)', length: 'Lengte (m)', rotation: 'Draaiing (°)', size: 'Grootte (mm)', text: 'Tekst'},
-        kinds: {wall: 'Muur', sym: 'Symbool', door: 'Deur', window: 'Raam', text: 'Tekst', other: 'Ander'},
     },
     footer: {
         installation: 'Installatie',
@@ -861,7 +857,7 @@ export default {
                     text: 'Onder **Project** vind je alles om je schema mee te nemen.',
                     points: [
                         '**PDF** (vectorieel, A4 liggend) en **Afdrukken** van alle bladen ([[Alt]]+[[P]]).',
-                        '**Exporteren** ([[Alt]]+[[E]]): een projectbestand (.json), een .eds voor het online eendraadschema, of alle bladen als **CSV** of als **PNG**-afbeelding in een zip-bestand.',
+                        '**Exporteren** ([[Alt]]+[[E]]): een projectbestand (.json), een .eds voor het online eendraadschema, of alle bladen als **SVG**-tekening of als **PNG**-afbeelding in een zip-bestand.',
                         '**Importeren** ([[Alt]]+[[I]]) van een .json of een .eds.',
                         'De **materiaallijst**: beveiligingen, kabels, stopcontacten, schakelaars en toestellen, geteld uit het schema, als Excel of CSV.',
                     ],
@@ -914,7 +910,7 @@ export default {
             cannotTitle: 'Leerlingen kunnen niet',
             cannot: [
                 '**hun schema controleren**: geen knop Controleer en geen tellers van fouten en waarschuwingen; op het situatieschema is de lijst van nog te plaatsen elementen een gewone lijst zonder waarschuwing;',
-                '**importeren of exporteren** (.json, .eds, CSV, PNG), zodat ze geen werk van anderen overnemen of naar een andere installatie meenemen;',
+                '**importeren of exporteren** (.json, .eds, SVG, PNG), zodat ze geen werk van anderen overnemen of naar een andere installatie meenemen;',
                 'een project maken dat al inhoud heeft, of eigen symbolen delen.',
             ],
             canTitle: 'Leerlingen kunnen wel',

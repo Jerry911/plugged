@@ -242,6 +242,10 @@ describe('the Info page without an account (#info)', () => {
         mount()
         await waitFor(() => getById('login-form'))
         expect(getById('link-info')).toHaveAttribute('href', '#info')
+        expect(getById('link-info')).toHaveTextContent(t('auth.infoLink'))
+        // in the sign-in card, on the same line as the link to register, after it
+        expect(getById('link-info').parentElement).toBe(getById('link-register').parentElement)
+        expect(getById('link-register').compareDocumentPosition(getById('link-info')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
         clickId('link-info')
         getById('info-page')
         expect(window.location.hash).toBe('#info')

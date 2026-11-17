@@ -1279,8 +1279,6 @@ export default {
                 'Er is geen e-mailadres voor de beheerder ingesteld. Start Plugged met de omgevingsvariabele PLUGGED_ADMIN_EMAIL (bv. PLUGGED_ADMIN_EMAIL=jij@voorbeeld.be) en laad deze pagina opnieuw.',
         },
         infoLink: 'Info',
-        infoTeaser: 'Wat is Plugged en wat kan je ermee?',
-        infoTeaserLink: 'Lees de info (geen account nodig)',
         login: {
             title: 'Aanmelden',
             submit: 'Aanmelden',

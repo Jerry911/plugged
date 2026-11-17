@@ -1275,8 +1275,6 @@ export default {
                 'Aucune adresse e-mail n’est configurée pour l’administrateur. Démarrez Plugged avec la variable d’environnement PLUGGED_ADMIN_EMAIL (p. ex. PLUGGED_ADMIN_EMAIL=vous@exemple.be) et rechargez cette page.',
         },
         infoLink: 'Info',
-        infoTeaser: 'Qu’est-ce que Plugged et que pouvez-vous en faire ?',
-        infoTeaserLink: 'Lire les informations (sans compte)',
         login: {
             title: 'Connexion',
             submit: 'Se connecter',

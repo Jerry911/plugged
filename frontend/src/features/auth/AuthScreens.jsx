@@ -213,9 +213,9 @@ export function SetupScreen({adminEmail, onDone, onInfo}) {
 
 /**
  * Signing in. `email` fills in the address (after a registration, or when the session ended); `notice` is a message above the form;
- * `onRegister` opens the registration (absent: no link, e.g. when the session ended in the middle of the work).
+ * `onRegister` opens the registration (absent: no link, e.g. when the session ended in the middle of the work); `onInfo` the public Info page.
  */
-export function LoginForm({email: initialEmail = '', notice, onLogin, onRegister, title}) {
+export function LoginForm({email: initialEmail = '', notice, onLogin, onRegister, onInfo, title}) {
     const {t} = useTranslation()
     const [email, setEmail] = useState(initialEmail),
         [password, setPassword] = useState('')
@@ -236,12 +236,22 @@ export function LoginForm({email: initialEmail = '', notice, onLogin, onRegister
             <button id="auth-submit" className="authsubmit" type="submit" disabled={busy}>
                 {t('auth.login.submit')}
             </button>
-            {onRegister && (
+            {(onRegister || onInfo) && (
                 <p className="authswitch">
-                    {t('auth.login.noAccount')}{' '}
-                    <a id="link-register" href="#register" onClick={onRegister}>
-                        {t('auth.login.registerLink')}
-                    </a>
+                    {onRegister && (
+                        <>
+                            {t('auth.login.noAccount')}{' '}
+                            <a id="link-register" href="#register" onClick={onRegister}>
+                                {t('auth.login.registerLink')}
+                            </a>
+                        </>
+                    )}
+                    {onRegister && onInfo && <span className="authsep"> · </span>}
+                    {onInfo && (
+                        <a id="link-info" href="#info" onClick={onInfo}>
+                            {t('auth.infoLink')}
+                        </a>
+                    )}
                 </p>
             )}
         </form>
@@ -249,20 +259,9 @@ export function LoginForm({email: initialEmail = '', notice, onLogin, onRegister
 }
 
 export function LoginScreen({onInfo, ...props}) {
-    const {t} = useTranslation()
     return (
         <AuthLayout onInfo={onInfo}>
-            <div className="authstack">
-                <LoginForm {...props} />
-                {onInfo && (
-                    <p id="auth-info-teaser" className="authteaser">
-                        {t('auth.infoTeaser')}{' '}
-                        <a id="link-info" href="#info" onClick={onInfo}>
-                            {t('auth.infoTeaserLink')}
-                        </a>
-                    </p>
-                )}
-            </div>
+            <LoginForm {...props} onInfo={onInfo} />
         </AuthLayout>
     )
 }

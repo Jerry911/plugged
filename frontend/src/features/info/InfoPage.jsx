@@ -28,6 +28,80 @@ export const FEATURE_IMAGES = {
     talen: [],
 }
 export const ROLE_IMAGE = 'groepen'
+
+// The icons of the features and roles: simple line drawings in the colour of the text (yellow on the dark blue circle), not emoji, which
+// every system draws in its own colours (dark ones on Windows, hardly visible on the circle)
+const ICON_PATHS = {
+    eendraadschema: <path d="M13 2 4 14h7l-1 8 9-12h-7z" />,
+    situatieschema: (
+        <>
+            <path d="M3 11 12 3l9 8" />
+            <path d="M5 9.5V20h14V9.5" />
+            <path d="M10 20v-6h4v6" />
+        </>
+    ),
+    controleren: <path d="m4 12.5 5 5L20 6.5" />,
+    projecten: <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />,
+    samenwerken: (
+        <>
+            <circle cx="9" cy="8" r="3.5" />
+            <path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6" />
+            <circle cx="17.5" cy="9" r="2.5" />
+            <path d="M17.5 14c2.4 0 4 1.9 4 4.5" />
+        </>
+    ),
+    componenten: (
+        <>
+            <path d="M4 20l1-4.5L16 4.5l3.5 3.5L8.5 19z" />
+            <path d="m14 7 3.5 3.5" />
+        </>
+    ),
+    qr: (
+        <>
+            <path d="M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3z" />
+            <path d="M14 14h3v3h-3zM18 18h3v3h-3zM20 14h1M14 20v1" />
+        </>
+    ),
+    export: (
+        <>
+            <path d="M12 3v12" />
+            <path d="m6.5 9.5 5.5 5.5 5.5-5.5" />
+            <path d="M4 20h16" />
+        </>
+    ),
+    talen: (
+        <>
+            <circle cx="12" cy="12" r="9" />
+            <path d="M3 12h18" />
+            <path d="M12 3c3 3.2 3 14.8 0 18-3-3.2-3-14.8 0-18z" />
+        </>
+    ),
+    user: (
+        <>
+            <circle cx="12" cy="8" r="4" />
+            <path d="M4 21c0-4.2 3.6-7 8-7s8 2.8 8 7" />
+        </>
+    ),
+    owner: (
+        <>
+            <path d="M2 9.5 12 4.5l10 5-10 5z" />
+            <path d="M6 11.5v4.5c3.5 2.5 8.5 2.5 12 0v-4.5" />
+            <path d="M22 9.5V15" />
+        </>
+    ),
+    admin: <path d="M14.5 4a5 5 0 0 0-4.6 6.9L3 17.8 6.2 21l6.9-6.9A5 5 0 0 0 20 9.5l-3 3-3-1-1-3z" />,
+    primary: <path d="m12 2.5 2.9 6.1 6.6.8-4.9 4.6 1.3 6.6L12 17.3l-5.9 3.3 1.3-6.6-4.9-4.6 6.6-.8z" />,
+}
+// the roles of info.roles.items, in their order
+export const ROLE_ICONS = ['user', 'owner', 'admin', 'primary']
+
+/** An icon of ICON_PATHS in the current colour. */
+export const Icon = ({name, size = 20}) =>
+    ICON_PATHS[name] ? (
+        <svg className="infoicon" data-icon={name} viewBox="0 0 24 24" width={size} height={size} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            {ICON_PATHS[name]}
+        </svg>
+    ) : null
 export const EDUCATIONAL_IMAGE = 'educatief'
 export const imageUrl = (language, name) => `${import.meta.env.BASE_URL}info/${language}/${name}.webp`
 
@@ -211,7 +285,7 @@ export default function InfoPage({onTour}) {
                             <div className="featuretext">
                                 <h3>
                                     <span className="featureicon" aria-hidden="true">
-                                        {feature.icon}
+                                        <Icon name={feature.id} />
                                     </span>
                                     {feature.title}
                                 </h3>
@@ -237,7 +311,7 @@ export default function InfoPage({onTour}) {
                     {roles.map((role, index) => (
                         <div key={index} className="role" id={'role-' + (index + 1)}>
                             <div className="roleicon" aria-hidden="true">
-                                {role.icon}
+                                <Icon name={ROLE_ICONS[index]} />
                             </div>
                             <h3>{role.title}</h3>
                             <p>{renderInline(role.text)}</p>
@@ -258,7 +332,12 @@ export default function InfoPage({onTour}) {
             </section>
 
             <section id="info-educatief">
-                <h2>🎓 {t('info.educational.title')}</h2>
+                <h2 className="iconheading">
+                    <span className="featureicon" aria-hidden="true">
+                        <Icon name="owner" />
+                    </span>
+                    {t('info.educational.title')}
+                </h2>
                 <p>{renderInline(t('info.educational.intro'))}</p>
                 <div className="twocolumns">
                     <div className="cannot">

@@ -774,7 +774,6 @@ export default {
             items: [
                 {
                     id: 'eendraadschema',
-                    icon: '⚡',
                     title: 'Schéma unifilaire',
                     text: 'Un nouveau projet commence avec un raccordement (compteur kWh) et un tableau. Choisissez dans la palette à gauche **Circuit (disjoncteur)** ou **Différentiel**, puis cliquez sur les éléments qui en font partie, ou faites-les glisser sur le dessin : un aperçu bleu montre où ils arrivent.',
                     points: [
@@ -786,7 +785,6 @@ export default {
                 },
                 {
                     id: 'situatieschema',
-                    icon: '🏠',
                     title: 'Plan de position',
                     text: 'Dessinez murs, pièces, portes et fenêtres sur le plan et placez-y les symboles du schéma unifilaire. La longueur de chaque mur est indiquée, calculée à partir de l’échelle du cartouche.',
                     points: [
@@ -797,7 +795,6 @@ export default {
                 },
                 {
                     id: 'controleren',
-                    icon: '✔',
                     title: 'Contrôle selon le RGIE',
                     text: 'Le bouton **Contrôler** vérifie le schéma unifilaire selon le RGIE (Livre 1). Chaque message cite l’article ; un clic dessus mène à l’élément.',
                     points: [
@@ -808,7 +805,6 @@ export default {
                 },
                 {
                     id: 'projecten',
-                    icon: '📁',
                     title: 'Enregistrer et partager des projets',
                     text: 'Vos projets sont sur le serveur : vous les retrouvez sur chaque ordinateur où vous vous connectez. Tout se trouve sous **Projet** dans la barre du haut.',
                     points: [
@@ -821,7 +817,6 @@ export default {
                 },
                 {
                     id: 'samenwerken',
-                    icon: '👥',
                     title: 'À plusieurs sur un projet',
                     text: 'Si quelqu’un d’autre a le même projet ouvert, vous le voyez dans la barre du haut (👥, en orange si cette personne a des modifications non enregistrées).',
                     points: [
@@ -831,7 +826,6 @@ export default {
                 },
                 {
                     id: 'componenten',
-                    icon: '✏',
                     title: 'Composants et symboles propres',
                     text: 'L’onglet **Composants** contient tous les symboles selon l’EN 60617. Dessinez un symbole propre sur une grille de 24 × 24, ou dupliquez un symbole existant et adaptez-le.',
                     points: [
@@ -841,7 +835,6 @@ export default {
                 },
                 {
                     id: 'qr',
-                    icon: '▦',
                     title: 'Code QR pour le tableau électrique',
                     text: 'Enregistrez le projet et choisissez **Code QR** dans le menu Projet ([[Alt]]+[[Q]]). Imprimez le code (avec le nom et le numéro du projet en dessous) ou téléchargez-le comme image, et collez-le sur le tableau. Quiconque le scanne, même sans compte, voit toujours la dernière version enregistrée du schéma.',
                     points: [
@@ -851,7 +844,6 @@ export default {
                 },
                 {
                     id: 'export',
-                    icon: '⇩',
                     title: 'Exporter, imprimer et liste de matériel',
                     text: 'Sous **Projet** se trouve tout ce qu’il faut pour emporter votre schéma.',
                     points: [
@@ -863,7 +855,6 @@ export default {
                 },
                 {
                     id: 'talen',
-                    icon: '🌐',
                     title: 'Langues et écrans',
                     text: 'Choisissez à droite dans la barre du haut Nederlands, Français ou English. Les projets ne sont pas liés à une langue ; les noms des symboles standard suivent la langue, ce que vous tapez vous-même reste tel quel.',
                     points: ['Plugged fonctionne sur un ordinateur portable et une tablette, et simplement sur un smartphone : sur un écran étroit, les panneaux sont au-dessus du dessin.'],
@@ -875,18 +866,16 @@ export default {
             intro: 'Chacun travaille avec son propre compte. Ce que vous pouvez faire dépend de votre rôle.',
             imageAlt: 'Gérer les groupes sous Compte',
             items: [
-                {icon: '👤', title: 'Utilisateur', text: 'Crée et enregistre ses propres projets et symboles, et ouvre ce qui est partagé avec ses groupes.'},
+                {title: 'Utilisateur', text: 'Crée et enregistre ses propres projets et symboles, et ouvre ce qui est partagé avec ses groupes.'},
                 {
-                    icon: '🎓',
                     title: 'Propriétaire de groupe (enseignant)',
                     text: 'Membre d’un groupe avec une étoile (★). Active ou désactive sous **🎓 Mes groupes** le mode éducatif de ses groupes, et n’est lui-même jamais restreint.',
                 },
                 {
-                    icon: '🛠',
                     title: 'Administrateur',
                     text: 'Approuve les nouveaux comptes, gère les utilisateurs et les groupes et entretient les symboles standard (Compte → Utilisateurs, Groupes, Symboles). Pour les projets, c’est un utilisateur ordinaire.',
                 },
-                {icon: '⭐', title: 'Administrateur principal', text: 'Le compte de cette installation. Voit et gère tous les projets de tout le monde et reste toujours administrateur.'},
+                {title: 'Administrateur principal', text: 'Le compte de cette installation. Voit et gère tous les projets de tout le monde et reste toujours administrateur.'},
             ],
             groupsTitle: 'Groupes',
             groups: [

@@ -1,7 +1,7 @@
 // Copyright 2026 Pleysier Jeroen
 // SPDX-License-Identifier: AGPL-3.0-only
 import {fireEvent, render, waitFor} from '@testing-library/react'
-import Info, {ContactForm, EDUCATIONAL_IMAGE, FEATURE_IMAGES, imageUrl, mailtoUrl, ROLE_IMAGE, SECTIONS, SOURCE_URL} from '../../../features/info/InfoPage.jsx'
+import Info, {ContactForm, EDUCATIONAL_IMAGE, FEATURE_IMAGES, imageUrl, mailtoUrl, ROLE_ICONS, ROLE_IMAGE, SECTIONS, SOURCE_URL} from '../../../features/info/InfoPage.jsx'
 import {ExportDialog, EXPORT_TYPES, importKind} from '../../../features/project/ExportDialog.jsx'
 import {setLanguage, t, translation} from '../../../i18n/translate.js'
 import {byId, getById} from '../../utils.jsx'
@@ -138,6 +138,21 @@ describe('Info page', () => {
         }
         expect(getById('info-rollen').querySelector('.shot img').getAttribute('src')).toBe(imageUrl('nl', ROLE_IMAGE))
         expect(getById('info-educatief').querySelector('.shot img').getAttribute('src')).toBe(imageUrl('nl', EDUCATIONAL_IMAGE))
+    })
+    test('every feature, role and the educational mode has a line icon in the text colour (no emoji, which some systems draw dark)', () => {
+        api(null)
+        render(<Info />)
+        for (const feature of translation('info.features.items')) {
+            const icon = getById('feature-' + feature.id).querySelector('.featureicon svg')
+            expect(icon, feature.id).not.toBeNull()
+            expect(icon).toHaveAttribute('stroke', 'currentColor')
+            expect(icon.querySelectorAll('path, circle').length).toBeGreaterThan(0)
+        }
+        const roles = [...document.querySelectorAll('.roleicon svg')]
+        expect(roles.map((icon) => icon.getAttribute('data-icon'))).toEqual(ROLE_ICONS)
+        expect(getById('info-educatief').querySelector('h2 svg')).not.toBeNull()
+        // no emoji left in the icons
+        document.querySelectorAll('.featureicon, .roleicon').forEach((circle) => expect(circle.textContent.trim()).toBe(''))
     })
     test('a click on a screenshot shows it large; Escape, the cross or a click closes it again', () => {
         api(null)

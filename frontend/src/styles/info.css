@@ -492,3 +492,14 @@
         display: none
     }
 }
+
+/* a heading with an icon in front of it (Educatieve modus) */
+.iconheading {
+    display: flex;
+    align-items: center;
+    gap: 10px
+}
+
+.featureicon .infoicon, .roleicon .infoicon {
+    display: block
+}

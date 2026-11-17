@@ -773,7 +773,6 @@ export default {
             items: [
                 {
                     id: 'eendraadschema',
-                    icon: '⚡',
                     title: 'Single-line diagram',
                     text: 'A new project starts with a connection (kWh meter) and a distribution board. Choose **Circuit (breaker)** or **RCD** in the palette on the left, then click the elements that belong to it, or drag them onto the drawing: a blue preview shows where they will land.',
                     points: [
@@ -785,7 +784,6 @@ export default {
                 },
                 {
                     id: 'situatieschema',
-                    icon: '🏠',
                     title: 'Site plan',
                     text: 'Draw walls, rooms, doors and windows on the floor plan and place the symbols of the single-line diagram on it. Every wall shows its length, worked out from the scale in the title block.',
                     points: [
@@ -796,7 +794,6 @@ export default {
                 },
                 {
                     id: 'controleren',
-                    icon: '✔',
                     title: 'Checking against the AREI',
                     text: 'The **Check** button checks the single-line diagram against the AREI (Book 1). Every message names its article; clicking it jumps to the element.',
                     points: [
@@ -807,7 +804,6 @@ export default {
                 },
                 {
                     id: 'projecten',
-                    icon: '📁',
                     title: 'Saving and sharing projects',
                     text: 'Your projects are on the server: you find them on every computer you sign in on. Everything is under **Project** in the top bar.',
                     points: [
@@ -820,7 +816,6 @@ export default {
                 },
                 {
                     id: 'samenwerken',
-                    icon: '👥',
                     title: 'Working together on a project',
                     text: 'When somebody else has the same project open, the top bar shows it (👥, orange when that person has unsaved changes).',
                     points: [
@@ -830,7 +825,6 @@ export default {
                 },
                 {
                     id: 'componenten',
-                    icon: '✏',
                     title: 'Components and own symbols',
                     text: 'The **Components** tab holds all symbols according to EN 60617. Draw an own symbol on a 24 × 24 grid, or duplicate an existing symbol and change it.',
                     points: [
@@ -840,7 +834,6 @@ export default {
                 },
                 {
                     id: 'qr',
-                    icon: '▦',
                     title: 'QR code for the circuit board',
                     text: 'Save the project and choose **QR code** in the Project menu ([[Alt]]+[[Q]]). Print the code (with the name and number of the project under it) or download it as an image, and stick it on the circuit board. Whoever scans it, also without an account, always sees the latest saved version of the schema.',
                     points: [
@@ -850,7 +843,6 @@ export default {
                 },
                 {
                     id: 'export',
-                    icon: '⇩',
                     title: 'Export, print and bill of materials',
                     text: 'Under **Project** you find everything to take your schema with you.',
                     points: [
@@ -862,7 +854,6 @@ export default {
                 },
                 {
                     id: 'talen',
-                    icon: '🌐',
                     title: 'Languages and screens',
                     text: 'Choose Nederlands, Français or English on the right of the top bar. Projects are not tied to a language; the names of the standard symbols follow the language, what you type yourself stays as you wrote it.',
                     points: ['Plugged works on a laptop and a tablet, and in a simple way on a smartphone: on a narrow screen the panels are above the drawing.'],
@@ -874,18 +865,16 @@ export default {
             intro: 'Everybody works with an own account. What you can do depends on your role.',
             imageAlt: 'Managing groups under Account',
             items: [
-                {icon: '👤', title: 'User', text: 'Makes and saves own projects and symbols, and opens what is shared with his groups.'},
+                {title: 'User', text: 'Makes and saves own projects and symbols, and opens what is shared with his groups.'},
                 {
-                    icon: '🎓',
                     title: 'Group owner (teacher)',
                     text: 'A member of a group with a star (★). Switches the educational mode of his groups on or off under **🎓 My groups**, and is never restricted himself.',
                 },
                 {
-                    icon: '🛠',
                     title: 'Administrator',
                     text: 'Approves new accounts, manages users and groups and maintains the standard symbols (Account → Users, Groups, Symbols). For projects he is an ordinary user.',
                 },
-                {icon: '⭐', title: 'Primary administrator', text: 'The account of this installation. Sees and manages all projects of everyone and always stays administrator.'},
+                {title: 'Primary administrator', text: 'The account of this installation. Sees and manages all projects of everyone and always stays administrator.'},
             ],
             groupsTitle: 'Groups',
             groups: [

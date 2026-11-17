@@ -775,7 +775,6 @@ export default {
             items: [
                 {
                     id: 'eendraadschema',
-                    icon: '⚡',
                     title: 'Eendraadschema',
                     text: 'Een nieuw project start met een aansluiting (kWh-meter) en een verdeelbord. Kies in het palet links **Kring (automaat)** of **Differentieel** en klik daarna op de elementen die erbij horen, of sleep ze op de tekening: een blauw voorbeeld toont waar ze terechtkomen.',
                     points: [
@@ -787,7 +786,6 @@ export default {
                 },
                 {
                     id: 'situatieschema',
-                    icon: '🏠',
                     title: 'Situatieschema',
                     text: 'Teken muren, ruimtes, deuren en ramen op de plattegrond en plaats er de symbolen van het eendraadschema op. De lengte van elke muur staat erbij, berekend uit de schaal in de kader.',
                     points: [
@@ -798,7 +796,6 @@ export default {
                 },
                 {
                     id: 'controleren',
-                    icon: '✔',
                     title: 'Controleren volgens het AREI',
                     text: 'De knop **Controleer** toetst het eendraadschema aan het AREI (Boek 1). Elke melding noemt het artikel; een klik erop springt naar het element.',
                     points: [
@@ -809,7 +806,6 @@ export default {
                 },
                 {
                     id: 'projecten',
-                    icon: '📁',
                     title: 'Projecten bewaren en delen',
                     text: 'Je projecten staan op de server: je vindt ze terug op elke computer waarop je je aanmeldt. Alles staat onder **Project** in de bovenbalk.',
                     points: [
@@ -822,8 +818,7 @@ export default {
                 },
                 {
                     id: 'samenwerken',
-                    icon: '👥',
-                    title: 'Samen aan een project',
+                    title: 'Samen aan een project werken',
                     text: 'Heeft iemand anders hetzelfde project open, dan zie je dat in de bovenbalk (👥, oranje als die persoon nog niet-opgeslagen wijzigingen heeft).',
                     points: [
                         'Slaat die persoon op, dan laadt de nieuwe versie bij jou meteen, tenzij jij zelf iets onbewaard hebt: dan krijg je ze aangeboden.',
@@ -832,7 +827,6 @@ export default {
                 },
                 {
                     id: 'componenten',
-                    icon: '✏',
                     title: 'Componenten en eigen symbolen',
                     text: 'Het tabblad **Componenten** bevat alle symbolen volgens EN 60617. Teken een eigen symbool op een raster van 24 × 24, of dupliceer een bestaand symbool en pas het aan.',
                     points: [
@@ -842,7 +836,6 @@ export default {
                 },
                 {
                     id: 'qr',
-                    icon: '▦',
                     title: 'QR-code voor het verdeelbord',
                     text: 'Sla het project op en kies **QR-code** in het menu Project ([[Alt]]+[[Q]]). Druk de code af (met de naam en het nummer van het project eronder) of download hem als afbeelding, en kleef hem op het verdeelbord. Wie hem scant, ook zonder account, ziet altijd de laatst opgeslagen versie van het schema.',
                     points: [
@@ -852,7 +845,6 @@ export default {
                 },
                 {
                     id: 'export',
-                    icon: '⇩',
                     title: 'Exporteren, afdrukken en materiaallijst',
                     text: 'Onder **Project** vind je alles om je schema mee te nemen.',
                     points: [
@@ -864,7 +856,6 @@ export default {
                 },
                 {
                     id: 'talen',
-                    icon: '🌐',
                     title: 'Talen en schermen',
                     text: 'Kies rechts in de bovenbalk Nederlands, Français of English. Projecten zijn niet aan een taal gebonden; de namen van de standaardsymbolen volgen de taal, wat je zelf intypt blijft zoals je het schreef.',
                     points: ['Plugged werkt op een laptop en een tablet, en eenvoudig op een smartphone: op een smal scherm staan de panelen boven de tekening.'],
@@ -876,18 +867,16 @@ export default {
             intro: 'Iedereen werkt met een eigen account. Wat je kan, hangt af van je rol.',
             imageAlt: 'Groepen beheren onder Account',
             items: [
-                {icon: '👤', title: 'Gebruiker', text: 'Maakt en bewaart eigen projecten en symbolen, en opent wat met zijn groepen gedeeld is.'},
+                {title: 'Gebruiker', text: 'Maakt en bewaart eigen projecten en symbolen, en opent wat met zijn groepen gedeeld is.'},
                 {
-                    icon: '🎓',
                     title: 'Groepseigenaar (leerkracht)',
                     text: 'Lid van een groep met een ster (★). Zet onder **🎓 Mijn groepen** de educatieve modus van zijn groepen aan of uit, en wordt zelf nooit beperkt.',
                 },
                 {
-                    icon: '🛠',
                     title: 'Beheerder',
                     text: 'Keurt nieuwe accounts goed, beheert gebruikers en groepen en onderhoudt de standaardsymbolen (Account → Gebruikers, Groepen, Symbolen). Voor projecten is hij een gewone gebruiker.',
                 },
-                {icon: '⭐', title: 'Hoofdbeheerder', text: 'Het account van deze installatie. Ziet en beheert alle projecten van iedereen en blijft altijd beheerder.'},
+                {title: 'Hoofdbeheerder', text: 'Het account van deze installatie. Ziet en beheert alle projecten van iedereen en blijft altijd beheerder.'},
             ],
             groupsTitle: 'Groepen',
             groups: [

@@ -12,7 +12,7 @@ import tools.jackson.databind.json.JsonMapper;
 
 /**
  * The file format of the standard symbols ({@link StandardSymbols#CATALOG}): a JSON list with one symbol per line, with the field names of
- * the API (k, name, cat, parents, place, shapes, and sock and details when they apply). One symbol per line keeps the differences between
+ * the API (k, name, cat, parents, place, shapes, and sock, details, een, wire and pins when they apply). One symbol per line keeps the differences between
  * two releases readable in git. Beheer → Symbolen downloads the catalog in exactly this format.
  */
 public final class CatalogJson {
@@ -49,6 +49,9 @@ public final class CatalogJson {
         fields.put("shapes", symbol.shapes());
         if (symbol.socket() != null) fields.put("sock", symbol.socket());
         if (Boolean.TRUE.equals(symbol.details())) fields.put("details", true);
+        if (symbol.oneWire() != null) fields.put("een", symbol.oneWire());
+        if (symbol.wiring() != null) fields.put("wire", symbol.wiring());
+        if (symbol.pins() != null) fields.put("pins", symbol.pins());
         return fields;
     }
 

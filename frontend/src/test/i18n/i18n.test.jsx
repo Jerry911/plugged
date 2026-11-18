@@ -86,13 +86,16 @@ describe('translating', () => {
         expect(heard).toEqual(['fr', 'en'])
     })
     test('a text missing in a language falls back on Dutch', () => {
-        const english = DICTIONARIES.en.common.close
-        delete DICTIONARIES.en.common.close
+        // a copy without the text, the original put back afterwards: deleting and adding the key again would change the order of the
+        // keys, and the test that compares the dictionaries with Dutch (in any order of the tests) would fail
+        const english = DICTIONARIES.en.common,
+            {close: _close, ...withoutClose} = english
+        DICTIONARIES.en.common = withoutClose
         try {
             setLanguage('en')
             expect(t('common.close')).toBe('Sluiten')
         } finally {
-            DICTIONARIES.en.common.close = english
+            DICTIONARIES.en.common = english
         }
     })
     test('translation gives lists and groups, also of another language; allTranslations gives a text in every language', () => {

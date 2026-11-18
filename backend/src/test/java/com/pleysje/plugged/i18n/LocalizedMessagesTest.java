@@ -42,6 +42,8 @@ class LocalizedMessagesTest {
     private static final String BAD_CIRCLE = "{\"k\":\"custom:i18n\",\"name\":\"Cirkel\",\"shapes\":[{\"t\":\"circle\",\"cx\":1,\"cy\":1,\"r\":0}]}";
 
     @Autowired
+    com.pleysje.plugged.repository.SymbolRepository symbolsToClean;
+    @Autowired
     MockMvc mvc;
     @Autowired
     UserRepository users;
@@ -53,7 +55,7 @@ class LocalizedMessagesTest {
     /** the requests come from an administrator: he may also change the standard symbols */
     @BeforeEach
     void signInAsAdministrator() {
-        TestAccounts.clean(groups, projects, users);
+        TestAccounts.clean(groups, projects, users, symbolsToClean);
         SignedInRequests.signInAs(TestAccounts.account(users, "Admin", true));
     }
 

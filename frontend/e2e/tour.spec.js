@@ -62,11 +62,22 @@ const advanceTo = async (page, wanted) => {
     }
     throw new Error('the tour never showed: ' + wanted)
 }
-// the highlight glides to its new place when a step starts: measure it when it has arrived
-const spotBox = async (page) => {
-    await page.waitForTimeout(500)
-    return box(page.locator('#tour-spot'))
+// a box that no longer moves: the highlight and the card glide to their new place when a step starts (a fixed wait was too short on a
+// busy machine)
+const settledBox = async (loc) => {
+    let last = null
+    for (let tries = 0; tries < 40; tries++) {
+        // the element can go between two looks (a step without a highlight): then there is nothing to measure, not a wait for it
+        const now = await loc.boundingBox({timeout: 1000}).catch(() => null)
+        if (!now) return last ?? {x: 0, y: 0, width: 0, height: 0}
+        if (last && ['x', 'y', 'width', 'height'].every((key) => Math.abs(now[key] - last[key]) < 0.5)) return now
+        last = now
+        await loc.page().waitForTimeout(80)
+    }
+    return last
 }
+// the highlight glides to its new place when a step starts: measure it when it has arrived
+const spotBox = (page) => settledBox(page.locator('#tour-spot'))
 // the drawing of an element of the "Opbouw" list, found by its node id (not by its place in the page): `row` is its row in the list
 const drawingOf = async (page, row) => {
     const rowId = await row.getAttribute('id')
@@ -366,8 +377,8 @@ for (const [w, h] of [[1500, 1000], [1024, 700], [800, 600]]) {
         for (let i = 0; i < 30; i++) {
             const name = await step(page)
             seen.push(name)
-            await page.waitForTimeout(450) // the highlight glides to its place
-            const c = await box(card(page).locator('xpath=.'))
+            await settledBox(page.locator('#tour-spot')) // the highlight glides to its place
+            const c = await settledBox(card(page).locator('xpath=.'))
             expect(c.x, name).toBeGreaterThanOrEqual(-1)
             expect(c.y, name).toBeGreaterThanOrEqual(-1)
             expect(c.x + c.width, name).toBeLessThanOrEqual(w + 1)

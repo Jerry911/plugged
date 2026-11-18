@@ -1,19 +1,20 @@
 // Copyright 2026 Pleysier Jeroen
 // SPDX-License-Identifier: AGPL-3.0-only
-// The bar above the eendraadschema or the situatieschema: one button per page, add / rename / duplicate / move / delete a page and,
+// The bar above the eendraadschema, the situatieschema or the bedradingsschema: one button per page, add / rename / duplicate / move / delete a page and,
 // on the eendraadschema, the Controleer button.
 import {defaultTree} from '../model/boardLayout.js'
 import {newId, withNewIds} from '../model/tree.js'
+import {emptyWiringPage} from '../model/wiring.js'
 import {useTranslation} from '../i18n/I18nProvider.jsx'
 
 /**
- * listKey = 'een' (eendraadschema pages) or 'sit' (situatieschema pages); pageIndex = the page that is shown.
+ * listKey = 'een' (eendraadschema pages), 'sit' (situatieschema pages) or 'wire' (bedradingsschema pages); pageIndex = the page that is shown.
  * verify = {errorCount, warningCount, onToggle} shows the Controleer button.
  */
 export default function PageBar({project, setProject, listKey, pageIndex, setPageIndex, verify}) {
     const {t} = useTranslation()
     const pages = project[listKey],
-        idPrefix = listKey === 'een' ? 'eds-page' : 'sit-page',
+        idPrefix = {een: 'eds-page', sit: 'sit-page', wire: 'wire-page'}[listKey],
         setPages = (newPages) => setProject({...project, [listKey]: newPages})
     const swapWith = (offset) => {
         const reordered = [...pages]
@@ -24,17 +25,32 @@ export default function PageBar({project, setProject, listKey, pageIndex, setPag
     const newPage = () =>
         listKey === 'een'
             ? {id: newId(), name: t('pages.sheetName', {number: pages.length + 1}), tree: defaultTree()}
-            : {id: newId(), name: t('pages.planName', {number: pages.length + 1}), walls: [], items: []}
+            : listKey === 'wire'
+              ? emptyWiringPage(newId(), t('pages.wiringName', {number: pages.length + 1}))
+              : {id: newId(), name: t('pages.planName', {number: pages.length + 1}), walls: [], items: []}
     const addPage = () => {
         setPages([...pages, newPage()])
         setPageIndex(pages.length)
     }
     const duplicatePage = () => {
         const page = pages[pageIndex],
+            // the wires of a bedradingsschema stay attached to the copies of their symbols
+            itemIds = new Map(listKey === 'een' ? [] : page.items.map((item) => [item.id, newId()])),
+            copyEnd = (end) => (end?.item != null && itemIds.has(end.item) ? {...end, item: itemIds.get(end.item)} : end),
             copy =
                 listKey === 'een'
                     ? {...page, tree: withNewIds(page.tree)}
-                    : {...page, walls: page.walls.map((wall) => ({...wall, id: newId()})), items: page.items.map((item) => ({...item, id: newId()}))}
+                    : {
+                          ...page,
+                          walls: page.walls.map((wall) => ({...wall, id: newId()})),
+                          items: page.items.map((item) => ({...item, id: itemIds.get(item.id)})),
+                          ...(listKey === 'wire'
+                              ? {
+                                    wires: page.wires.map((wire) => ({...wire, id: newId(), a: copyEnd(wire.a), b: copyEnd(wire.b)})),
+                                    boxes: page.boxes.map((box) => ({...box, id: newId()})),
+                                }
+                              : {}),
+                      }
         setPages([...pages.slice(0, pageIndex + 1), {...copy, id: newId(), name: t('common.copyOf', {name: page.name})}, ...pages.slice(pageIndex + 1)])
         setPageIndex(pageIndex + 1)
     }

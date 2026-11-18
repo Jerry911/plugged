@@ -36,6 +36,7 @@ const drawnCircuitOf = (tree, id) => {
     return null
 }
 import SymbolPalette from './SymbolPalette.jsx'
+import {inOneWire} from '../../model/wiring.js'
 import PropertiesPanel from './PropertiesPanel.jsx'
 import StructureTree from './StructureTree.jsx'
 import {useFillHeight} from '../../hooks/useFillHeight.js'
@@ -116,7 +117,8 @@ export default function OneWireDiagram({project, setProject, pageIndex, focus, o
     const {t} = useTranslation()
     const page = project.een[pageIndex],
         tree = page.tree,
-        symbolTypes = allTypes(project),
+        // symbols only meant for the bedradingsschema (contacts, furniture, ...) are not offered here
+        symbolTypes = allTypes(project).filter(inOneWire),
         [selectedId, setSelectedId] = useState(null),
         [free, setFree] = useState(false),
         [search, setSearch] = useState(''),

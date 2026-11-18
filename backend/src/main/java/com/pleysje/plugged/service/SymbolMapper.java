@@ -28,6 +28,9 @@ public final class SymbolMapper {
         entity.setCategory(symbol.category() == null || symbol.category().isBlank() ? DEFAULT_CATEGORY : symbol.category().trim());
         entity.setPlaceable(symbol.placeable() == null || symbol.placeable());
         entity.setDetails(Boolean.TRUE.equals(symbol.details()));
+        entity.setOneWire(symbol.oneWire());
+        entity.setWiring(symbol.wiring());
+        entity.setPins(pinsToText(symbol.pins()));
         entity.setParents(new ArrayList<>(new LinkedHashSet<>(symbol.parents() == null ? StandardSymbols.ELEMENT_KEYS : symbol.parents())));
         List<ShapeRow> rows = new ArrayList<>();
         for (Map<String, Object> shape : symbol.shapes()) rows.add(ShapeRow.of(shape));
@@ -61,6 +64,32 @@ public final class SymbolMapper {
             details = standard != null && Boolean.TRUE.equals(standard.details());
         }
         return new SymbolDto(entity.getKey(), entity.getName(), entity.getCategory(), new ArrayList<>(entity.getParents()), entity.isPlaceable(), shapes, socket,
-                entity.getStandardVersion(), entity.isBuiltin(), entity.isModified(), details);
+                entity.getStandardVersion(), entity.isBuiltin(), entity.isModified(), details).withWiring(entity.getOneWire(), entity.getWiring(), pinsOf(entity.getPins()));
+    }
+
+    /** The pins as stored: "x,y;x,y" (null = found from the drawing, "" = none). */
+    static String pinsToText(List<List<Double>> pins) {
+        if (pins == null) return null;
+        StringBuilder text = new StringBuilder();
+        for (List<Double> pin : pins) {
+            if (!text.isEmpty()) text.append(';');
+            text.append(number(pin.get(0))).append(',').append(number(pin.get(1)));
+        }
+        return text.toString();
+    }
+
+    static List<List<Double>> pinsOf(String text) {
+        if (text == null) return null;
+        List<List<Double>> pins = new ArrayList<>();
+        if (text.isEmpty()) return pins;
+        for (String pin : text.split(";")) {
+            String[] xy = pin.split(",");
+            pins.add(List.of(Double.parseDouble(xy[0]), Double.parseDouble(xy[1])));
+        }
+        return pins;
+    }
+
+    private static String number(double value) {
+        return value == Math.rint(value) ? String.valueOf((long) value) : String.valueOf(value);
     }
 }

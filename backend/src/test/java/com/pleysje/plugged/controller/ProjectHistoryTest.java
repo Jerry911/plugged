@@ -34,6 +34,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 class ProjectHistoryTest {
     @Autowired
+    com.pleysje.plugged.repository.SymbolRepository symbolsToClean;
+    @Autowired
     MockMvc mvc;
     @Autowired
     UserRepository users;
@@ -53,7 +55,7 @@ class ProjectHistoryTest {
 
     @BeforeEach
     void clean() {
-        TestAccounts.clean(groups, projects, users);
+        TestAccounts.clean(groups, projects, users, symbolsToClean);
         presence.reset();
         alice = account(users, "Alice", false);
         bob = account(users, "Bob", false);

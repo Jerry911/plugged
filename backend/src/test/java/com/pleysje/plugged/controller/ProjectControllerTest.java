@@ -33,6 +33,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 class ProjectControllerTest {
     @Autowired
+    com.pleysje.plugged.repository.SymbolRepository symbolsToClean;
+    @Autowired
     MockMvc mvc;
     @Autowired
     ProjectRepository repository;
@@ -49,7 +51,7 @@ class ProjectControllerTest {
 
     @BeforeEach
     void clean() {
-        com.pleysje.plugged.TestAccounts.clean(groups, repository, users);
+        com.pleysje.plugged.TestAccounts.clean(groups, repository, users, symbolsToClean);
         alice = account(users, "Alice", false);
         bob = account(users, "Bob", false);
         carol = account(users, "Carol", false);

@@ -14,16 +14,17 @@ import tools.jackson.databind.json.JsonMapper;
  * what it hands to the other members of a group is a project the editor can open:
  * <ul>
  *   <li>it is valid JSON and a JSON object;</li>
- *   <li>the parts the editor reads have the right kind: {@code een}, {@code sit}, {@code custom} and {@code symbols} are lists (of objects),
+ *   <li>the parts the editor reads have the right kind: {@code een}, {@code sit}, {@code wire}, {@code custom} and {@code symbols} are lists (of objects),
  *       {@code footer} and {@code plan} objects, {@code tree} a list, {@code name} a text;</li>
- *   <li>every page of {@code een} has a {@code tree} list and every page of {@code sit} has {@code walls} and {@code items} lists, when they are given.</li>
+ *   <li>every page of {@code een} has a {@code tree} list and every page of {@code sit} has {@code walls} and {@code items} lists and every page of {@code wire} (bedradingsschema) also
+ *       {@code wires} and {@code boxes} lists, when they are given.</li>
  * </ul>
  * Older formats (one {@code tree} and one {@code plan} instead of pages) pass too: the editor converts them.
  */
 public final class ProjectJson {
     private static final JsonMapper JSON = JsonMapper.builder().build();
     private static final Map<String, Kind> TOP_LEVEL = Map.of(
-            "een", Kind.LIST_OF_OBJECTS, "sit", Kind.LIST_OF_OBJECTS, "custom", Kind.LIST_OF_OBJECTS, "symbols", Kind.LIST_OF_OBJECTS,
+            "een", Kind.LIST_OF_OBJECTS, "sit", Kind.LIST_OF_OBJECTS, "wire", Kind.LIST_OF_OBJECTS, "custom", Kind.LIST_OF_OBJECTS, "symbols", Kind.LIST_OF_OBJECTS,
             "footer", Kind.OBJECT, "plan", Kind.OBJECT, "tree", Kind.LIST, "name", Kind.TEXT);
 
     private enum Kind { OBJECT, LIST, LIST_OF_OBJECTS, TEXT }
@@ -46,6 +47,7 @@ public final class ProjectJson {
         }
         checkPages(document.get("een"), "een", "tree");
         checkPages(document.get("sit"), "sit", "walls", "items");
+        checkPages(document.get("wire"), "wire", "walls", "items", "wires", "boxes");
         return document;
     }
 
@@ -76,8 +78,8 @@ public final class ProjectJson {
     }
 
     /**
-     * True when the document holds no work yet: no circuit ({@code "type": "kring"}) anywhere and nothing drawn on a plan (every
-     * {@code walls} and {@code items} list is empty). The same test as isProjectEmpty of the frontend.
+     * True when the document holds no work yet: no circuit ({@code "type": "kring"}) anywhere and nothing drawn on a plan or a
+     * bedradingsschema (every {@code walls}, {@code items}, {@code wires} and {@code boxes} list is empty). The same test as isProjectEmpty of the frontend.
      */
     public static boolean isEmpty(JsonNode document) {
         return !hasWork(document);
@@ -88,7 +90,7 @@ public final class ProjectJson {
         if (node.isObject()) {
             JsonNode type = node.get("type");
             if (type != null && type.isString() && "kring".equals(type.asString())) return true;
-            for (String list : new String[] {"walls", "items"}) {
+            for (String list : new String[] {"walls", "items", "wires", "boxes"}) {
                 JsonNode value = node.get(list);
                 if (value != null && value.isArray() && !value.isEmpty()) return true;
             }

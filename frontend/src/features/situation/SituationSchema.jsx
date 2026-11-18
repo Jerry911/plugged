@@ -1,6 +1,8 @@
 // Copyright 2026 Pleysier Jeroen
 // SPDX-License-Identifier: AGPL-3.0-only
 // The situatieschema tab: tools and the selected item on the left, the plan in the middle, the elements that are not placed yet on the right.
+// The bedradingsschema tab (listKey 'wire') is the same editor with wires and rectangles on top: wires attach to the connection points of the
+// symbols, have a line style and a colour; it has no list of elements to place and no starter templates, but can copy a plan of the situatieschema.
 import {useEffect, useRef, useState} from 'react'
 import {allTypes, symbolName, typeOf} from '../../symbols/symbolLibrary.js'
 import ZoomPane from '../../components/ZoomPane.jsx'
@@ -31,8 +33,34 @@ import {IconButton, PropertiesBox} from '../../components/PropertiesBox.jsx'
 import {TOOLBAR_ICONS} from '../oneWire/icons.jsx'
 import {useFillHeight} from '../../hooks/useFillHeight.js'
 import {ComponentPalette, matchesSearch, UnplacedPanel} from './SituationPanels.jsx'
+import {itemTypeOf, pagePins, showsLengths} from './SituationSheet.jsx'
+import {
+    boxBox,
+    boxHitsBox,
+    DEFAULT_PEN,
+    detachFrom,
+    endResolver,
+    inWiring,
+    lengthOf,
+    moveWire,
+    nearestOnSegment,
+    PIN_SNAP_DISTANCE,
+    pointsBox,
+    WIRE_SNAP_DISTANCE,
+    wireHitsBox,
+    wirePoints,
+} from '../../model/wiring.js'
+import {CopyPlanDialog, copyPlan, LineStyleFields} from '../wiring/WiringPanels.jsx'
 
 const TOOLS = ['select', 'wall', 'room', 'door', 'window', 'sym', 'text', 'erase']
+const WIRING_TOOLS = ['select', 'wire', 'box', 'wall', 'room', 'door', 'window', 'sym', 'text', 'erase']
+// the default size of a symbol placed on the bedradingsschema (mm) and the range of its size slider: furniture and cars are large
+const WIRING_SYMBOL_SIZE = 10
+const WIRING_SYMBOL_SIZES = [4, 150]
+// the palette of the bedradingsschema starts with the symbols of control circuits and ends with the furniture
+const PALETTE_ORDER = {Schakelschema: 0, Inrichting: 2}
+const wiringOrder = (symbolTypes, wiring) =>
+    wiring ? [...symbolTypes].sort((a, b) => (PALETTE_ORDER[a.cat] ?? 1) - (PALETTE_ORDER[b.cat] ?? 1)) : symbolTypes
 const GRID_SIZES = [1, 2.5, 5, 10]
 // a door or window closer than this to a wall (mm) snaps onto it
 const WALL_SNAP_DISTANCE = 8
@@ -42,15 +70,28 @@ const isOnSheet = (point) => point.x >= 0 && point.x <= 297 && point.y >= 0 && p
 const ARROW_DIRECTIONS = {ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1]}
 const isOpening = (item) => item.kind === 'door' || item.kind === 'window'
 const movedWall = (wall, dx, dy) => ({...wall, x1: wall.x1 + dx, y1: wall.y1 + dy, x2: wall.x2 + dx, y2: wall.y2 + dy})
+const samePoint = (a, b) => Math.abs(a.x - b.x) < 0.01 && Math.abs(a.y - b.y) < 0.01
+// where a wire is when it is moved as a whole: its first free point (an end on a symbol moves with the symbol)
+const wireReference = (wire, resolve) => (wire.a?.item == null ? wire.a : wire.points?.[0] || (wire.b?.item == null ? wire.b : resolve(wire.a)))
 
 /**
  * `onPageIndex(index)` shows another sheet (after a template added sheets); `onStatus(text)` a message for the user (a toast).
+ * listKey: 'sit' (the situatieschema) or 'wire' (the bedradingsschema).
  */
-export default function SituationSchema({project, setProject, pageIndex, onFooter, neutral, onPageIndex = () => {}, onStatus = () => {}}) {
+export default function SituationSchema({project, setProject, pageIndex, onFooter, neutral, onPageIndex = () => {}, onStatus = () => {}, listKey = 'sit'}) {
     const {t} = useTranslation()
-    const page = project.sit[pageIndex],
+    const wiring = listKey === 'wire',
+        P = wiring ? 'wire' : 'sit',
+        page = project[listKey][pageIndex],
         {walls, items} = page,
+        wires = page.wires || [],
+        boxes = page.boxes || [],
         [tool, setTool] = useState('select'),
+        // the line style of the next wire or rectangle
+        [pen, setPen] = useState({...DEFAULT_PEN, ortho: true}),
+        // the wire being drawn: {a: its start (an end, see model/wiring.js), points: its bends so far}
+        [wireDraft, setWireDraft] = useState(null),
+        [copyPlanOpen, setCopyPlanOpen] = useState(false),
         [componentType, setComponentType] = useState(null),
         // the first point of the wall or room being drawn
         [pending, setPending] = useState(null),
@@ -75,13 +116,20 @@ export default function SituationSchema({project, setProject, pageIndex, onFoote
         leftPanel = useRef(null),
         rightPanel = useRef(null)
     const scale = scaleOf(project.footer),
-        showLengths = page.dims !== false
-    const updatePage = (patch) => setProject({...project, sit: project.sit.map((existing, index) => (index === pageIndex ? {...existing, ...patch} : existing))})
+        // the lengths show on a plan unless switched off; on the bedradingsschema (mostly schemas of boards) only when switched on
+        showLengths = showsLengths(page)
+    const updatePage = (patch) =>
+        setProject({...project, [listKey]: project[listKey].map((existing, index) => (index === pageIndex ? {...existing, ...patch} : existing))})
     const nodes = placeableNodes(project),
+        pinsOf = pagePins(project, nodes),
+        resolve = endResolver(items, pinsOf),
         unplaced = unplacedNodes(project),
         hidden = hiddenNodes(project),
         marks = circuitMarks(project),
-        paletteTypes = allTypes(project).filter((symbolType) => symbolType.place && matchesSearch(symbolType, search)),
+        paletteTypes = wiringOrder(
+            allTypes(project).filter((symbolType) => (wiring ? inWiring(symbolType) : symbolType.place) && matchesSearch(symbolType, search)),
+            wiring,
+        ),
         looseSymbolsOnPage = page.items.filter((item) => item.kind === 'sym' && !item.node).length
     // the mouse position in sheet millimetres
     const sheetPointOf = (event) => {
@@ -115,38 +163,87 @@ export default function SituationSchema({project, setProject, pageIndex, onFoote
         return nearest.distance < WALL_SNAP_DISTANCE ? {...item, x: nearest.x, y: nearest.y, r: nearest.angle} : {...item, ...position}
     }
     const selectedIds = new Set(selection.map((entry) => entry.id))
-    const deleteOne = (kind, id) =>
-        updatePage(kind === 'wall' ? {walls: walls.filter((wall) => wall.id !== id)} : {items: items.filter((item) => item.id !== id)})
+    const listOf = (kind) => ({wall: walls, item: items, wire: wires, box: boxes})[kind]
+    // the page without the elements with these ids: wires on deleted symbols keep their end where it was
+    const withoutIds = (ids) => {
+        const deletedItems = new Set(items.filter((item) => ids.has(item.id)).map((item) => item.id))
+        return {
+            walls: walls.filter((wall) => !ids.has(wall.id)),
+            items: items.filter((item) => !ids.has(item.id)),
+            ...(wiring
+                ? {
+                      wires: detachFrom(
+                          wires.filter((wire) => !ids.has(wire.id)),
+                          deletedItems,
+                          resolve,
+                      ),
+                      boxes: boxes.filter((box) => !ids.has(box.id)),
+                  }
+                : {}),
+        }
+    }
+    const deleteOne = (kind, id) => updatePage(withoutIds(new Set([id])))
     const deleteSelection = () => {
         if (!selection.length) return
-        updatePage({walls: walls.filter((wall) => !selectedIds.has(wall.id)), items: items.filter((item) => !selectedIds.has(item.id))})
+        updatePage(withoutIds(selectedIds))
         setSelection([])
     }
-    const moveOne = (kind, id, dx, dy) =>
-        kind === 'wall'
-            ? updatePage({walls: walls.map((wall) => (wall.id !== id ? wall : movedWall(wall, dx, dy)))})
-            : updatePage({
-                  items: items.map((item) => {
-                      if (item.id !== id) return item
-                      const position = {x: item.x + dx, y: item.y + dy}
-                      return isOpening(item) ? snapOpeningToWall(item, position) : {...item, ...position}
-                  }),
-              })
-    const moveSelection = (dx, dy) =>
-        selection.length === 1
-            ? moveOne(selection[0].k, selection[0].id, dx, dy)
-            : updatePage({
-                  walls: walls.map((wall) => (selectedIds.has(wall.id) ? movedWall(wall, dx, dy) : wall)),
-                  items: items.map((item) => (selectedIds.has(item.id) ? {...item, x: item.x + dx, y: item.y + dy} : item)),
-              })
+    // the page with the elements of `moved` (ids) moved by (dx, dy); `originals` (by id) are where they started, default where they are
+    const movedPage = (moved, dx, dy, originals = {}) => {
+        const from = (element) => originals[element.id] || element
+        return {
+            walls: walls.map((wall) => (moved.has(wall.id) ? movedWall(from(wall), dx, dy) : wall)),
+            items: items.map((item) => {
+                if (!moved.has(item.id)) return item
+                const start = from(item),
+                    position = {x: round2(start.x + dx), y: round2(start.y + dy)}
+                return moved.size === 1 && isOpening(item) ? snapOpeningToWall(item, position) : {...item, ...position}
+            }),
+            ...(wiring
+                ? {
+                      wires: wires.map((wire) => (moved.has(wire.id) ? moveWire(from(wire), dx, dy) : wire)),
+                      boxes: boxes.map((box) => (moved.has(box.id) ? movedWall(from(box), dx, dy) : box)),
+                  }
+                : {}),
+        }
+    }
+    const moveSelection = (dx, dy) => updatePage(movedPage(selectedIds, dx, dy))
     const rotateSelection = (degrees) => updatePage({items: items.map((item) => (selectedIds.has(item.id) ? {...item, r: (item.r || 0) + degrees} : item))})
     const duplicateSelection = () => {
-        const newWalls = walls.filter((wall) => selectedIds.has(wall.id)).map((wall) => ({...movedWall(wall, 5, 5), id: newId()})),
-            newItems = items.filter((item) => selectedIds.has(item.id)).map((item) => ({...item, id: newId(), x: item.x + 5, y: item.y + 5}))
-        updatePage({walls: [...walls, ...newWalls], items: [...items, ...newItems]})
-        setSelection([...newWalls.map((wall) => ({k: 'wall', id: wall.id})), ...newItems.map((item) => ({k: 'item', id: item.id}))])
+        const itemIds = new Map(items.filter((item) => selectedIds.has(item.id)).map((item) => [item.id, newId()])),
+            // a copied wire stays on the copies of its symbols; an end on a symbol that is not copied becomes a free end next to it
+            copyEnd = (end) =>
+                end?.item == null
+                    ? {x: round2(end.x + 5), y: round2(end.y + 5)}
+                    : itemIds.has(end.item)
+                      ? {...end, item: itemIds.get(end.item)}
+                      : copyEnd(resolve(end)),
+            newWalls = walls.filter((wall) => selectedIds.has(wall.id)).map((wall) => ({...movedWall(wall, 5, 5), id: newId()})),
+            newItems = items.filter((item) => itemIds.has(item.id)).map((item) => ({...item, id: itemIds.get(item.id), x: item.x + 5, y: item.y + 5})),
+            newWires = wires
+                .filter((wire) => selectedIds.has(wire.id))
+                .map((wire) => ({
+                    ...wire,
+                    id: newId(),
+                    a: copyEnd(wire.a),
+                    b: copyEnd(wire.b),
+                    points: (wire.points || []).map((point) => ({x: point.x + 5, y: point.y + 5})),
+                })),
+            newBoxes = boxes.filter((box) => selectedIds.has(box.id)).map((box) => ({...movedWall(box, 5, 5), id: newId()}))
+        updatePage({
+            walls: [...walls, ...newWalls],
+            items: [...items, ...newItems],
+            ...(wiring ? {wires: [...wires, ...newWires], boxes: [...boxes, ...newBoxes]} : {}),
+        })
+        setSelection([
+            ...newWalls.map((wall) => ({k: 'wall', id: wall.id})),
+            ...newItems.map((item) => ({k: 'item', id: item.id})),
+            ...newWires.map((wire) => ({k: 'wire', id: wire.id})),
+            ...newBoxes.map((box) => ({k: 'box', id: box.id})),
+        ])
     }
-    // the pointer handlers of a wall (part 'm' = the wall itself, 'a' / 'b' = its end points) or an item
+    // the pointer handlers of a wall or rectangle (part 'm' = itself, 'a' / 'b' = its corners), a wire (part 'm', its ends 'a' / 'b', its
+    // bends 'p0', 'p1', ...) or an item
     const interactionProps = (kind, id, part = 'm') => ({
         onPointerDown: (event) => {
             if (tool !== 'select') return
@@ -157,7 +254,7 @@ export default function SituationSchema({project, setProject, pageIndex, onFoote
             const dragged = inSelection && part === 'm' ? selection : [{k: kind, id}],
                 originals = {}
             if (dragged !== selection) setSelection(dragged)
-            dragged.forEach((entry) => (originals[entry.id] = (entry.k === 'wall' ? walls : items).find((candidate) => candidate.id === entry.id)))
+            dragged.forEach((entry) => (originals[entry.id] = listOf(entry.k).find((candidate) => candidate.id === entry.id)))
             setDrag({kind, id, part, start: sheetPointOf(event), original: originals[id], originals, single: dragged.length === 1})
         },
         onClick: (event) => {
@@ -169,7 +266,71 @@ export default function SituationSchema({project, setProject, pageIndex, onFoote
         },
         style: {cursor: tool === 'select' ? 'move' : tool === 'erase' ? 'not-allowed' : undefined},
     })
-    const addRoom = (corner, oppositeCorner) => updatePage({walls: [...walls, ...rectangleWalls(corner, oppositeCorner).map((wall) => ({id: newId(), ...wall}))]})
+    // Bedradingsschema: where a click (or a dragged wire end) lands: on a connection point of a symbol close by (the wire attaches to it), on a
+    // wire close by (a branch), else on the grid. {end, point, onWire}
+    const wireTargetAt = (raw, ignoreWire) => {
+        let best = null
+        items.forEach((item) => {
+            if (item.kind !== 'sym') return
+            pinsOf(item).forEach((pin, index) => {
+                const distance = Math.hypot(pin.x - raw.x, pin.y - raw.y)
+                if (distance <= PIN_SNAP_DISTANCE && (!best || distance < best.distance))
+                    best = {distance, end: {item: item.id, pin: index, x: pin.x, y: pin.y}, point: pin}
+            })
+        })
+        if (best) return best
+        const grid = {x: snap(raw.x), y: snap(raw.y)}
+        for (const wire of wires) {
+            if (wire.id === ignoreWire) continue
+            const points = wirePoints(wire, resolve)
+            for (let index = 1; index < points.length; index++) {
+                const hit = nearestOnSegment(raw, points[index - 1], points[index])
+                if (hit.distance > WIRE_SNAP_DISTANCE) continue
+                // on a straight leg the end keeps the grid along it
+                const from = points[index - 1],
+                    to = points[index],
+                    point =
+                        from.y === to.y && grid.x >= Math.min(from.x, to.x) && grid.x <= Math.max(from.x, to.x)
+                            ? {x: grid.x, y: from.y}
+                            : from.x === to.x && grid.y >= Math.min(from.y, to.y) && grid.y <= Math.max(from.y, to.y)
+                              ? {x: from.x, y: grid.y}
+                              : {x: round2(hit.point.x), y: round2(hit.point.y)}
+                return {end: point, point, onWire: true}
+            }
+        }
+        return {end: grid, point: grid}
+    }
+    const finishWire = (b, points) => {
+        if (!wireDraft) return
+        const a = wireDraft.a,
+            start = resolve(a),
+            end = resolve(b)
+        setWireDraft(null)
+        if (!start || !end || (samePoint(start, end) && !points.length)) return
+        updatePage({wires: [...wires, {id: newId(), a, b, points, style: pen.style, color: pen.color, w: pen.w, ortho: pen.ortho}]})
+    }
+    // ends the wire being drawn at its last bend (right click, Enter); a wire without bends is dropped
+    const endWireAtLastPoint = () => {
+        if (!wireDraft) return false
+        if (wireDraft.points.length) finishWire(wireDraft.points[wireDraft.points.length - 1], wireDraft.points.slice(0, -1))
+        else setWireDraft(null)
+        return true
+    }
+    const onWireClick = (raw) => {
+        const target = wireTargetAt(raw)
+        if (!wireDraft) return setWireDraft({a: target.end, points: []})
+        const last = wireDraft.points.length ? wireDraft.points[wireDraft.points.length - 1] : resolve(wireDraft.a)
+        if (target.end.item != null || target.onWire) {
+            // a connection point or another wire ends the wire (not the point it started on)
+            if (samePoint(target.point, resolve(wireDraft.a)) && !wireDraft.points.length) return
+            return finishWire(target.end, wireDraft.points)
+        }
+        // a second click on the same spot (a double click) ends the wire there
+        if (last && samePoint(last, target.point)) return endWireAtLastPoint()
+        setWireDraft({...wireDraft, points: [...wireDraft.points, target.point]})
+    }
+    const addRoom = (corner, oppositeCorner) =>
+        updatePage({walls: [...walls, ...rectangleWalls(corner, oppositeCorner).map((wall) => ({id: newId(), ...wall}))]})
     const onSheetClick = (event) => {
         if (justBoxSelected.current) {
             justBoxSelected.current = false
@@ -178,7 +339,17 @@ export default function SituationSchema({project, setProject, pageIndex, onFoote
         const point = snappedPointOf(event)
         if (point.y > 180) return
         if (tool === 'select') setSelection([])
-        else if (tool === 'wall') {
+        else if (tool === 'wire') onWireClick(sheetPointOf(event))
+        else if (tool === 'box') {
+            if (!pending) setPending(point)
+            else {
+                if (pending.x !== point.x && pending.y !== point.y)
+                    updatePage({
+                        boxes: [...boxes, {id: newId(), x1: pending.x, y1: pending.y, x2: point.x, y2: point.y, style: pen.style, color: pen.color, w: pen.w}],
+                    })
+                setPending(null)
+            }
+        } else if (tool === 'wall') {
             if (!pending) setPending(point)
             else if (pending.x === point.x && pending.y === point.y) setPending(null)
             else {
@@ -194,7 +365,12 @@ export default function SituationSchema({project, setProject, pageIndex, onFoote
         } else if (tool === 'door' || tool === 'window') {
             updatePage({items: [...items, snapOpeningToWall({id: newId(), kind: tool, r: 0, w: 10}, point)]})
         } else if (tool === 'sym' && componentType)
-            updatePage({items: [...items, {id: newId(), kind: 'sym', type: componentType, x: point.x, y: point.y, r: 0, s: DEFAULT_ITEM_SIZE.sym}]})
+            updatePage({
+                items: [
+                    ...items,
+                    {id: newId(), kind: 'sym', type: componentType, x: point.x, y: point.y, r: 0, s: wiring ? WIRING_SYMBOL_SIZE : DEFAULT_ITEM_SIZE.sym},
+                ],
+            })
         else if (tool === 'text') {
             const text = prompt(t('situation.textPrompt'))
             if (text) updatePage({items: [...items, {id: newId(), kind: 'text', x: point.x, y: point.y, txt: text, s: DEFAULT_ITEM_SIZE.text, r: 0}]})
@@ -203,36 +379,41 @@ export default function SituationSchema({project, setProject, pageIndex, onFoote
     const dragTo = (currentDrag, point) => {
         const dx = point.x - currentDrag.start.x,
             dy = point.y - currentDrag.start.y,
-            original = currentDrag.original
-        if (currentDrag.part === 'a' || currentDrag.part === 'b') {
-            const [xKey, yKey] = currentDrag.part === 'a' ? ['x1', 'y1'] : ['x2', 'y2']
-            return updatePage({walls: walls.map((wall) => (wall.id !== currentDrag.id ? wall : {...wall, [xKey]: snap(point.x), [yKey]: snap(point.y)}))})
+            original = currentDrag.original,
+            {kind, part, id} = currentDrag
+        if (kind === 'wire' && part !== 'm') {
+            // an end of a wire attaches to a connection point or another wire it is dropped on; a bend follows the grid
+            if (part.startsWith('p')) {
+                const index = +part.slice(1)
+                return updatePage({
+                    wires: wires.map((wire) =>
+                        wire.id !== id
+                            ? wire
+                            : {...wire, points: wire.points.map((bend, bendIndex) => (bendIndex === index ? {x: snap(point.x), y: snap(point.y)} : bend))},
+                    ),
+                })
+            }
+            const end = wireTargetAt(point, id).end
+            return updatePage({wires: wires.map((wire) => (wire.id !== id ? wire : {...wire, [part]: end}))})
+        }
+        if (part === 'a' || part === 'b') {
+            const [xKey, yKey] = part === 'a' ? ['x1', 'y1'] : ['x2', 'y2'],
+                key = kind === 'box' ? 'boxes' : 'walls'
+            return updatePage({
+                [key]: listOf(kind).map((element) => (element.id !== id ? element : {...element, [xKey]: snap(point.x), [yKey]: snap(point.y)})),
+            })
         }
         // the dragged element snaps to the grid; the others of the selection move along by the same distance
-        const referenceX = currentDrag.kind === 'wall' ? original.x1 : original.x,
-            referenceY = currentDrag.kind === 'wall' ? original.y1 : original.y,
-            moveX = snap(referenceX + dx) - referenceX,
-            moveY = snap(referenceY + dy) - referenceY
-        updatePage({
-            walls: walls.map((wall) => {
-                const start = currentDrag.originals[wall.id]
-                return start
-                    ? {...wall, x1: round2(start.x1 + moveX), y1: round2(start.y1 + moveY), x2: round2(start.x2 + moveX), y2: round2(start.y2 + moveY)}
-                    : wall
-            }),
-            items: items.map((item) => {
-                const start = currentDrag.originals[item.id]
-                if (!start) return item
-                const position = {x: round2(start.x + moveX), y: round2(start.y + moveY)}
-                return currentDrag.single && isOpening(item) ? snapOpeningToWall(item, position) : {...item, ...position}
-            }),
-        })
+        const reference = kind === 'wall' || kind === 'box' ? {x: original.x1, y: original.y1} : kind === 'wire' ? wireReference(original, resolve) : original,
+            moveX = round2(snap(reference.x + dx) - reference.x),
+            moveY = round2(snap(reference.y + dy) - reference.y)
+        updatePage(movedPage(new Set(Object.keys(currentDrag.originals)), moveX, moveY, currentDrag.originals))
     }
     const onPointerMove = (event) => {
         if (selectionBox) return setSelectionBox({...selectionBox, to: sheetPointOf(event)})
         if (drag) return dragTo(drag, sheetPointOf(event))
         if (tool !== 'select' && tool !== 'erase') {
-            const point = snappedPointOf(event)
+            const point = tool === 'wire' ? wireTargetAt(sheetPointOf(event)).point : snappedPointOf(event)
             aim.current = point
             if (!cursor || cursor.x !== point.x || cursor.y !== point.y) setCursor(point)
         }
@@ -254,11 +435,16 @@ export default function SituationSchema({project, setProject, pageIndex, onFoote
         setSelectionBox(null)
         if (box.x1 - box.x0 < 1.5 && box.y1 - box.y0 < 1.5) return
         justBoxSelected.current = true
-        const hits = hitsInBox(box, walls, items)
+        const hits = [
+            ...hitsInBox(box, walls, items),
+            ...wires.filter((wire) => wireHitsBox(wirePoints(wire, resolve), box)).map((wire) => ({k: 'wire', id: wire.id})),
+            ...boxes.filter((candidate) => boxHitsBox(candidate, box)).map((candidate) => ({k: 'box', id: candidate.id})),
+        ]
         setSelection(selectionBox.add ? [...selection, ...hits.filter((hit) => !selectedIds.has(hit.id))] : hits)
     }
     const cancelDrawing = () => {
         setPending(null)
+        setWireDraft(null)
         setCursor(null)
         setSelectionBox(null)
         setTypedDimension('')
@@ -318,16 +504,15 @@ export default function SituationSchema({project, setProject, pageIndex, onFoote
     }, [pending])
     const singleSelection = selection.length === 1 ? selection[0] : null,
         selectedItem = singleSelection?.k === 'item' && items.find((item) => item.id === singleSelection.id),
-        selectedWall = singleSelection?.k === 'wall' && walls.find((wall) => wall.id === singleSelection.id)
+        selectedWall = singleSelection?.k === 'wall' && walls.find((wall) => wall.id === singleSelection.id),
+        selectedWire = singleSelection?.k === 'wire' && wires.find((wire) => wire.id === singleSelection.id),
+        selectedBox = singleSelection?.k === 'box' && boxes.find((box) => box.id === singleSelection.id)
+    const updateSelected = (key, patch) =>
+        updatePage({[key]: page[key].map((element) => (element.id === singleSelection.id ? {...element, ...patch} : element))})
     const updateSelectedItem = (patch) => updatePage({items: items.map((item) => (item.id === selectedItem.id ? {...item, ...patch} : item))})
     // the selected symbol: linked to an element of the eendraadschema (its properties are those of that element, also the waterproof one) or a loose one
     const selectedNode = selectedItem?.kind === 'sym' && selectedItem.node ? nodes.find((node) => node.id === selectedItem.node) : null,
-        selectedSymbolType =
-            selectedItem?.kind === 'sym'
-                ? selectedNode
-                    ? typeOf(project, selectedNode.type)
-                    : allTypes(project).find((symbolType) => symbolType.k === selectedItem.type)
-                : null
+        selectedSymbolType = selectedItem ? itemTypeOf(project, selectedItem, nodes) : null
     const setWallLength = (text) => {
         const metres = parseLength(text),
             length = metres != null ? toSheet(metres, scale) : null
@@ -344,7 +529,9 @@ export default function SituationSchema({project, setProject, pageIndex, onFoote
     }
     useEffect(() => {
         const onKeyDown = (event) => {
-            if (/INPUT|TEXTAREA|SELECT/.test(event.target.tagName) || !selection.length) return
+            if (/INPUT|TEXTAREA|SELECT/.test(event.target.tagName)) return
+            if (event.key === 'Enter' && endWireAtLastPoint()) return event.preventDefault()
+            if (!selection.length) return
             const direction = ARROW_DIRECTIONS[event.key]
             if (event.key === 'Delete' || event.key === 'Backspace') {
                 deleteSelection()
@@ -361,6 +548,8 @@ export default function SituationSchema({project, setProject, pageIndex, onFoote
     useEffect(() => {
         const onKeyDown = (event) => {
             if (event.key !== 'Escape' || tool === 'select') return
+            // the wire being drawn goes first, the wire tool stays on
+            if (wireDraft) return setWireDraft(null)
             cancelDrawing()
             setTool('select')
         }
@@ -413,13 +602,43 @@ export default function SituationSchema({project, setProject, pageIndex, onFoote
     }
     // the size slider: the font size of a text, the size of a symbol, the width of a door or window
     const sizeKey = selectedItem && (selectedItem.kind === 'sym' || selectedItem.kind === 'text' ? 's' : 'w'),
-        [sizeMin, sizeMax] = selectedItem?.kind === 'text' ? [2, 12] : selectedItem?.kind === 'sym' ? [4, 20] : [6, 20]
+        [sizeMin, sizeMax] = selectedItem?.kind === 'text' ? [2, 12] : selectedItem?.kind === 'sym' ? (wiring ? WIRING_SYMBOL_SIZES : [4, 20]) : [6, 20]
     const selectionBounds = unionBox([
         ...walls.filter((wall) => selectedIds.has(wall.id)).map(wallBox),
         ...items.filter((item) => selectedIds.has(item.id)).map(itemBox),
+        ...wires
+            .filter((wire) => selectedIds.has(wire.id))
+            .map((wire) => pointsBox(wirePoints(wire, resolve)))
+            .filter(Boolean),
+        ...boxes.filter((box) => selectedIds.has(box.id)).map(boxBox),
     ])
+    // the connection points shown while drawing wires or when a wire is selected; the one the mouse is on is highlighted
+    const showPins = wiring && (tool === 'wire' || selection.some((entry) => entry.k === 'wire')),
+        hoverEnd = showPins && cursor && tool === 'wire' ? wireTargetAt(cursor).end : null,
+        pins = showPins
+            ? items
+                  .filter((item) => item.kind === 'sym')
+                  .flatMap((item) =>
+                      pinsOf(item).map((pin, index) => ({
+                          item: item.id,
+                          pin: index,
+                          x: pin.x,
+                          y: pin.y,
+                          active: hoverEnd?.item === item.id && hoverEnd.pin === index,
+                      })),
+                  )
+            : null
     const editor = {
         svgRef,
+        prefix: P,
+        pins,
+        wirePreview:
+            wireDraft && cursor
+                ? {...pen, points: wirePoints({a: wireDraft.a, b: hoverEnd || cursor, points: wireDraft.points, ortho: pen.ortho}, resolve)}
+                : wireDraft
+                  ? {...pen, points: [resolve(wireDraft.a), ...wireDraft.points]}
+                  : null,
+        boxPreview: tool === 'box' && pending && cursor ? {from: pending, to: cursor} : null,
         selection,
         interactionProps,
         pending,
@@ -447,6 +666,8 @@ export default function SituationSchema({project, setProject, pageIndex, onFoote
             },
             onContextMenu: (event) => {
                 event.preventDefault()
+                // a right click ends the wire being drawn; the next one leaves the wire tool
+                if (endWireAtLastPoint()) return
                 cancelDrawing()
                 setTool('select')
             },
@@ -479,32 +700,125 @@ export default function SituationSchema({project, setProject, pageIndex, onFoote
         onPageIndex(onThisPage ? pageIndex : pageIndex + 1)
         onStatus(t('templates.inserted', {name: t('templates.names.' + template.id)}))
     }
-    const pageEmpty = !walls.length && !items.length
+    const pageEmpty = !walls.length && !items.length && !wires.length && !boxes.length,
+        plansToCopy = project.sit.some((sitPage) => sitPage.walls.length || sitPage.items.length)
+    // Plattegrond overnemen: the walls, doors, windows, texts (and symbols) of a situatieschema page are added to this page
+    const insertPlan = (sitPageIndex, withSymbols) => {
+        const copied = copyPlan(project, project.sit[sitPageIndex], withSymbols)
+        updatePage({walls: [...walls, ...copied.walls], items: [...items, ...copied.items]})
+        setCopyPlanOpen(false)
+        setSelection([])
+        setTool('select')
+        onStatus(t('wiring.copyPlan.done', {name: project.sit[sitPageIndex].name}))
+    }
+    const wireLength = selectedWire ? lengthOf(wirePoints(selectedWire, resolve)) : 0
     return (
         <div className="row">
             <div className="side ui sticky-side fill" ref={leftPanel}>
-                <div className="tb" id="sit-tools">
-                    {TOOLS.map((name) => (
-                        <button key={name} id={'sit-tool-' + name} className={tool === name ? 'on' : ''} data-tour={'tool-' + name} onClick={() => chooseTool(name)}>
+                <div className="tb" id={P + '-tools'}>
+                    {(wiring ? WIRING_TOOLS : TOOLS).map((name) => (
+                        <button
+                            key={name}
+                            id={P + '-tool-' + name}
+                            className={tool === name ? 'on' : ''}
+                            data-tour={'tool-' + name}
+                            onClick={() => chooseTool(name)}
+                        >
                             {t('situation.tools.' + name)}
                         </button>
                     ))}
-                    <button id="sit-template" title={t('templates.buttonTitle')} onClick={() => setTemplateOpen(true)}>
-                        ⌂ {t('templates.button')}
-                    </button>
+                    {wiring ? (
+                        <button id="wire-copy-plan" title={t('wiring.copyPlan.buttonTitle')} disabled={!plansToCopy} onClick={() => setCopyPlanOpen(true)}>
+                            ⌂ {t('wiring.copyPlan.button')}
+                        </button>
+                    ) : (
+                        <button id={P + '-template'} title={t('templates.buttonTitle')} onClick={() => setTemplateOpen(true)}>
+                            ⌂ {t('templates.button')}
+                        </button>
+                    )}
                 </div>
-                <p id="sit-help">{t('situation.help')}</p>
+                <p id={P + '-help'}>{wiring ? t(tool === 'wire' ? 'wiring.wireHelp' : 'wiring.help') : t('situation.help')}</p>
+                {wiring && (tool === 'wire' || tool === 'box') && !selection.length && (
+                    <PropertiesBox
+                        id="wire-pen"
+                        title={t('wiring.pen')}
+                        titleId="wire-pen-heading"
+                        closeId="wire-pen-close"
+                        closeLabel={t('wiring.closePen')}
+                        onClose={() => chooseTool('select')}
+                    >
+                        <LineStyleFields idPrefix="wire-pen" value={pen} withOrtho={tool === 'wire'} onChange={(patch) => setPen({...pen, ...patch})} />
+                    </PropertiesBox>
+                )}
+                {selectedWire && (
+                    <PropertiesBox
+                        id="wire-wire-props"
+                        title={t('situation.properties')}
+                        titleId="wire-wire-heading"
+                        subtitle={t('wiring.wireSelected', {length: formatLength(wireLength, scale)})}
+                        subtitleId="wire-wire-title"
+                        closeId="wire-wire-close"
+                        closeLabel={t('situation.closeSelection')}
+                        onClose={() => setSelection([])}
+                    >
+                        <LineStyleFields
+                            idPrefix="wire-sel"
+                            value={selectedWire}
+                            withOrtho
+                            onChange={(patch) => {
+                                updateSelected('wires', patch)
+                                const {ortho: _ortho, ...style} = patch
+                                setPen({...pen, ...style})
+                            }}
+                        />
+                        <div className="tb icons">
+                            <IconButton id="wire-wire-duplicate" icon={TOOLBAR_ICONS.duplicate} title={t('situation.duplicate')} onClick={duplicateSelection} />
+                            <IconButton
+                                id="wire-wire-delete"
+                                className="props-delete"
+                                icon={TOOLBAR_ICONS.trash}
+                                title={t('situation.deleteSelectionTitle')}
+                                label={t('common.delete')}
+                                onClick={deleteSelection}
+                            />
+                        </div>
+                    </PropertiesBox>
+                )}
+                {selectedBox && (
+                    <PropertiesBox
+                        id="wire-box-props"
+                        title={t('situation.properties')}
+                        titleId="wire-box-heading"
+                        subtitle={t('wiring.boxSelected')}
+                        closeId="wire-box-close"
+                        closeLabel={t('situation.closeSelection')}
+                        onClose={() => setSelection([])}
+                    >
+                        <LineStyleFields idPrefix="wire-box" value={selectedBox} onChange={(patch) => updateSelected('boxes', patch)} />
+                        <div className="tb icons">
+                            <IconButton id="wire-box-duplicate" icon={TOOLBAR_ICONS.duplicate} title={t('situation.duplicate')} onClick={duplicateSelection} />
+                            <IconButton
+                                id="wire-box-delete"
+                                className="props-delete"
+                                icon={TOOLBAR_ICONS.trash}
+                                title={t('situation.deleteSelectionTitle')}
+                                label={t('common.delete')}
+                                onClick={deleteSelection}
+                            />
+                        </div>
+                    </PropertiesBox>
+                )}
                 {selectedItem && (
                     <PropertiesBox
-                        id="sit-props"
+                        id={P + '-props'}
                         title={t('situation.properties')}
-                        titleId="sit-props-heading"
+                        titleId={P + '-props-heading'}
                         subtitle={
                             t('situation.selected', {kind: t('situation.kinds.' + selectedItem.kind)}) +
                             (selectedItem.kind === 'sym' && selectedSymbolType ? ' · ' + symbolName(selectedSymbolType) : '')
                         }
-                        subtitleId="sit-props-title"
-                        closeId="sit-close"
+                        subtitleId={P + '-props-title'}
+                        closeId={P + '-close'}
                         closeLabel={t('situation.closeSelection')}
                         onClose={() => setSelection([])}
                     >
@@ -535,7 +849,7 @@ export default function SituationSchema({project, setProject, pageIndex, onFoote
                         <label>
                             {t('situation.size')}
                             <input
-                                id="sit-size"
+                                id={P + '-size'}
                                 className="props-wide"
                                 type="range"
                                 min={sizeMin}
@@ -549,7 +863,7 @@ export default function SituationSchema({project, setProject, pageIndex, onFoote
                             <label>
                                 {t('situation.width')}
                                 <input
-                                    id="sit-width"
+                                    id={P + '-width'}
                                     className="props-wide"
                                     key={`${selectedItem.id}:${selectedItem.w}`}
                                     defaultValue={formatLength(selectedItem.w || 10, scale)}
@@ -575,21 +889,21 @@ export default function SituationSchema({project, setProject, pageIndex, onFoote
                         )}
                         <div className="tb icons">
                             <IconButton
-                                id="sit-rotate-ccw"
+                                id={P + '-rotate-ccw'}
                                 icon={TOOLBAR_ICONS.counterClockwise}
                                 text="15°"
                                 title={t('situation.rotateCounterClockwiseTitle', {degrees: 15})}
                                 onClick={() => updateSelectedItem({r: (selectedItem.r || 0) - 15})}
                             />
                             <IconButton
-                                id="sit-rotate-cw"
+                                id={P + '-rotate-cw'}
                                 icon={TOOLBAR_ICONS.clockwise}
                                 text="15°"
                                 title={t('situation.rotateClockwiseTitle', {degrees: 15})}
                                 onClick={() => updateSelectedItem({r: (selectedItem.r || 0) + 15})}
                             />
                             <IconButton
-                                id="sit-rotate-90"
+                                id={P + '-rotate-90'}
                                 icon={TOOLBAR_ICONS.quarterTurn}
                                 text="90°"
                                 title={t('situation.rotateClockwiseTitle', {degrees: 90})}
@@ -597,30 +911,47 @@ export default function SituationSchema({project, setProject, pageIndex, onFoote
                             />
                             {isOpening(selectedItem) && (
                                 <>
-                                    <IconButton id="sit-flip" icon={TOOLBAR_ICONS.flip} title={t('situation.flipTitle')} onClick={() => updateSelectedItem({f: !selectedItem.f})} />
-                                    <IconButton id="sit-mirror" icon={TOOLBAR_ICONS.mirror} title={t('situation.mirrorTitle')} onClick={() => updateSelectedItem({m: !selectedItem.m})} />
+                                    <IconButton
+                                        id={P + '-flip'}
+                                        icon={TOOLBAR_ICONS.flip}
+                                        title={t('situation.flipTitle')}
+                                        onClick={() => updateSelectedItem({f: !selectedItem.f})}
+                                    />
+                                    <IconButton
+                                        id={P + '-mirror'}
+                                        icon={TOOLBAR_ICONS.mirror}
+                                        title={t('situation.mirrorTitle')}
+                                        onClick={() => updateSelectedItem({m: !selectedItem.m})}
+                                    />
                                 </>
                             )}
-                            <IconButton id="sit-duplicate" icon={TOOLBAR_ICONS.duplicate} title={t('situation.duplicate')} onClick={duplicateSelection} />
-                            <IconButton id="sit-delete" className="props-delete" icon={TOOLBAR_ICONS.trash} title={t('situation.deleteSelectionTitle')} label={t('common.delete')} onClick={deleteSelection} />
-                            {!!selectedItem.r && <small id="sit-rotation"> {((selectedItem.r % 360) + 360) % 360}°</small>}
+                            <IconButton id={P + '-duplicate'} icon={TOOLBAR_ICONS.duplicate} title={t('situation.duplicate')} onClick={duplicateSelection} />
+                            <IconButton
+                                id={P + '-delete'}
+                                className="props-delete"
+                                icon={TOOLBAR_ICONS.trash}
+                                title={t('situation.deleteSelectionTitle')}
+                                label={t('common.delete')}
+                                onClick={deleteSelection}
+                            />
+                            {!!selectedItem.r && <small id={P + '-rotation'}> {((selectedItem.r % 360) + 360) % 360}°</small>}
                         </div>
                     </PropertiesBox>
                 )}
                 {selectedWall && (
                     <PropertiesBox
-                        id="sit-wall-props"
+                        id={P + '-wall-props'}
                         title={t('situation.properties')}
-                        titleId="sit-wall-heading"
+                        titleId={P + '-wall-heading'}
                         subtitle={t('situation.wall')}
-                        closeId="sit-wall-close"
+                        closeId={P + '-wall-close'}
                         closeLabel={t('situation.closeSelection')}
                         onClose={() => setSelection([])}
                     >
                         <label>
                             {t('situation.length')}
                             <input
-                                id="sit-wall-length"
+                                id={P + '-wall-length'}
                                 className="props-wide"
                                 key={wallInputKey(selectedWall)}
                                 defaultValue={formatLength(Math.hypot(selectedWall.x2 - selectedWall.x1, selectedWall.y2 - selectedWall.y1), scale)}
@@ -629,27 +960,63 @@ export default function SituationSchema({project, setProject, pageIndex, onFoote
                             />
                         </label>
                         <div className="tb icons">
-                            <IconButton id="sit-wall-duplicate" icon={TOOLBAR_ICONS.duplicate} title={t('situation.duplicate')} onClick={duplicateSelection} />
-                            <IconButton id="sit-wall-delete" className="props-delete" icon={TOOLBAR_ICONS.trash} title={t('situation.deleteSelectionTitle')} label={t('common.delete')} onClick={deleteSelection} />
+                            <IconButton
+                                id={P + '-wall-duplicate'}
+                                icon={TOOLBAR_ICONS.duplicate}
+                                title={t('situation.duplicate')}
+                                onClick={duplicateSelection}
+                            />
+                            <IconButton
+                                id={P + '-wall-delete'}
+                                className="props-delete"
+                                icon={TOOLBAR_ICONS.trash}
+                                title={t('situation.deleteSelectionTitle')}
+                                label={t('common.delete')}
+                                onClick={deleteSelection}
+                            />
                         </div>
                     </PropertiesBox>
                 )}
                 {selection.length > 1 && (
                     <PropertiesBox
-                        id="sit-multi"
+                        id={P + '-multi'}
                         title={t('situation.properties')}
-                        titleId="sit-multi-heading"
+                        titleId={P + '-multi-heading'}
                         subtitle={t('situation.multipleSelected', {count: selection.length})}
-                        subtitleId="sit-multi-title"
-                        closeId="sit-multi-close"
+                        subtitleId={P + '-multi-title'}
+                        closeId={P + '-multi-close'}
                         closeLabel={t('situation.closeSelection')}
                         onClose={() => setSelection([])}
                     >
                         <div className="tb icons">
-                            <IconButton id="sit-multi-rotate-ccw" icon={TOOLBAR_ICONS.counterClockwise} text="15°" title={t('situation.rotateCounterClockwiseTitle', {degrees: 15})} onClick={() => rotateSelection(-15)} />
-                            <IconButton id="sit-multi-rotate-cw" icon={TOOLBAR_ICONS.clockwise} text="15°" title={t('situation.rotateClockwiseTitle', {degrees: 15})} onClick={() => rotateSelection(15)} />
-                            <IconButton id="sit-multi-duplicate" icon={TOOLBAR_ICONS.duplicate} title={t('situation.duplicate')} onClick={duplicateSelection} />
-                            <IconButton id="sit-multi-delete" className="props-delete" icon={TOOLBAR_ICONS.trash} title={t('situation.deleteSelectionTitle')} label={t('common.delete')} onClick={deleteSelection} />
+                            <IconButton
+                                id={P + '-multi-rotate-ccw'}
+                                icon={TOOLBAR_ICONS.counterClockwise}
+                                text="15°"
+                                title={t('situation.rotateCounterClockwiseTitle', {degrees: 15})}
+                                onClick={() => rotateSelection(-15)}
+                            />
+                            <IconButton
+                                id={P + '-multi-rotate-cw'}
+                                icon={TOOLBAR_ICONS.clockwise}
+                                text="15°"
+                                title={t('situation.rotateClockwiseTitle', {degrees: 15})}
+                                onClick={() => rotateSelection(15)}
+                            />
+                            <IconButton
+                                id={P + '-multi-duplicate'}
+                                icon={TOOLBAR_ICONS.duplicate}
+                                title={t('situation.duplicate')}
+                                onClick={duplicateSelection}
+                            />
+                            <IconButton
+                                id={P + '-multi-delete'}
+                                className="props-delete"
+                                icon={TOOLBAR_ICONS.trash}
+                                title={t('situation.deleteSelectionTitle')}
+                                label={t('common.delete')}
+                                onClick={deleteSelection}
+                            />
                         </div>
                     </PropertiesBox>
                 )}
@@ -667,10 +1034,19 @@ export default function SituationSchema({project, setProject, pageIndex, onFoote
                 />
             </div>
             <div className="main">
-                {pageEmpty && (
-                    <div id="sit-empty" className="sitempty">
+                {pageEmpty && wiring && plansToCopy && (
+                    <div id="wire-empty" className="sitempty">
+                        <span>{t('wiring.emptyHint')}</span>
+                        <button id="wire-empty-copy" className="accent" onClick={() => setCopyPlanOpen(true)}>
+                            ⌂ {t('wiring.copyPlan.button')}
+                        </button>
+                    </div>
+                )}
+                {copyPlanOpen && <CopyPlanDialog project={project} onCopy={insertPlan} onClose={() => setCopyPlanOpen(false)} />}
+                {pageEmpty && !wiring && (
+                    <div id={P + '-empty'} className="sitempty">
                         <span>{t('templates.emptyHint')}</span>
-                        <button id="sit-empty-template" className="accent" onClick={() => setTemplateOpen(true)}>
+                        <button id={P + '-empty-template'} className="accent" onClick={() => setTemplateOpen(true)}>
                             ⌂ {t('templates.emptyButton')}
                         </button>
                     </div>
@@ -682,9 +1058,9 @@ export default function SituationSchema({project, setProject, pageIndex, onFoote
                             <SituationSheet project={project} page={page} {...pageNumbering(project, page)} editor={editor} onFooter={onFooter} />
                         </div>
                     </ZoomPane>
-                    <ZoomControls zoom={zoom} setZoom={setZoom} idPrefix="sit-zoom">
+                    <ZoomControls zoom={zoom} setZoom={setZoom} idPrefix={P + '-zoom'}>
                         <button
-                            id="sit-toggle-lengths"
+                            id={P + '-toggle-lengths'}
                             className={showLengths ? 'on' : ''}
                             aria-pressed={showLengths}
                             title={t('situation.toggleLengths')}
@@ -694,11 +1070,11 @@ export default function SituationSchema({project, setProject, pageIndex, onFoote
                         </button>
                     </ZoomControls>
                     {pending && (tool === 'wall' || tool === 'room') && (
-                        <div className="ui dimbox" id="sit-dimension" data-tour="dimbox">
+                        <div className="ui dimbox" id={P + '-dimension'} data-tour="dimbox">
                             <label>
                                 {tool === 'room' ? t('situation.dimension.roomLabel') : t('situation.dimension.wallLabel')}{' '}
                                 <input
-                                    id="sit-dimension-input"
+                                    id={P + '-dimension-input'}
                                     ref={dimensionInput}
                                     data-tour="dim-input"
                                     className={typedDimension && !dimensionValid ? 'bad' : ''}
@@ -720,12 +1096,12 @@ export default function SituationSchema({project, setProject, pageIndex, onFoote
                                     }}
                                 />
                             </label>{' '}
-                            <button id="sit-dimension-ok" onClick={commitDimension}>
+                            <button id={P + '-dimension-ok'} onClick={commitDimension}>
                                 {t('common.ok')}
                             </button>
                             {suggestedScale && (
                                 <button
-                                    id="sit-dimension-scale"
+                                    id={P + '-dimension-scale'}
                                     data-tour="dim-scale"
                                     onClick={() => {
                                         setProject({...project, footer: {...project.footer, schaal: '1:' + suggestedScale}})
@@ -737,7 +1113,7 @@ export default function SituationSchema({project, setProject, pageIndex, onFoote
                             )}
                             <div>
                                 {dimensionError ? (
-                                    <span id="sit-dimension-error" className="dimerr">
+                                    <span id={P + '-dimension-error'} className="dimerr">
                                         {' '}
                                         {dimensionError}
                                     </span>
@@ -750,7 +1126,7 @@ export default function SituationSchema({project, setProject, pageIndex, onFoote
                     <div className="ui gridsel" style={zoom === 1 ? undefined : {bottom: 12}}>
                         <label>
                             {t('situation.grid')}{' '}
-                            <select id="sit-grid" value={gridSize} onChange={(event) => setGridSize(+event.target.value)}>
+                            <select id={P + '-grid'} value={gridSize} onChange={(event) => setGridSize(+event.target.value)}>
                                 {GRID_SIZES.map((size) => (
                                     <option key={size} value={size}>
                                         {size} mm
@@ -759,27 +1135,29 @@ export default function SituationSchema({project, setProject, pageIndex, onFoote
                             </select>
                         </label>{' '}
                         <label>
-                            <input id="sit-free-drawing" type="checkbox" checked={freeDrawing} onChange={(event) => setFreeDrawing(event.target.checked)} />{' '}
+                            <input id={P + '-free-drawing'} type="checkbox" checked={freeDrawing} onChange={(event) => setFreeDrawing(event.target.checked)} />{' '}
                             {t('situation.freeDrawing')}
                         </label>
                     </div>
                 </div>
             </div>
-            <UnplacedPanel
-                ref={rightPanel}
-                project={project}
-                unplaced={unplaced}
-                hidden={hidden}
-                marks={marks}
-                open={panelOpen}
-                onToggleOpen={() => setPanelOpen((open) => !open)}
-                showHidden={showHidden}
-                onToggleShowHidden={() => setShowHidden((shown) => !shown)}
-                onPlace={placeNode}
-                onPlaceAll={placeAllUnplaced}
-                onSetHidden={setHidden}
-                neutral={neutral}
-            />
+            {!wiring && (
+                <UnplacedPanel
+                    ref={rightPanel}
+                    project={project}
+                    unplaced={unplaced}
+                    hidden={hidden}
+                    marks={marks}
+                    open={panelOpen}
+                    onToggleOpen={() => setPanelOpen((open) => !open)}
+                    showHidden={showHidden}
+                    onToggleShowHidden={() => setShowHidden((shown) => !shown)}
+                    onPlace={placeNode}
+                    onPlaceAll={placeAllUnplaced}
+                    onSetHidden={setHidden}
+                    neutral={neutral}
+                />
+            )}
         </div>
     )
 }

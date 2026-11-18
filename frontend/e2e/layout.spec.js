@@ -2,8 +2,9 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // The layout on screens of different sizes: the side panels reach to the bottom of the window, the situatieschema fits in the window,
 // and on a phone the panels stand above and below the drawing, the top bar stays short and the Eigenschappen sit along the bottom.
-import {test, expect, t} from './fixtures.js'
+import {test, expect, t, FAKE_USER} from './fixtures.js'
 import {withCircuit} from './data.js'
+import {REAL} from './mode.js'
 
 const placed = (id, x, y) => ({id: 'i' + id, kind: 'sym', node: id, x, y, r: 0, s: 7})
 // the board and the light are placed, the socket is not
@@ -41,11 +42,11 @@ test.describe('a desktop screen', () => {
             expect(toggle.y + toggle.height).toBeLessThan(sheetBox.y)
             // collapsed, the panel takes no room: the row ends at the toggle
             await page.locator('#sit-unplaced-toggle').click()
-            expect((await right.boundingBox()).width).toBe(0)
+            await expect.poll(async () => (await right.boundingBox()).width).toBe(0)
             await expect(page.locator('#sit-unplaced-toggle')).toBeVisible()
             // and the drawing takes its place
             await expect.poll(async () => (await sheet.boundingBox()).width).toBeGreaterThan(before.width + 200)
-            expect((await sheet.boundingBox()).x + (await sheet.boundingBox()).width).toBeGreaterThan(viewport.width - 50)
+            await expect.poll(async () => (await sheet.boundingBox()).x + (await sheet.boundingBox()).width).toBeGreaterThan(viewport.width - 50)
             // Componenten: the list down to the bottom too
             await app.tab('comp')
             await expect.poll(() => bottomOf(page.locator('#comp-menu'))).toBeCloseTo(viewport.height - 10, -1)
@@ -76,6 +77,9 @@ test.describe('a phone', () => {
         await app.open(backend, plan())
         // the less used buttons show only their icon; their text is the hover text
         expect((await page.locator('#top-bar').boundingBox()).height).toBeLessThan(140)
+        // the schemas have a short name, the full one is the hover text
+        await expect(page.locator('#tab-wire')).toHaveText(t('tabs.wiringShort'))
+        await expect(page.locator('#tab-wire')).toHaveAttribute('title', t('tabs.wiring'))
         await expect(page.locator('#tab-account .bar-text')).toBeHidden()
         expect([t('account.buttonTitle'), t('account.buttonTitleAdmin')]).toContain(await page.locator('#tab-account').getAttribute('title'))
         // nothing is wider than the screen
@@ -105,5 +109,29 @@ test.describe('a phone', () => {
         await page.locator('#sit-rotate-90').tap()
         await page.locator('#sit-delete').tap()
         await expect(page.locator('#sit-props')).toHaveCount(0)
+    })
+
+    test('the tabs of Account en beheer wrap to the width of the screen, in every language', async ({page, app, backend}) => {
+        // the user of the real application is its administrator; the fake one is made one here
+        if (!REAL) {
+            const json = (body) => ({status: 200, contentType: 'application/json', body: JSON.stringify(body)})
+            const admin = {...FAKE_USER, admin: true, primary: true}
+            await page.route('**/api/auth/status', (route) => route.fulfill(json({setupRequired: false, adminEmail: 'admin@school.be', user: admin})))
+            await page.route('**/api/admin/groups', (route) => route.fulfill(json([])))
+            await page.route('**/api/admin/users', (route) => route.fulfill(json([{...admin, created: '2026-09-01T08:00:00', ownedGroups: []}])))
+        }
+        await app.open(backend)
+        for (const language of ['nl', 'fr', 'en']) {
+            await page.locator('#language-select').selectOption(language)
+            await app.tab('account')
+            await expect(page.locator('#admin-tab-symbols')).toBeVisible()
+            for (const id of ['account-tab-account', 'account-tab-rules', 'admin-tab-users', 'admin-tab-groups', 'admin-tab-symbols']) {
+                const box = await page.locator('#' + id).boundingBox()
+                expect(box.x + box.width, id + ' ' + language).toBeLessThanOrEqual(390)
+                // the name of a tab stays on one line
+                expect(box.height, id + ' ' + language).toBeLessThan(40)
+            }
+            expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390)
+        }
     })
 })

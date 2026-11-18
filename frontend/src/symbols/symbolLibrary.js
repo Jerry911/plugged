@@ -87,13 +87,25 @@ const usedTypeKeys = (value, keys = new Set()) => {
  * project still draws for somebody who does not have them. A symbol that is no longer in the library keeps its earlier copy.
  */
 export const embedSymbols = (project) => {
-    const used = usedTypeKeys([project.een, project.sit]),
+    const used = usedTypeKeys([project.een, project.sit, project.wire || []]),
         symbols = []
     used.forEach((key) => {
         const symbolType = libraryIndex.get(key)
         if (symbolType && !symbolType.builtin) {
-            const {k, name, cat, parents, place, shapes, sock, details} = symbolType
-            symbols.push({k, name, cat, parents, place, shapes, ...(sock ? {sock} : {}), ...(details ? {details} : {})})
+            const {k, name, cat, parents, place, shapes, sock, details, een, wire, pins} = symbolType
+            symbols.push({
+                k,
+                name,
+                cat,
+                parents,
+                place,
+                shapes,
+                ...(sock ? {sock} : {}),
+                ...(details ? {details} : {}),
+                ...(een != null ? {een} : {}),
+                ...(wire != null ? {wire} : {}),
+                ...(pins ? {pins} : {}),
+            })
         } else if (!symbolType) {
             const earlier = embeddedTypeOf(project, key)
             if (earlier) symbols.push(earlier)

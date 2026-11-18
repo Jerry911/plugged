@@ -27,7 +27,7 @@ import java.util.Map;
  */
 public final class StandardSymbols {
     /** The number the stored copies of standard symbols carry; raising it replaces every unedited copy at the next start. */
-    public static final int VERSION = 13;
+    public static final int VERSION = 14;
     /** The catalog file on the class path. */
     public static final String CATALOG = "catalog/standard-symbols.json";
 
@@ -68,7 +68,8 @@ public final class StandardSymbols {
             List<Map<String, Object>> shapes = new ArrayList<>();
             for (Map<String, Object> shape : symbol.shapes() == null ? List.<Map<String, Object>>of() : symbol.shapes()) shapes.add(ShapeRow.of(shape).toMap());
             standards.add(new SymbolDto(symbol.key(), symbol.name(), symbol.category(), symbol.parents() == null ? List.of() : List.copyOf(symbol.parents()),
-                    !Boolean.FALSE.equals(symbol.placeable()), List.copyOf(shapes), symbol.socket(), VERSION, true, false, Boolean.TRUE.equals(symbol.details())));
+                    !Boolean.FALSE.equals(symbol.placeable()), List.copyOf(shapes), symbol.socket(), VERSION, true, false, Boolean.TRUE.equals(symbol.details()))
+                    .withWiringOf(symbol));
         }
         return standards;
     }

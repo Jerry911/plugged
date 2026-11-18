@@ -27,6 +27,10 @@ import java.util.Map;
  * @param builtin   a standard symbol
  * @param modified  a standard symbol that differs from its standard definition (output only, ignored on input)
  * @param details   the element has the extended details input (brand, type, serial number, ...): inverter, solar panels, battery, EV charger
+ * @param oneWire   ({@code een}) shown in the palette of the eendraadschema; null = yes
+ * @param wiring    ({@code wire}) shown in the palette of the bedradingsschema; null = when it is placeable
+ * @param pins      the connection points of the bedradingsschema ([[x, y], ...] on the 24 grid, the wires attach to them); null = found from
+ *                  the drawing (the ends of lines on the border), empty = none (furniture, cars, ...)
  * @param groups    the groups the own symbol is shared with ({id, name}; only the ids count on input); empty or null = only its owner uses
  *                  it. Ignored for standard symbols, and when the user may not change the sharing
  * @param editable  output only: the signed-in user may change the drawing and the details (his own symbols, the symbols shared with his
@@ -47,11 +51,14 @@ public record SymbolDto(
         Boolean builtin,
         Boolean modified,
         Boolean details,
+        @JsonProperty("een") Boolean oneWire,
+        @JsonProperty("wire") Boolean wiring,
+        @Size(max = SymbolDto.MAX_PINS, message = "symbol.tooManyPins") List<@NotNull(message = "symbol.invalidPin") @Size(min = 2, max = 2, message = "symbol.invalidPin") List<@NotNull(message = "symbol.invalidPin") Double>> pins,
         @Size(max = SymbolDto.MAX_GROUPS, message = "symbol.tooManyGroups") List<ProjectSummary.@NotNull(message = "symbol.groupNotAllowed") Ref> groups,
         Boolean editable,
         Boolean shareable,
         String owner) {
-    public static final int MAX_NAME_LENGTH = 120, MAX_CATEGORY_LENGTH = 60, MAX_SHAPES = 500, MAX_PARENTS = 500, MAX_GROUPS = 200;
+    public static final int MAX_NAME_LENGTH = 120, MAX_CATEGORY_LENGTH = 60, MAX_SHAPES = 500, MAX_PARENTS = 500, MAX_GROUPS = 200, MAX_PINS = 60;
     public static final String KEY_PATTERN = "[A-Za-z0-9_.:-]{1,100}";
 
     public SymbolDto {
@@ -62,12 +69,24 @@ public record SymbolDto(
     /** A symbol without owner information (the standard catalog, new definitions). */
     public SymbolDto(String key, String name, String category, List<String> parents, Boolean placeable, List<Map<String, Object>> shapes,
                      Map<String, Object> socket, Integer version, Boolean builtin, Boolean modified, Boolean details) {
-        this(key, name, category, parents, placeable, shapes, socket, version, builtin, modified, details, null, null, null, null);
+        this(key, name, category, parents, placeable, shapes, socket, version, builtin, modified, details, null, null, null, null, null, null, null);
+    }
+
+    /** The same symbol with these settings of the bedradingsschema (see {@link #oneWire}, {@link #wiring} and {@link #pins}). */
+    public SymbolDto withWiring(Boolean inOneWire, Boolean inWiring, List<List<Double>> connectionPoints) {
+        return new SymbolDto(key, name, category, parents, placeable, shapes, socket, version, builtin, modified, details, inOneWire, inWiring, connectionPoints,
+                groups, editable, shareable, owner);
+    }
+
+    /** The same symbol with the settings of the bedradingsschema of another one. */
+    public SymbolDto withWiringOf(SymbolDto other) {
+        return withWiring(other.oneWire(), other.wiring(), other.pins());
     }
 
     /** The same symbol with its sharing, its owner and what the signed-in user may do with it. */
     public SymbolDto withAccess(List<ProjectSummary.Ref> sharedWith, boolean canEdit, boolean canShare, String ownerName) {
-        return new SymbolDto(key, name, category, parents, placeable, shapes, socket, version, builtin, modified, details, sharedWith, canEdit, canShare, ownerName);
+        return new SymbolDto(key, name, category, parents, placeable, shapes, socket, version, builtin, modified, details, oneWire, wiring, pins, sharedWith, canEdit,
+                canShare, ownerName);
     }
 
     /** The ids of {@link #groups()} (empty when there are none). */

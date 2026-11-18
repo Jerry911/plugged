@@ -37,7 +37,7 @@ export function sheetFileNames(project, extension = 'png') {
         const count = perPage.get(sheet.page),
             part = (seen.get(sheet.page) || 0) + 1
         seen.set(sheet.page, part)
-        const kind = t(sheet.kind === 'een' ? 'pagesExport.oneWireFile' : 'pagesExport.situationFile')
+        const kind = t({een: 'pagesExport.oneWireFile', sit: 'pagesExport.situationFile', wire: 'pagesExport.wiringFile'}[sheet.kind])
         return `${twoDigits(sheet.number)} ${kind} - ${safeFileName(sheet.page.name)}${count > 1 ? ` (${part})` : ''}.${extension}`
     })
 }

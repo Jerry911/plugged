@@ -29,6 +29,8 @@ class ProjectLimitsTest {
     private static final String WORK = "{\"een\":[{\"tree\":[{\"type\":\"aansluiting\",\"children\":[{\"type\":\"kring\",\"children\":[]}]}]}]}";
 
     @Autowired
+    com.pleysje.plugged.repository.SymbolRepository symbolsToClean;
+    @Autowired
     MockMvc mvc;
     @Autowired
     UserRepository users;
@@ -41,7 +43,7 @@ class ProjectLimitsTest {
 
     @BeforeEach
     void clean() {
-        TestAccounts.clean(groups, projects, users);
+        TestAccounts.clean(groups, projects, users, symbolsToClean);
         alice = account(users, "Alice", false);
     }
 

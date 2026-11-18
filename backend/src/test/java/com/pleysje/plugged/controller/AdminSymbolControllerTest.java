@@ -59,7 +59,7 @@ class AdminSymbolControllerTest {
     void reset() {
         symbols.deleteAll();
         service.seed();
-        TestAccounts.clean(groups, projects, users);
+        TestAccounts.clean(groups, projects, users, symbols);
         admin = account(users, "Admin", true);
         user = account(users, "Jan", false);
     }

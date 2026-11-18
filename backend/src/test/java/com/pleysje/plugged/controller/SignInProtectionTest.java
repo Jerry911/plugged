@@ -30,6 +30,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 class SignInProtectionTest {
     @Autowired
+    com.pleysje.plugged.repository.SymbolRepository symbolsToClean;
+    @Autowired
     MockMvc mvc;
     @Autowired
     UserRepository users;
@@ -44,7 +46,7 @@ class SignInProtectionTest {
 
     @BeforeEach
     void clean() {
-        TestAccounts.clean(groups, projects, users);
+        TestAccounts.clean(groups, projects, users, symbolsToClean);
         throttle.reset();
     }
 

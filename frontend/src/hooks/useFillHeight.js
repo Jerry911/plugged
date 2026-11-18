@@ -3,7 +3,7 @@
 // The side panels (the palette and Opbouw of the eendraadschema, the tools and the lists of the situatieschema, the symbol list of
 // Componenten) reach exactly to the bottom of the window, whatever its size: their lists scroll inside instead of leaving white space or
 // running off the screen.
-import {useEffect} from 'react'
+import {useEffect, useState} from 'react'
 
 /** Below this width (px) the panels stand above each other (see layout.css) and keep their own height. */
 export const NARROW_SCREEN = 900
@@ -31,6 +31,17 @@ const watch = (update) => {
         removeEventListener('scroll', later)
         observer?.disconnect()
     }
+}
+
+/** Is the window narrow (a phone, a tablet upright)? Follows the size of the window. */
+export function useNarrowScreen() {
+    const [isNarrow, setNarrow] = useState(narrow)
+    useEffect(() => {
+        const update = () => setNarrow(narrow())
+        addEventListener('resize', update)
+        return () => removeEventListener('resize', update)
+    }, [])
+    return isNarrow
 }
 
 /**

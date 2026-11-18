@@ -33,6 +33,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 class AdminControllerTest {
     @Autowired
+    com.pleysje.plugged.repository.SymbolRepository symbolsToClean;
+    @Autowired
     MockMvc mvc;
     @Autowired
     UserRepository users;
@@ -47,7 +49,7 @@ class AdminControllerTest {
 
     @BeforeEach
     void clean() {
-        TestAccounts.clean(groups, projects, users);
+        TestAccounts.clean(groups, projects, users, symbolsToClean);
         admin = account(users, "Admin", true); // admin@example.be: the primary administrator
         alice = account(users, "Alice", false);
         bob = account(users, "Bob", false);

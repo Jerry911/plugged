@@ -99,6 +99,18 @@ public class SymbolEntity {
     @Column(name = "has_details")
     private Boolean details;
 
+    /** shown in the palette of the eendraadschema; null = yes (symbols of before this option) */
+    @Column(name = "in_een")
+    private Boolean oneWire;
+
+    /** shown in the palette of the bedradingsschema; null = when it is placeable (symbols of before this option) */
+    @Column(name = "in_wire")
+    private Boolean wiring;
+
+    /** the connection points of the bedradingsschema, "x,y;x,y" on the 24 grid; null = found from the drawing, "" = none */
+    @Column(name = "pins", length = 2000)
+    private String pins;
+
     public String getKey() { return key; }
     public void setKey(String key) { this.key = key; }
     public String getName() { return name; }
@@ -136,8 +148,14 @@ public class SymbolEntity {
     public Long getLegacyOwnerGroupId() { return legacyOwnerGroupId; }
     public void clearLegacyOwnerGroupId() { this.legacyOwnerGroupId = null; }
     public void setDetails(Boolean details) { this.details = details; }
+    public Boolean getOneWire() { return oneWire; }
+    public void setOneWire(Boolean oneWire) { this.oneWire = oneWire; }
+    public Boolean getWiring() { return wiring; }
+    public void setWiring(Boolean wiring) { this.wiring = wiring; }
+    public String getPins() { return pins; }
+    public void setPins(String pins) { this.pins = pins; }
 
-    /** Same drawing and settings (name, category, placement, parents, shapes, socket parameters)? Flags and version are not compared. */
+    /** Same drawing and settings (name, category, placement, palettes, pins, parents, shapes, socket parameters)? Flags and version are not compared. */
     public boolean sameDefinition(SymbolEntity other) {
         return name.equals(other.name)
                 && category.equals(other.category)
@@ -149,6 +167,9 @@ public class SymbolEntity {
                 && Objects.equals(socketChildSafe, other.socketChildSafe)
                 && Objects.equals(socketWaterproof, other.socketWaterproof)
                 && Objects.equals(socketCount, other.socketCount)
-                && Boolean.TRUE.equals(details) == Boolean.TRUE.equals(other.details);
+                && Boolean.TRUE.equals(details) == Boolean.TRUE.equals(other.details)
+                && Objects.equals(oneWire, other.oneWire)
+                && Objects.equals(wiring, other.wiring)
+                && Objects.equals(pins, other.pins);
     }
 }

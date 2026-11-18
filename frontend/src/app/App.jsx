@@ -29,6 +29,7 @@ import {schemaRequestFromSearch} from '../features/project/schemaLink.js'
 import Toast, {useToast} from '../components/Toast.jsx'
 import {useHistory} from '../hooks/useHistory.js'
 import {useAutoSave} from '../hooks/useAutoSave.js'
+import {useNarrowScreen} from '../hooks/useFillHeight.js'
 import {exportEds, importEds} from '../model/eds.js'
 import {REQUIRED_FOOTER_FIELDS, rulesNotApplicable, verify} from '../model/rules.js'
 import {unplacedNodes} from '../model/project.js'
@@ -39,16 +40,18 @@ import PageBar from './PageBar.jsx'
 import {isProjectEmpty, newProject, normalizeProject} from './projectDocument.js'
 
 const TABS = [
-    {id: 'een', label: 'tabs.oneWire'},
-    {id: 'sit', label: 'tabs.situation'},
+    {id: 'een', label: 'tabs.oneWire', short: 'tabs.oneWireShort'},
+    {id: 'sit', label: 'tabs.situation', short: 'tabs.situationShort'},
+    {id: 'wire', label: 'tabs.wiring', short: 'tabs.wiringShort'},
     {id: 'comp', label: 'tabs.components'},
 ]
 const ONE_WIRE_TAB = 0,
     SITUATION_TAB = 1,
-    COMPONENTS_TAB = 2,
-    INFO_TAB = 3,
-    ACCOUNT_TAB = 4,
-    TEACHER_TAB = 5
+    WIRING_TAB = 2,
+    COMPONENTS_TAB = 3,
+    INFO_TAB = 4,
+    ACCOUNT_TAB = 5,
+    TEACHER_TAB = 6
 // the editor opens with the most recently saved project of the user (null: none yet, a new project)
 const latestOwnProject = (summaries) => summaries.filter((summary) => summary.mine).sort((a, b) => (b.updated || '').localeCompare(a.updated || ''))[0] || null
 
@@ -109,6 +112,7 @@ function LibraryGate({user, onLogout, onAccountDeleted}) {
 
 function Editor({library, user, onLogout, onAccountDeleted}) {
     const {t, language} = useTranslation()
+    const narrowScreen = useNarrowScreen()
     const [initialProject] = useState(newProject)
     const {project, setProject, reset, undo, redo, canUndo, canRedo} = useHistory(initialProject),
         savedSnapshot = useRef(JSON.stringify(initialProject)), // the project as last saved or loaded: tells whether there are unsaved changes
@@ -121,6 +125,7 @@ function Editor({library, user, onLogout, onAccountDeleted}) {
         [newerVersion, setNewerVersion] = useState(null), // somebody else saved the open project while it has unsaved changes here
         [oneWirePage, setOneWirePage] = useState(0),
         [situationPage, setSituationPage] = useState(0),
+        [wiringPage, setWiringPage] = useState(0),
         [projectId, setProjectId] = useState(null), // null: a new project that was never saved (the server gives it a number)
         [ownProject, setOwnProject] = useState(true), // false: a project of somebody else (shared with a group, or seen by the admin)
         [projectListKey, setProjectListKey] = useState(0), // bumped after a save or delete so an open project list reloads
@@ -191,6 +196,7 @@ function Editor({library, user, onLogout, onAccountDeleted}) {
         setOwnProject(own)
         setOneWirePage(0)
         setSituationPage(0)
+        setWiringPage(0)
         setTab(ONE_WIRE_TAB)
     }
     useEffect(() => {
@@ -206,6 +212,7 @@ function Editor({library, user, onLogout, onAccountDeleted}) {
                     setOwnProject(true)
                     setOneWirePage(0)
                     setSituationPage(0)
+                    setWiringPage(0)
                     // somebody who finds real work on the server is not a beginner: the tour does not draw in it by itself
                     setTourAllowed(isProjectEmpty(loaded))
                 } else setTourAllowed(true)
@@ -266,6 +273,7 @@ function Editor({library, user, onLogout, onAccountDeleted}) {
         markSaved(loaded)
         setOneWirePage((page) => Math.min(page, Math.max(0, (loaded.een?.length || 1) - 1)))
         setSituationPage((page) => Math.min(page, Math.max(0, (loaded.sit?.length || 1) - 1)))
+        setWiringPage((page) => Math.min(page, Math.max(0, (loaded.wire?.length || 1) - 1)))
         setNewerVersion(null)
     }
     const hasUnsavedChanges = () => JSON.stringify(project) !== savedSnapshot.current
@@ -426,6 +434,7 @@ function Editor({library, user, onLogout, onAccountDeleted}) {
     const showImported = () => {
         setOneWirePage(0)
         setSituationPage(0)
+        setWiringPage(0)
         setTab(ONE_WIRE_TAB)
     }
     const importEdsText = (text) => {
@@ -500,7 +509,8 @@ function Editor({library, user, onLogout, onAccountDeleted}) {
     const unplacedRuleOff = disabledRules.includes('plan.unplaced'),
         unplacedCount = unplacedRuleOff ? 0 : unplacedNodes(project).length,
         shownOneWirePage = Math.min(oneWirePage, project.een.length - 1),
-        shownSituationPage = Math.min(situationPage, project.sit.length - 1)
+        shownSituationPage = Math.min(situationPage, project.sit.length - 1),
+        shownWiringPage = Math.min(wiringPage, project.wire.length - 1)
     return (
         <>
             <div className="bar ui" id="top-bar">
@@ -529,8 +539,15 @@ function Editor({library, user, onLogout, onAccountDeleted}) {
                 />
                 <span className="sep" />
                 {TABS.map((entry, index) => (
-                    <button key={entry.id} id={'tab-' + entry.id} className={tab === index ? 'on' : ''} onClick={() => setTab(index)}>
-                        {t(entry.label)}
+                    <button
+                        key={entry.id}
+                        id={'tab-' + entry.id}
+                        className={tab === index ? 'on' : ''}
+                        title={narrowScreen && entry.short ? t(entry.label) : undefined}
+                        onClick={() => setTab(index)}
+                    >
+                        {/* on a narrow screen the schemas have a short name (the full one is the hover text): the bar keeps to three lines */}
+                        {narrowScreen && entry.short ? t(entry.short) : t(entry.label)}
                         {index === SITUATION_TAB && unplacedCount > 0 && !restricted && (
                             <span id="tab-sit-unplaced" title={t('tabs.unplacedTitle')}>
                                 {' '}⚠{unplacedCount}
@@ -670,6 +687,21 @@ function Editor({library, user, onLogout, onAccountDeleted}) {
                             onFooter={openFooter}
                             neutral={restricted || unplacedRuleOff}
                             onPageIndex={setSituationPage}
+                            onStatus={setStatusMessage}
+                        />
+                    </>
+                )}
+                {tab === WIRING_TAB && (
+                    <>
+                        <PageBar project={project} setProject={setProject} listKey="wire" pageIndex={shownWiringPage} setPageIndex={setWiringPage} />
+                        <SituationSchema
+                            key={'wire:' + project.wire[shownWiringPage].id}
+                            listKey="wire"
+                            project={project}
+                            setProject={setProject}
+                            pageIndex={shownWiringPage}
+                            onFooter={openFooter}
+                            onPageIndex={setWiringPage}
                             onStatus={setStatusMessage}
                         />
                     </>

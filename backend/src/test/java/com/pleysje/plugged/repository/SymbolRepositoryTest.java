@@ -43,6 +43,9 @@ class SymbolRepositoryTest {
             assertEquals(standard.shapes(), back.shapes(), standard.key());
             assertEquals(standard.socket(), back.socket(), standard.key());
             assertEquals(standard.placeable(), back.placeable());
+            assertEquals(standard.oneWire(), back.oneWire(), standard.key());
+            assertEquals(standard.wiring(), back.wiring(), standard.key());
+            assertEquals(standard.pins(), back.pins(), standard.key());
         }
     }
 
@@ -95,6 +98,20 @@ class SymbolRepositoryTest {
         copy.setStandardVersion(1);
         assertTrue(original.sameDefinition(copy));
         copy.getShapes().remove(0);
+        assertFalse(original.sameDefinition(copy));
+    }
+
+    @Test
+    void theSettingsOfTheWiringDiagramArePartOfTheDefinition() {
+        SymbolEntity original = SymbolMapper.toEntity(StandardSymbols.find("contact_no")), copy = SymbolMapper.toEntity(StandardSymbols.find("contact_no"));
+        assertTrue(original.sameDefinition(copy));
+        copy.setPins("12,0");
+        assertFalse(original.sameDefinition(copy));
+        copy = SymbolMapper.toEntity(StandardSymbols.find("contact_no"));
+        copy.setOneWire(true);
+        assertFalse(original.sameDefinition(copy));
+        copy = SymbolMapper.toEntity(StandardSymbols.find("contact_no"));
+        copy.setWiring(null);
         assertFalse(original.sameDefinition(copy));
     }
 }

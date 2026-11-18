@@ -858,9 +858,10 @@ export function sheetSlices(board) {
 }
 
 /**
- * Every printed sheet of the project: [{kind: 'een' | 'sit', page, board, slice, number, total}].
+ * Every printed sheet of the project: [{kind: 'een' | 'sit' | 'wire', page, board, slice, number, total}].
  * `perTab`: number the eendraad sheets and the situatieschema pages separately (as shown in their own tab: Blad 6/6 and Blad 1/1);
- * otherwise one continuous numbering over all printed sheets (PDF export).
+ * otherwise one continuous numbering over all printed sheets (PDF export). A page of the bedradingsschema with nothing on it is not printed (every
+ * project has one, most never use it); in its own tab it still counts.
  */
 export function sheetPlan(project, perTab = false) {
     const plan = [
@@ -869,6 +870,9 @@ export function sheetPlan(project, perTab = false) {
             return sheetSlices(board).map((slice) => ({kind: 'een', page, board, slice}))
         }),
         ...project.sit.map((page) => ({kind: 'sit', page})),
+        ...(project.wire || [])
+            .filter((page) => perTab || page.walls?.length || page.items?.length || page.wires?.length || page.boxes?.length)
+            .map((page) => ({kind: 'wire', page})),
     ]
     if (!perTab) return plan.map((sheet, index) => ({...sheet, number: index + 1, total: plan.length}))
     const counted = {},

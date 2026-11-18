@@ -206,6 +206,23 @@
     color: #fff
 }
 
+/* on a phone the tabs do not fit next to each other: they wrap as buttons, each with its whole name on one line */
+@media (max-width: 900px) {
+    .admintabs {
+        flex-wrap: wrap;
+        gap: 6px;
+        padding-bottom: 8px
+    }
+
+    .admintabs button {
+        flex: 1 1 auto;
+        padding: 6px 10px;
+        border-bottom: 1px solid #c9d2dd;
+        border-radius: 5px;
+        white-space: nowrap
+    }
+}
+
 .adminsection > p:first-child {
     margin-top: 0
 }

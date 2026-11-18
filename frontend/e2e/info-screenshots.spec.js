@@ -181,6 +181,68 @@ const plan = (language) => {
         items: index === 0 ? [...page.items, ...items] : page.items,
     }))
 }
+// the bedradingsschema: the control and the power circuit of a fan with a contactor (start / stop, emergency stop, thermal relay)
+const wiringSymbol = (id, type, x, y, s, mark) => ({id, kind: 'sym', type, x, y, r: 0, s, ...(mark ? {mark} : {})})
+const cable = (id, a, b, color, points = [], extra = {}) => ({id, a, b, points, style: 'solid', color, w: 0.35, ortho: true, ...extra})
+const pin = (item, index) => ({item, pin: index})
+const at = (x, y) => ({x, y})
+const wiring = (language) => {
+    const words = {
+        nl: {name: 'Ventilator', control: 'Sturing', power: 'Vermogen'},
+        fr: {name: 'Ventilateur', control: 'Commande', power: 'Puissance'},
+        en: {name: 'Fan', control: 'Control', power: 'Power'},
+    }[language]
+    const text = (id, x, y, txt, s = 4) => ({id, kind: 'text', x, y, txt, s, r: 0})
+    return [
+        {
+            id: 'w1',
+            name: words.name,
+            walls: [],
+            items: [
+                wiringSymbol('F1', 'zekering_s', 50, 35, 12, 'F1'),
+                wiringSymbol('S0', 'noodstop', 50, 60, 12, 'S0'),
+                wiringSymbol('S1', 'drukknop_nc', 50, 85, 12, 'S1'),
+                wiringSymbol('S2', 'drukknop_no', 50, 110, 12, 'S2'),
+                wiringSymbol('K1h', 'contact_no', 80, 110, 12, 'K1'),
+                wiringSymbol('K1', 'spoel', 50, 145, 12, 'K1'),
+                wiringSymbol('X1', 'klemmenstrook', 185, 30, 24, 'X1'),
+                wiringSymbol('KM', 'contactor3', 182, 80, 24, 'K1'),
+                wiringSymbol('F2a', 'thermisch', 170, 115, 12),
+                wiringSymbol('F2b', 'thermisch', 182, 115, 12, 'F2'),
+                wiringSymbol('F2c', 'thermisch', 194, 115, 12),
+                wiringSymbol('M1', 'motor', 182, 160, 16, 'M1'),
+                text('t1', 22, 12, words.control),
+                text('t2', 145, 13, words.power),
+                text('L', 44, 22, 'L', 3),
+                text('N', 44, 176, 'N', 3),
+            ],
+            wires: [
+                cable('c1', pin('F1', 1), pin('S0', 0), 'red'),
+                cable('c2', pin('S0', 1), pin('S1', 0), 'red'),
+                cable('c3', pin('S1', 1), pin('S2', 0), 'red'),
+                cable('c4', pin('S2', 1), pin('K1', 0), 'red'),
+                cable('c5', at(50, 98), pin('K1h', 0), 'red', [at(80, 98)]),
+                cable('c6', pin('K1h', 1), at(50, 124), 'red', [at(80, 124)]),
+                cable('c7', pin('K1', 1), at(50, 170), 'blue'),
+                cable('p1', pin('X1', 4), pin('KM', 0), 'brown', [at(176, 55), at(170, 55)], {w: 0.5}),
+                cable('p2', pin('X1', 5), pin('KM', 1), 'black', [], {w: 0.5}),
+                cable('p3', pin('X1', 6), pin('KM', 2), 'gray', [at(188, 55), at(194, 55)], {w: 0.5}),
+                cable('p4', pin('KM', 3), pin('F2a', 0), 'brown', [], {w: 0.5}),
+                cable('p5', pin('KM', 4), pin('F2b', 0), 'black', [], {w: 0.5}),
+                cable('p6', pin('KM', 5), pin('F2c', 0), 'gray', [], {w: 0.5}),
+                cable('p7', pin('F2a', 1), pin('M1', 1), 'brown', [], {w: 0.5}),
+                cable('p8', pin('F2b', 1), pin('M1', 0), 'black', [], {w: 0.5}),
+                cable('p9', pin('F2c', 1), pin('M1', 2), 'gray', [], {w: 0.5}),
+                cable('pe', pin('X1', 7), pin('M1', 3), 'yellowgreen', [at(215, 48), at(215, 178), at(182, 178)], {w: 0.5}),
+            ],
+            boxes: [
+                {id: 'b1', x1: 20, y1: 15, x2: 110, y2: 182, style: 'dashdot', color: 'gray', w: 0.35},
+                {id: 'b2', x1: 140, y1: 6, x2: 230, y2: 184, style: 'dashdot', color: 'gray', w: 0.35},
+            ],
+        },
+    ]
+}
+
 const house = (language) => ({
     name: 'Woning Vermeulen',
     footer: {
@@ -205,6 +267,7 @@ const house = (language) => ({
         },
     ],
     sit: plan(language),
+    wire: wiring(language),
     custom: [],
 })
 
@@ -337,6 +400,16 @@ for (const language of LANGUAGES) {
         await page.locator('#sit-template').click()
         await expect(page.locator('#template-dialog')).toBeVisible()
         await shoot(page.locator('#template-dialog'), language, 'sjablonen')
+        await page.keyboard.press('Escape')
+
+        // the bedradingsschema: drawing a wire, with the connection points of the symbols and the line style
+        await app.tab('wire')
+        await expect(page.locator('#wire-sheet')).toBeVisible()
+        await page.locator('#wire-tool-wire').click()
+        await page.locator('#wire-pen-color-red').click()
+        await app.moveSheet(80.3, 104.4)
+        await page.waitForTimeout(300)
+        await shoot(page, language, 'bedradingsschema')
         await page.keyboard.press('Escape')
 
         // Project: the list of projects, the QR code, the materiaallijst, Exporteren

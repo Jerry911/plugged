@@ -25,6 +25,11 @@ const ctx = (o = {}) => ({project: {n: 0}, tab: 0, setTab: vi.fn(), ...o})
 const step = (o = {}) => ({id: 's', title: 'Titel', body: <p>Uitleg</p>, ...o})
 const spot = () => byId('tour-spot')
 const tick = (ms) => act(() => vi.advanceTimersByTime(ms))
+// a test that gives the page a scrollIntoView or extra elements leaves nothing behind, also when it fails (jsdom has no scrollIntoView)
+afterEach(() => {
+    delete Element.prototype.scrollIntoView
+    document.querySelectorAll('body > i, body > b, body > details, body > button, body > #sit-props').forEach((element) => element.remove())
+})
 
 describe('first visit', () => {
     beforeEach(forgetTour)

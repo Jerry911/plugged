@@ -8,11 +8,13 @@ import {shapesInBox, unionBounds} from '../../symbols/shapeHit.js'
 import {shapeAnchor, translateShape} from '../../symbols/shapeEdit.js'
 import {categoryName, OWN_CATEGORY, symbolName} from '../../symbols/symbolLibrary.js'
 import {newId} from '../../model/tree.js'
+import {inOneWire, inWiring, symbolPins} from '../../model/wiring.js'
 import {useTranslation} from '../../i18n/I18nProvider.jsx'
 import {toDomId} from '../../components/domId.js'
 import {useFillHeight} from '../../hooks/useFillHeight.js'
 
-const DRAWING_TOOLS = ['select', 'line', 'circle', 'rect', 'arc', 'text']
+const DRAWING_TOOLS = ['select', 'line', 'circle', 'rect', 'arc', 'text', 'pins']
+const PIN_COLOUR = '#0a8f3c'
 // width (in grid units) of the invisible outline that makes a thin line easy to click when selecting
 // the colour of the selection, as on the situatieschema
 const SELECTION_COLOUR = '#0a6cff'
@@ -148,6 +150,12 @@ export default function SymbolEditor({library, groups = [], onOpen, onSave, onRe
         if (readOnly) return
         if (tool === 'select') return afterDrag.current ? undefined : setSelected([])
         const {x, y} = gridPointOf(event)
+        if (tool === 'pins') {
+            // a click on a connection point removes it, anywhere else adds one; the points found from the drawing are the start
+            const pins = symbolPins(draft),
+                exists = pins.some((pin) => pin[0] === x && pin[1] === y)
+            return change({pins: exists ? pins.filter((pin) => pin[0] !== x || pin[1] !== y) : [...pins, [x, y]]})
+        }
         if (tool === 'text') {
             const text = prompt(t('symbolEditor.textPrompt'))
             if (text) change({shapes: [...draft.shapes, {t: 'text', x, y, s: text}]})
@@ -566,6 +574,22 @@ export default function SymbolEditor({library, groups = [], onOpen, onSave, onRe
                                     )}
                                     {hover && tool !== 'select' && <circle id="comp-hover-point" cx={hover.x} cy={hover.y} r=".25" fill="#0a6cff" pointerEvents="none" />}
                                     {anchor && <circle id="comp-anchor" cx={anchor.x} cy={anchor.y} r=".4" fill="red" />}
+                                    {(tool === 'pins' || Array.isArray(draft.pins)) && (
+                                        <g id="comp-pins" pointerEvents="none" opacity={Array.isArray(draft.pins) ? 1 : 0.5}>
+                                            {symbolPins(draft).map((pin) => (
+                                                <circle
+                                                    key={pin.join(',')}
+                                                    className="comp-pin"
+                                                    cx={pin[0]}
+                                                    cy={pin[1]}
+                                                    r=".5"
+                                                    fill="#fff"
+                                                    stroke={PIN_COLOUR}
+                                                    strokeWidth=".15"
+                                                />
+                                            ))}
+                                        </g>
+                                    )}
                                 </svg>
                                 <div className="ui gridsel">
                                     <label>
@@ -648,6 +672,47 @@ export default function SymbolEditor({library, groups = [], onOpen, onSave, onRe
                                         <input id="comp-placeable" type="checkbox" checked={draft.place} onChange={(event) => change({place: event.target.checked})} />{' '}
                                         {t('symbolEditor.placeable')}
                                     </label>
+                                    <label style={{display: 'block', margin: '8px 0'}}>
+                                        <input
+                                            id="comp-in-een"
+                                            type="checkbox"
+                                            checked={inOneWire(draft)}
+                                            onChange={(event) => change({een: event.target.checked})}
+                                        />{' '}
+                                        {t('symbolEditor.inOneWire')}
+                                    </label>
+                                    <label style={{display: 'block', margin: '8px 0'}}>
+                                        <input
+                                            id="comp-in-wire"
+                                            type="checkbox"
+                                            checked={inWiring(draft)}
+                                            onChange={(event) => change({wire: event.target.checked})}
+                                        />{' '}
+                                        {t('symbolEditor.inWiring')}
+                                    </label>
+                                    <div id="comp-pins-setting" style={{margin: '8px 0'}}>
+                                        <b>{t('symbolEditor.pins.title')}</b>{' '}
+                                        <small id="comp-pins-state">
+                                            {!Array.isArray(draft.pins)
+                                                ? t('symbolEditor.pins.auto', {count: symbolPins(draft).length})
+                                                : draft.pins.length
+                                                  ? t('symbolEditor.pins.own', {count: draft.pins.length})
+                                                  : t('symbolEditor.pins.none')}
+                                        </small>
+                                        <div className="tb">
+                                            <button id="comp-pins-auto" disabled={!Array.isArray(draft.pins)} onClick={() => change({pins: undefined})}>
+                                                {t('symbolEditor.pins.toAuto')}
+                                            </button>
+                                            <button
+                                                id="comp-pins-none"
+                                                disabled={Array.isArray(draft.pins) && !draft.pins.length}
+                                                onClick={() => change({pins: []})}
+                                            >
+                                                {t('symbolEditor.pins.toNone')}
+                                            </button>
+                                        </div>
+                                        <small style={{display: 'block'}}>{t('symbolEditor.pins.hint')}</small>
+                                    </div>
                                     <label style={{display: 'block', margin: '8px 0'}}>
                                         <input
                                             id="comp-details"

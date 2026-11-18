@@ -1,7 +1,8 @@
 // Copyright 2026 Pleysier Jeroen
 // SPDX-License-Identifier: AGPL-3.0-only
 // One situatieschema page drawn on a sheet: walls, doors, windows, texts and symbols. In the editor (`editor` given) it also draws the
-// grid, the selection, the wall being drawn and the selection box.
+// grid, the selection, the wall being drawn and the selection box. A page of the bedradingsschema is drawn the same way, with its rectangles and
+// wires on top (see WiringLayers.jsx).
 import SymbolGraphic from '../../symbols/SymbolGraphic.jsx'
 import {allTypes, typeOf} from '../../symbols/symbolLibrary.js'
 import {placedShapesOf} from '../../symbols/symbolShapes.js'
@@ -11,6 +12,8 @@ import {formatLength, scaleOf} from '../../model/geometry.js'
 import {centredTextBox, placeLabels, symbolExtent} from '../../model/labelPlacement.js'
 import {unionBounds} from '../../symbols/shapeHit.js'
 import {useTranslation} from '../../i18n/I18nProvider.jsx'
+import {endResolver, pinPosition, symbolPins} from '../../model/wiring.js'
+import {BoxesLayer, WiresLayer} from '../wiring/WiringLayers.jsx'
 
 /** The default size (mm on the sheet) of each kind of item. */
 export const DEFAULT_ITEM_SIZE = {sym: 7, text: 4, door: 10, window: 10}
@@ -19,6 +22,33 @@ export const SELECTION_COLOUR = '#0a6cff'
 const SYMBOL_STROKE_WIDTH = 1
 
 const LENGTH_FONT_SIZE = 2.4
+
+/** Are the lengths of walls (and wires) written? On a plan unless switched off, on a page of the bedradingsschema only when switched on. */
+export const showsLengths = (page) => (page.wires ? page.dims === true : page.dims !== false)
+
+/** The size of an item on the sheet (mm). */
+export const sizeOfItem = (item) => item.s || item.w || DEFAULT_ITEM_SIZE[item.kind]
+
+/** The symbol type of a symbol item: the one of its element of the eendraadschema, or its own (a loose symbol); null when it is gone. */
+export const itemTypeOf = (project, item, nodes = placeableNodes(project)) => {
+    if (item.kind !== 'sym') return null
+    const node = item.node ? nodes.find((candidate) => candidate.id === item.node) : null
+    return node ? typeOf(project, node.type) : (item.type && allTypes(project).find((symbolType) => symbolType.k === item.type)) || null
+}
+
+/** The connection points of the symbols of a page on the sheet: pinsOf(item) = [{x, y}] (see model/wiring.js). */
+export const pagePins = (project, nodes = placeableNodes(project)) => {
+    const cache = new Map()
+    return (item) => {
+        const key = `${item.id}:${item.x},${item.y},${item.r},${item.s},${item.type}`
+        if (!cache.has(key))
+            cache.set(
+                key,
+                symbolPins(itemTypeOf(project, item, nodes)).map((pin) => pinPosition(item, pin, sizeOfItem(item))),
+            )
+        return cache.get(key)
+    }
+}
 
 /** Where the length of a segment is written: {x, y, angle, text}, or null for a segment too short to label. */
 const lengthLabelOf = (from, to, scale, offset = 3) => {
@@ -110,18 +140,22 @@ const DrawingPreview = ({editor, scale}) => {
 }
 
 /**
- * page = the situatieschema page; number / total = its sheet number. `editor` (only in the editing view):
- * {svgRef, selection, interactionProps(kind, id, part), pending, typedEnd, cursor, tool, gridSize, selectionBox, deleteButton, sheetEvents}.
+ * page = the situatieschema (or bedradingsschema) page; number / total = its sheet number. `editor` (only in the editing view):
+ * {svgRef, prefix, selection, interactionProps(kind, id, part), pending, typedEnd, cursor, tool, gridSize, selectionBox, deleteButton, sheetEvents,
+ * pins, wirePreview, boxPreview}; prefix ('sit' or 'wire') starts the ids of the elements.
  */
 export function SituationSheet({project, page, number, total, editor, onFooter}) {
     const {t} = useTranslation()
     const nodes = placeableNodes(project),
         marks = circuitMarks(project),
         {walls, items} = page,
+        wires = page.wires || [],
+        boxes = page.boxes || [],
+        prefix = editor?.prefix || 'sit',
         scale = scaleOf(project.footer),
-        showLengths = page.dims !== false,
+        showLengths = showsLengths(page),
         isSelected = (id) => !!editor && editor.selection.some((entry) => entry.id === id),
-        sizeOf = (item) => item.s || item.w || DEFAULT_ITEM_SIZE[item.kind],
+        sizeOf = sizeOfItem,
         // text next to a symbol: the marking of the eendraadschema element (A5), unless the user typed their own
         labelOf = (item) => item.mark ?? (item.node && nodes.some((node) => node.id === item.node) ? marks.get(item.node) || '' : ''),
         // the lines of a symbol: of its element of the eendraadschema (name + marking), or of a general library component (`type`, no marking);
@@ -129,8 +163,8 @@ export function SituationSheet({project, page, number, total, editor, onFooter})
         // of the loose symbol
         shapesOf = (item) => {
             const node = item.node ? nodes.find((candidate) => candidate.id === item.node) : null,
-                looseType = !item.node && item.type ? allTypes(project).find((symbolType) => symbolType.k === item.type) : null
-            return node ? placedShapesOf(typeOf(project, node.type), node.p) : looseType && placedShapesOf(looseType, {h: item.h})
+                symbolType = itemTypeOf(project, item, nodes)
+            return symbolType && placedShapesOf(symbolType, node ? node.p : {h: item.h})
         },
         // what a symbol really covers (its lines, turned): its marking comes right next to that, not next to the square it is drawn in
         extentOf = (item) =>
@@ -142,7 +176,8 @@ export function SituationSheet({project, page, number, total, editor, onFooter})
             items.filter((item) => item.kind === 'sym' && labelOf(item)).map((item) => ({item, size: sizeOf(item), text: labelOf(item), extent: extentOf(item)})),
             showLengths ? walls.map((wall) => lengthLabelBox(wall, scale)).filter(Boolean) : [],
         ),
-        interaction = (kind, id, part) => (editor ? editor.interactionProps(kind, id, part) : {})
+        interaction = (kind, id, part) => (editor ? editor.interactionProps(kind, id, part) : {}),
+        resolve = endResolver(items, pagePins(project, nodes))
     return (
         <Sheet
             project={project}
@@ -150,7 +185,7 @@ export function SituationSheet({project, page, number, total, editor, onFooter})
             total={total}
             onFooter={onFooter}
             svgRef={editor?.svgRef}
-            sheetId={editor ? 'sit-sheet' : undefined}
+            sheetId={editor ? prefix + '-sheet' : undefined}
             {...(editor?.sheetEvents || {})}
         >
             {editor && (
@@ -177,7 +212,7 @@ export function SituationSheet({project, page, number, total, editor, onFooter})
                     )}
                     {editor && (
                         <line
-                            id={'sit-wall-' + wall.id}
+                            id={`${prefix}-wall-${wall.id}`}
                             {...interaction('wall', wall.id, 'm')}
                             x1={wall.x1}
                             y1={wall.y1}
@@ -193,16 +228,25 @@ export function SituationSheet({project, page, number, total, editor, onFooter})
                             ['a', wall.x1, wall.y1],
                             ['b', wall.x2, wall.y2],
                         ].map(([end, x, y]) => (
-                            <circle key={end} id={`sit-wall-${wall.id}-${end}`} {...interaction('wall', wall.id, end)} cx={x} cy={y} r="1.8" fill={SELECTION_COLOUR} />
+                            <circle
+                                key={end}
+                                id={`${prefix}-wall-${wall.id}-${end}`}
+                                {...interaction('wall', wall.id, end)}
+                                cx={x}
+                                cy={y}
+                                r="1.8"
+                                fill={SELECTION_COLOUR}
+                            />
                         ))}
                 </g>
             ))}
             {showLengths &&
                 walls.map((wall) => <LengthLabel key={'d' + wall.id} from={{x: wall.x1, y: wall.y1}} to={{x: wall.x2, y: wall.y2}} scale={scale} />)}
+            <BoxesLayer boxes={boxes} editor={editor} prefix={prefix} isSelected={isSelected} interaction={interaction} />
             {items.map((item) => {
                 const size = sizeOf(item),
                     selected = isSelected(item.id),
-                    itemProps = editor ? {id: 'sit-item-' + item.id, ...interaction('item', item.id)} : {}
+                    itemProps = editor ? {id: `${prefix}-item-${item.id}`, ...interaction('item', item.id)} : {}
                 if (item.kind === 'sym') {
                     const shapes = shapesOf(item),
                         label = labelOf(item),
@@ -293,6 +337,16 @@ export function SituationSheet({project, page, number, total, editor, onFooter})
                     </g>
                 )
             })}
+            <WiresLayer
+                wires={wires}
+                resolve={resolve}
+                editor={editor}
+                prefix={prefix}
+                isSelected={isSelected}
+                interaction={interaction}
+                showLengths={showLengths}
+                scale={scale}
+            />
             {editor && <DrawingPreview editor={editor} scale={scale} />}
             {editor?.cursor && (
                 <g pointerEvents="none" stroke={SELECTION_COLOUR} strokeWidth=".35" fill="none">
@@ -303,7 +357,7 @@ export function SituationSheet({project, page, number, total, editor, onFooter})
             )}
             {editor?.selectionBox && (
                 <rect
-                    id="sit-selection-box"
+                    id={prefix + '-selection-box'}
                     x={Math.min(editor.selectionBox.from.x, editor.selectionBox.to.x)}
                     y={Math.min(editor.selectionBox.from.y, editor.selectionBox.to.y)}
                     width={Math.abs(editor.selectionBox.to.x - editor.selectionBox.from.x)}
@@ -318,7 +372,7 @@ export function SituationSheet({project, page, number, total, editor, onFooter})
             )}
             {editor?.deleteButton && (
                 <g
-                    id="sit-delete-selection"
+                    id={prefix + '-delete-selection'}
                     role="button"
                     aria-label={t('situation.deleteSelection')}
                     transform={`translate(${editor.deleteButton.x},${editor.deleteButton.y})`}

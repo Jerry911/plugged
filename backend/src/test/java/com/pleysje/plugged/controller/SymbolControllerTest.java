@@ -38,7 +38,7 @@ class SymbolControllerTest {
     /** the requests come from an administrator: he may also change the standard symbols */
     @BeforeEach
     void signInAsAdministrator() {
-        TestAccounts.clean(groups, projects, users);
+        TestAccounts.clean(groups, projects, users, repository);
         SignedInRequests.signInAs(TestAccounts.account(users, "Admin", true));
     }
 
@@ -227,4 +227,37 @@ class SymbolControllerTest {
         mvc.perform(put("/api/symbols/template").contentType(MediaType.APPLICATION_JSON).content(symbol("template", "T", BOX))).andExpect(status().isBadRequest());
         mvc.perform(get("/api/symbols")).andExpect(jsonPath("$", hasSize(StandardSymbols.all().size())));
     }
-}
+
+    @Test
+    void theSettingsOfTheWiringDiagramAreStoredAndChecked() throws Exception {
+        String wiring = "{\"name\":\"Contact\",\"shapes\":[" + BOX + "],\"een\":false,\"wire\":true,\"pins\":[[12,0],[12,24],[2.5,12]]}";
+        mvc.perform(put("/api/symbols/custom:w").contentType(MediaType.APPLICATION_JSON).content(wiring))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.een").value(false))
+                .andExpect(jsonPath("$.wire").value(true))
+                .andExpect(jsonPath("$.pins", hasSize(3)))
+                .andExpect(jsonPath("$.pins[2][0]").value(2.5));
+        mvc.perform(get("/api/symbols/custom:w")).andExpect(jsonPath("$.pins[1][1]").value(24.0));
+        // an empty list: no connection points at all (furniture); no list: found from the drawing
+        mvc.perform(put("/api/symbols/custom:w").contentType(MediaType.APPLICATION_JSON).content(wiring.replace("[[12,0],[12,24],[2.5,12]]", "[]")))
+                .andExpect(jsonPath("$.pins", hasSize(0)));
+        mvc.perform(put("/api/symbols/custom:w").contentType(MediaType.APPLICATION_JSON).content(symbol("custom:w", "Contact", BOX)))
+                .andExpect(jsonPath("$.pins").doesNotExist())
+                .andExpect(jsonPath("$.een").doesNotExist());
+        for (String pins : new String[] {"[[12,25]]", "[[-1,0]]", "[[12]]", "[[1,2,3]]", "[null]", "[[12,null]]"})
+            mvc.perform(put("/api/symbols/custom:w").contentType(MediaType.APPLICATION_JSON).content(wiring.replace("[[12,0],[12,24],[2.5,12]]", pins)))
+                    .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void theSymbolsOfTheWiringDiagramShipWithTheirConnectionPoints() throws Exception {
+        mvc.perform(get("/api/symbols/contactor3"))
+                .andExpect(jsonPath("$.cat").value("Schakelschema"))
+                .andExpect(jsonPath("$.een").value(false))
+                .andExpect(jsonPath("$.wire").value(true))
+                .andExpect(jsonPath("$.place").value(false))
+                .andExpect(jsonPath("$.pins", hasSize(6)));
+        mvc.perform(get("/api/symbols/auto")).andExpect(jsonPath("$.cat").value("Inrichting")).andExpect(jsonPath("$.pins", hasSize(0)));
+        mvc.perform(get("/api/symbols/kring")).andExpect(jsonPath("$.wire").value(true));
+    }
+}

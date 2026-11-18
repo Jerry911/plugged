@@ -60,7 +60,7 @@ class SymbolAccessTest {
     void reset() {
         symbols.deleteAll();
         service.seed();
-        TestAccounts.clean(groups, projects, users);
+        TestAccounts.clean(groups, projects, users, symbols);
         admin = account(users, "Admin", true);
         alice = account(users, "Alice", false);
         bob = account(users, "Bob", false);

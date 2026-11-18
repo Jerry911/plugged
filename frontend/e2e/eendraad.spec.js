@@ -287,22 +287,24 @@ test.describe('the drawing', () => {
         await sheet(2).scrollIntoViewIfNeeded()
         await page.locator('#eds-zoom-2-in').click()
         await expect(page.locator('#eds-zoom-2-reset')).toHaveText('150%')
-        // the zoomed sheet is at the top of the screen and its drawing is as high as the screen: no half of another sheet
+        // the zoomed sheet is at the top of the screen and its drawing is as high as the screen: no half of another sheet (it scrolls there:
+        // wait until it has arrived)
+        await expect.poll(async () => (await sheet(2).boundingBox()).y).toBeLessThan(30)
         const zoomed = await sheet(2).boundingBox()
         expect(zoomed.y).toBeGreaterThanOrEqual(0)
-        expect(zoomed.y).toBeLessThan(30)
         const pane = await sheet(2).locator('.zoomscroll').boundingBox()
         expect(pane.height).toBeGreaterThan(viewport.height - 40)
         expect((await sheet(3).boundingBox()).y).toBeGreaterThanOrEqual(viewport.height - 20)
         expect((await sheet(1).boundingBox()).y + (await sheet(1).boundingBox()).height).toBeLessThanOrEqual(5)
         // zooming further stays on the same sheet
         await page.locator('#eds-zoom-2-in').click()
-        expect((await sheet(2).boundingBox()).y).toBeLessThan(30)
+        await expect(page.locator('#eds-zoom-2-reset')).not.toHaveText('150%')
+        await expect.poll(async () => (await sheet(2).boundingBox()).y).toBeLessThan(30)
         // back to 100%: the sheet is still on the screen
         await page.locator('#eds-zoom-2-reset').click()
         await expect(page.locator('#eds-zoom-2-reset')).toHaveText('100%')
+        await expect.poll(async () => (await sheet(2).boundingBox()).y).toBeLessThan(viewport.height)
         const back = await sheet(2).boundingBox()
-        expect(back.y).toBeLessThan(viewport.height)
         expect(back.y + back.height).toBeGreaterThan(0)
     })
     test('dragging a symbol from the palette onto the drawing inserts it: right half after, left half before', async ({page, app, backend}) => {

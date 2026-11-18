@@ -30,6 +30,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 class EducationalModeTest {
     @Autowired
+    com.pleysje.plugged.repository.SymbolRepository symbolsToClean;
+    @Autowired
     MockMvc mvc;
     @Autowired
     UserRepository users;
@@ -43,7 +45,7 @@ class EducationalModeTest {
 
     @BeforeEach
     void clean() throws Exception {
-        TestAccounts.clean(groups, projects, users);
+        TestAccounts.clean(groups, projects, users, symbolsToClean);
         admin = account(users, "Admin", true);
         teacher = account(users, "Leraar", false);
         student = account(users, "Student", false);

@@ -4,6 +4,7 @@ package com.pleysje.plugged;
 
 import com.pleysje.plugged.entity.AppUser;
 import com.pleysje.plugged.repository.ProjectRepository;
+import com.pleysje.plugged.repository.SymbolRepository;
 import com.pleysje.plugged.repository.UserGroupRepository;
 import com.pleysje.plugged.repository.UserRepository;
 import com.pleysje.plugged.security.Authentications;
@@ -17,10 +18,18 @@ public final class TestAccounts {
     private TestAccounts() {
     }
 
-    /** Removes projects, groups and accounts (in that order: projects point at groups, groups at accounts). Every test context has a database of its own (see src/test/resources/application.properties), the tests of one context share it. */
-    public static void clean(UserGroupRepository groups, ProjectRepository projects, UserRepository users) {
+    /**
+     * Removes projects, the sharing of symbols with groups, groups, the own symbols of the accounts and the accounts (in that order: projects
+     * and shared symbols point at groups, groups at accounts). Every test context has a database of its own (see src/test/resources/application.properties), the tests of one
+     * context share it, whatever the order of the test classes: a symbol another class shared with a group must not stop this clean-up.
+     */
+    public static void clean(UserGroupRepository groups, ProjectRepository projects, UserRepository users, SymbolRepository symbols) {
         projects.deleteAll();
+        // what the application does when a group is removed (see AdminService)
+        groups.findAll().forEach(group -> symbols.unshareGroup(group.getId()));
         groups.deleteAll();
+        // the own symbols of the accounts go with them: a key such as custom:jan of an earlier test class would belong to somebody else
+        symbols.deleteAllInBatch(symbols.findAll().stream().filter(symbol -> symbol.getOwnerUserId() != null).toList());
         users.deleteAll();
     }
 

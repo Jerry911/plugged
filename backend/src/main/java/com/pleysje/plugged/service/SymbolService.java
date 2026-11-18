@@ -257,7 +257,7 @@ public class SymbolService {
         validate(key, symbol);
         Access access = access(userId);
         SymbolEntity entity = SymbolMapper.toEntity(
-                new SymbolDto(key, symbol.name(), symbol.category(), symbol.parents(), symbol.placeable(), symbol.shapes(), symbol.socket(), 0, false, false, symbol.details()));
+                new SymbolDto(key, symbol.name(), symbol.category(), symbol.parents(), symbol.placeable(), symbol.shapes(), symbol.socket(), 0, false, false, symbol.details()).withWiringOf(symbol));
         SymbolDto standard = standardOf(key);
         SymbolEntity stored = repository.findById(key).orElse(null);
         if (standard != null || stored != null && stored.isBuiltin()) {
@@ -324,7 +324,7 @@ public class SymbolService {
         if (StandardSymbols.find(key) == null) throw new LocalizedStatusException(HttpStatus.CONFLICT, "symbol.onlyStandardCanBecomeStandard", key);
         SymbolDto current = SymbolMapper.toDto(stored);
         SymbolEntity chosen = SymbolMapper.toEntity(new SymbolDto(CHOSEN_STANDARD_PREFIX + key, current.name(), current.category(), current.parents(), current.placeable(),
-                current.shapes(), current.socket(), 0, false, false, current.details()));
+                current.shapes(), current.socket(), 0, false, false, current.details()).withWiringOf(current));
         chosen.setSortOrder(CUSTOM_SORT_ORDER);
         repository.save(chosen);
         stored.setModified(false);
@@ -362,7 +362,7 @@ public class SymbolService {
             socket = completed;
         }
         return new SymbolDto(standard.key(), standard.name(), standard.category(), parents, standard.placeable(), standard.shapes(), socket,
-                standard.version(), standard.builtin(), standard.modified(), standard.details());
+                standard.version(), standard.builtin(), standard.modified(), standard.details()).withWiringOf(standard);
     }
 
     /** What would stop the next release: the catalog of {@link #catalog()} checked with the rules of the build (CatalogRules). */
@@ -417,7 +417,7 @@ public class SymbolService {
                 .map(chosenRow -> {
                     SymbolDto chosen = SymbolMapper.toDto(chosenRow);
                     return new SymbolDto(key, chosen.name(), chosen.category(), chosen.parents(), chosen.placeable(), chosen.shapes(), chosen.socket(),
-                            catalog.version(), true, false, chosen.details());
+                            catalog.version(), true, false, chosen.details()).withWiringOf(chosen);
                 })
                 .orElse(catalog);
     }
@@ -465,5 +465,9 @@ public class SymbolService {
         if (socketCount != null && !(socketCount instanceof Number count && count.intValue() >= MIN_SOCKETS && count.intValue() <= MAX_SOCKETS)) {
             throw badRequest("symbol.socketCount", MIN_SOCKETS, MAX_SOCKETS);
         }
+        if (symbol.pins() != null)
+            for (List<Double> pin : symbol.pins())
+                for (Double coordinate : pin)
+                    if (coordinate == null || !(coordinate >= 0 && coordinate <= 24)) throw badRequest("symbol.invalidPin");
     }
 }

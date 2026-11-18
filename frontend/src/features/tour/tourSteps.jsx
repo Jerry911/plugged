@@ -37,7 +37,7 @@ const textsOf = (id) => {
  */
 export const tourSteps = () => [
     {id: 'welkom', tab: 0, ...textsOf('welkom')},
-    {id: 'tabs', tab: 0, target: ['#tab-een', '#tab-sit', '#tab-comp'], place: 'bottom', ...textsOf('tabs')},
+    {id: 'tabs', tab: 0, target: ['#tab-een', '#tab-sit', '#tab-wire', '#tab-comp'], place: 'bottom', ...textsOf('tabs')},
     {id: 'palet', tab: 0, target: tourTarget('eds-palette'), place: 'right', ...textsOf('palet')},
     {
         id: 'kring',

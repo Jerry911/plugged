@@ -241,6 +241,10 @@ class RealBackend {
         expect(probe.ok(), 'create a project: ' + (await probe.text())).toBeTruthy()
         this.base = (await probe.json()).id
         await this.request.delete('/api/projects/' + this.base)
+        // a deleted project goes to the trash and still counts for the maximum number of projects of the user: empty the trash too, or
+        // after a few runs of the suite on the same database every test fails with "maximum of 500 projects"
+        const trash = await this.request.get('/api/projects/trash')
+        if (trash.ok()) for (const project of await trash.json()) await this.request.delete('/api/projects/trash/' + project.id)
         const list = await (await this.request.get('/api/symbols')).json()
         for (const s of list.filter((x) => !x.builtin)) await this.request.delete('/api/symbols/' + encodeURIComponent(s.k))
         await this.request.post('/api/symbols/restore')

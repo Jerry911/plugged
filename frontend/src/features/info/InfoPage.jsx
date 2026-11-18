@@ -19,6 +19,7 @@ const scrollToSection = (id) => document.getElementById(id)?.scrollIntoView?.({b
 export const FEATURE_IMAGES = {
     eendraadschema: ['eendraadschema'],
     situatieschema: ['situatieschema', 'sjablonen'],
+    bedradingsschema: ['bedradingsschema'],
     controleren: ['controleren', 'controleregels'],
     projecten: ['projecten'],
     samenwerken: [],
@@ -38,6 +39,14 @@ const ICON_PATHS = {
             <path d="M3 11 12 3l9 8" />
             <path d="M5 9.5V20h14V9.5" />
             <path d="M10 20v-6h4v6" />
+        </>
+    ),
+    bedradingsschema: (
+        <>
+            <path d="M6 3v6h12v12" />
+            <path d="M6 13v8" />
+            <circle cx="6" cy="11" r="2" />
+            <circle cx="18" cy="9" r="1.2" />
         </>
     ),
     controleren: <path d="m4 12.5 5 5L20 6.5" />,

@@ -59,7 +59,7 @@ class AccountTest {
 
     @BeforeEach
     void clean() {
-        TestAccounts.clean(groups, projects, users);
+        TestAccounts.clean(groups, projects, users, symbols);
         throttle.reset();
         admin = account("Admin", "admin@example.be", true);
         jan = account("Jan", "jan@example.be", false);

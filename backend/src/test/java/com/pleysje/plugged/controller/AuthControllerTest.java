@@ -30,6 +30,8 @@ class AuthControllerTest {
     static final String PASSWORD = "geheim123";
 
     @Autowired
+    com.pleysje.plugged.repository.SymbolRepository symbolsToClean;
+    @Autowired
     MockMvc mvc;
     @Autowired
     UserRepository users;
@@ -40,7 +42,7 @@ class AuthControllerTest {
 
     @BeforeEach
     void clean() {
-        com.pleysje.plugged.TestAccounts.clean(groups, projects, users);
+        com.pleysje.plugged.TestAccounts.clean(groups, projects, users, symbolsToClean);
     }
 
     private ResultActions send(MockHttpServletRequestBuilder request, MockHttpSession session, String json) throws Exception {

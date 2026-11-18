@@ -39,6 +39,8 @@ class QrKeyTest {
     static final String JSON = "{\"footer\":{\"titel\":\"Woning\"},\"een\":[],\"sit\":[]}";
 
     @Autowired
+    com.pleysje.plugged.repository.SymbolRepository symbolsToClean;
+    @Autowired
     MockMvc mvc;
     @Autowired
     ProjectRepository repository;
@@ -51,7 +53,7 @@ class QrKeyTest {
 
     @BeforeEach
     void clean() {
-        com.pleysje.plugged.TestAccounts.clean(groups, repository, users);
+        com.pleysje.plugged.TestAccounts.clean(groups, repository, users, symbolsToClean);
         alice = account(users, "Alice", false);
         bob = account(users, "Bob", false);
         carol = account(users, "Carol", false);

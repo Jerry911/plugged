@@ -436,6 +436,20 @@ test.describe('starter templates', () => {
             expect(sheet.items.some((item) => item.kind === 'text')).toBe(true)
         })
     })
+    test('a template fills the sheet: the detached house of a project at 1:75 is drawn at 1:50', async ({page, app, backend}) => {
+        const base = project()
+        await goto(page, app, backend, {...base, footer: {...base.footer, schaal: '1:75'}})
+        await page.locator('#sit-empty-template').click()
+        await expect(page.locator('#template-detached-scale')).toHaveText('De schaal van het project wordt 1:50')
+        await page.locator('#template-detached-use').click()
+        const doc = await app.save(backend)
+        expect(doc.footer.schaal).toBe('1:50')
+        // 12 x 8 m: 240 x 160 mm of the 277 x 170 mm above the title block
+        const xs = doc.sit[0].walls.flatMap((w) => [w.x1, w.x2]),
+            ys = doc.sit[0].walls.flatMap((w) => [w.y1, w.y2])
+        expect(Math.max(...xs) - Math.min(...xs)).toBeCloseTo(240)
+        expect(Math.max(...ys) - Math.min(...ys)).toBeCloseTo(160)
+    })
     test('on a sheet with a drawing the template goes on new sheets; Escape closes the dialog', async ({page, app, backend}) => {
         await goto(page, app, backend, project({sit: [{id: 's1', name: 'P', walls: [wall('w', 40, 40, 140, 40)], items: []}]}))
         await expect(page.locator('#sit-empty')).toHaveCount(0)

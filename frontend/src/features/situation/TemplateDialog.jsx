@@ -6,7 +6,7 @@
 // exists would change its real dimensions); else it cannot be chosen.
 import {useEffect, useRef} from 'react'
 import {useTranslation} from '../../i18n/I18nProvider.jsx'
-import {PLAN_TEMPLATES, hasDrawing, roomWalls, scaleForTemplate} from '../../model/planTemplates.js'
+import {PLAN_TEMPLATES, bestScaleForTemplate, hasDrawing, roomWalls, scaleForTemplate} from '../../model/planTemplates.js'
 import {scaleOf} from '../../model/geometry.js'
 import {getLocale} from '../../i18n/translate.js'
 
@@ -32,12 +32,14 @@ function FloorPreview({floor, template}) {
 
 /**
  * What choosing a template would do in this project: {scale (null: does not fit at all), changesScale, blocked, placement (text)}.
+ * While nothing is drawn (situatieschema or bedradingsschema: the scale is the one of the whole project) the template gets the scale at
+ * which it fills the sheet best, larger or smaller than the current one; with a drawing the scale stays, or the template cannot be used.
  * Exported for the tests.
  */
 export const templateChoice = (template, project, pageIndex, t) => {
     const scale = scaleOf(project.footer),
-        needed = scaleForTemplate(template, scale),
-        anyDrawing = hasDrawing(project.sit),
+        anyDrawing = hasDrawing(project.sit) || (project.wire || []).some((page) => hasDrawing([page]) || page.wires?.length || page.boxes?.length),
+        needed = anyDrawing ? scaleForTemplate(template, scale) : bestScaleForTemplate(template),
         pageEmpty = !hasDrawing([project.sit[pageIndex]]),
         changesScale = needed != null && needed !== scale,
         blocked = needed == null || (changesScale && anyDrawing),

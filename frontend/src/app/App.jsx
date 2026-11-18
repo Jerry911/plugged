@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // The application: signing in first (AuthGate), then the top bar (project menu, tabs, undo/redo, Kaderinfo, PDF, print, language, Info,
 // Account (own account; users, groups and symbols for an administrator), Afmelden) and the tab that is open.
-import {useCallback, useEffect, useMemo, useRef, useState} from 'react'
+import {useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState} from 'react'
 import OneWireDiagram from '../features/oneWire/OneWireDiagram.jsx'
 import SituationSchema from '../features/situation/SituationSchema.jsx'
 import SymbolEditor from '../features/symbolEditor/SymbolEditor.jsx'
@@ -418,19 +418,26 @@ function Editor({library, user, onLogout, onAccountDeleted}) {
     // Alt and not Ctrl: the browser keeps several Ctrl keys for itself (Ctrl+N a new window, Ctrl+L the address bar). Only Alt alone: with
     // Ctrl too it is AltGr on Windows (AltGr+E = €), with Shift or Cmd it is not ours either.
     const projectShortcuts = {s: save, n: startNewProject, l: () => setLoadMenuRequest((count) => count + 1), i: openImport, e: openExport, q: () => openQr(), p: () => setPrintJob('print')}
+    // The listener stays and calls the shortcuts of the last render. They are handed over in a layout effect, before the browser handles
+    // the next key: a listener added again in a normal effect (after the screen is painted) still had the old ones for a moment, so Alt+S
+    // right after Laden saved the previous project instead of the loaded one.
+    const shortcuts = useRef({actions: projectShortcuts, restricted})
+    useLayoutEffect(() => {
+        shortcuts.current = {actions: projectShortcuts, restricted}
+    })
     useEffect(() => {
         const onKeyDown = (event) => {
             if (!event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return
             const key = shortcutLetter(event),
-                action = projectShortcuts[key]
+                action = shortcuts.current.actions[key]
             if (!action) return
             event.preventDefault()
-            if (restricted && (key === 'i' || key === 'e')) return
+            if (shortcuts.current.restricted && (key === 'i' || key === 'e')) return
             action()
         }
         addEventListener('keydown', onKeyDown)
         return () => removeEventListener('keydown', onKeyDown)
-    })
+    }, [])
     const showImported = () => {
         setOneWirePage(0)
         setSituationPage(0)

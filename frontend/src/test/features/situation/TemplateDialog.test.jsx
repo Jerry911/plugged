@@ -19,12 +19,27 @@ test('every template is shown with a preview of each floor, its size and where i
         const card = getById('template-' + candidate.id)
         expect(card).toHaveTextContent(t('templates.names.' + candidate.id))
         expect(card.querySelectorAll('svg.tplfloor')).toHaveLength(candidate.floors.length)
-        expect(getById('template-' + candidate.id + '-scale')).toHaveTextContent(t('templates.fits', {scale: 50}))
+        // each as large as the sheet allows: the scale of the project (1:50) where that is the best one
+        const best = {studio: 40, apartment: 50, terraced: 40, detached: 50}[candidate.id]
+        expect(getById('template-' + candidate.id + '-scale')).toHaveTextContent(
+            best === 50 ? t('templates.fits', {scale: 50}) : t('templates.changesScale', {scale: best}),
+        )
     })
     expect(getById('template-studio')).toHaveTextContent(t('templates.thisPage'))
     expect(getById('template-terraced')).toHaveTextContent(t('templates.thisPageAndNew', {count: 1}))
     fireEvent.click(getById('template-terraced-use'))
-    expect(onChoose).toHaveBeenCalledWith(template('terraced'), 50)
+    expect(onChoose).toHaveBeenCalledWith(template('terraced'), 40)
+})
+
+test('while nothing is drawn a template fills the sheet: a smaller scale than the project has (1:75 becomes 1:50)', () => {
+    expect(templateChoice(template('detached'), project(undefined, '1:75'), 0, t)).toMatchObject({scale: 50, changesScale: true, blocked: false})
+    expect(templateChoice(template('detached'), project(undefined, '1:50'), 0, t)).toMatchObject({scale: 50, changesScale: false})
+    // with a drawing the scale of the project stays: the lengths on it would change
+    const busy = project([{id: 's1', name: 'Blad 1', walls: [], items: []}, drawn('s2')], '1:75')
+    expect(templateChoice(template('detached'), busy, 0, t)).toMatchObject({scale: 75, changesScale: false, blocked: false})
+    // also a drawing on the bedradingsschema (the scale is the one of the whole project)
+    const wired = {...project(undefined, '1:75'), wire: [{id: 'w1', name: 'B', walls: [], items: [], wires: [{id: 'w', a: {x: 0, y: 0}, b: {x: 9, y: 0}, points: []}], boxes: []}]}
+    expect(templateChoice(template('detached'), wired, 0, t)).toMatchObject({scale: 75, changesScale: false})
 })
 
 test('a template that needs a larger scale: the scale changes while nothing is drawn, else it cannot be chosen', () => {

@@ -1,6 +1,6 @@
 // Copyright 2026 Pleysier Jeroen
 // SPDX-License-Identifier: AGPL-3.0-only
-import {PLAN_TEMPLATES, TEMPLATE_AREA, fitsAt, hasDrawing, roomWalls, scaleForTemplate, templatePages} from '../../model/planTemplates.js'
+import {PLAN_TEMPLATES, TEMPLATE_AREA, bestScaleForTemplate, fitsAt, hasDrawing, roomWalls, scaleForTemplate, templatePages} from '../../model/planTemplates.js'
 import {t} from '../../i18n/translate.js'
 
 const EPSILON = 1e-6
@@ -55,9 +55,12 @@ describe.each(PLAN_TEMPLATES.map((template) => [template.id, template]))('templa
         const stairs = template.floors.map((floor) => floor.rooms.find((room) => room.name === 'stairs')).filter(Boolean)
         stairs.forEach((room) => expect(room).toMatchObject({x: stairs[0].x, w: stairs[0].w}))
     })
-    test('fits an A4 sheet at 1:50', () => {
+    test('fits an A4 sheet at 1:50, and fills at least three quarters of its width or height at its best scale', () => {
         expect(fitsAt(template, 50)).toBe(true)
         expect(scaleForTemplate(template, 50)).toBe(50)
+        const best = bestScaleForTemplate(template)
+        expect(best).toBeLessThanOrEqual(50)
+        expect(Math.max((template.w * 1000) / best / TEMPLATE_AREA.w, (template.h * 1000) / best / TEMPLATE_AREA.h)).toBeGreaterThan(0.75)
     })
     test('every room and floor has a name in every language', async () => {
         const {setLanguage} = await import('../../i18n/translate.js')

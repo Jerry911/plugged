@@ -10,7 +10,8 @@
 // side. A passage is an opening without a door (the stairs open onto the hall): that part of the wall is left out. Room and floor names
 // are translation keys (templates.rooms.*, templates.floors.*).
 
-const STANDARD_SCALES = [50, 75, 100, 125, 150, 200]
+// from large to small: a template is drawn as large as the sheet allows (1:20 ... 1:40 for a studio or a small terraced house)
+const STANDARD_SCALES = [20, 25, 40, 50, 75, 100, 125, 150, 200]
 // the part of an A4 sheet a template is centred in (mm): the drawing area above the title block, with a margin
 export const TEMPLATE_AREA = {x: 10, y: 8, w: 277, h: 170}
 
@@ -158,13 +159,14 @@ export const PLAN_TEMPLATES = [
                     {x: 7, y: 6.8, r: 90, w: NARROW_DOOR},
                     {x: 10, y: 4.5, r: 0, w: DOOR, f: true},
                     {x: 7, y: 2.2, r: 90, w: DOOR},
-                    {x: 10.8, y: 0, r: 0, w: DOOR, f: true},
+                    // the back door of the kitchen on the side wall: in the top right corner of the sheet it would be under the zoom buttons
+                    {x: 12, y: 1.1, r: 90, w: DOOR, f: true},
                 ],
                 windows: [
                     {x: 3, y: 0, r: 0, w: 3},
-                    {x: 8.6, y: 0, r: 0, w: 1.6},
+                    {x: 9.5, y: 0, r: 0, w: 1.6},
                     {x: 0, y: 2.2, r: 90, w: 1.6},
-                    {x: 12, y: 2.2, r: 90, w: 1.2},
+                    {x: 12, y: 3.2, r: 90, w: 1.2},
                     {x: 1.75, y: 8, r: 0, w: 1.4},
                     {x: 10.15, y: 8, r: 0, w: 0.8},
                 ],
@@ -252,6 +254,12 @@ export const fitsAt = (template, scale) => (template.w * 1000) / scale <= TEMPLA
 /** The scale to draw a template at: the current one when it fits, else the smallest standard scale above it that does. */
 export const scaleForTemplate = (template, scale) =>
     fitsAt(template, scale) ? scale : (STANDARD_SCALES.find((candidate) => candidate > scale && fitsAt(template, candidate)) ?? null)
+
+/**
+ * The scale at which a template fills the sheet best: the largest drawing that still fits (a 12 x 8 m house at 1:50, not at 1:75 with
+ * half the sheet empty). Used while nothing is drawn yet, when the scale of the project can still change freely.
+ */
+export const bestScaleForTemplate = (template) => STANDARD_SCALES.find((candidate) => fitsAt(template, candidate)) ?? null
 
 const TEXT_WIDTH_FACTOR = 0.55 // the width of a character relative to the text size, as the situatieschema estimates it
 

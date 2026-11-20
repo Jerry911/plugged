@@ -194,6 +194,24 @@ class AccountTest {
     }
 
     @Test
+    void everyUserChoosesTheColoursOfHisInterface() throws Exception {
+        MockHttpSession session = signIn("jan@example.be", PASSWORD), admin = signIn("admin@example.be", PASSWORD);
+        // marine until he chooses
+        mvc.perform(get("/api/account/theme").session(session)).andExpect(status().isOk()).andExpect(jsonPath("$.theme", is("marine")));
+        send(put("/api/account/theme"), session, "{\"theme\":\"werkbank\"}").andExpect(status().isOk()).andExpect(jsonPath("$.theme", is("werkbank")));
+        mvc.perform(get("/api/account/theme").session(session)).andExpect(jsonPath("$.theme", is("werkbank")));
+        // only for himself, and in his data
+        mvc.perform(get("/api/account/theme").session(admin)).andExpect(jsonPath("$.theme", is("marine")));
+        mvc.perform(get("/api/account/export").session(session)).andExpect(jsonPath("$.account.theme", is("werkbank")));
+        // only the three themes
+        for (String body : List.of("{\"theme\":\"pink\"}", "{\"theme\":\"<b>\"}", "{\"theme\":null}", "{}"))
+            send(put("/api/account/theme"), session, body).andExpect(status().isBadRequest()).andExpect(jsonPath("$.messageKey", is("account.invalidTheme")));
+        mvc.perform(get("/api/account/theme").session(session)).andExpect(jsonPath("$.theme", is("werkbank")));
+        // signed out: nothing
+        mvc.perform(get("/api/account/theme")).andExpect(status().isUnauthorized());
+    }
+
+    @Test
     void theRulesGoWithTheAccount() throws Exception {
         MockHttpSession session = signIn("jan@example.be", PASSWORD);
         send(put("/api/account/rules"), session, "{\"disabled\":[\"spd\"]}").andExpect(status().isOk());

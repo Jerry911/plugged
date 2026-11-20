@@ -5,6 +5,7 @@
 import {useEffect, useLayoutEffect, useRef, useState} from 'react'
 import {fetchHistory, fetchProjectSummaries, fetchShareableGroups, fetchTrash, purgeProject, shareProject, untrashProject} from '../../api/projectApi.js'
 import {useTranslation} from '../../i18n/I18nProvider.jsx'
+import Icon from '../../components/Icon.jsx'
 
 const formatSaveMoment = (isoMoment, locale) => {
     const moment = isoMoment ? new Date(isoMoment) : null
@@ -256,7 +257,7 @@ function TrashList({refreshKey, onChanged}) {
                                     title={t('projects.purgeTitle')}
                                     onClick={() => window.confirm(t('projects.confirmPurge', {name: nameOf(summary)})) && act(summary, purgeProject)}
                                 >
-                                    ✕
+                                    <Icon name="close" />
                                 </button>
                             </td>
                         </tr>
@@ -320,7 +321,7 @@ export function ProjectList({currentId, refreshKey, onLoad, onDelete, onCopy, on
                 style={showTrash ? {marginLeft: 'auto'} : undefined}
                 onClick={() => setShowTrash((on) => !on)}
             >
-                {showTrash ? '← ' + t('projects.backToList') : '🗑 ' + t('projects.trash')}
+                <Icon name={showTrash ? 'back' : 'delete'} /> {showTrash ? t('projects.backToList') : t('projects.trash')}
             </button>
         </div>
     )
@@ -433,7 +434,7 @@ export function ProjectList({currentId, refreshKey, onLoad, onDelete, onCopy, on
                                                 className="pm-del"
                                                 onClick={() => onDelete(summary)}
                                             >
-                                                🗑
+                                                <Icon name="delete" />
                                             </button>
                                         )}
                                     </div>

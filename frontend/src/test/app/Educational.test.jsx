@@ -38,12 +38,13 @@ const mount = async () => {
 test('a student: no validation, import and export switched off, a badge that says why', async () => {
     backend(() => user({restricted: true}))
     await mount()
-    // only the symbol; the words on mouse-over
-    expect(getById('educational-badge')).toHaveTextContent(/^🎓$/)
+    // only the icon; the words on mouse-over
+    expect(getById('educational-badge')).toHaveTextContent(/^$/)
+    expect(getById('educational-badge').querySelector('[data-icon="educational"]')).toBeTruthy()
     expect(getById('educational-badge')).toHaveAttribute('title', t('educational.badge'))
     expect(byId('btn-verify')).toBeNull()
-    expect(getById('tab-een')).not.toHaveTextContent('✖')
-    expect(getById('tab-een')).not.toHaveTextContent('⚠')
+    expect(byId('tab-een-errors')).toBeNull()
+    expect(byId('tab-een-warnings')).toBeNull()
     fireEvent.click(getById('tab-project'))
     expect(getById('btn-import')).toBeDisabled()
     expect(getById('btn-export')).toBeDisabled()
@@ -93,7 +94,8 @@ test('a teacher gets Mijn groepen and switches the educational mode of his group
     clickId('tab-teacher')
     await waitFor(() => getById('group-7'))
     expect(getById('tab-teacher')).toHaveClass('on')
-    expect(getById('group-7')).toHaveTextContent('★ Jan Peeters')
+    expect(getById('group-7')).toHaveTextContent('Jan Peeters')
+    expect(getById('group-7').querySelector('[data-icon="star"]')).toHaveAttribute('aria-label', t('groups.owner'))
     expect(getById('group-7-educational')).not.toBeChecked()
     fireEvent.click(getById('group-7-educational'))
     await waitFor(() => expect(getById('teacher-message')).toHaveTextContent(t('educational.switchedOn', {group: 'Klas 5'})))
@@ -109,7 +111,7 @@ test('a student: on the situatieschema the elements to place are a plain list, w
     expect(getById('sit-unplaced')).toHaveClass('neutral')
     expect(getById('sit-unplaced')).not.toHaveClass('warn')
     expect(getById('sit-unplaced-title')).toHaveTextContent(t('situation.elementsTitle'))
-    expect(getById('sit-unplaced')).not.toHaveTextContent('⚠')
+    expect(getById('sit-unplaced').querySelector('[data-icon="warning"]')).toBeNull()
     expect(getById('sit-place-all')).toHaveTextContent(t('situation.placeAllNeutral'))
     // the element is still placed with a click
     fireEvent.click(getById('unplaced-l1'))
@@ -124,7 +126,8 @@ test('a student: on the situatieschema the elements to place are a plain list, w
 test('everybody else is warned about unplaced elements as before', async () => {
     backend(() => user())
     await mount()
-    expect(getById('tab-sit-unplaced')).toHaveTextContent('⚠1')
+    expect(getById('tab-sit-unplaced')).toHaveTextContent(/^1$/)
+    expect(getById('tab-sit-unplaced')).toHaveClass('count-warning')
     fireEvent.click(getById('tab-sit'))
     await waitFor(() => expect(getById('sit-unplaced')).toHaveClass('warn'))
     fireEvent.click(getById('sit-unplaced-toggle'))

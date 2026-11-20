@@ -50,6 +50,7 @@ export class FakeBackend {
     gate = null // a promise the first symbol request waits for (to look at the loading state)
     info = {...testInfo} // GET /api/info: what the "test" profile of the real application says
     disabledRules = [] // the rules of Controleer the user switched off
+    theme = 'marine' // the colours of the interface (Account → Mijn account)
     qrKeys = new Map() // project id -> the secret of its QR code (made the first time it is asked for)
     newQrKey() {
         return Array.from({length: 32}, () => 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-'[Math.floor(Math.random() * 64)]).join('')
@@ -152,6 +153,14 @@ export class FakeBackend {
         if (path === '/api/groups') return json([])
         if (path === '/api/info') return json(this.info)
         // Account → Controleregels
+        if (path === '/api/account/theme') {
+            if (m === 'PUT') {
+                const theme = JSON.parse(req.postData()).theme
+                if (!['marine', 'werkbank', 'helder'].includes(theme)) return json({messageKey: 'account.invalidTheme', detail: 'Onbekend thema'}, 400)
+                this.theme = theme
+            }
+            return json({theme: this.theme})
+        }
         if (path === '/api/account/rules') {
             if (m === 'PUT') this.disabledRules = [...new Set(JSON.parse(req.postData()).disabled)].sort()
             return json({disabled: this.disabledRules})
@@ -247,6 +256,8 @@ class RealBackend {
         await this.request.post('/api/symbols/restore')
         // every rule of Controleer on again (a test may have switched some off)
         await this.request.put('/api/account/rules', {data: {disabled: []}})
+        // the default colours again (a test may have chosen another theme)
+        await this.request.put('/api/account/theme', {data: {theme: 'marine'}})
     }
     /** stores `doc` as project n of the test */
     async seed(n, doc) {

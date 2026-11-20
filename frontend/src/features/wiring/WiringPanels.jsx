@@ -7,6 +7,7 @@ import {useTranslation} from '../../i18n/I18nProvider.jsx'
 import {colourOf, dashArray, EARTH_YELLOW, WIRE_COLOURS, WIRE_STYLES, WIRE_WIDTHS} from '../../model/wiring.js'
 import {circuitMarks, placeableNodes} from '../../model/project.js'
 import {newId} from '../../model/tree.js'
+import Icon from '../../components/Icon.jsx'
 
 /** A small sample of a line style for the style buttons. */
 const StyleSample = ({style, color = 'black'}) => (
@@ -133,7 +134,7 @@ export function CopyPlanDialog({project, onCopy, onClose}) {
             <div className="tb">
                 <b>{t('wiring.copyPlan.title')}</b>
                 <button id="copy-plan-close" className="sheetInfoBtn" title={t('common.close')} onClick={onClose}>
-                    ✕
+                    <Icon name="close" />
                 </button>
             </div>
             <p>{t('wiring.copyPlan.intro')}</p>

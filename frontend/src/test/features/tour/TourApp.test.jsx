@@ -93,7 +93,7 @@ test('every step points at something that exists in the editor', async () => {
     expect(card()).toBeNull()
     expect(JSON.parse(localStorage.getItem(tourKey(USER_ID))).how).toBe('done')
     // the steps on the situatieschema switched to that tab, and the last steps are on no tab in particular: it stays where the tour left it
-    expect(byId('tab-sit').className).toBe('on')
+    expect(byId('tab-sit')).toHaveClass('on')
 })
 
 test('the tour switches tabs by itself and waits for the first circuit', async () => {
@@ -129,7 +129,7 @@ test('the tour goes to the situatieschema and waits for the walls', async () => 
     fireEvent.click(await waitFor(() => getById('btn-tour')))
     // started from Info: the first step goes back to the eendraadschema
     await waitForStep('welkom')
-    await waitFor(() => expect(byId('tab-een').className).toBe('on'))
+    await waitFor(() => expect(byId('tab-een')).toHaveClass('on'))
     for (const s of TOUR_STEPS.slice(0, TOUR_STEPS.findIndex((x) => x.id === 'naar-situatie'))) {
         await waitForStep(s.id)
         next()
@@ -138,7 +138,7 @@ test('the tour goes to the situatieschema and waits for the walls', async () => 
     fireEvent.click(byId('tab-sit')) // doing it is enough: the step carries on by itself
     await waitFor(() => expect(getById('tour-ok')).toHaveTextContent(t('tour.steps.naar-situatie.done')))
     await waitForStep('muur', {timeout: 3000})
-    expect(byId('tab-sit').className).toBe('on')
+    expect(byId('tab-sit')).toHaveClass('on')
     fireEvent.click(document.querySelector('[data-tour="tool-wall"]'))
     expect(document.querySelector('[data-tour="tool-wall"]')).toHaveClass('on')
 })

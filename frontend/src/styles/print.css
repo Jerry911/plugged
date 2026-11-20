@@ -7,6 +7,12 @@
 }
 
 @media print {
+    /* paper is white, whatever the theme of the screen */
+    body {
+        background: #fff;
+        color: #000
+    }
+
     .ui {
         display: none !important
     }

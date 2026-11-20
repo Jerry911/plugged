@@ -52,7 +52,8 @@ test('opening a standard component shows its drawing and keeps its key when save
     const saved = await backend.symbolByName('Oven 2')
     expect(saved.k).toBe('oven')
     await page.locator('#comp-search').fill('Oven 2')
-    await expect(entry(page, 'oven')).toHaveText(/Oven 2 ✎$/) // an edited standard symbol is marked
+    await expect(entry(page, 'oven')).toHaveText('Oven 2')
+    await expect(entry(page, 'oven').locator('.comp-modified')).toBeVisible() // an edited standard symbol is marked
     await expect(page.locator('#comp-origin', {hasText: t('symbolEditor.origin.modified')})).toBeVisible()
 })
 

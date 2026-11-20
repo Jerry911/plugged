@@ -9,6 +9,7 @@ import {useTranslation} from '../../i18n/I18nProvider.jsx'
 import {PLAN_TEMPLATES, bestScaleForTemplate, hasDrawing, roomWalls, scaleForTemplate} from '../../model/planTemplates.js'
 import {scaleOf} from '../../model/geometry.js'
 import {getLocale} from '../../i18n/translate.js'
+import Icon from '../../components/Icon.jsx'
 
 const metres = (value) => value.toLocaleString(getLocale())
 
@@ -70,7 +71,7 @@ export default function TemplateDialog({project, pageIndex, onChoose, onClose}) 
             <div className="tb">
                 <b>{t('templates.title')}</b>
                 <button id="template-close" className="sheetInfoBtn" title={t('templates.close')} onClick={onClose}>
-                    ✕
+                    <Icon name="close" />
                 </button>
             </div>
             <p className="tplintro">{t('templates.intro')}</p>

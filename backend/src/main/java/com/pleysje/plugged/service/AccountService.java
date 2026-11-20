@@ -68,6 +68,21 @@ public class AccountService {
         return user.getDisabledRules().stream().sorted().toList();
     }
 
+    /** The colour theme of the interface the user chose (marine when he never chose one). */
+    @Transactional(readOnly = true)
+    public String theme(long userId) {
+        return user(userId).getTheme();
+    }
+
+    /** Stores the colour theme of the user (already validated: AuthRequests.THEME_PATTERN); answers it. */
+    @Transactional
+    public String setTheme(long userId, String theme) {
+        AppUser user = user(userId);
+        user.setTheme(theme);
+        log.info("User {} chose the theme {}", userId, theme);
+        return user.getTheme();
+    }
+
     /**
      * Everything stored about and by the user, as one JSON document: his account (not the password), his groups, his projects (also those in
      * the trash, with their documents; not their history) and his own symbols. Projects of others that are shared with him are not his: they
@@ -88,6 +103,7 @@ public class AccountService {
         account.put("loginCount", user.getLoginCount());
         account.put("admin", user.isAdmin());
         account.put("approved", user.isApproved());
+        account.put("theme", user.getTheme());
         ArrayNode disabledRules = account.putArray("disabledRules");
         user.getDisabledRules().stream().sorted().forEach(disabledRules::add);
         ArrayNode groupList = out.putArray("groups");

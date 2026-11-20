@@ -3,9 +3,12 @@
 // Translations stay plain strings; a little markup gives them emphasis:
 //   **bold**   -> <b>bold</b>
 //   [[Ctrl]]   -> <kbd>Ctrl</kbd>
+//   [icon:edit] -> the icon of the interface with that name (components/Icon.jsx), so a help text shows the button it talks about
 //   \n         -> a line break
 // A text with paragraphs is a list of strings: every string is one <p>.
-const TOKEN = /(\*\*[^*]+\*\*|\[\[[^\]]+\]\]|\n)/g
+import Icon from '../components/Icon.jsx'
+
+const TOKEN = /(\*\*[^*]+\*\*|\[\[[^\]]+\]\]|\[icon:[A-Za-z]+\]|\n)/g
 
 export const renderInline = (text) =>
     String(text)
@@ -14,6 +17,7 @@ export const renderInline = (text) =>
         .map((part, index) => {
             if (part.startsWith('**') && part.endsWith('**')) return <b key={index}>{part.slice(2, -2)}</b>
             if (part.startsWith('[[') && part.endsWith(']]')) return <kbd key={index}>{part.slice(2, -2)}</kbd>
+            if (part.startsWith('[icon:')) return <Icon key={index} name={part.slice(6, -1)} className="inline" />
             if (part === '\n') return <br key={index} />
             return part
         })

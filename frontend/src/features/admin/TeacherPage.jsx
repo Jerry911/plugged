@@ -6,6 +6,8 @@ import {useCallback, useEffect, useState} from 'react'
 import {useTranslation} from '../../i18n/I18nProvider.jsx'
 import {fetchOwnedGroups, setGroupEducational} from '../../api/authApi.js'
 import {fullName} from './names.js'
+import Icon from '../../components/Icon.jsx'
+import {renderInline} from '../../i18n/RichText.jsx'
 
 /**
  * The switch of the educational mode of one group, with what it means. It shows the new state at once while `onChange` (a promise) saves
@@ -26,7 +28,7 @@ export function EducationalSwitch({group, disabled, onChange}) {
     return (
         <label className="eduswitch" title={t('educational.switchTitle')}>
             <input type="checkbox" id={'group-' + group.id + '-educational'} checked={on} disabled={disabled || pending !== null} onChange={(event) => change(event.target.checked)} />
-            🎓 {t('educational.switch')}
+            <Icon name="educational" /> {t('educational.switch')}
             <small>{on ? t('educational.on') : t('educational.off')}</small>
         </label>
     )
@@ -61,7 +63,7 @@ export default function TeacherPage() {
             <div className="adminhead">
                 <h1>{t('teacher.title')}</h1>
             </div>
-            <p>{t('teacher.intro')}</p>
+            <p>{renderInline(t('teacher.intro'))}</p>
             {message.text && (
                 <p id="teacher-message" className={'authmsg ' + (message.kind === 'ok' ? 'info' : 'error')} role="status">
                     {message.text}
@@ -84,7 +86,7 @@ export default function TeacherPage() {
                             <ul className="groupmembers" aria-label={t('groups.members')}>
                                 {group.members.map((member) => (
                                     <li key={member.id} className={'memberchip' + (member.owner ? ' owner' : '')} title={member.email}>
-                                        {member.owner && '★ '}
+                                        {member.owner && <Icon name="star" filled label={t('groups.owner')} />}
                                         {fullName(member)}
                                     </li>
                                 ))}

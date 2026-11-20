@@ -89,6 +89,23 @@ export const saveRuleSettings = async (disabled) => {
     return result.ok ? {ok: true, disabled: result.user?.disabled || []} : result
 }
 
+/** The colour theme of the user (Account → Mijn account): {ok, theme} or {ok: false, error}. */
+export const fetchTheme = async () => {
+    try {
+        const response = await apiFetch('/api/account/theme')
+        if (!response.ok) return {ok: false, error: await problem(response)}
+        return {ok: true, theme: (await response.json())?.theme}
+    } catch {
+        return {ok: false, error: t('auth.unreachable')}
+    }
+}
+
+/** Stores the colour theme of the user: {ok, theme} or {ok: false, error}. */
+export const saveTheme = async (theme) => {
+    const result = await send('/api/account/theme', {theme}, 'PUT')
+    return result.ok ? {ok: true, theme: result.user?.theme} : result
+}
+
 /** The accounts (those waiting for approval first). Throws when the list cannot be loaded. */
 export const fetchUsers = async () => {
     const response = await apiFetch('/api/admin/users')

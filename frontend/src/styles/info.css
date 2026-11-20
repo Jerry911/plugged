@@ -13,7 +13,7 @@
 
 .infopage h2 {
     margin: 0 0 8px;
-    color: #1f3a5f
+    color: var(--head)
 }
 
 .infopage section {
@@ -28,21 +28,21 @@
     position: sticky;
     top: 0;
     padding: 6px 0;
-    background: #fff;
+    background: var(--surface);
     z-index: 5;
-    border-bottom: 1px solid #ddd
+    border-bottom: 1px solid var(--border)
 }
 
 .infonav button {
     padding: 5px 12px;
     cursor: pointer;
-    border: 1px solid #c9d3e0;
+    border: 1px solid var(--border);
     border-radius: 16px;
-    background: #f4f7fb
+    background: var(--surface-2)
 }
 
 .infonav button:hover {
-    background: #e3ebf6
+    background: var(--hover)
 }
 
 .infonav .navdonate {
@@ -52,8 +52,8 @@
 }
 
 .infopage .note {
-    background: #fff8e1;
-    border-left: 4px solid #ffd54a;
+    background: var(--warn-bg);
+    border-left: 4px solid var(--accent);
     padding: 8px 10px
 }
 
@@ -92,7 +92,7 @@
 }
 
 .faq {
-    border: 1px solid #ddd;
+    border: 1px solid var(--border);
     border-radius: 4px;
     margin: 0 0 6px;
     padding: 0 10px
@@ -135,7 +135,7 @@
 .cstatus {
     margin: 6px 0 0;
     font-size: 13px;
-    color: #555
+    color: var(--muted)
 }
 
 
@@ -143,7 +143,7 @@
     display: flex;
     gap: 8px;
     align-items: flex-start;
-    border: 1px solid #ccc;
+    border: 1px solid var(--border);
     border-radius: 4px;
     padding: 6px 8px;
     margin: 4px 0;
@@ -151,8 +151,8 @@
 }
 
 .exporttype.on {
-    border-color: #1f3a5f;
-    background: #eef4ff
+    border-color: var(--head);
+    background: var(--hover)
 }
 
 .exporttype span {
@@ -161,14 +161,14 @@
 }
 
 .exporttype small {
-    color: #555
+    color: var(--muted)
 }
 
 .bar .sep {
     width: 1px;
     align-self: stretch;
-    background: #ffffff55;
-    margin: 0 4px
+    background: var(--top-sep);
+    margin: 0 2px
 }
 
 /* ---- the top of the page: what Plugged is, with the tour, the donate button and the source code ---- */
@@ -289,9 +289,9 @@
     align-items: start;
     margin: 18px 0;
     padding: 20px 22px;
-    border: 1px solid #e1e7ef;
+    border: 1px solid var(--border);
     border-radius: 12px;
-    background: #f8fafd
+    background: var(--surface-2)
 }
 
 .feature.flip .featuretext {
@@ -307,7 +307,7 @@
     align-items: center;
     gap: 10px;
     margin: 0 0 8px;
-    color: #1f3a5f;
+    color: var(--head);
     font-size: 19px
 }
 
@@ -380,10 +380,10 @@
 
 .role {
     padding: 14px 16px;
-    border: 1px solid #e1e7ef;
-    border-top: 4px solid #1f3a5f;
+    border: 1px solid var(--border);
+    border-top: 4px solid var(--head);
     border-radius: 10px;
-    background: #f8fafd
+    background: var(--surface-2)
 }
 
 .role h3 {
@@ -413,13 +413,13 @@
 }
 
 .twocolumns .cannot {
-    background: #fdf1f1;
-    border-left: 4px solid #c0392b
+    background: var(--danger-bg);
+    border-left: 4px solid var(--danger)
 }
 
 .twocolumns .can {
-    background: #eef8f0;
-    border-left: 4px solid #2e7d32
+    background: var(--ok-bg);
+    border-left: 4px solid var(--ok)
 }
 
 /* ---- support: as visible as at the top ---- */

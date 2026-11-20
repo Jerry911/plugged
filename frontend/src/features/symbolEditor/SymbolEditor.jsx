@@ -12,6 +12,8 @@ import {inOneWire, inWiring, symbolPins} from '../../model/wiring.js'
 import {useTranslation} from '../../i18n/I18nProvider.jsx'
 import {toDomId} from '../../components/domId.js'
 import {useFillHeight} from '../../hooks/useFillHeight.js'
+import Icon from '../../components/Icon.jsx'
+import ToolRail from '../situation/ToolRail.jsx'
 
 const DRAWING_TOOLS = ['select', 'line', 'circle', 'rect', 'arc', 'text', 'pins']
 const PIN_COLOUR = '#0a8f3c'
@@ -334,8 +336,8 @@ export default function SymbolEditor({library, groups = [], onOpen, onSave, onRe
                     onChange={(event) => setSearch(event.target.value)}
                     style={{width: '100%', boxSizing: 'border-box'}}
                 />
-                <button id="comp-new" onClick={createNew}>
-                    ＋ {t('symbolEditor.newComponent')}
+                <button id="comp-new" className="primary" onClick={createNew}>
+                    <Icon name="add" /> {t('symbolEditor.newComponent')}
                 </button>
                 {mayChangeStandard && (
                     <button id="comp-restore-all" title={t('symbolEditor.restoreAllTitle')} onClick={restoreAll}>
@@ -362,11 +364,15 @@ export default function SymbolEditor({library, groups = [], onOpen, onSave, onRe
                                             className={draft?.k === symbol.k ? 'on' : ''}
                                             onClick={() => open(symbol)}
                                         >
-                                            <svg width="26" height="26" viewBox="0 0 26 26">
+                                            <svg className="symtile" width="26" height="26" viewBox="0 0 26 26">
                                                 <SymbolGraphic shapes={symbol.shapes} x={13} y={13} size={24} />
                                             </svg>
                                             {symbolName(symbol)}
-                                            {symbol.builtin && symbol.modified ? ' ✎' : ''}
+                                            {symbol.builtin && symbol.modified && (
+                                                <span className="comp-modified" title={t('symbolEditor.modified')}>
+                                                    <Icon name="edit" size={14} label={t('symbolEditor.modified')} />
+                                                </span>
+                                            )}
                                         </button>
                                     ))}
                                 </details>
@@ -392,20 +398,28 @@ export default function SymbolEditor({library, groups = [], onOpen, onSave, onRe
                         )}
                         <div className="tb cgroup cactions">
                             {!readOnly && (
-                                <button id="comp-save" className="accent" onClick={save}>
-                                    {isStored ? t('common.save') : t('symbolEditor.add')}
+                                <button id="comp-save" className="primary" onClick={save}>
+                                    <Icon name="check" /> {isStored ? t('common.save') : t('symbolEditor.add')}
                                 </button>
                             )}
-                            <button id="comp-duplicate" className={readOnly ? 'accent' : undefined} onClick={duplicate}>
-                                {t('symbolEditor.duplicate')}
+                            <button id="comp-duplicate" className={readOnly ? 'primary' : undefined} onClick={duplicate}>
+                                <Icon name="duplicate" /> {t('symbolEditor.duplicate')}
                             </button>
                             {!readOnly && (
                                 <>
-                                    <button id="comp-undo-shape" title={t('symbolEditor.undoShape')} onClick={() => change({shapes: draft.shapes.slice(0, -1)})}>
-                                        ↶
+                                    <button
+                                        id="comp-undo-shape"
+                                        title={t('symbolEditor.undoShape')}
+                                        aria-label={t('symbolEditor.undoShape')}
+                                        onClick={() => change({shapes: draft.shapes.slice(0, -1)})}
+                                    >
+                                        <Icon name="undo" />
                                     </button>
                                     <button id="comp-clear" onClick={() => change({shapes: []})}>
-                                        {t('symbolEditor.clear')}
+                                        <Icon name="close" /> {t('symbolEditor.clear')}
+                                    </button>
+                                    <button id="comp-delete-selected" disabled={!selected.length} title={t('symbolEditor.deleteSelectedTitle')} onClick={deleteSelected}>
+                                        <Icon name="delete" /> {t('symbolEditor.deleteSelected', {count: selected.length})}
                                     </button>
                                 </>
                             )}
@@ -414,62 +428,43 @@ export default function SymbolEditor({library, groups = [], onOpen, onSave, onRe
                             <small id="comp-origin" style={{marginLeft: 'auto'}}>
                                 {t(originKey(draft), {groups: groupNames(draft) || t('symbolEditor.onlyMe'), owner: draft.owner || ''})}
                             </small>
+                            {!readOnly && isStandard && (
+                                <>
+                                    <button id="comp-restore" disabled={!draft.modified && !dirty} onClick={restore}>
+                                        <Icon name="refresh" /> {t('symbolEditor.restore')}
+                                    </button>
+                                    <button
+                                        id="comp-make-standard"
+                                        className="danger"
+                                        disabled={!draft.modified && !dirty}
+                                        title={t('symbolEditor.makeStandardTitle')}
+                                        onClick={makeStandard}
+                                    >
+                                        <Icon name="warning" /> {t('symbolEditor.makeStandard')}
+                                    </button>
+                                </>
+                            )}
+                            {!readOnly && isStored && (isStandard || canShare) && (
+                                <button id="comp-delete" className="danger" onClick={remove}>
+                                    <Icon name="delete" /> {t('symbolEditor.delete')}
+                                </button>
+                            )}
                         </div>
                         <div className="cwork">
-                            <div className="ctools">
-                                {!readOnly && (
-                                    <div className="cgroup">
-                                        <b>{t('symbolEditor.draw')}</b>
-                                        {DRAWING_TOOLS.map((name) => (
-                                            <button
-                                                key={name}
-                                                id={'comp-tool-' + name}
-                                                className={tool === name ? 'on' : ''}
-                                                onClick={() => {
-                                                    setTool(name)
-                                                    setAnchor(null)
-                                                    setSelected([])
-                                                }}
-                                            >
-                                                {t('symbolEditor.tools.' + name)}
-                                            </button>
-                                        ))}
-                                        <button id="comp-delete-selected" disabled={!selected.length} title={t('symbolEditor.deleteSelectedTitle')} onClick={deleteSelected}>
-                                            {t('symbolEditor.deleteSelected', {count: selected.length})}
-                                        </button>
-                                    </div>
-                                )}
-                                {!readOnly && (isStandard || isStored) && (
-                                    <div className="cgroup">
-                                        <b>{t('symbolEditor.component')}</b>
-                                        {isStandard && (
-                                            <>
-                                                <button id="comp-restore" disabled={!draft.modified && !dirty} onClick={restore}>
-                                                    {t('symbolEditor.restore')}
-                                                </button>
-                                                <button
-                                                    id="comp-make-standard"
-                                                    className="danger cdanger"
-                                                    disabled={!draft.modified && !dirty}
-                                                    title={t('symbolEditor.makeStandardTitle')}
-                                                    onClick={makeStandard}
-                                                >
-                                                    <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
-                                                        <path d="M8 1.5 1 14h14z" />
-                                                        <path d="M8 6v3.5M8 11.5v.01" />
-                                                    </svg>
-                                                    {t('symbolEditor.makeStandard')}
-                                                </button>
-                                            </>
-                                        )}
-                                        {isStored && (isStandard || canShare) && (
-                                            <button id="comp-delete" className="danger" onClick={remove}>
-                                                {t('symbolEditor.delete')}
-                                            </button>
-                                        )}
-                                    </div>
-                                )}
-                            </div>
+                            {!readOnly && (
+                                <ToolRail
+                                    prefix="comp"
+                                    docked
+                                    tools={DRAWING_TOOLS}
+                                    tool={tool}
+                                    texts={{name: (name) => t('symbolEditor.tools.' + name), key: () => null, help: () => null}}
+                                    onTool={(name) => {
+                                        setTool(name)
+                                        setAnchor(null)
+                                        setSelected([])
+                                    }}
+                                />
+                            )}
                             <div className="cdraw">
                                 <svg id="comp-drawing" ref={svgRef} onMouseDown={onDrawingDown} className={tool === 'select' ? 'selecting' : undefined} viewBox="0 0 24 24" onClick={onDrawingClick} onMouseMove={onDrawingMove} onMouseLeave={() => setHover(null)}>
                                     <defs>
@@ -608,7 +603,7 @@ export default function SymbolEditor({library, groups = [], onOpen, onSave, onRe
                                 <b>{t('symbolEditor.preview')}</b>
                                 <div id="comp-previews" style={{display: 'flex', gap: 10, alignItems: 'center', margin: '6px 0'}}>
                                     {PREVIEW_SIZES.map((size) => (
-                                        <svg key={size} width={size + 4} height={size + 4} viewBox={`0 0 ${size + 4} ${size + 4}`}>
+                                        <svg key={size} className="symtile" width={size + 4} height={size + 4} viewBox={`0 0 ${size + 4} ${size + 4}`}>
                                             <SymbolGraphic shapes={draft.shapes} x={(size + 4) / 2} y={(size + 4) / 2} size={size} />
                                         </svg>
                                     ))}

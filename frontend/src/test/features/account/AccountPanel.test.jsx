@@ -1,6 +1,6 @@
 // Copyright 2026 Pleysier Jeroen
 // SPDX-License-Identifier: AGPL-3.0-only
-// Mijn account: a new password, downloading the own data, removing the own account.
+// Mijn account: the theme, a new password, downloading the own data, removing the own account.
 import {fireEvent, render, waitFor} from '@testing-library/react'
 import AccountPanel from '../../../features/account/AccountPanel.jsx'
 import {t} from '../../../i18n/translate.js'
@@ -72,4 +72,33 @@ test('who is signed in, with his role, and every button in the same style', () =
     expect(getById('account-who')).toHaveTextContent('Jan Peeters · jan@example.be')
     expect(getById('account-role')).toHaveTextContent(t('account.roleUser'))
     for (const id of ['password-submit', 'account-export', 'account-delete']) expect(getById(id)).toHaveClass('accent')
+})
+
+test('Thema: three choices; one click shows the colours at once and stores them for every device', async () => {
+    document.documentElement.dataset.theme = 'marine'
+    global.fetch = vi.fn(async (url, options) => (url === '/api/account/theme' ? json({theme: JSON.parse(options.body).theme}) : json(null, 404)))
+    mount()
+    expect(getById('account-theme-marine')).toBeChecked()
+    expect(getById('account-theme').querySelectorAll('input[type="radio"]')).toHaveLength(3)
+    expect(getById('account-theme')).toHaveTextContent(t('account.theme.names.werkbank'))
+    fireEvent.click(getById('account-theme-werkbank'))
+    expect(document.documentElement.dataset.theme).toBe('werkbank')
+    expect(getById('account-theme-werkbank')).toBeChecked()
+    await waitFor(() => expect(global.fetch).toHaveBeenCalled())
+    expect(global.fetch.mock.calls[0][0]).toBe('/api/account/theme')
+    expect(global.fetch.mock.calls[0][1].method).toBe('PUT')
+    expect(JSON.parse(global.fetch.mock.calls[0][1].body)).toEqual({theme: 'werkbank'})
+    expect(byId('account-theme-error')).toBeNull()
+    delete document.documentElement.dataset.theme
+    localStorage.clear()
+})
+
+test('Thema: when the server cannot store it, the colours still change here and the user is told', async () => {
+    global.fetch = vi.fn(async () => json({detail: 'Onbekend thema', messageKey: 'account.invalidTheme'}, 400))
+    mount()
+    fireEvent.click(getById('account-theme-helder'))
+    expect(document.documentElement.dataset.theme).toBe('helder')
+    await waitFor(() => expect(getById('account-theme-error')).toHaveTextContent('Onbekend thema'))
+    delete document.documentElement.dataset.theme
+    localStorage.clear()
 })

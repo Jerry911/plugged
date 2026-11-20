@@ -73,6 +73,10 @@ public class AppUser {
     @Column(name = "rule", nullable = false, length = 40)
     private Set<String> disabledRules = new TreeSet<>();
 
+    /** The colour theme of the interface he chose (AuthRequests.THEME_PATTERN); null: the default, marine. */
+    @Column(length = 20)
+    private String theme;
+
     protected AppUser() {
     }
 
@@ -194,6 +198,15 @@ public class AppUser {
 
     public Set<String> getDisabledRules() {
         return disabledRules;
+    }
+
+    /** The colour theme of the interface: marine (the default), werkbank or helder. */
+    public String getTheme() {
+        return theme == null ? "marine" : theme;
+    }
+
+    public void setTheme(String theme) {
+        this.theme = theme;
     }
 
     /** Replaces the rules this user switched off. */

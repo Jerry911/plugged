@@ -470,6 +470,7 @@ export default {
         },
     },
     symbolEditor: {
+        modified: 'Modified',
         tools: {
             select: 'Select',
             line: 'Line',
@@ -518,8 +519,6 @@ export default {
         undoShape: 'Undo the last shape',
         clear: 'Clear',
         unsaved: 'not saved',
-        draw: 'Draw',
-        component: 'Component',
         restore: 'Restore standard',
         makeStandard: 'Make standard',
         makeStandardTitle: 'Make the current drawing the new standard (overwrites the standard drawing)',
@@ -679,7 +678,7 @@ export default {
             bladen: {
                 title: 'Sheets and check',
                 body: [
-                    'With **＋ sheet** you add a sheet (✎ renames, ⧉ duplicates, ◀ ▶ moves). **Check** looks for errors and warnings in your diagram: click a message to jump to the element.',
+                    'With [icon:add] **sheet** you add a sheet ([icon:edit] renames, [icon:duplicate] duplicates, [icon:earlier] [icon:later] moves). **Check** looks for errors and warnings in your diagram: click a message to jump to the element.',
                 ],
             },
             'naar-situatie': {
@@ -725,7 +724,7 @@ export default {
             kaderinfo: {
                 title: 'Where is the scale?',
                 body: [
-                    'The scale is at the bottom of every sheet, on the right in the **Scale** box under the date. Click that box (or the yellow **✎ Title block** button) to view and change it.',
+                    'The scale is at the bottom of every sheet, on the right in the **Scale** box under the date. Click that box (or the yellow [icon:footer] **Title block** button) to view and change it.',
                 ],
                 done: 'The title block is open.',
             },
@@ -733,7 +732,7 @@ export default {
                 title: 'Viewing and changing the scale',
                 body: [
                     'The **Scale** field holds what you just chose. Want another scale, e.g. [[1:100]] for a larger house? Type it here: all the lengths of the walls follow.',
-                    'Close the window with **✕** to carry on.',
+                    'Close the window with [icon:close] to carry on.',
                 ],
                 missing: 'First open the title block with the yellow button at the top.',
                 done: 'Nice, the scale is set.',
@@ -879,8 +878,8 @@ export default {
                     text: 'Your projects are on the server: you find them on every computer you sign in on. Everything is under **Project** in the top bar.',
                     points: [
                         'A new project is saved the first time with **Save** ([[Alt]]+[[S]]); after that Plugged saves your own project by itself after a change.',
-                        '**Share** with one or more groups (👥 in the Load list): the members can open and save the project.',
-                        'Every save is a version: 🕘 shows the **history** and Restore brings an older version back.',
+                        '**Share** with one or more groups ([icon:users] in the Load list): the members can open and save the project.',
+                        'Every save is a version: [icon:history] shows the **history** and Restore brings an older version back.',
                         '**Duplicate**, or delete to the **trash**, from where you restore it or remove it for good.',
                         'Search by name, number, owner or group, and sort by date, name, owner or number.',
                     ],
@@ -888,7 +887,7 @@ export default {
                 {
                     id: 'samenwerken',
                     title: 'Working together on a project',
-                    text: 'When somebody else has the same project open, the top bar shows it (👥, orange when that person has unsaved changes).',
+                    text: 'When somebody else has the same project open, the top bar shows it ([icon:users], orange when that person has unsaved changes).',
                     points: [
                         'When that person saves, the new version loads for you right away, unless you have unsaved changes yourself: then it is offered to you.',
                         'Nobody overwrites somebody else’s work without noticing: when two people save a different version, the second save is refused with a message.',
@@ -939,7 +938,7 @@ export default {
                 {title: 'User', text: 'Makes and saves own projects and symbols, and opens what is shared with his groups.'},
                 {
                     title: 'Group owner (teacher)',
-                    text: 'A member of a group with a star (★). Switches the educational mode of his groups on or off under **🎓 My groups**, and is never restricted himself.',
+                    text: 'A member of a group with a star ([icon:star]). Switches the educational mode of his groups on or off under [icon:educational] **My groups**, and is never restricted himself.',
                 },
                 {
                     title: 'Administrator',
@@ -957,7 +956,7 @@ export default {
             account: [
                 '**Register** on the sign-in page. An administrator approves your account before you can work with it.',
                 '**Forgot your password?** Plugged sends no e-mail: ask an administrator for a temporary password. At your next sign-in you choose a new one yourself.',
-                'Under **Account → My account** you change your password, download all your data as one file, or remove your account with everything that is yours.',
+                'Under **Account → My account** you choose the **theme** (Navy, the dark Workbench or the light Bright; it follows you to every device), change your password, download all your data as one file, or remove your account with everything that is yours. The drawings stay black on white in every theme.',
                 'After too many wrong passwords in a row an account is locked for a while.',
             ],
         },
@@ -973,7 +972,7 @@ export default {
             ],
             canTitle: 'Students can',
             can: ['draw, save and duplicate their own projects;', 'make a **PDF** and **print** to hand in their work;', 'follow the tour and read this information.'],
-            teacher: 'A student sees 🎓 in the top bar. When the teacher switches the mode, a student who is working notices within a minute. Owners and administrators are never restricted; somebody who owns one group but is a student in another group in educational mode is restricted.',
+            teacher: 'A student sees [icon:educational] in the top bar. When the teacher switches the mode, a student who is working notices within a minute. Owners and administrators are never restricted; somebody who owns one group but is a student in another group in educational mode is restricted.',
         },
         shortcuts: {
             title: 'Keyboard shortcuts',
@@ -1030,7 +1029,7 @@ export default {
                 },
                 {
                     question: 'How do I make my own symbol?',
-                    answer: 'Go to the Components tab and choose "＋ New component". Draw the symbol, give it a name and a category and decide what it may hang under. Your own symbols are also in the exported project file, so it opens on another installation.',
+                    answer: 'Go to the Components tab and choose "[icon:add] New component". Draw the symbol, give it a name and a category and decide what it may hang under. Your own symbols are also in the exported project file, so it opens on another installation.',
                 },
                 {
                     question: 'Are the checks binding?',
@@ -1046,11 +1045,11 @@ export default {
                 },
                 {
                     question: 'I forgot my password. What now?',
-                    answer: 'Plugged sends no e-mail. Ask an administrator of this installation for a temporary password (Account → Users → 🔑 Password). Sign in with it, and right after that you choose a new password yourself.',
+                    answer: 'Plugged sends no e-mail. Ask an administrator of this installation for a temporary password (Account → Users → [icon:key] Password). Sign in with it, and right after that you choose a new password yourself.',
                 },
                 {
                     question: 'Why is there no Check button?',
-                    answer: 'Then you are in a group whose educational mode is on (you see 🎓 in the top bar): as a student you judge your schema yourself. Your teacher or an administrator can switch the mode off.',
+                    answer: 'Then you are in a group whose educational mode is on (you see [icon:educational] in the top bar): as a student you judge your schema yourself. Your teacher or an administrator can switch the mode off.',
                 },
                 {
                     question: 'Who can see my projects?',
@@ -1202,9 +1201,19 @@ export default {
         loadTitle: 'Load the newer version (your unsaved changes are lost)',
     },
     account: {
+        theme: {
+            title: 'Theme',
+            text: 'How Plugged looks, on every device you sign in on. The drawings always stay black on white, as they are printed.',
+            names: {marine: 'Navy', werkbank: 'Workbench', helder: 'Bright'},
+            descriptions: {
+                marine: 'Navy bars with yellow accents. The default.',
+                werkbank: 'Dark, like a drawing program: the sheet stands out.',
+                helder: 'Light and airy; yellow only for what is active.',
+            },
+        },
         button: 'Account',
         roleUser: 'User',
-        buttonTitle: 'My account: change your password, download your data, delete your account',
+        buttonTitle: 'My account: choose a theme, change your password, download your data, delete your account',
         buttonTitleAdmin: 'My account, and manage the users, groups and standard symbols',
         pageAdmin: 'Account and administration',
         title: 'My account',
@@ -1279,7 +1288,7 @@ export default {
         since: 'from {date}',
         sincePartial: 'socket outlets and lighting from {date}',
         tab: 'Check rules',
-        intro: 'Choose which rules Check verifies. This only applies to you, in all your projects; a rule that is off disappears from the list and from the ✖ ⚠ counts. An empty single-line diagram is always reported.',
+        intro: 'Choose which rules Check verifies. This only applies to you, in all your projects; a rule that is off disappears from the list and from the [icon:error] [icon:warning] counts. An empty single-line diagram is always reported.',
         allOn: 'Switch all on',
         offCount: '{count} of {total} rules switched off',
         allActive: 'All {total} rules are on',
@@ -1464,6 +1473,7 @@ export default {
         removeOwner: '{name} is no longer an owner',
         ownerAdded: '{name} is an owner of {group}.',
         ownerRemoved: '{name} is no longer an owner of {group}.',
+        owner: 'Owner',
     },
     catalog: {
         intro: 'The standard symbols that ship with Plugged are in one file. Draw a standard symbol in the Components tab and choose "Make standard": that drawing then ends up in the file when you download it here.',
@@ -1505,7 +1515,7 @@ export default {
         tab: 'My groups',
         tabTitle: 'The groups you own: educational mode',
         title: 'My groups',
-        intro: 'You own these groups. Switch on educational mode to let the members who are not owners (your students) work without validation, import or export. You and the administrators always can. ★ = owner.',
+        intro: 'You own these groups. Switch on educational mode to let the members who are not owners (your students) work without validation, import or export. You and the administrators always can. [icon:star] = owner.',
         loadFailed: 'Your groups could not be loaded.',
     },
 }

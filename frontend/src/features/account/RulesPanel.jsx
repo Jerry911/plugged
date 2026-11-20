@@ -8,8 +8,10 @@ import {RULE_CATALOG, RULE_IDS} from '../../model/rules.js'
 import {saveRuleSettings} from '../../api/authApi.js'
 import {toDomId} from '../../components/domId.js'
 import {formatDate} from '../../model/installationDate.js'
+import Icon from '../../components/Icon.jsx'
+import {renderInline} from '../../i18n/RichText.jsx'
 
-const LEVEL_ICONS = {error: '✖', warn: '⚠', info: 'ℹ'}
+const LEVEL_ICONS = {error: 'error', warn: 'warning', info: 'info'}
 
 /** A checkbox for a whole group: checked when all its rules are on, half when some are. */
 function GroupToggle({id, on, total, label, onToggle}) {
@@ -42,7 +44,7 @@ export default function RulesPanel({disabled, onChange}) {
     const activeOff = disabled.filter((id) => RULE_IDS.includes(id)).length
     return (
         <section id="rules-panel" className="rulespanel">
-            <p className="rulesintro">{t('ruleSettings.intro')}</p>
+            <p className="rulesintro">{renderInline(t('ruleSettings.intro'))}</p>
             <div className="ruleshead">
                 <span id="rules-count">
                     {activeOff ? t('ruleSettings.offCount', {count: activeOff, total: RULE_IDS.length}) : t('ruleSettings.allActive', {total: RULE_IDS.length})}
@@ -73,7 +75,7 @@ export default function RulesPanel({disabled, onChange}) {
                                     <input id={'rules-' + toDomId(rule.id)} type="checkbox" checked={!off.has(rule.id)} onChange={(event) => setRules([rule.id], event.target.checked)} />
                                     <span className="rulename">{t('ruleSettings.rules.' + rule.id)}</span>
                                     <span className={'rulelevel level-' + rule.level} title={t('ruleSettings.levels.' + rule.level)}>
-                                        {LEVEL_ICONS[rule.level]} {t('ruleSettings.levels.' + rule.level)}
+                                        <Icon name={LEVEL_ICONS[rule.level]} size={14} /> {t('ruleSettings.levels.' + rule.level)}
                                     </span>
                                     <span className="rulearticle">
                                         {rule.article ? 'AREI ' + rule.article : t('ruleSettings.notArei')}

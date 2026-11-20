@@ -9,10 +9,28 @@
     overflow: auto
 }
 
+/* the close button at the top right of a dialog: a quiet icon, red only while pointing at it */
 .sheetInfoBtn {
     float: right;
-    background-color: red;
-    color: white;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 32px;
+    min-height: 32px;
+    padding: 0;
+    background: transparent;
+    border-color: transparent;
+    color: var(--muted)
+}
+
+.sheetInfoBtn .ico {
+    color: currentColor
+}
+
+.sheetInfoBtn:hover:not(:disabled) {
+    background: var(--danger-solid);
+    border-color: var(--danger-solid);
+    color: var(--on-danger)
 }
 
 .pal button {
@@ -45,36 +63,45 @@
     text-align: center
 }
 
-.danger {
-    background: #c62828;
-    color: #fff;
-    border: 0;
-    border-radius: 3px;
+/* removing something: red words on a quiet button, a red fill only while pointing at it */
+button.danger {
+    background: transparent;
+    color: var(--danger);
+    border: 1px solid var(--danger-border);
     font-weight: 600
 }
 
-.danger:disabled {
-    background: #ccc;
-    color: #777
+button.danger .ico {
+    color: var(--danger)
+}
+
+button.danger:hover:not(:disabled) {
+    background: var(--danger-solid);
+    border-color: var(--danger-solid);
+    color: var(--on-danger)
+}
+
+button.danger:hover:not(:disabled) .ico {
+    color: var(--on-danger)
 }
 
 .warn {
-    background: #fff3cd;
-    border: 1px solid #e0a800;
+    background: var(--warn-bg);
+    border: 1px solid var(--warn-border);
     padding: 6px;
     margin: 6px 0
 }
 
 .ok {
-    background: #d4edda;
+    background: var(--ok-bg);
     padding: 6px;
     margin: 6px 0
 }
 
 .badge {
     margin-left: 3px;
-    background: #c62828;
-    color: #fff;
+    background: var(--danger-solid);
+    color: var(--on-danger);
     border-radius: 8px;
     padding: 0 5px;
     font-size: 11px
@@ -94,7 +121,7 @@
 }
 
 .tree .sel {
-    background: #cfe3ff
+    background: var(--select)
 }
 
 .form {
@@ -121,15 +148,15 @@
 }
 
 .iss.error {
-    color: #b00020
+    color: var(--danger)
 }
 
 .iss.warn {
-    color: #8a6d00
+    color: var(--warn)
 }
 
 .iss.info {
-    color: #055
+    color: var(--link)
 }
 
 .dlg {
@@ -140,8 +167,8 @@
     max-width: calc(100vw - 20px);
     max-height: 70vh;
     overflow: auto;
-    background: #fff;
-    border: 2px solid #1f3a5f;
+    background: var(--surface);
+    border: 2px solid var(--head);
     border-radius: 6px;
     padding: 8px;
     z-index: 20;
@@ -203,9 +230,9 @@
     width: 32px;
     margin: 0;
     padding: 0;
-    color: #555;
-    background: #fff;
-    border: 1px solid #b5b5b5;
+    color: var(--muted);
+    background: var(--surface);
+    border: 1px solid var(--border-strong);
     border-radius: 4px;
     cursor: pointer
 }
@@ -222,30 +249,30 @@
 
 .pal .unprow .iconbtn.hide:hover,
 .pal .unprow .iconbtn.hide:focus-visible {
-    background: #fdecea;
-    color: #c62828;
-    border-color: #c62828
+    background: var(--danger-bg);
+    color: var(--danger);
+    border-color: var(--danger)
 }
 
 .pal .unprow .iconbtn.show:hover,
 .pal .unprow .iconbtn.show:focus-visible {
-    background: #e6f4ea;
-    color: #1e7e34;
-    border-color: #1e7e34
+    background: var(--ok-bg);
+    color: var(--ok);
+    border-color: var(--ok)
 }
 
 .unhint {
     margin: 6px 0 0;
     font-size: 12px;
-    color: #6b5a1e
+    color: var(--warn)
 }
 
 .hiddenlist {
     margin: 6px 0;
     padding: 6px;
-    border: 1px dashed #aaa;
+    border: 1px dashed var(--border-strong);
     border-radius: 6px;
-    background: #f7f7f7
+    background: var(--surface-2)
 }
 
 .hiddenlist .toggle {
@@ -254,7 +281,7 @@
     background: none;
     border: none;
     padding: 2px 0;
-    color: #444;
+    color: var(--text-2);
     font-weight: 600;
     cursor: pointer
 }
@@ -267,7 +294,7 @@
 .hiddenlist .hint {
     margin: 2px 0 4px;
     font-size: 12px;
-    color: #666
+    color: var(--muted)
 }
 
 /* Symbol editor (Components): scrolling menu, fields, button groups left of the drawing, drawing with grid selector */
@@ -304,9 +331,9 @@
     align-items: center;
     gap: 6px;
     padding: 6px;
-    border: 1px solid #c4c4c4;
+    border: 1px solid var(--border);
     border-radius: 6px;
-    background: #f6f6f6
+    background: var(--surface-2)
 }
 
 .cactions {
@@ -318,25 +345,6 @@
     gap: 12px;
     align-items: flex-start;
     flex-wrap: wrap
-}
-
-.ctools {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    width: 170px;
-    flex: none
-}
-
-.ctools .cgroup {
-    flex-direction: column;
-    align-items: stretch
-}
-
-.ctools button {
-    padding: 5px 9px;
-    cursor: pointer;
-    text-align: left
 }
 
 .cdraw {
@@ -387,35 +395,14 @@
     padding: 6px 8px;
     max-width: 760px;
     font-size: 12px;
-    color: #444;
-    background: #f1f6fb;
-    border-left: 3px solid #1f3a5f
+    color: var(--text-2);
+    background: var(--surface-2);
+    border-left: 3px solid var(--head)
 }
 
 .cinfo .cfields {
     max-width: none;
     margin: 10px 0
-}
-
-.ctools button.cdanger {
-    display: flex;
-    align-items: center;
-    gap: 6px
-}
-
-.ctools button.cdanger svg {
-    flex: none;
-    fill: none;
-    stroke: currentColor;
-    stroke-width: 2;
-    stroke-linecap: round;
-    stroke-linejoin: round
-}
-
-.ctools button.cdanger:enabled {
-    background: #c62828;
-    color: #fff;
-    box-shadow: 0 0 0 2px #fdecea
 }
 
 /* click area of a circuit in the eendraadschema: a light tint on hover shows what a click selects */
@@ -481,9 +468,9 @@
     width: 280px;
     max-width: calc(100vw - 16px);
     padding: 6px;
-    color: #1d2b3f;
-    background: #fff;
-    border: 1px solid #c9d3e0;
+    color: var(--text);
+    background: var(--surface);
+    border: 1px solid var(--border);
     border-radius: 10px;
     box-shadow: 0 12px 32px #0003, 0 2px 6px #0002;
     transform-origin: top left;
@@ -504,9 +491,9 @@
     left: 22px;
     width: 10px;
     height: 10px;
-    background: #fff;
-    border-top: 1px solid #c9d3e0;
-    border-left: 1px solid #c9d3e0;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    border-left: 1px solid var(--border);
     transform: rotate(45deg)
 }
 
@@ -534,7 +521,7 @@
     gap: 3px;
     padding: 6px 6px 10px;
     margin-bottom: 4px;
-    border-bottom: 1px solid #e3e8ef
+    border-bottom: 1px solid var(--border)
 }
 
 .pm-head label {
@@ -542,25 +529,25 @@
     font-weight: 700;
     letter-spacing: .04em;
     text-transform: uppercase;
-    color: #5b6b82
+    color: var(--muted)
 }
 
 .pm-head input {
     padding: 6px 8px;
     font: inherit;
     color: inherit;
-    border: 1px solid #b8c4d4;
+    border: 1px solid var(--border-strong);
     border-radius: 6px
 }
 
 .pm-head input:focus {
-    outline: 2px solid #ffd54a;
+    outline: 2px solid var(--accent);
     outline-offset: 0;
-    border-color: #1f3a5f
+    border-color: var(--head)
 }
 
 .pm-head small {
-    color: #5b6b82
+    color: var(--muted)
 }
 
 .pm-list {
@@ -572,7 +559,7 @@
 .pm-sepline {
     height: 1px;
     margin: 4px 6px;
-    background: #e3e8ef
+    background: var(--border)
 }
 
 .pm-menu .pm-item {
@@ -590,11 +577,11 @@
 }
 
 .pm-menu .pm-item:hover, .pm-menu .pm-item.active {
-    background: #e8f0fb
+    background: var(--hover)
 }
 
 .pm-menu .pm-item:focus-visible {
-    outline: 2px solid #1f3a5f;
+    outline: 2px solid var(--head);
     outline-offset: -2px
 }
 
@@ -605,7 +592,7 @@
 .pm-item kbd {
     font: inherit;
     font-size: 12px;
-    color: #6b7a90
+    color: var(--muted)
 }
 
 .pm-has-sub {
@@ -615,7 +602,7 @@
 .pm-has-sub > .pm-item > .pm-ico:last-child {
     width: 14px;
     height: 14px;
-    color: #6b7a90
+    color: var(--muted)
 }
 
 /* the nested flyout with the stored projects */
@@ -628,8 +615,8 @@
     max-height: 60vh;
     overflow: auto;
     padding: 6px;
-    background: #fff;
-    border: 1px solid #c9d3e0;
+    background: var(--surface);
+    border: 1px solid var(--border);
     border-radius: 10px;
     box-shadow: 0 12px 32px #0003, 0 2px 6px #0002;
     animation: pm-in .12s ease-out
@@ -650,7 +637,7 @@
     max-height: 40vh;
     margin: 4px 0 2px;
     box-shadow: none;
-    background: #f6f8fb;
+    background: var(--surface-2);
     animation: none
 }
 
@@ -667,7 +654,7 @@
     display: grid;
     grid-template-columns: 1fr auto;
     align-items: center;
-    border-bottom: 1px solid #eef1f5
+    border-bottom: 1px solid var(--border)
 }
 
 .pm-sub.inline .plist td {
@@ -693,7 +680,7 @@
 .pm-note {
     margin: 0;
     padding: 8px 10px;
-    color: #44546a
+    color: var(--text-2)
 }
 
 .plist {
@@ -707,22 +694,22 @@
     font-size: 11px;
     letter-spacing: .04em;
     text-transform: uppercase;
-    color: #5b6b82;
-    border-bottom: 1px solid #e3e8ef
+    color: var(--muted);
+    border-bottom: 1px solid var(--border)
 }
 
 .plist td {
     text-align: left;
     padding: 6px 8px;
-    border-bottom: 1px solid #eef1f5
+    border-bottom: 1px solid var(--border)
 }
 
 .plist tbody tr:hover td {
-    background: #f3f7fc
+    background: var(--hover)
 }
 
 .plist tr.cur td {
-    background: #eef5ff
+    background: var(--hover)
 }
 
 .plist .pm-name {
@@ -732,13 +719,13 @@
 
 .plist .pm-name small {
     font-weight: 400;
-    color: #5b6b82
+    color: var(--muted)
 }
 
 .plist .pm-when {
     white-space: nowrap;
     font-size: 12px;
-    color: #44546a
+    color: var(--text-2)
 }
 
 .plist .pm-acts {
@@ -759,13 +746,13 @@
 }
 
 .plist .pm-del:hover {
-    background: #fdecea
+    background: var(--danger-bg)
 }
 
 /* project list: owner and sharing under the name, and the group picker of "Delen" */
 .plist .pm-meta {
     display: block;
-    color: #5b6675;
+    color: var(--muted);
     font-size: 11px;
     font-weight: 400
 }
@@ -777,7 +764,7 @@
 }
 
 .plist .pm-acts button.on {
-    background: #ffd54a
+    background: var(--accent)
 }
 
 .pm-share {
@@ -785,8 +772,8 @@
     gap: 4px;
     padding: 8px 10px;
     margin: 2px 0 4px;
-    background: #f4f7fb;
-    border-left: 3px solid #1f3a5f;
+    background: var(--surface-2);
+    border-left: 3px solid var(--head);
     border-radius: 3px
 }
 
@@ -802,7 +789,7 @@
 }
 
 .pm-share .pm-note.error {
-    color: #7a1c1c
+    color: var(--danger)
 }
 
 .pm-share-acts {
@@ -812,8 +799,8 @@
 }
 
 .pm-share-acts .accent {
-    background: #ffd54a;
-    border: 1px solid #e0b400;
+    background: var(--accent);
+    border: 1px solid var(--accent-border);
     font-weight: 700
 }
 
@@ -848,7 +835,7 @@
 
 .props-sub {
     font-size: 12px;
-    color: #6b5400;
+    color: var(--warn);
     margin-top: -2px
 }
 
@@ -898,5 +885,97 @@
 }
 
 .props .tb.icons .props-delete {
-    color: #b3261e
+    color: var(--danger)
+}
+
+/* ---- the shared look of panels and lists (theme.css has the colours) ---- */
+
+/* the Eigenschappen box: a white panel with a header strip, like every other panel */
+.warn.props, .props {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 0 12px 12px;
+    margin: 8px 0
+}
+
+.props-head {
+    margin: 0 -12px 4px;
+    padding: 7px 8px 7px 12px;
+    background: var(--surface-2);
+    border-bottom: 1px solid var(--border);
+    border-radius: 10px 10px 0 0;
+    color: var(--head)
+}
+
+/* on a phone the box is a sheet along the bottom of the screen (layout.css): square, without margin */
+@media (max-width: 900px) {
+    .side .warn.props, .side .props {
+        margin: 0;
+        border-radius: 0
+    }
+
+    .side .props .props-head {
+        border-radius: 0
+    }
+}
+
+.props .props-close {
+    background: transparent;
+    border-color: transparent;
+    padding: 4px
+}
+
+.props-sub {
+    color: var(--muted)
+}
+
+.props .tb.icons .props-delete, .props .tb.icons .props-delete .ico {
+    color: var(--danger)
+}
+
+/* the components in a palette or a list: quiet rows, the chosen one in light yellow */
+.pal button {
+    background: var(--surface);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 8px
+}
+
+.pal button:hover:not(:disabled) {
+    background: var(--hover)
+}
+
+.pal button.on, .pal button.on:hover:not(:disabled) {
+    background: var(--accent-soft);
+    border-color: var(--accent-soft-border);
+    font-weight: 600
+}
+
+.pal button.primary {
+    background: var(--primary);
+    color: var(--on-primary);
+    border-color: var(--primary);
+    font-weight: 600
+}
+
+/* a symbol in a list is drawn black, as on paper: on a dark theme it gets a small white tile */
+.symtile {
+    flex: none;
+    background: var(--symbol-tile);
+    border-radius: 4px
+}
+
+/* a standard symbol that was changed (Componenten) */
+.comp-modified {
+    margin-left: auto;
+    color: var(--muted)
+}
+
+.comp-modified .ico {
+    color: var(--muted)
+}
+
+.pal details > summary {
+    padding: 3px 0
 }

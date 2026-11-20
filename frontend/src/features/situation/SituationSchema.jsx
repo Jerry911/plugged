@@ -52,6 +52,7 @@ import {
     wirePoints,
 } from '../../model/wiring.js'
 import {CopyPlanDialog, copyPlan, LineStyleFields} from '../wiring/WiringPanels.jsx'
+import Icon from '../../components/Icon.jsx'
 
 // the tools in the order of the rail on the drawing; null = a separator between groups
 const TOOLS = ['select', 'erase', null, 'wall', 'room', 'door', 'window', null, 'sym', 'text']
@@ -820,7 +821,7 @@ export default function SituationSchema({project, setProject, pageIndex, onFoote
                                     />
                                     {selectedItem.node && selectedItem.mark !== undefined && (
                                         <button type="button" id="sym-text-reset" title={t('situation.resetMark')} aria-label={t('situation.resetMark')} onClick={() => updateSelectedItem({mark: undefined})}>
-                                            ↺
+                                            <Icon name="rotate" />
                                         </button>
                                     )}
                                 </span>
@@ -1024,7 +1025,7 @@ export default function SituationSchema({project, setProject, pageIndex, onFoote
                     <div id="wire-empty" className="sitempty">
                         <span>{t('wiring.emptyHint')}</span>
                         <button id="wire-empty-copy" className="accent" onClick={() => setCopyPlanOpen(true)}>
-                            ⌂ {t('wiring.copyPlan.button')}
+                            <Icon name="home" /> {t('wiring.copyPlan.button')}
                         </button>
                     </div>
                 )}
@@ -1033,7 +1034,7 @@ export default function SituationSchema({project, setProject, pageIndex, onFoote
                     <div id={P + '-empty'} className="sitempty">
                         <span>{t('templates.emptyHint')}</span>
                         <button id={P + '-empty-template'} className="accent" onClick={() => setTemplateOpen(true)}>
-                            ⌂ {t('templates.emptyButton')}
+                            <Icon name="home" /> {t('templates.emptyButton')}
                         </button>
                     </div>
                 )}
@@ -1069,7 +1070,7 @@ export default function SituationSchema({project, setProject, pageIndex, onFoote
                             title={t('situation.toggleLengths')}
                             onClick={() => updatePage({dims: !showLengths})}
                         >
-                            📏 {t('situation.lengths')}
+                            <Icon name="ruler" /> {t('situation.lengths')}
                         </button>
                     </ZoomControls>
                     {pending && (tool === 'wall' || tool === 'room') && (

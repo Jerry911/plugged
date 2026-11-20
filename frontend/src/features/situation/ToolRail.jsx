@@ -57,12 +57,33 @@ const ICONS = {
             <path d="M10 20v-6h4v6" />
         </>
     ),
+    // the drawing tools of a component (Componenten)
+    line: <path d="M5 19L19 5" />,
+    circle: <circle cx="12" cy="12" r="8" />,
+    rect: <path d="M4 6h16v12H4z" />,
+    arc: <path d="M4 16a8 8 0 0 1 16 0z" />,
+    pins: (
+        <>
+            <path d="M3 12h5M16 12h5" />
+            <circle cx="12" cy="12" r="3.2" />
+        </>
+    ),
     fold: <path d="M15 6l-6 6 6 6" />,
     unfold: <path d="M9 6l6 6-6 6" />,
 }
 
 export const ToolIcon = ({name, size = 20}) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <svg
+        width={size}
+        height={size}
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden="true"
+    >
         {ICONS[name]}
     </svg>
 )
@@ -91,19 +112,25 @@ export const toolOfKey = (event, tools, t) => {
 }
 
 /**
- * prefix = 'sit' or 'wire' (the ids); tools = the tools in their order (null = a separator); tool / onTool = the active one; extra =
- * {id, label, title, onClick, disabled}: the button under the tools (a starter template, a plan to copy).
+ * prefix = 'sit', 'wire' or 'comp' (the ids); tools = the tools in their order (null = a separator); tool / onTool = the active one; extra =
+ * {id, label, title, onClick, disabled}: the button under the tools (a starter template, a plan to copy). The name, key and help of a tool
+ * come from situation.* unless `texts` = {name, key, help} (functions of the tool; key and help may answer null). `docked`: the rail stands
+ * beside the drawing instead of on it (the component editor), without the fold button.
  */
-export default function ToolRail({prefix, tools, tool, onTool, extra}) {
+export default function ToolRail({prefix, tools, tool, onTool, extra, texts, docked = false}) {
     const {t} = useTranslation()
-    const [folded, setFolded] = useState(readFolded)
+    const nameOf = texts?.name ?? ((name) => t('situation.tools.' + name)),
+        keyOf = texts?.key ?? ((name) => toolKey(t, name)),
+        helpOf = texts?.help ?? ((name) => t('situation.toolHelp.' + name))
+    const [storedFolded, setFolded] = useState(readFolded),
+        folded = !docked && storedFolded
     useEffect(() => {
         try {
-            localStorage.setItem(FOLDED_KEY, folded ? '1' : '0')
+            localStorage.setItem(FOLDED_KEY, storedFolded ? '1' : '0')
         } catch {
             // no storage (private window): it is only for this visit
         }
-    }, [folded])
+    }, [storedFolded])
     const tip = (label, key, help) => (
         <span className="railtip" aria-hidden="true">
             <span className="railtip-head">
@@ -114,24 +141,32 @@ export default function ToolRail({prefix, tools, tool, onTool, extra}) {
         </span>
     )
     return (
-        <div className={'ui toolrail' + (folded ? ' folded' : '')} id={prefix + '-tools'} role="toolbar" aria-orientation="vertical" aria-label={t('situation.rail.label')}>
-            <button
-                id={prefix + '-rail-toggle'}
-                className="railbtn railfold"
-                aria-expanded={!folded}
-                aria-label={folded ? t('situation.rail.unfold') : t('situation.rail.fold')}
-                onClick={() => setFolded(!folded)}
-            >
-                {folded ? (
-                    <>
-                        <ToolIcon name={tool} size={18} />
-                        <ToolIcon name="unfold" size={14} />
-                    </>
-                ) : (
-                    <ToolIcon name="fold" size={18} />
-                )}
-                {tip(folded ? t('situation.rail.unfold') : t('situation.rail.fold'))}
-            </button>
+        <div
+            className={'ui toolrail' + (folded ? ' folded' : '') + (docked ? ' docked' : '')}
+            id={prefix + '-tools'}
+            role="toolbar"
+            aria-orientation="vertical"
+            aria-label={t('situation.rail.label')}
+        >
+            {!docked && (
+                <button
+                    id={prefix + '-rail-toggle'}
+                    className="railbtn railfold"
+                    aria-expanded={!folded}
+                    aria-label={folded ? t('situation.rail.unfold') : t('situation.rail.fold')}
+                    onClick={() => setFolded(!folded)}
+                >
+                    {folded ? (
+                        <>
+                            <ToolIcon name={tool} size={18} />
+                            <ToolIcon name="unfold" size={14} />
+                        </>
+                    ) : (
+                        <ToolIcon name="fold" size={18} />
+                    )}
+                    {tip(folded ? t('situation.rail.unfold') : t('situation.rail.fold'))}
+                </button>
+            )}
             {!folded &&
                 tools.map((name, index) =>
                     name ? (
@@ -140,13 +175,13 @@ export default function ToolRail({prefix, tools, tool, onTool, extra}) {
                             id={prefix + '-tool-' + name}
                             className={'railbtn' + (tool === name ? ' on' : '')}
                             aria-pressed={tool === name}
-                            aria-label={t('situation.tools.' + name)}
-                            aria-keyshortcuts={toolKey(t, name)}
-                            data-tour={'tool-' + name}
+                            aria-label={nameOf(name)}
+                            aria-keyshortcuts={keyOf(name) || undefined}
+                            data-tour={docked ? undefined : 'tool-' + name}
                             onClick={() => onTool(name)}
                         >
                             <ToolIcon name={name} />
-                            {tip(t('situation.tools.' + name), toolKey(t, name), t('situation.toolHelp.' + name))}
+                            {tip(nameOf(name), keyOf(name), helpOf(name))}
                         </button>
                     ) : (
                         <span key={'sep' + index} className="railsep" />

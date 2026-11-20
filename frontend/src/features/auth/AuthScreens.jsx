@@ -6,6 +6,7 @@ import {useState} from 'react'
 import {useTranslation} from '../../i18n/I18nProvider.jsx'
 import LanguageSelect from '../../i18n/LanguageSelect.jsx'
 import {changePassword, login, logout, register, setupAdmin} from '../../api/authApi.js'
+import Icon from '../../components/Icon.jsx'
 
 /** The top bar (name and language) and a card in the middle of the page. */
 /**
@@ -21,7 +22,7 @@ export function AuthLayout({children, onInfo, onLogin, onRegister, wide}) {
                 <span style={{flex: 1}} />
                 {onInfo && (
                     <a id="auth-info-link" className="authbarlink" href="#info" onClick={onInfo}>
-                        ⓘ {t('auth.infoLink')}
+                        <Icon name="info" /> {t('auth.infoLink')}
                     </a>
                 )}
                 {onLogin && (

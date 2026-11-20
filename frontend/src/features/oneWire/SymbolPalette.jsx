@@ -49,7 +49,7 @@ export default function SymbolPalette({symbolTypes, search, onSearch, free, onFr
                                     }}
                                     onDragEnd={onDragEnd}
                                 >
-                                    <svg width="20" height="20" viewBox="0 0 20 20">
+                                    <svg className="symtile" width="20" height="20" viewBox="0 0 20 20">
                                         <SymbolGraphic shapes={symbolType.shapes} x={10} y={10} size={18} />
                                     </svg>
                                     {symbolName(symbolType)}

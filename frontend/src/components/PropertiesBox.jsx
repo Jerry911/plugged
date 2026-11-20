@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // The Eigenschappen box of the selection, the same on the eendraadschema and the situatieschema: a title with a close button at the top
 // right, what is selected below it, then the fields and the toolbar of icon buttons (IconButton) the caller puts in.
+import Icon from './Icon.jsx'
 
 /**
  * id / titleId / closeId: the ids of the box, its title and its close button; title: the heading (Eigenschappen); subtitle (optional):
@@ -13,7 +14,7 @@ export function PropertiesBox({id, title, titleId, subtitle, subtitleId, closeId
             <div className="props-head">
                 <b id={titleId}>{title}</b>
                 <button type="button" className="props-close" id={closeId} title={closeLabel} aria-label={closeLabel} onClick={onClose}>
-                    ✕
+                    <Icon name="close" />
                 </button>
             </div>
             {subtitle && (

@@ -1,5 +1,127 @@
-/* Global resets and typography */
+/* Global resets, typography and the look of the plain controls. The controls use :where() (no specificity), so every rule of a part of
+   the application that styles its own buttons or fields still wins; the colours come from theme.css. */
 body {
     margin: 0;
-    font: 14px system-ui, sans-serif
+    font: 14px system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text)
+}
+
+:where(button) {
+    font: inherit;
+    color: var(--btn-text);
+    background: var(--btn-bg);
+    border: 1px solid var(--btn-border);
+    border-radius: 6px;
+    padding: 4px 10px;
+    cursor: pointer
+}
+
+:where(button):hover:not(:disabled) {
+    background: var(--btn-hover)
+}
+
+:where(button):disabled {
+    opacity: .45;
+    cursor: default
+}
+
+:where(button, a, summary, input, select, textarea):focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 1px
+}
+
+/* an icon and its text side by side */
+:where(button):has(> .ico) {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px
+}
+
+.ico {
+    flex: none
+}
+
+/* in a button the icon has the colour of the theme (yellow on the blue buttons of Werkbank); elsewhere that of the text */
+:where(button) .ico {
+    color: var(--btn-icon)
+}
+
+/* the main action of a page (Opslaan) and the yellow one (Kaderinfo, Groep aanmaken, …) */
+button.primary {
+    background: var(--primary);
+    color: var(--on-primary);
+    border-color: var(--primary);
+    font-weight: 600
+}
+
+button.primary:hover:not(:disabled) {
+    background: var(--primary-hover);
+    border-color: var(--primary-hover)
+}
+
+button.primary .ico {
+    color: var(--primary-icon)
+}
+
+button.accent {
+    background: var(--accent);
+    color: var(--on-accent);
+    border-color: var(--accent-border);
+    font-weight: 600
+}
+
+button.accent:hover:not(:disabled) {
+    background: var(--accent-hover)
+}
+
+button.accent .ico {
+    color: var(--on-accent)
+}
+
+:where(input:not([type="checkbox"], [type="radio"], [type="range"], [type="file"], [type="color"]), select, textarea) {
+    font: inherit;
+    color: var(--input-text);
+    background: var(--input-bg);
+    border: 1px solid var(--input-border);
+    border-radius: 6px;
+    padding: 4px 6px
+}
+
+:where(input, select, textarea):disabled {
+    opacity: .6
+}
+
+::placeholder {
+    color: var(--muted);
+    opacity: 1
+}
+
+input[type="checkbox"], input[type="radio"], input[type="range"] {
+    accent-color: var(--check)
+}
+
+:where(a) {
+    color: var(--link)
+}
+
+:where(summary) {
+    cursor: pointer;
+    color: var(--head)
+}
+
+:where(summary)::marker {
+    color: var(--muted)
+}
+
+:where(kbd) {
+    color: var(--text)
+}
+
+/* an icon inside a sentence (a help text that shows the button it talks about) */
+.ico.inline {
+    display: inline-block;
+    vertical-align: -3px;
+    margin: 0 1px
 }

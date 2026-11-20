@@ -2,24 +2,136 @@
 .bar {
     flex-wrap: wrap;
     display: flex;
-    gap: 6px;
-    padding: 8px;
-    background: #1f3a5f;
-    color: #fff;
+    gap: 5px;
+    padding: 8px 10px;
+    background: var(--top-bg);
+    color: var(--top-text);
+    border-bottom: 1px solid var(--top-sep);
     align-items: center
 }
 
-.bar .on {
-    background: #ffd54a;
+/* every button of the top bar: a light frame on the bar, icons in yellow (Marine, Werkbank) or navy (Helder) */
+.bar > button, .bar > .pm > button, .bar > select {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 34px;
+    padding: 4px 8px;
+    color: var(--top-text);
+    background: var(--top-btn-bg);
+    border: 1px solid var(--top-btn-border);
+    border-radius: 8px
+}
+
+.bar > select option {
+    color: var(--input-text);
+    background: var(--input-bg)
+}
+
+.bar > button:hover:not(:disabled), .bar > .pm > button:hover:not(:disabled) {
+    background: var(--top-btn-hover)
+}
+
+.bar > button:focus-visible, .bar > .pm > button:focus-visible, .bar > select:focus-visible {
+    outline: 2px solid var(--yellow);
+    outline-offset: 1px
+}
+
+.bar > button .ico, .bar > .pm > button .ico, .bar > span > .ico {
+    color: var(--top-icon)
+}
+
+/* the tab that is shown */
+.bar > .on, .bar > .on:hover:not(:disabled) {
+    background: var(--top-on-bg);
+    border-color: var(--top-on-bg);
+    color: var(--top-on-text);
     font-weight: 700
 }
 
-.bar .accent {
-    background: #ffd54a;
+.bar > .on .ico {
+    color: var(--top-on-text)
+}
+
+/* Kaderinfo */
+.bar > .accent, .bar > .accent:hover:not(:disabled) {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--on-accent);
     font-weight: 700
 }
 
-/* the bar with the pages above a schema: blue buttons with yellow icons, the page that is shown in yellow (as in the top bar) */
+.bar > .accent .ico {
+    color: var(--on-accent)
+}
+
+/* a count of problems on a tab or on Controleer: the icon and the number on a light pill */
+.count {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    padding: 0 5px;
+    border-radius: 9px;
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 18px
+}
+
+.count .ico, .bar .count .ico, .pagebar .count .ico {
+    color: currentColor
+}
+
+.count-error, .bar .count-error .ico {
+    background: #fde3e1;
+    color: #b42318
+}
+
+.count-warning, .bar .count-warning .ico {
+    background: #fff1c7;
+    color: #7a4b00
+}
+
+/* Werkbank: the tabs sit as one switch on the bar, the shown one in yellow */
+[data-theme="werkbank"] .bar .tab:not(.on) {
+    background: transparent;
+    border-color: transparent;
+    color: var(--text-2)
+}
+
+[data-theme="werkbank"] .bar > .accent:not(:hover) {
+    background: var(--top-btn-bg);
+    border-color: var(--border-strong);
+    color: var(--top-text)
+}
+
+[data-theme="werkbank"] .bar > .accent .ico {
+    color: var(--yellow)
+}
+
+/* Helder: the tabs are words with a yellow line under the one that is shown */
+[data-theme="helder"] .bar .tab, [data-theme="helder"] .bar .tab.on, [data-theme="helder"] .bar .tab:hover:not(:disabled) {
+    background: transparent;
+    border-color: transparent;
+    border-radius: 0;
+    border-bottom: 3px solid transparent;
+    color: #4a5a70
+}
+
+[data-theme="helder"] .bar .tab.on {
+    border-bottom-color: var(--yellow);
+    color: var(--navy)
+}
+
+[data-theme="helder"] .bar .tab:hover:not(:disabled) {
+    color: var(--navy)
+}
+
+[data-theme="helder"] .bar > .accent, [data-theme="helder"] .bar > .accent:hover:not(:disabled) {
+    background: var(--top-on-bg);
+    border-color: var(--top-on-bg)
+}
+
+/* the bar with the pages above a schema: the same buttons as the top bar, the page that is shown in yellow */
 .pagebar {
     display: flex;
     flex-wrap: wrap;
@@ -31,31 +143,31 @@
     display: inline-flex;
     align-items: center;
     gap: 5px;
-    background: #1f3a5f;
-    color: #fff;
-    border: 1px solid #1f3a5f;
+    background: var(--page-bg);
+    color: var(--page-text);
+    border: 1px solid var(--page-border);
     border-radius: 6px
 }
 
 .pagebar button:hover:not(:disabled) {
-    background: #2c5283;
-    border-color: #2c5283
+    background: var(--page-hover);
+    border-color: var(--page-hover)
 }
 
 .pagebar button:focus-visible {
-    outline: 2px solid #ffd54a;
+    outline: 2px solid var(--focus);
     outline-offset: 1px
 }
 
-.pagebar button.on {
-    background: #ffd54a;
-    border-color: #e0b52c;
-    color: #1f3a5f;
+.pagebar button.on, .pagebar button.on:hover:not(:disabled) {
+    background: var(--accent);
+    border-color: var(--accent-border);
+    color: var(--on-accent);
     font-weight: 700
 }
 
-.pagebar .pageicon {
-    color: #ffd54a
+.pagebar .ico {
+    color: var(--page-icon)
 }
 
 .pagebar .pageact {
@@ -65,6 +177,11 @@
 .pagebar button:disabled {
     opacity: .4;
     cursor: default
+}
+
+[data-theme="helder"] .pagebar button:not(.pageact) {
+    border-radius: 16px;
+    padding-inline: 14px
 }
 
 .row {
@@ -155,8 +272,8 @@
 
 /* educational mode: the elements to place, without any judgement */
 .rightpanel .neutral {
-    background: #f4f6f9;
-    border: 1px solid #c9d2dd;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
     padding: 6px
 }
 
@@ -185,8 +302,8 @@
     user-select: text;
     margin: 8px 10px;
     padding: 8px;
-    border: 1px solid #888;
-    background: #fafafa
+    border: 1px solid var(--border-strong);
+    background: var(--surface-2)
 }
 /* language picker in the top bar */
 .bar .langsel {
@@ -201,18 +318,10 @@
     flex: 1
 }
 
-.bar-icon {
-    display: none
-}
-
 /* a laptop screen: the buttons at the right of the top bar (print, info, admin, sign out) show only their icon, so the bar keeps one line */
 @media (max-width: 1500px) {
     .bar .minor {
         display: none
-    }
-
-    .bar .bar-icon {
-        display: inline
     }
 }
 
@@ -235,10 +344,6 @@
     /* only the icon of the less used buttons (their text is the hover text), no separators: the bar takes two lines instead of five */
     .bar .bar-text, .bar .sep, .bar-spacer {
         display: none
-    }
-
-    .bar .bar-icon {
-        display: inline
     }
 
     .row {

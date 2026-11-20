@@ -75,6 +75,14 @@ public final class AuthRequests {
             java.util.List<@NotNull(message = "account.invalidRules") @Pattern(regexp = RULE_PATTERN, message = "account.invalidRules") String> disabled) {
     }
 
+    /** The colour themes of the interface (Account → Mijn account); null on an account = the first, marine. */
+    public static final String THEME_PATTERN = "marine|werkbank|helder";
+
+    /** PUT /api/account/theme: the colours the user sees the interface in. */
+    public record ThemeSetting(
+            @NotNull(message = "account.invalidTheme") @Pattern(regexp = THEME_PATTERN, message = "account.invalidTheme") String theme) {
+    }
+
     public record DeleteAccount(String password) {
     }
 

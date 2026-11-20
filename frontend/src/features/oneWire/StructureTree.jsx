@@ -62,7 +62,7 @@ export default function StructureTree({project, tree, selectedId, onSelect, fold
                             )
                         )}
                     </span>
-                    <svg width="20" height="20" viewBox="0 0 22 22">
+                    <svg className="symtile" width="20" height="20" viewBox="0 0 22 22">
                         <SymbolGraphic shapes={placedShapesOf(typeOf(project, node.type), node.p)} x={11} y={11} size={20} />
                     </svg>
                     <span className="tree-name" style={isMainLevel ? {fontWeight: 600} : undefined}>

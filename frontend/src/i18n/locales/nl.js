@@ -472,6 +472,7 @@ export default {
         },
     },
     symbolEditor: {
+        modified: 'Aangepast',
         tools: {
             select: 'Selecteren',
             line: 'Lijn',
@@ -520,8 +521,6 @@ export default {
         undoShape: 'Laatste vorm ongedaan maken',
         clear: 'Leegmaken',
         unsaved: 'niet opgeslagen',
-        draw: 'Tekenen',
-        component: 'Component',
         restore: 'Standaard herstellen',
         makeStandard: 'Maak standaard',
         makeStandardTitle: 'Maak de huidige tekening de nieuwe standaard (overschrijft de standaardtekening)',
@@ -681,7 +680,7 @@ export default {
             bladen: {
                 title: 'Bladen en controle',
                 body: [
-                    'Met **＋ blad** voeg je een blad toe (✎ hernoemt, ⧉ dupliceert, ◀ ▶ verplaatst). **Controleer** zoekt fouten en waarschuwingen in je schema: klik op een melding om naar het element te springen.',
+                    'Met [icon:add] **blad** voeg je een blad toe ([icon:edit] hernoemt, [icon:duplicate] dupliceert, [icon:earlier] [icon:later] verplaatst). **Controleer** zoekt fouten en waarschuwingen in je schema: klik op een melding om naar het element te springen.',
                 ],
             },
             'naar-situatie': {
@@ -727,7 +726,7 @@ export default {
             kaderinfo: {
                 title: 'Waar staat de schaal?',
                 body: [
-                    'De schaal staat onderaan elk blad, rechts in het vak **Schaal** onder de datum. Klik op dat vak (of op de gele knop **✎ Kaderinfo**) om ze te bekijken en te wijzigen.',
+                    'De schaal staat onderaan elk blad, rechts in het vak **Schaal** onder de datum. Klik op dat vak (of op de gele knop [icon:footer] **Kaderinfo**) om ze te bekijken en te wijzigen.',
                 ],
                 done: 'Kaderinfo is open.',
             },
@@ -735,7 +734,7 @@ export default {
                 title: 'De schaal bekijken en aanpassen',
                 body: [
                     'In het veld **Schaal** staat wat je net koos. Wil je een andere schaal, bv. [[1:100]] voor een groter huis? Typ ze hier: alle maten bij de muren rekenen dan mee.',
-                    'Sluit het venster met **✕** om verder te gaan.',
+                    'Sluit het venster met [icon:close] om verder te gaan.',
                 ],
                 missing: 'Open eerst de Kaderinfo met de gele knop bovenaan.',
                 done: 'Mooi, de schaal staat vast.',
@@ -881,8 +880,8 @@ export default {
                     text: 'Je projecten staan op de server: je vindt ze terug op elke computer waarop je je aanmeldt. Alles staat onder **Project** in de bovenbalk.',
                     points: [
                         'Een nieuw project bewaar je de eerste keer met **Opslaan** ([[Alt]]+[[S]]); daarna slaat Plugged je eigen project na een wijziging vanzelf op.',
-                        '**Delen** met een of meer groepen (👥 in de lijst van Laden): de leden kunnen het project openen en bewaren.',
-                        'Elke keer opslaan is een versie: 🕘 toont de **geschiedenis** en Herstellen zet een oudere versie terug.',
+                        '**Delen** met een of meer groepen ([icon:users] in de lijst van Laden): de leden kunnen het project openen en bewaren.',
+                        'Elke keer opslaan is een versie: [icon:history] toont de **geschiedenis** en Herstellen zet een oudere versie terug.',
                         '**Dupliceren**, of verwijderen naar de **prullenbak**, van waaruit je het terugzet of definitief verwijdert.',
                         'Zoeken op naam, nummer, eigenaar of groep, en sorteren op datum, naam, eigenaar of nummer.',
                     ],
@@ -890,7 +889,7 @@ export default {
                 {
                     id: 'samenwerken',
                     title: 'Samen aan een project',
-                    text: 'Heeft iemand anders hetzelfde project open, dan zie je dat in de bovenbalk (👥, oranje als die persoon nog niet-opgeslagen wijzigingen heeft).',
+                    text: 'Heeft iemand anders hetzelfde project open, dan zie je dat in de bovenbalk ([icon:users], oranje als die persoon nog niet-opgeslagen wijzigingen heeft).',
                     points: [
                         'Slaat die persoon op, dan laadt de nieuwe versie bij jou meteen, tenzij jij zelf iets onbewaard hebt: dan krijg je ze aangeboden.',
                         'Niemand overschrijft ongemerkt het werk van een ander: bewaren twee mensen een verschillende versie, dan wordt de tweede geweigerd met een melding.',
@@ -941,7 +940,7 @@ export default {
                 {title: 'Gebruiker', text: 'Maakt en bewaart eigen projecten en symbolen, en opent wat met zijn groepen gedeeld is.'},
                 {
                     title: 'Groepseigenaar (leerkracht)',
-                    text: 'Lid van een groep met een ster (★). Zet onder **🎓 Mijn groepen** de educatieve modus van zijn groepen aan of uit, en wordt zelf nooit beperkt.',
+                    text: 'Lid van een groep met een ster ([icon:star]). Zet onder [icon:educational] **Mijn groepen** de educatieve modus van zijn groepen aan of uit, en wordt zelf nooit beperkt.',
                 },
                 {
                     title: 'Beheerder',
@@ -959,7 +958,7 @@ export default {
             account: [
                 '**Registreren** kan via de aanmeldpagina. Een beheerder keurt je account goed voor je ermee kan werken.',
                 '**Wachtwoord vergeten?** Plugged verstuurt geen e-mails: vraag een beheerder om een tijdelijk wachtwoord. Bij je volgende aanmelding kies je zelf een nieuw.',
-                'Onder **Account → Mijn account** wijzig je je wachtwoord, download je al je gegevens als één bestand, of verwijder je je account met alles wat van jou is.',
+                'Onder **Account → Mijn account** kies je het **thema** (Marine, de donkere Werkbank of het lichte Helder; het volgt je naar elk toestel), wijzig je je wachtwoord, download je al je gegevens als één bestand, of verwijder je je account met alles wat van jou is. De tekeningen blijven in elk thema zwart op wit.',
                 'Na te veel verkeerde wachtwoorden na elkaar wordt een account even geblokkeerd.',
             ],
         },
@@ -975,7 +974,7 @@ export default {
             ],
             canTitle: 'Leerlingen kunnen wel',
             can: ['tekenen, opslaan en hun eigen projecten dupliceren;', 'een **PDF** maken en **afdrukken** om in te dienen;', 'de rondleiding volgen en deze info lezen.'],
-            teacher: 'Een leerling ziet 🎓 in de bovenbalk. Zet de leerkracht de modus om, dan merkt een leerling die aan het werken is dat binnen een minuut. Eigenaars en beheerders worden nooit beperkt; wie eigenaar is van de ene groep maar leerling in een andere groep met educatieve modus, is wel beperkt.',
+            teacher: 'Een leerling ziet [icon:educational] in de bovenbalk. Zet de leerkracht de modus om, dan merkt een leerling die aan het werken is dat binnen een minuut. Eigenaars en beheerders worden nooit beperkt; wie eigenaar is van de ene groep maar leerling in een andere groep met educatieve modus, is wel beperkt.',
         },
         shortcuts: {
             title: 'Sneltoetsen',
@@ -1020,7 +1019,7 @@ export default {
                 },
                 {
                     question: 'Hoe maak ik mijn eigen symbool?',
-                    answer: 'Ga naar het tabblad Componenten en kies "＋ Nieuw component". Teken het symbool, geef het een naam en categorie en bepaal waaronder het mag hangen. Eigen symbolen zitten ook in het geëxporteerde projectbestand, zodat het op een andere installatie opent.',
+                    answer: 'Ga naar het tabblad Componenten en kies "[icon:add] Nieuw component". Teken het symbool, geef het een naam en categorie en bepaal waaronder het mag hangen. Eigen symbolen zitten ook in het geëxporteerde projectbestand, zodat het op een andere installatie opent.',
                 },
                 {
                     question: 'Zijn de controles bindend?',
@@ -1048,11 +1047,11 @@ export default {
                 },
                 {
                     question: 'Ik ben mijn wachtwoord vergeten. Wat nu?',
-                    answer: 'Plugged verstuurt geen e-mails. Vraag een beheerder van deze installatie om een tijdelijk wachtwoord (Account → Gebruikers → 🔑 Wachtwoord). Daarmee meld je je aan, en meteen daarna kies je zelf een nieuw wachtwoord.',
+                    answer: 'Plugged verstuurt geen e-mails. Vraag een beheerder van deze installatie om een tijdelijk wachtwoord (Account → Gebruikers → [icon:key] Wachtwoord). Daarmee meld je je aan, en meteen daarna kies je zelf een nieuw wachtwoord.',
                 },
                 {
                     question: 'Waarom zie ik geen knop Controleer?',
-                    answer: 'Dan zit je in een groep waarvan de educatieve modus aanstaat (je ziet 🎓 in de bovenbalk): als leerling beoordeel je je schema zelf. Je leerkracht of een beheerder kan de modus uitzetten.',
+                    answer: 'Dan zit je in een groep waarvan de educatieve modus aanstaat (je ziet [icon:educational] in de bovenbalk): als leerling beoordeel je je schema zelf. Je leerkracht of een beheerder kan de modus uitzetten.',
                 },
                 {
                     question: 'Wie kan mijn projecten zien?',
@@ -1207,9 +1206,19 @@ export default {
         loadTitle: 'De nieuwere versie laden (je niet-opgeslagen wijzigingen gaan verloren)',
     },
     account: {
+        theme: {
+            title: 'Thema',
+            text: 'Hoe Plugged eruitziet, op elk toestel waarop je aanmeldt. De tekeningen blijven altijd zwart op wit, zoals ze geprint worden.',
+            names: {marine: 'Marine', werkbank: 'Werkbank', helder: 'Helder'},
+            descriptions: {
+                marine: 'Marineblauwe balken met gele accenten. De standaard.',
+                werkbank: 'Donker, zoals een tekenprogramma: het blad springt eruit.',
+                helder: 'Licht en luchtig; geel enkel voor wat actief is.',
+            },
+        },
         button: 'Account',
         roleUser: 'Gebruiker',
-        buttonTitle: 'Mijn account: wachtwoord wijzigen, je gegevens downloaden, je account verwijderen',
+        buttonTitle: 'Mijn account: thema kiezen, wachtwoord wijzigen, je gegevens downloaden, je account verwijderen',
         buttonTitleAdmin: 'Mijn account, en de gebruikers, groepen en standaardsymbolen beheren',
         pageAdmin: 'Account en beheer',
         title: 'Mijn account',
@@ -1284,7 +1293,7 @@ export default {
         since: 'vanaf {date}',
         sincePartial: 'stopcontacten en verlichting vanaf {date}',
         tab: 'Controleregels',
-        intro: 'Kies welke regels Controleer nakijkt. Dit geldt enkel voor jou, in al je projecten; een uitgeschakelde regel verdwijnt uit de lijst en uit de tellers ✖ ⚠. Een leeg eendraadschema wordt altijd gemeld.',
+        intro: 'Kies welke regels Controleer nakijkt. Dit geldt enkel voor jou, in al je projecten; een uitgeschakelde regel verdwijnt uit de lijst en uit de tellers [icon:error] [icon:warning]. Een leeg eendraadschema wordt altijd gemeld.',
         allOn: 'Alles aanzetten',
         offCount: '{count} van {total} regels uitgeschakeld',
         allActive: 'Alle {total} regels staan aan',
@@ -1469,6 +1478,7 @@ export default {
         removeOwner: '{name} is geen eigenaar meer',
         ownerAdded: '{name} is eigenaar van {group}.',
         ownerRemoved: '{name} is geen eigenaar meer van {group}.',
+        owner: 'Eigenaar',
     },
     catalog: {
         intro: 'De standaardsymbolen die met Plugged meegeleverd worden, staan in één bestand. Teken een standaardsymbool in het tabblad Componenten en kies "Maak standaard": dan komt die tekening in dat bestand terecht wanneer je het hier downloadt.',
@@ -1510,7 +1520,7 @@ export default {
         tab: 'Mijn groepen',
         tabTitle: 'De groepen waarvan je eigenaar bent: educatieve modus',
         title: 'Mijn groepen',
-        intro: 'Je bent eigenaar van deze groepen. Zet de educatieve modus aan om de leden die geen eigenaar zijn (je studenten) te laten werken zonder controle, import of export. Jij en de beheerders kunnen dat altijd. ★ = eigenaar.',
+        intro: 'Je bent eigenaar van deze groepen. Zet de educatieve modus aan om de leden die geen eigenaar zijn (je studenten) te laten werken zonder controle, import of export. Jij en de beheerders kunnen dat altijd. [icon:star] = eigenaar.',
         loadFailed: 'Je groepen konden niet geladen worden.',
     },
 }

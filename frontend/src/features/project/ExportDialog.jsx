@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import {useState} from 'react'
 import {useTranslation} from '../../i18n/I18nProvider.jsx'
+import Icon from '../../components/Icon.jsx'
 
 // The file types the project can be exported as (labels and hints: export.types.<id>). Import needs no dialog: the file picker accepts all
 // of them (IMPORT_ACCEPT) and importKind() decides from the name (or, failing that, the content) what kind of file was chosen.
@@ -25,7 +26,7 @@ export function ExportDialog({onExport, onClose}) {
             <div className="tb">
                 <b>{t('export.title')}</b>
                 <button id="export-close" className="sheetInfoBtn" title={t('common.close')} onClick={onClose}>
-                    ✕
+                    <Icon name="close" />
                 </button>
             </div>
             <p style={{margin: '6px 0'}}>{t('export.chooseType')}</p>

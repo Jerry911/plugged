@@ -814,7 +814,8 @@ test('the panel shows the all-placed message and has no badge when nothing is mi
     const init = P()
     init.sit[0].items = [{id: 'i', kind: 'sym', node: 'n1', x: 10, y: 10, r: 0, s: 7}]
     const {container} = mount(SituationSchema, init, {pageIndex: 0})
-    expect(container.querySelector('.rightpanel').textContent).toContain('✓ Alle componenten geplaatst')
+    expect(getById('sit-all-placed')).toHaveTextContent('Alle componenten geplaatst')
+    expect(getById('sit-all-placed').querySelector('[data-icon="check"]')).toBeTruthy()
     fireEvent.click(getById('sit-unplaced-toggle'))
     expect(container.querySelector('.badge')).toBeNull()
 })

@@ -5,6 +5,7 @@ import {useMemo} from 'react'
 import {useTranslation} from '../../i18n/I18nProvider.jsx'
 import {billOfMaterials} from '../../model/materials.js'
 import {download, materialsCsv, materialsFileName, materialsXlsx} from './materialsExport.js'
+import Icon from '../../components/Icon.jsx'
 
 const XLSX_TYPE = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
 
@@ -48,7 +49,7 @@ export default function MaterialsDialog({project, projectId, onClose}) {
             <div className="tb">
                 <b>{t('materials.title')}</b>
                 <button id="materials-close" className="sheetInfoBtn" title={t('common.close')} onClick={onClose}>
-                    ✕
+                    <Icon name="close" />
                 </button>
             </div>
             <p style={{margin: '6px 0'}}>{t('materials.intro', {count: bom.circuits})}</p>

@@ -618,7 +618,9 @@ test('Controleer button shows counts, lists issues and navigates to the node', a
     await mount()
     await pageNamed('Hoofd')
     const btn = getById('btn-verify')
-    expect(btn.textContent).toMatch(/✖3.*⚠/) // no earth, no differential at the origin, the circuit without differential
+    // no earth, no differential at the origin, the circuit without differential; and warnings
+    expect(btn.querySelector('.count-error').textContent).toBe('3')
+    expect(btn.querySelector('.count-warning')).toBeTruthy()
     fireEvent.click(btn)
     getById('verify-panel')
     fireEvent.click(issue('kring.noDiff'))
@@ -627,6 +629,15 @@ test('Controleer button shows counts, lists issues and navigates to the node', a
     fireEvent.click(getById('verify-close'))
     expect(byId('verify-panel')).toBeNull()
 })
+test('after signing in, the theme the user chose (stored on the server) is shown, also on a browser he did not use before', async () => {
+    setup(flawed)
+    const answer = global.fetch.getMockImplementation()
+    global.fetch = vi.fn(async (url, o) => (url === '/api/account/theme' ? {ok: true, json: async () => ({theme: 'helder'})} : answer(url, o)))
+    await mount()
+    await waitFor(() => expect(document.documentElement.dataset.theme).toBe('helder'))
+    expect(localStorage.getItem('plugged.theme')).toBe('helder')
+    delete document.documentElement.dataset.theme
+})
 test('the rules a user switched off are loaded and left out; Controleer links to them', async () => {
     setup(flawed)
     const answer = global.fetch.getMockImplementation()
@@ -634,7 +645,7 @@ test('the rules a user switched off are loaded and left out; Controleer links to
     await mount()
     await pageNamed('Hoofd')
     // only the missing earth is left of the three errors
-    await waitFor(() => expect(getById('btn-verify').textContent).toMatch(/✖1(?!\d)/))
+    await waitFor(() => expect(getById('btn-verify').querySelector('.count-error').textContent).toBe('1'))
     fireEvent.click(getById('btn-verify'))
     expect(byId('verify-panel').querySelector('[data-rule="kring.noDiff"]')).toBeNull()
     expect(getById('verify-disabled')).toHaveTextContent(t('verify.disabledNote', {count: 2}))
@@ -668,8 +679,9 @@ test('Controleer sits in the eendraadschema bar and the tab shows errors and war
     setup(flawed)
     await mount()
     await pageNamed('Hoofd')
-    const tab = getById('tab-een')
-    expect(tab.textContent).toMatch(/✖3.*⚠\d+/)
+    expect(getById('tab-een')).toContainElement(getById('tab-een-errors'))
+    expect(getById('tab-een-errors').textContent).toBe('3')
+    expect(getById('tab-een-warnings').textContent).toMatch(/^\d+$/)
     expect(getById('btn-verify').closest('.bar')).toBeNull() // not in the header
     fireEvent.click(getById('tab-sit'))
     expect(byId('btn-verify')).toBeNull() // only on the eendraadschema tab

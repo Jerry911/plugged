@@ -10,10 +10,12 @@ import InfoPage from '../features/info/InfoPage.jsx'
 import AuthGate from '../features/auth/AuthGate.jsx'
 import AccountPage from '../features/account/AccountPage.jsx'
 import TeacherPage from '../features/admin/TeacherPage.jsx'
-import {fetchRuleSettings, fetchUsers} from '../api/authApi.js'
+import {fetchRuleSettings, fetchUsers, fetchTheme} from '../api/authApi.js'
 import {ExportDialog, IMPORT_ACCEPT, importKind} from '../features/project/ExportDialog.jsx'
 import ProjectMenu from '../features/project/ProjectMenu.jsx'
 import {FooterDialog} from '../features/footer/FooterDialog.jsx'
+import Icon, {CountBadge} from '../components/Icon.jsx'
+import {applyTheme} from './theme.js'
 import VerifyPanel from '../features/verify/VerifyPanel.jsx'
 import {AllSheets, makePdf} from '../features/project/pdfExport.jsx'
 import {pagesZipName, sheetsPngZip, sheetsSvgZip} from '../features/project/pagesExport.js'
@@ -149,6 +151,8 @@ function Editor({library, user, onLogout, onAccountDeleted}) {
     useEffect(() => {
         let live = true
         fetchRuleSettings().then((result) => live && result.ok && setDisabledRules(result.disabled))
+        // his own colours (Account → Mijn account), also on a browser he did not use before
+        fetchTheme().then((result) => live && result.ok && applyTheme(result.theme))
         return () => {
             live = false
         }
@@ -549,38 +553,30 @@ function Editor({library, user, onLogout, onAccountDeleted}) {
                     <button
                         key={entry.id}
                         id={'tab-' + entry.id}
-                        className={tab === index ? 'on' : ''}
+                        className={'tab' + (tab === index ? ' on' : '')}
                         title={narrowScreen && entry.short ? t(entry.label) : undefined}
                         onClick={() => setTab(index)}
                     >
                         {/* on a narrow screen the schemas have a short name (the full one is the hover text): the bar keeps to three lines */}
                         {narrowScreen && entry.short ? t(entry.short) : t(entry.label)}
                         {index === SITUATION_TAB && unplacedCount > 0 && !restricted && (
-                            <span id="tab-sit-unplaced" title={t('tabs.unplacedTitle')}>
-                                {' '}⚠{unplacedCount}
-                            </span>
+                            <CountBadge id="tab-sit-unplaced" kind="warning" count={unplacedCount} title={t('tabs.unplacedTitle')} />
                         )}
-                        {index === ONE_WIRE_TAB && errorCount > 0 && (
-                            <span id="tab-een-errors" title={t('tabs.errorsTitle')}>
-                                {' '}✖{errorCount}
-                            </span>
-                        )}
+                        {index === ONE_WIRE_TAB && errorCount > 0 && <CountBadge id="tab-een-errors" kind="error" count={errorCount} title={t('tabs.errorsTitle')} />}
                         {index === ONE_WIRE_TAB && warningCount > 0 && (
-                            <span id="tab-een-warnings" title={t('tabs.warningsTitle')}>
-                                {' '}⚠{warningCount}
-                            </span>
+                            <CountBadge id="tab-een-warnings" kind="warning" count={warningCount} title={t('tabs.warningsTitle')} />
                         )}
                     </button>
                 ))}
                 <span className="sep" />
                 <button id="btn-undo" title={t('app.undoTitle')} disabled={!canUndo} onClick={undo}>
-                    ↶ <span className="bar-text">{t('app.undo')}</span>
+                    <Icon name="undo" size={18} /> <span className="bar-text minor">{t('app.undo')}</span>
                 </button>
                 <button id="btn-redo" title={t('app.redoTitle')} disabled={!canRedo} onClick={redo}>
-                    ↷ <span className="bar-text">{t('app.redo')}</span>
+                    <Icon name="redo" size={18} /> <span className="bar-text minor">{t('app.redo')}</span>
                 </button>
                 <button id="btn-footer" className="accent" title={t('app.footer')} onClick={() => openFooter()}>
-                    ✎ <span className="bar-text">{t('app.footer')}</span>
+                    <Icon name="footer" size={18} /> <span className="bar-text">{t('app.footer')}</span>
                 </button>
                 <span className="bar-spacer" />
                 {others.length > 0 && (
@@ -591,7 +587,7 @@ function Editor({library, user, onLogout, onAccountDeleted}) {
                             .map((other) => (other.me ? t('presence.youElsewhere') : other.name) + (other.editing ? ' (' + t('presence.unsaved') + ')' : ''))
                             .join('\n')}
                     >
-                        👥 {others.length === 1 ? (others[0].me ? t('presence.youElsewhere') : others[0].name) : t('presence.count', {count: others.length})}
+                        <Icon name="users" size={16} /> {others.length === 1 ? (others[0].me ? t('presence.youElsewhere') : others[0].name) : t('presence.count', {count: others.length})}
                     </span>
                 )}
                 {newerVersion && (
@@ -606,16 +602,16 @@ function Editor({library, user, onLogout, onAccountDeleted}) {
                 <span className="sep" />
                 <LanguageSelect />
                 <button id="tab-info" className={tab === INFO_TAB ? 'on' : ''} title={t('tabs.infoTitle')} onClick={() => setTab(INFO_TAB)}>
-                    ⓘ <span className="bar-text minor">{t('tabs.info')}</span>
+                    <Icon name="info" size={18} /> <span className="bar-text minor">{t('tabs.info')}</span>
                 </button>
                 {restricted && (
                     <span id="educational-badge" className="edubadge" role="img" title={t('educational.badge')} aria-label={t('educational.badge')}>
-                        🎓
+                        <Icon name="educational" size={18} />
                     </span>
                 )}
                 {!user.admin && user.ownedGroups?.length > 0 && (
                     <button id="tab-teacher" className={tab === TEACHER_TAB ? 'on' : ''} title={t('teacher.tabTitle')} onClick={() => setTab(TEACHER_TAB)}>
-                        🎓 <span className="bar-text minor">{t('teacher.tab')}</span>
+                        <Icon name="educational" size={18} /> <span className="bar-text minor">{t('teacher.tab')}</span>
                     </button>
                 )}
                 {/* Account: a page for every user (his own account); an administrator also manages the users, groups and symbols there */}
@@ -625,9 +621,7 @@ function Editor({library, user, onLogout, onAccountDeleted}) {
                     title={t(user.admin ? 'account.buttonTitleAdmin' : 'account.buttonTitle')}
                     onClick={() => (setAccountSection(null), setTab(ACCOUNT_TAB))}
                 >
-                    <span className="bar-icon" aria-hidden="true">
-                        👤
-                    </span>
+                    <Icon name="user" size={18} />
                     <span className="bar-text minor">{t('account.button')}</span>
                     {user.admin && waitingUsers > 0 && (
                         <span id="tab-account-waiting" className="badge" title={t('users.pending', {count: waitingUsers})}>
@@ -636,9 +630,7 @@ function Editor({library, user, onLogout, onAccountDeleted}) {
                     )}
                 </button>
                 <button id="btn-logout" title={t('auth.logoutTitle', {name: `${user.name} ${user.surname}`})} onClick={signOut}>
-                    <span className="bar-icon" aria-hidden="true">
-                        ⏻
-                    </span>
+                    <Icon name="power" size={18} />
                     <span className="bar-text minor">{t('auth.logout')}</span>
                 </button>
             </div>

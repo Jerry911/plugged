@@ -438,7 +438,7 @@ for (const language of LANGUAGES) {
         await shootArea(page, language, 'projecten', {locators: [page.locator('#project-menu'), page.locator('#project-list')]})
         await page.keyboard.press('Escape')
         await page.keyboard.press('Alt+q')
-        await expect(page.locator('#qr-dialog svg')).toBeVisible()
+        await expect(page.locator('#qr-dialog .qr-preview svg')).toBeVisible()
         await shoot(page.locator('#qr-dialog'), language, 'qr')
         await page.keyboard.press('Escape')
         await app.project()

@@ -17,7 +17,7 @@ const scan = async (browser, baseURL, backend, id, key) => {
 const openQr = async (page, app) => {
     await app.project()
     await page.locator('#btn-qr').click()
-    await expect(page.locator('#qr-dialog svg')).toBeVisible()
+    await expect(page.locator('#qr-dialog .qr-preview svg')).toBeVisible()
 }
 
 test('a new project has to be saved first; then Project → QR-code shows the code, prints it and downloads it as SVG', async ({page, app, backend}) => {
@@ -54,14 +54,14 @@ test('Alt+Q opens the code of the open project; the QR icon in the list opens th
     await expect(page.locator('#btn-qr')).toBeEnabled()
     await page.keyboard.press('Escape')
     await page.keyboard.press('Alt+q')
-    await expect(page.locator('#qr-dialog svg')).toBeVisible()
+    await expect(page.locator('#qr-dialog .qr-preview svg')).toBeVisible()
     await expect(page.locator('.qr-print')).toContainText(t('qr.printNumber', {number: backend.id(1)}))
     await page.keyboard.press('Escape')
     await expect(page.locator('#qr-dialog')).toHaveCount(0)
     await app.project()
     await page.locator('#btn-load').click()
     await page.locator('#project-qr-' + backend.id(2)).click()
-    await expect(page.locator('#qr-dialog svg')).toBeVisible()
+    await expect(page.locator('#qr-dialog .qr-preview svg')).toBeVisible()
     await expect(page.locator('.qr-print')).toContainText('Garage')
     await expect(page.locator('.qr-print')).toContainText(t('qr.printNumber', {number: backend.id(2)}))
     await page.locator('#qr-close').click()
@@ -106,7 +106,7 @@ test('Nieuwe sleutel asks first, then the codes printed before stop working and 
     await openQr(page, app)
     const id = backend.id(1),
         old = await backend.qrKey(1),
-        codeBefore = await page.locator('#qr-dialog svg path').getAttribute('d')
+        codeBefore = await page.locator('#qr-dialog .qr-preview svg path').getAttribute('d')
     // cancelled: nothing changes
     dialogs.confirm = false
     await page.locator('#qr-renew').click()
@@ -115,7 +115,7 @@ test('Nieuwe sleutel asks first, then the codes printed before stop working and 
     // confirmed: a new code
     dialogs.confirm = true
     await page.locator('#qr-renew').click()
-    await expect.poll(() => page.locator('#qr-dialog svg path').getAttribute('d')).not.toBe(codeBefore)
+    await expect.poll(() => page.locator('#qr-dialog .qr-preview svg path').getAttribute('d')).not.toBe(codeBefore)
     const renewed = await backend.qrKey(1)
     expect(renewed).not.toBe(old)
     const oldScan = await scan(browser, baseURL, backend, id, old)

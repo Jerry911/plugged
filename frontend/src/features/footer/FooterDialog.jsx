@@ -6,6 +6,7 @@
 import {useTranslation} from '../../i18n/I18nProvider.jsx'
 import {formatDate, parseInstallationDate} from '../../model/installationDate.js'
 import {rulesNotApplicable} from '../../model/rules.js'
+import Icon from '../../components/Icon.jsx'
 
 /** The footer fields in the order of the form; the labels are in the translations (footer.fields.<key>). */
 export const FOOTER_FIELDS = [
@@ -86,7 +87,7 @@ export const FooterDialog = ({project, setProject, focus, onClose}) => {
             <div className="tb">
                 <b>{t('footer.heading')}</b>{' '}
                 <button id="footer-close" className="sheetInfoBtn" title={t('common.close')} onClick={onClose}>
-                    ✕
+                    <Icon name="close" />
                 </button>
             </div>
             <FooterForm project={project} setProject={setProject} focus={focus} />

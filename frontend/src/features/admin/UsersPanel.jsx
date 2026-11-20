@@ -3,6 +3,7 @@
 // The accounts on the Account page (administrators only): those waiting for approval first.
 import {useTranslation} from '../../i18n/I18nProvider.jsx'
 import {fullName} from './names.js'
+import Icon from '../../components/Icon.jsx'
 
 export default function UsersPanel({users, groups, currentUser, busy, actions}) {
     const {t, locale} = useTranslation()
@@ -61,7 +62,7 @@ export default function UsersPanel({users, groups, currentUser, busy, actions}) 
                                     {user.lockedUntil && (
                                         <span id={'users-locked-' + user.id} className="userstag waiting" title={t('users.lockedTitle', {time: moment(user.lockedUntil)})}>
                                             {' '}
-                                            🔒 {t('users.locked')}
+                                            <Icon name="lock" size={12} /> {t('users.locked')}
                                         </span>
                                     )}
                                 </td>
@@ -73,12 +74,12 @@ export default function UsersPanel({users, groups, currentUser, busy, actions}) 
                                     )}
                                     {!user.approved && (
                                         <button id={'users-approve-' + user.id} className="accent" disabled={busy} onClick={() => actions.approve(user)}>
-                                            ✓ {t('users.approve')}
+                                            <Icon name="check" /> {t('users.approve')}
                                         </button>
                                     )}
                                     {user.approved && !self && !user.primary && (
                                         <button id={'users-password-' + user.id} disabled={busy} title={t('users.resetPasswordTitle')} onClick={() => actions.resetPassword(user)}>
-                                            🔑 {t('users.resetPassword')}
+                                            <Icon name="key" /> {t('users.resetPassword')}
                                         </button>
                                     )}
                                     {user.approved && !user.admin && (

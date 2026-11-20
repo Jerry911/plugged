@@ -29,6 +29,7 @@ import SymbolsPanel from '../admin/SymbolsPanel.jsx'
 import {fullName} from '../admin/names.js'
 import AccountPanel from './AccountPanel.jsx'
 import RulesPanel from './RulesPanel.jsx'
+import Icon from '../../components/Icon.jsx'
 
 /**
  * `currentUser` = the signed-in user; `onDeleted()` after he removed his own account; `disabledRules` / `onRulesChange(disabled)` the rules
@@ -108,7 +109,7 @@ export default function AccountPage({currentUser, onDeleted, onUsersChange, init
                 <h1>{t(admin ? 'account.pageAdmin' : 'account.title')}</h1>
                 {admin && !OWN_SECTIONS.includes(section) && (
                     <button id="admin-reload" onClick={load}>
-                        ↻ {t('admin.reload')}
+                        <Icon name="refresh" /> {t('admin.reload')}
                     </button>
                 )}
             </div>

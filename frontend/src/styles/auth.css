@@ -3,7 +3,7 @@
     min-height: 100vh;
     display: flex;
     flex-direction: column;
-    background: #eef2f7
+    background: var(--surface-2)
 }
 
 .authbrand {
@@ -28,8 +28,8 @@
     display: grid;
     gap: 12px;
     padding: 24px 24px 20px;
-    background: #fff;
-    border-top: 4px solid #1f3a5f;
+    background: var(--surface);
+    border-top: 4px solid var(--head);
     border-radius: 6px;
     box-shadow: 0 1px 3px rgba(16, 32, 56, .12), 0 8px 24px rgba(16, 32, 56, .08)
 }
@@ -37,12 +37,12 @@
 .authcard h1 {
     margin: 0;
     font-size: 20px;
-    color: #1f3a5f
+    color: var(--head)
 }
 
 .authintro {
     margin: 0;
-    color: #444;
+    color: var(--text-2);
     line-height: 1.45
 }
 
@@ -51,7 +51,7 @@
     gap: 4px;
     font-size: 13px;
     font-weight: 600;
-    color: #333
+    color: var(--text)
 }
 
 .authfield input {
@@ -59,41 +59,42 @@
     font-weight: 400;
     font-size: 14px;
     padding: 8px 9px;
-    border: 1px solid #b8c2cf;
+    border: 1px solid var(--border-strong);
     border-radius: 4px;
     width: 100%;
     box-sizing: border-box
 }
 
 .authfield input:focus {
-    outline: 2px solid #ffd54a;
+    outline: 2px solid var(--accent);
     outline-offset: 0;
-    border-color: #1f3a5f
+    border-color: var(--head)
 }
 
 .authfield input[readonly] {
-    background: #f1f3f6;
-    color: #555
+    background: var(--surface-2);
+    color: var(--muted)
 }
 
 .authfield small {
     font-weight: 400;
-    color: #666
+    color: var(--muted)
 }
 
 .authsubmit {
     margin-top: 4px;
+    color: var(--on-accent);
     padding: 9px 14px;
     font: inherit;
     font-weight: 700;
-    background: #ffd54a;
-    border: 1px solid #e0b400;
+    background: var(--accent);
+    border: 1px solid var(--accent-border);
     border-radius: 4px;
     cursor: pointer
 }
 
 .authsubmit:hover:not(:disabled) {
-    background: #ffcd24
+    background: var(--accent-hover)
 }
 
 .authsubmit:disabled {
@@ -104,11 +105,11 @@
 .authswitch {
     margin: 4px 0 0;
     text-align: center;
-    color: #555
+    color: var(--muted)
 }
 
 .authswitch a {
-    color: #1f3a5f;
+    color: var(--head);
     font-weight: 600
 }
 
@@ -120,15 +121,15 @@
 }
 
 .authmsg.error {
-    background: #fdecea;
-    border-left: 4px solid #c62828;
-    color: #7a1c1c
+    background: var(--danger-bg);
+    border-left: 4px solid var(--danger);
+    color: var(--danger)
 }
 
 .authmsg.info {
-    background: #eaf3ea;
-    border-left: 4px solid #2e7d32;
-    color: #1d4d20
+    background: var(--ok-bg);
+    border-left: 4px solid var(--ok);
+    color: var(--ok)
 }
 
 /* the session ended during the work: sign in again on top of the editor */
@@ -159,7 +160,7 @@
 
 .adminhead h1 {
     margin: 0;
-    color: #1f3a5f
+    color: var(--head)
 }
 
 .adminhead button, .usersactions button, .grouphead button, .groupadd button, .groupcreate button {
@@ -171,23 +172,23 @@
     display: flex;
     gap: 2px;
     margin: 14px 0 12px;
-    border-bottom: 2px solid #1f3a5f
+    border-bottom: 2px solid var(--head)
 }
 
 .admintabs button {
     padding: 7px 16px;
-    border: 1px solid #c9d2dd;
+    border: 1px solid var(--border);
     border-bottom: 0;
     border-radius: 5px 5px 0 0;
-    background: #eef2f7;
+    background: var(--surface-2);
     font: inherit;
     cursor: pointer
 }
 
 .admintabs button.on {
-    background: #1f3a5f;
-    border-color: #1f3a5f;
-    color: #fff;
+    background: var(--primary);
+    border-color: var(--head);
+    color: var(--on-primary);
     font-weight: 700
 }
 
@@ -195,15 +196,15 @@
     margin-left: 6px;
     padding: 0 6px;
     border-radius: 8px;
-    background: #dde3ea;
-    color: #333;
+    background: var(--hover);
+    color: var(--text);
     font-size: 11px;
     font-weight: 600
 }
 
 .admintabs button.on .admincount {
     background: rgba(255, 255, 255, .25);
-    color: #fff
+    color: var(--on-primary)
 }
 
 /* on a phone the tabs do not fit next to each other: they wrap as buttons, each with its whole name on one line */
@@ -217,7 +218,7 @@
     .admintabs button {
         flex: 1 1 auto;
         padding: 6px 10px;
-        border-bottom: 1px solid #c9d2dd;
+        border-bottom: 1px solid var(--border);
         border-radius: 5px;
         white-space: nowrap
     }
@@ -236,11 +237,11 @@
 }
 
 .userslogin i {
-    color: #666
+    color: var(--muted)
 }
 
 .usersgroups {
-    color: #555;
+    color: var(--muted);
     font-size: 13px
 }
 
@@ -255,13 +256,13 @@
     max-width: 360px;
     font: inherit;
     padding: 6px 8px;
-    border: 1px solid #b8c2cf;
+    border: 1px solid var(--border-strong);
     border-radius: 4px
 }
 
 .groupcreate .accent, .groupadd .accent {
-    background: #ffd54a;
-    border: 1px solid #e0b400;
+    background: var(--accent);
+    border: 1px solid var(--accent-border);
     font-weight: 700
 }
 
@@ -275,10 +276,10 @@
 
 .groupcard {
     padding: 10px 12px;
-    border: 1px solid #dde3ea;
-    border-left: 4px solid #1f3a5f;
+    border: 1px solid var(--border);
+    border-left: 4px solid var(--head);
     border-radius: 5px;
-    background: #fff
+    background: var(--surface)
 }
 
 .grouphead {
@@ -290,7 +291,7 @@
 .grouphead h3 {
     margin: 0;
     font-size: 16px;
-    color: #1f3a5f
+    color: var(--head)
 }
 
 .groupmembers {
@@ -308,7 +309,7 @@
     gap: 4px;
     padding: 2px 4px 2px 10px;
     border-radius: 14px;
-    background: #eef2f7;
+    background: var(--surface-2);
     font-size: 13px
 }
 
@@ -319,18 +320,18 @@
     line-height: 1;
     padding: 0 5px;
     cursor: pointer;
-    color: #555;
+    color: var(--muted);
     border-radius: 50%
 }
 
 .memberchip button:hover {
-    background: #c62828;
-    color: #fff
+    background: var(--danger-solid);
+    color: var(--on-danger)
 }
 
 .groupempty {
     margin: 8px 0 0;
-    color: #666;
+    color: var(--muted);
     font-style: italic
 }
 
@@ -358,7 +359,7 @@
 .userstable th, .userstable td {
     text-align: left;
     padding: 8px 10px;
-    border-bottom: 1px solid #dde3ea;
+    border-bottom: 1px solid var(--border);
     vertical-align: middle
 }
 
@@ -366,7 +367,7 @@
     font-size: 12px;
     text-transform: uppercase;
     letter-spacing: .04em;
-    color: #555
+    color: var(--muted)
 }
 
 .userstable .num {
@@ -375,11 +376,11 @@
 }
 
 .userstable tr.waiting td {
-    background: #fffbea
+    background: var(--warn-bg)
 }
 
 .usersyou {
-    color: #777
+    color: var(--muted)
 }
 
 .userstag {
@@ -391,18 +392,18 @@
 }
 
 .userstag.admin {
-    background: #1f3a5f;
-    color: #fff
+    background: var(--primary);
+    color: var(--on-primary)
 }
 
 .userstag.approved {
-    background: #d4edda;
-    color: #1d4d20
+    background: var(--ok-bg);
+    color: var(--ok)
 }
 
 .userstag.waiting {
-    background: #fff3cd;
-    color: #6b5200
+    background: var(--warn-bg);
+    color: var(--warn)
 }
 
 .usersactions {
@@ -415,8 +416,8 @@
 }
 
 .usersactions .accent {
-    background: #ffd54a;
-    border: 1px solid #e0b400;
+    background: var(--accent);
+    border: 1px solid var(--accent-border);
     font-weight: 700
 }
 
@@ -428,7 +429,7 @@
     .userstable tr {
         display: grid;
         padding: 8px 0;
-        border-bottom: 1px solid #dde3ea
+        border-bottom: 1px solid var(--border)
     }
 
     .userstable td {
@@ -447,7 +448,7 @@
 
     .userstable td.userslogins::before {
         content: attr(data-label) ': ';
-        color: #5a6b80
+        color: var(--muted)
     }
 
     .grouphead {
@@ -463,7 +464,7 @@
 }
 
 .catalogchanges small {
-    color: #666
+    color: var(--muted)
 }
 
 .catalogsteps {
@@ -472,7 +473,7 @@
 }
 
 .catalogsteps code {
-    background: #eef2f7;
+    background: var(--surface-2);
     padding: 2px 6px;
     border-radius: 3px;
     font-size: 12px
@@ -481,14 +482,14 @@
 .catalogsteps .accent {
     margin-left: 6px;
     padding: 4px 10px;
-    background: #ffd54a;
-    border: 1px solid #e0b400;
+    background: var(--accent);
+    border: 1px solid var(--accent-border);
     font-weight: 700;
     cursor: pointer
 }
 
 .catalognote {
-    color: #555;
+    color: var(--muted);
     font-size: 13px;
     max-width: 760px
 }
@@ -497,8 +498,8 @@
 .edubadge {
     padding: 3px 8px;
     border-radius: 10px;
-    background: #ffd54a;
-    color: #1f3a5f;
+    background: var(--accent);
+    color: var(--on-accent);
     font-size: 12px;
     font-weight: 700;
     white-space: nowrap
@@ -516,30 +517,30 @@
 
 .eduswitch small {
     font-weight: 400;
-    color: #666
+    color: var(--muted)
 }
 
 .groupcard.edu {
-    border-left-color: #ffd54a
+    border-left-color: var(--accent)
 }
 
 .memberchip.owner {
-    background: #1f3a5f;
-    color: #fff
+    background: var(--primary);
+    color: var(--on-primary)
 }
 
 .memberchip .ownertoggle {
     font-size: 14px;
-    color: #b38f00
+    color: var(--warn)
 }
 
-.memberchip.owner .ownertoggle, .memberchip.owner button {
-    color: #ffd54a
+.memberchip.owner .ownertoggle, .memberchip.owner button, .memberchip.owner .ico {
+    color: var(--primary-icon)
 }
 
 .memberchip .ownertoggle:hover {
-    background: #ffd54a;
-    color: #1f3a5f
+    background: var(--accent);
+    color: var(--on-accent)
 }
 
 #catalog-problems ul {
@@ -564,8 +565,8 @@
 }
 
 .accountcard {
-    background: #fff;
-    border: 1px solid #dde3ea;
+    background: var(--surface);
+    border: 1px solid var(--border);
     border-radius: 8px;
     padding: 16px 18px;
     box-shadow: 0 1px 2px rgba(31, 58, 95, .06)
@@ -582,8 +583,8 @@
     width: 44px;
     height: 44px;
     border-radius: 50%;
-    background: #1f3a5f;
-    color: #ffd54a;
+    background: var(--primary);
+    color: var(--primary-icon);
     display: grid;
     place-items: center;
     font-weight: 700;
@@ -599,11 +600,11 @@
 
 .accountwho b {
     font-size: 1.1em;
-    color: #1f3a5f
+    color: var(--head)
 }
 
 .accountmail {
-    color: #5a6b80
+    color: var(--muted)
 }
 
 .accountgrid {
@@ -622,7 +623,7 @@
 .accountpanel h3 {
     margin: 0 0 12px;
     font-size: 1.05em;
-    color: #1f3a5f;
+    color: var(--head);
     display: flex;
     align-items: center;
     gap: 8px
@@ -630,17 +631,17 @@
 
 .accountpanel p {
     margin: 0 0 12px;
-    color: #3b4a5c;
+    color: var(--text-2);
     line-height: 1.45
 }
 
 /* every button of the tab the same: the yellow of the app */
 .accountpanel button.accent {
     align-self: flex-start;
-    background: #ffd54a;
-    border: 1px solid #e0b400;
+    background: var(--accent);
+    border: 1px solid var(--accent-border);
     border-radius: 4px;
-    color: #1b1b1b;
+    color: var(--on-accent);
     font: inherit;
     font-weight: 700;
     padding: 7px 16px;
@@ -648,11 +649,11 @@
 }
 
 .accountpanel button.accent:hover:not(:disabled) {
-    background: #ffc928
+    background: var(--accent-hover)
 }
 
 .accountpanel button.accent:focus-visible {
-    outline: 2px solid #1f3a5f;
+    outline: 2px solid var(--head);
     outline-offset: 2px
 }
 
@@ -662,7 +663,7 @@
 }
 
 .accountpanel .danger-zone {
-    border-left: 4px solid #d9534f
+    border-left: 4px solid var(--danger)
 }
 
 .accountpanel .danger-zone .pm-check {
@@ -684,15 +685,15 @@
     gap: 4px;
     padding: 2px 8px;
     border-radius: 10px;
-    background: #e8f0fb;
-    color: #1f3a5f;
+    background: var(--hover);
+    color: var(--head);
     font-size: .85em;
     white-space: nowrap
 }
 
 .presence.editing {
-    background: #fff4e0;
-    color: #7a4b00
+    background: var(--warn-bg);
+    color: var(--warn)
 }
 
 /* the project list: search, sort and trash */
@@ -746,7 +747,7 @@
 
 .rulesintro {
     margin: 0 0 12px;
-    color: #3b4a5c;
+    color: var(--text-2);
     line-height: 1.45
 }
 
@@ -759,8 +760,8 @@
 }
 
 .ruleshead .accent {
-    background: #ffd54a;
-    border: 1px solid #e0b400;
+    background: var(--accent);
+    border: 1px solid var(--accent-border);
     border-radius: 4px;
     font: inherit;
     font-weight: 700;
@@ -774,11 +775,11 @@
 }
 
 .rulesstatus.ok {
-    color: #2e7d32
+    color: var(--ok)
 }
 
 .rulesstatus.error {
-    color: #c62828
+    color: var(--danger)
 }
 
 .rulesgroups {
@@ -790,8 +791,8 @@
 
 .rulesgroup {
     margin: 0;
-    background: #fff;
-    border: 1px solid #dde3ea;
+    background: var(--surface);
+    border: 1px solid var(--border);
     border-radius: 8px;
     padding: 6px 14px 10px;
     box-shadow: 0 1px 2px rgba(31, 58, 95, .06)
@@ -803,11 +804,11 @@
     gap: 8px;
     padding: 0 6px;
     font-weight: 700;
-    color: #1f3a5f
+    color: var(--head)
 }
 
 .rulesgroup legend small {
-    color: #5a6b80;
+    color: var(--muted);
     font-weight: 400
 }
 
@@ -817,7 +818,7 @@
     grid-template-areas: 'box name level' 'box article article';
     column-gap: 8px;
     padding: 6px 0;
-    border-top: 1px solid #eef1f5;
+    border-top: 1px solid var(--border);
     cursor: pointer
 }
 
@@ -841,25 +842,25 @@
 }
 
 .rulelevel.level-error {
-    color: #c62828
+    color: var(--danger)
 }
 
 .rulelevel.level-warn {
-    color: #b26a00
+    color: var(--warn)
 }
 
 .rulelevel.level-info {
-    color: #1f5fa8
+    color: var(--link)
 }
 
 .rulearticle {
     grid-area: article;
     font-size: 12px;
-    color: #5a6b80
+    color: var(--muted)
 }
 
 .rulerow.off .rulename, .rulerow.off .rulelevel {
-    color: #8a96a5;
+    color: var(--muted);
     text-decoration: line-through
 }
 
@@ -868,7 +869,7 @@
     background: none;
     border: 0;
     padding: 0;
-    color: #1f5fa8;
+    color: var(--link);
     text-decoration: underline;
     font: inherit;
     cursor: pointer
@@ -881,28 +882,31 @@
 }
 
 .rulesince {
-    color: #8a5a00
+    color: var(--warn)
 }
 
 #footer-installation-note {
     display: block;
     align-self: center;
-    color: #5a6b80
+    color: var(--muted)
 }
 
 #footer-installation-note.error {
-    color: #c62828
+    color: var(--danger)
 }
 
 /* the public Info page (#info): as wide as in the editor */
 .authmain.wide {
     display: block;
     padding: 0 0 40px;
-    background: #fff
+    background: var(--surface)
 }
 
 .authbarlink {
-    color: #fff;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--top-text);
     text-decoration: none;
     padding: 5px 10px;
     border-radius: 4px;
@@ -910,7 +914,7 @@
 }
 
 .authbarlink:hover {
-    background: #ffffff22
+    background: var(--top-btn-hover)
 }
 
 
@@ -929,4 +933,170 @@
     background: transparent;
     color: #fff;
     box-shadow: inset 0 0 0 2px #ffffffaa
+}
+
+/* Mijn account → Thema: a card per theme with a small picture of it (in its own colours, whatever the theme now) */
+.themechoices {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 12px
+}
+
+.themechoice {
+    position: relative;
+    display: grid;
+    grid-template-columns: auto 1fr;
+    grid-template-areas: 'preview preview' 'radio name';
+    align-items: start;
+    column-gap: 8px;
+    row-gap: 8px;
+    padding: 10px;
+    border: 2px solid var(--border);
+    border-radius: 10px;
+    background: var(--surface);
+    cursor: pointer
+}
+
+.themechoice:hover {
+    border-color: var(--border-strong)
+}
+
+.themechoice.on {
+    border-color: var(--accent)
+}
+
+.themechoice input {
+    grid-area: radio;
+    margin: 2px 0 0
+}
+
+.themechoice .themepreview {
+    grid-area: preview
+}
+
+.themechoice .themename {
+    grid-area: name
+}
+
+.themechoice:has(input:focus-visible) {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px
+}
+
+.themename {
+    display: flex;
+    flex-direction: column;
+    gap: 2px
+}
+
+.themename small {
+    color: var(--muted);
+    line-height: 1.35
+}
+
+.themepreview {
+    display: flex;
+    flex-direction: column;
+    height: 84px;
+    border-radius: 6px;
+    overflow: hidden;
+    border: 1px solid rgba(0, 0, 0, .12)
+}
+
+.tp-bar {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+    height: 18px;
+    padding: 0 6px
+}
+
+.tp-tab {
+    width: 22px;
+    height: 8px;
+    border-radius: 3px
+}
+
+.tp-body {
+    flex: 1;
+    display: flex;
+    gap: 6px;
+    padding: 6px
+}
+
+.tp-panel {
+    width: 30%;
+    border-radius: 3px
+}
+
+.tp-sheet {
+    flex: 1;
+    background: #fff;
+    border: 1px solid #c9d1db;
+    border-radius: 2px
+}
+
+.preview-marine .tp-bar {
+    background: #1f3a5f
+}
+
+.preview-marine .tp-tab {
+    background: rgba(255, 255, 255, .25)
+}
+
+.preview-marine .tp-tab.on {
+    background: #ffd54a
+}
+
+.preview-marine .tp-body {
+    background: #eef1f5
+}
+
+.preview-marine .tp-panel {
+    background: #fff;
+    border: 1px solid #d6dee8
+}
+
+.preview-werkbank .tp-bar {
+    background: #0b1828
+}
+
+.preview-werkbank .tp-tab {
+    background: #23426a
+}
+
+.preview-werkbank .tp-tab.on {
+    background: #ffd54a
+}
+
+.preview-werkbank .tp-body {
+    background: #0f1f33
+}
+
+.preview-werkbank .tp-panel {
+    background: #172b45;
+    border: 1px solid #2a4569
+}
+
+.preview-helder .tp-bar {
+    background: #fff;
+    border-bottom: 1px solid #e2e6ec
+}
+
+.preview-helder .tp-tab {
+    height: 4px;
+    background: #c9d1db
+}
+
+.preview-helder .tp-tab.on {
+    background: #ffd54a
+}
+
+.preview-helder .tp-body {
+    background: #f6f7f9
+}
+
+.preview-helder .tp-panel {
+    background: #fff;
+    border: 1px solid #e2e6ec
 }

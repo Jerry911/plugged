@@ -471,6 +471,7 @@ export default {
         },
     },
     symbolEditor: {
+        modified: 'Modifié',
         tools: {
             select: 'Sélectionner',
             line: 'Ligne',
@@ -519,8 +520,6 @@ export default {
         undoShape: 'Annuler la dernière forme',
         clear: 'Tout effacer',
         unsaved: 'non enregistré',
-        draw: 'Dessiner',
-        component: 'Composant',
         restore: 'Restaurer le standard',
         makeStandard: 'Définir comme standard',
         makeStandardTitle: 'Faire du dessin actuel le nouveau standard (remplace le dessin standard)',
@@ -680,7 +679,7 @@ export default {
             bladen: {
                 title: 'Feuilles et contrôle',
                 body: [
-                    'Avec **＋ feuille**, vous ajoutez une feuille (✎ renomme, ⧉ duplique, ◀ ▶ déplace). **Contrôler** recherche les erreurs et avertissements de votre schéma : cliquez sur un message pour aller à l’élément.',
+                    'Avec [icon:add] **feuille**, vous ajoutez une feuille ([icon:edit] renomme, [icon:duplicate] duplique, [icon:earlier] [icon:later] déplace). **Contrôler** recherche les erreurs et avertissements de votre schéma : cliquez sur un message pour aller à l’élément.',
                 ],
             },
             'naar-situatie': {
@@ -726,7 +725,7 @@ export default {
             kaderinfo: {
                 title: 'Où se trouve l’échelle ?',
                 body: [
-                    'L’échelle figure en bas de chaque feuille, à droite dans la case **Échelle** sous la date. Cliquez sur cette case (ou sur le bouton jaune **✎ Cartouche**) pour la consulter et la modifier.',
+                    'L’échelle figure en bas de chaque feuille, à droite dans la case **Échelle** sous la date. Cliquez sur cette case (ou sur le bouton jaune [icon:footer] **Cartouche**) pour la consulter et la modifier.',
                 ],
                 done: 'Le cartouche est ouvert.',
             },
@@ -734,7 +733,7 @@ export default {
                 title: 'Consulter et modifier l’échelle',
                 body: [
                     'Le champ **Échelle** contient ce que vous venez de choisir. Vous voulez une autre échelle, p. ex. [[1:100]] pour une maison plus grande ? Tapez-la ici : toutes les cotes des murs suivent.',
-                    'Fermez la fenêtre avec **✕** pour continuer.',
+                    'Fermez la fenêtre avec [icon:close] pour continuer.',
                 ],
                 missing: 'Ouvrez d’abord le cartouche avec le bouton jaune en haut.',
                 done: 'Parfait, l’échelle est fixée.',
@@ -880,8 +879,8 @@ export default {
                     text: 'Vos projets sont sur le serveur : vous les retrouvez sur chaque ordinateur où vous vous connectez. Tout se trouve sous **Projet** dans la barre du haut.',
                     points: [
                         'Un nouveau projet s’enregistre la première fois avec **Enregistrer** ([[Alt]]+[[S]]) ; ensuite Plugged enregistre votre propre projet tout seul après une modification.',
-                        '**Partager** avec un ou plusieurs groupes (👥 dans la liste de Charger) : les membres peuvent ouvrir et enregistrer le projet.',
-                        'Chaque enregistrement est une version : 🕘 montre l’**historique** et Restaurer remet une version plus ancienne.',
+                        '**Partager** avec un ou plusieurs groupes ([icon:users] dans la liste de Charger) : les membres peuvent ouvrir et enregistrer le projet.',
+                        'Chaque enregistrement est une version : [icon:history] montre l’**historique** et Restaurer remet une version plus ancienne.',
                         '**Dupliquer**, ou supprimer vers la **corbeille**, d’où vous le restaurez ou le supprimez définitivement.',
                         'Rechercher par nom, numéro, propriétaire ou groupe, et trier par date, nom, propriétaire ou numéro.',
                     ],
@@ -889,7 +888,7 @@ export default {
                 {
                     id: 'samenwerken',
                     title: 'À plusieurs sur un projet',
-                    text: 'Si quelqu’un d’autre a le même projet ouvert, vous le voyez dans la barre du haut (👥, en orange si cette personne a des modifications non enregistrées).',
+                    text: 'Si quelqu’un d’autre a le même projet ouvert, vous le voyez dans la barre du haut ([icon:users], en orange si cette personne a des modifications non enregistrées).',
                     points: [
                         'Quand cette personne enregistre, la nouvelle version se charge aussitôt chez vous, sauf si vous avez vous-même des modifications non enregistrées : elle vous est alors proposée.',
                         'Personne n’écrase le travail d’un autre sans le savoir : si deux personnes enregistrent une version différente, la seconde est refusée avec un message.',
@@ -940,7 +939,7 @@ export default {
                 {title: 'Utilisateur', text: 'Crée et enregistre ses propres projets et symboles, et ouvre ce qui est partagé avec ses groupes.'},
                 {
                     title: 'Propriétaire de groupe (enseignant)',
-                    text: 'Membre d’un groupe avec une étoile (★). Active ou désactive sous **🎓 Mes groupes** le mode éducatif de ses groupes, et n’est lui-même jamais restreint.',
+                    text: 'Membre d’un groupe avec une étoile ([icon:star]). Active ou désactive sous [icon:educational] **Mes groupes** le mode éducatif de ses groupes, et n’est lui-même jamais restreint.',
                 },
                 {
                     title: 'Administrateur',
@@ -958,7 +957,7 @@ export default {
             account: [
                 '**S’inscrire** se fait depuis la page de connexion. Un administrateur approuve votre compte avant que vous puissiez travailler.',
                 '**Mot de passe oublié ?** Plugged n’envoie pas d’e-mails : demandez un mot de passe temporaire à un administrateur. À la connexion suivante, vous en choisissez un nouveau.',
-                'Sous **Compte → Mon compte**, vous changez votre mot de passe, téléchargez toutes vos données en un seul fichier, ou supprimez votre compte avec tout ce qui vous appartient.',
+                'Sous **Compte → Mon compte**, vous choisissez le **thème** (Marine, l’Atelier sombre ou le Clair lumineux ; il vous suit sur chaque appareil), changez votre mot de passe, téléchargez toutes vos données en un seul fichier, ou supprimez votre compte avec tout ce qui vous appartient. Les dessins restent noir sur blanc dans chaque thème.',
                 'Après trop de mots de passe erronés à la suite, un compte est bloqué un moment.',
             ],
         },
@@ -974,7 +973,7 @@ export default {
             ],
             canTitle: 'Les élèves peuvent',
             can: ['dessiner, enregistrer et dupliquer leurs propres projets ;', 'faire un **PDF** et **imprimer** pour remettre leur travail ;', 'suivre la visite guidée et lire ces informations.'],
-            teacher: 'Un élève voit 🎓 dans la barre du haut. Quand l’enseignant change le mode, un élève en train de travailler le remarque en moins d’une minute. Les propriétaires et les administrateurs ne sont jamais restreints ; qui est propriétaire d’un groupe mais élève dans un autre groupe en mode éducatif est bien restreint.',
+            teacher: 'Un élève voit [icon:educational] dans la barre du haut. Quand l’enseignant change le mode, un élève en train de travailler le remarque en moins d’une minute. Les propriétaires et les administrateurs ne sont jamais restreints ; qui est propriétaire d’un groupe mais élève dans un autre groupe en mode éducatif est bien restreint.',
         },
         shortcuts: {
             title: 'Raccourcis clavier',
@@ -1031,7 +1030,7 @@ export default {
                 },
                 {
                     question: 'Comment créer mon propre symbole ?',
-                    answer: 'Allez dans l’onglet Composants et choisissez « ＋ Nouveau composant ». Dessinez le symbole, donnez-lui un nom et une catégorie et indiquez sous quoi il peut être placé. Vos propres symboles sont aussi inclus dans le fichier de projet exporté, pour qu’il s’ouvre sur une autre installation.',
+                    answer: 'Allez dans l’onglet Composants et choisissez « [icon:add] Nouveau composant ». Dessinez le symbole, donnez-lui un nom et une catégorie et indiquez sous quoi il peut être placé. Vos propres symboles sont aussi inclus dans le fichier de projet exporté, pour qu’il s’ouvre sur une autre installation.',
                 },
                 {
                     question: 'Les contrôles sont-ils contraignants ?',
@@ -1047,11 +1046,11 @@ export default {
                 },
                 {
                     question: 'J’ai oublié mon mot de passe. Que faire ?',
-                    answer: 'Plugged n’envoie pas d’e-mails. Demandez un mot de passe temporaire à un administrateur de cette installation (Compte → Utilisateurs → 🔑 Mot de passe). Connectez-vous avec, puis choisissez aussitôt vous-même un nouveau mot de passe.',
+                    answer: 'Plugged n’envoie pas d’e-mails. Demandez un mot de passe temporaire à un administrateur de cette installation (Compte → Utilisateurs → [icon:key] Mot de passe). Connectez-vous avec, puis choisissez aussitôt vous-même un nouveau mot de passe.',
                 },
                 {
                     question: 'Pourquoi n’ai-je pas de bouton Contrôler ?',
-                    answer: 'Vous êtes alors dans un groupe dont le mode éducatif est activé (vous voyez 🎓 dans la barre du haut) : en tant qu’élève, vous jugez vous-même votre schéma. Votre enseignant ou un administrateur peut désactiver le mode.',
+                    answer: 'Vous êtes alors dans un groupe dont le mode éducatif est activé (vous voyez [icon:educational] dans la barre du haut) : en tant qu’élève, vous jugez vous-même votre schéma. Votre enseignant ou un administrateur peut désactiver le mode.',
                 },
                 {
                     question: 'Qui peut voir mes projets ?',
@@ -1203,9 +1202,19 @@ export default {
         loadTitle: 'Charger la version plus récente (vos modifications non enregistrées seront perdues)',
     },
     account: {
+        theme: {
+            title: 'Thème',
+            text: 'L’apparence de Plugged, sur chaque appareil où vous vous connectez. Les dessins restent toujours noir sur blanc, comme ils sont imprimés.',
+            names: {marine: 'Marine', werkbank: 'Atelier', helder: 'Clair'},
+            descriptions: {
+                marine: 'Barres bleu marine avec des accents jaunes. Le thème par défaut.',
+                werkbank: 'Sombre, comme un logiciel de dessin : la feuille ressort.',
+                helder: 'Clair et aéré ; le jaune seulement pour ce qui est actif.',
+            },
+        },
         button: 'Compte',
         roleUser: 'Utilisateur',
-        buttonTitle: 'Mon compte : changer le mot de passe, télécharger vos données, supprimer votre compte',
+        buttonTitle: 'Mon compte : choisir un thème, changer le mot de passe, télécharger vos données, supprimer votre compte',
         buttonTitleAdmin: 'Mon compte, et gérer les utilisateurs, les groupes et les symboles standard',
         pageAdmin: 'Compte et gestion',
         title: 'Mon compte',
@@ -1280,7 +1289,7 @@ export default {
         since: 'à partir du {date}',
         sincePartial: 'prises et éclairage à partir du {date}',
         tab: 'Règles de contrôle',
-        intro: 'Choisissez les règles que Contrôler vérifie. Cela vaut seulement pour vous, dans tous vos projets ; une règle désactivée disparaît de la liste et des compteurs ✖ ⚠. Un schéma unifilaire vide est toujours signalé.',
+        intro: 'Choisissez les règles que Contrôler vérifie. Cela vaut seulement pour vous, dans tous vos projets ; une règle désactivée disparaît de la liste et des compteurs [icon:error] [icon:warning]. Un schéma unifilaire vide est toujours signalé.',
         allOn: 'Tout activer',
         offCount: '{count} règles sur {total} désactivées',
         allActive: 'Les {total} règles sont actives',
@@ -1465,6 +1474,7 @@ export default {
         removeOwner: '{name} n’est plus propriétaire',
         ownerAdded: '{name} est propriétaire de {group}.',
         ownerRemoved: '{name} n’est plus propriétaire de {group}.',
+        owner: 'Propriétaire',
     },
     catalog: {
         intro: 'Les symboles standard livrés avec Plugged se trouvent dans un seul fichier. Dessinez un symbole standard dans l’onglet Composants et choisissez « Définir comme standard » : ce dessin se retrouve alors dans ce fichier lorsque vous le téléchargez ici.',
@@ -1506,7 +1516,7 @@ export default {
         tab: 'Mes groupes',
         tabTitle: 'Les groupes dont vous êtes propriétaire : mode éducatif',
         title: 'Mes groupes',
-        intro: 'Vous êtes propriétaire de ces groupes. Activez le mode éducatif pour que les membres qui ne sont pas propriétaires (vos étudiants) travaillent sans vérification, importation ni exportation. Vous et les administrateurs le pouvez toujours. ★ = propriétaire.',
+        intro: 'Vous êtes propriétaire de ces groupes. Activez le mode éducatif pour que les membres qui ne sont pas propriétaires (vos étudiants) travaillent sans vérification, importation ni exportation. Vous et les administrateurs le pouvez toujours. [icon:star] = propriétaire.',
         loadFailed: 'Vos groupes n’ont pas pu être chargés.',
     },
 }

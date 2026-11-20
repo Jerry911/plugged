@@ -254,8 +254,8 @@ test('tells when the backend did not accept the symbol, and keeps the changes', 
 })
 test('an edited standard symbol is marked in the menu, an own symbol is labelled as such', () => {
     mount([...DEFAULTS.map((d) => (d.k === 'oven' ? {...d, modified: true} : d)), mine])
-    expect(menuItem('oven').textContent).toMatch(/ ✎$/)
-    expect(menuItem('motor').textContent).not.toMatch(/✎/)
+    expect(menuItem('oven').querySelector('.comp-modified')).toHaveAttribute('title', t('symbolEditor.modified'))
+    expect(menuItem('motor').querySelector('.comp-modified')).toBeNull()
     pick('oven')
     expect(origin()).toBe(t('symbolEditor.origin.modified'))
     expect(getById('comp-restore')).toBeEnabled()
@@ -333,11 +333,16 @@ test('name and category have labels below each other, the grid selector sits in 
     getById('comp-category')
     expect(container.querySelector('.cdraw .gridsel')).toContainElement(getById('comp-grid'))
     expect(container.querySelector('.pal .complist')).toBeTruthy()
-    // the action group and the tool group are separate groups
+    // the actions are one row above the drawing; the drawing tools are a rail of icons beside it, as on the situatieschema
     const actions = container.querySelector('.cactions'),
-        tools = container.querySelector('.ctools')
-    ;['comp-save', 'comp-duplicate', 'comp-undo-shape', 'comp-clear'].forEach((id) => expect(actions).toContainElement(getById(id)))
+        tools = getById('comp-tools')
+    ;['comp-save', 'comp-duplicate', 'comp-undo-shape', 'comp-clear', 'comp-delete-selected'].forEach((id) => expect(actions).toContainElement(getById(id)))
     ;['comp-tool-line', 'comp-tool-text'].forEach((id) => expect(tools).toContainElement(getById(id)))
+    expect(tools).toHaveAttribute('role', 'toolbar')
+    expect(tools).toHaveClass('docked')
+    expect(byId('comp-rail-toggle')).toBeNull() // beside the drawing: nothing to fold away
+    expect(getById('comp-tool-line')).toHaveAttribute('aria-label', t('symbolEditor.tools.line'))
+    expect(getById('comp-tool-line').querySelector('kbd')).toBeNull() // no letter keys in the component editor
 })
 test('the shapes list is gone', () => {
     mount()
@@ -358,10 +363,10 @@ test('name and category are right of the drawing below the previews and above th
     expect(hint.compareDocumentPosition(container.querySelector('.cactions')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     expect(container.querySelector('.cwork').contains(hint)).toBe(false)
 })
-test('"Maak standaard" sits under "Standaard herstellen", is a danger button, and makes the current drawing the new standard', async () => {
+test('"Maak standaard" comes after "Standaard herstellen" in the action row, is a danger button, and makes the current drawing the new standard', async () => {
     const {makeStandard, save, container} = mount()
     pick('oven')
-    const group = container.querySelector('.ctools'),
+    const group = container.querySelector('.cactions'),
         restore = getById('comp-restore'),
         make = getById('comp-make-standard')
     expect(group).toContainElement(restore)

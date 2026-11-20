@@ -6,6 +6,7 @@ import {useEffect, useMemo, useState} from 'react'
 import {fetchQrKey, renewQrKey} from '../../api/projectApi.js'
 import {useTranslation} from '../../i18n/I18nProvider.jsx'
 import {QUIET_ZONE, qrModules, qrSvgFile, schemaUrl} from './schemaLink.js'
+import Icon from '../../components/Icon.jsx'
 
 /** The QR code of `text` as an inline SVG (black on white, with its quiet zone). */
 export function QrCode({text, className, label}) {
@@ -69,7 +70,7 @@ export function QrDialog({projectId, title, onClose}) {
                 <div className="tb">
                     <b>{t('qr.title')}</b>
                     <button id="qr-close" className="sheetInfoBtn" title={t('common.close')} onClick={onClose}>
-                        ✕
+                        <Icon name="close" />
                     </button>
                 </div>
                 <p style={{margin: '6px 0'}}>{t('qr.intro')}</p>

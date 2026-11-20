@@ -3,6 +3,7 @@
 import {useCallback, useEffect, useLayoutEffect, useRef, useState} from 'react'
 import {createPortal} from 'react-dom'
 import {useTranslation} from '../../i18n/I18nProvider.jsx'
+import Icon from '../../components/Icon.jsx'
 
 // ---- "is this the first visit?" -------------------------------------------------------------------------------------------------
 // The browser remembers per user that the tour was seen (plugged.tour.<user id>): a new account that signs in on a browser where somebody
@@ -270,7 +271,7 @@ export default function Tour({steps, context, onClose}) {
                 )}
                 {completed && (
                     <p id="tour-ok" className="tour-ok">
-                        ✓ {step.done || t('tour.wellDone')}
+                        <Icon name="check" /> {step.done || t('tour.wellDone')}
                     </p>
                 )}
                 <div className="tour-actions">

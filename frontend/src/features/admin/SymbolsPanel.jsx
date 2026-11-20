@@ -7,6 +7,7 @@ import {useCallback, useEffect, useState} from 'react'
 import {useTranslation} from '../../i18n/I18nProvider.jsx'
 import {fetchCatalogChanges, fetchCatalogFile, fetchCatalogProblems} from '../../api/authApi.js'
 import {symbolName} from '../../symbols/symbolLibrary.js'
+import Icon from '../../components/Icon.jsx'
 
 export const CATALOG_FILE = 'standard-symbols.json'
 export const CATALOG_PATH = 'backend/src/main/resources/catalog/' + CATALOG_FILE
@@ -88,7 +89,7 @@ export default function SymbolsPanel() {
                 <li>
                     {t('catalog.step1')}{' '}
                     <button id="catalog-download" className="accent" disabled={busy} onClick={download}>
-                        ⭳ {t('catalog.download')}
+                        <Icon name="download" /> {t('catalog.download')}
                     </button>
                 </li>
                 <li>

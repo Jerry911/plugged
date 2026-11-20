@@ -40,11 +40,11 @@ test('a correct schema shows the success message; breaking it brings a warning',
     await app.open(backend, correct())
     await expect(page.locator('#btn-verify')).toBeVisible() // no error or warning counts
     await open(page)
-    await expect(page.locator('#verify-ok')).toHaveText('✓ ' + t('verify.noProblems'))
+    await expect(page.locator('#verify-ok')).toHaveText(t('verify.noProblems'))
     await page.locator('#verify-close').click()
     await app.treeRowById('D').click() // the differential
     await page.locator('#eds-delete').click()
-    await expect(page.locator('#btn-verify')).toHaveText(/⚠1/)
+    await expect(page.locator('#btn-verify .count-warning')).toHaveText('1')
     await open(page)
     await expect(page.locator('#verify-ok')).toHaveCount(0)
 })
@@ -99,7 +99,7 @@ test('selecting the text of a message to copy it does not jump to the element', 
 test('the tab and the button show the number of errors', async ({page, app, backend}) => {
     await app.open(backend, flawed())
     await expect(page.locator('#tab-een-errors')).toBeVisible()
-    await expect(page.locator('#btn-verify', {hasText: /✖\d+/})).toBeVisible()
+    await expect(page.locator('#btn-verify .count-error')).toHaveText(/^\d+$/)
 })
 
 // Regression: the popup is sticky at the top of the screen, so the element it jumps to must be centred in the part of the screen below it

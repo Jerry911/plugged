@@ -7,7 +7,7 @@ import {flawed} from './data.js'
 test('rules switched off on the Account page leave Controleer, also after a reload, until they are switched on again', async ({page, app, backend}) => {
     await app.open(backend, flawed())
     // no earth, no differential at the origin, the circuit without differential
-    await expect(page.locator('#btn-verify')).toHaveText(/✖3/)
+    await expect(page.locator('#btn-verify .count-error')).toHaveText('3')
     await page.locator('#tab-account').click()
     await page.locator('#account-tab-rules').click()
     // all on: nothing to switch on
@@ -18,10 +18,10 @@ test('rules switched off on the Account page leave Controleer, also after a relo
     await expect(page.locator('#rules-status')).toHaveText(t('ruleSettings.saved'))
     await expect(page.locator('#account-tab-rules')).toContainText('2')
     await page.locator('#tab-een').click()
-    await expect(page.locator('#btn-verify')).toHaveText(/✖1(?!\d)/)
+    await expect(page.locator('#btn-verify .count-error')).toHaveText('1')
     // stored for this user: after a reload they are still off
     await page.reload()
-    await expect(page.locator('#btn-verify')).toHaveText(/✖1(?!\d)/)
+    await expect(page.locator('#btn-verify .count-error')).toHaveText('1')
     // Controleer says so and leads back to them
     await page.locator('#btn-verify').click()
     await page.locator('#verify-disabled').click()
@@ -30,5 +30,5 @@ test('rules switched off on the Account page leave Controleer, also after a relo
     await page.locator('#rules-all').click()
     await expect(page.locator('#rules-status')).toHaveText(t('ruleSettings.saved'))
     await page.locator('#tab-een').click()
-    await expect(page.locator('#btn-verify')).toHaveText(/✖3/)
+    await expect(page.locator('#btn-verify .count-error')).toHaveText('3')
 })

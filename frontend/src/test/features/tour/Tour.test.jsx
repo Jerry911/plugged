@@ -245,7 +245,8 @@ describe('Tour', () => {
             tick(1500) // nothing happened yet
             expect(byId('tour-ok')).toBeNull()
             rerender(<Tour steps={steps()} context={ctx({project: {n: 1}})} onClose={vi.fn()} />)
-            expect(getById('tour-ok')).toHaveTextContent('✓ Gelukt!')
+            expect(getById('tour-ok')).toHaveTextContent('Gelukt!')
+            expect(getById('tour-ok').querySelector('[data-icon="check"]')).toBeTruthy()
             tick(1000)
             expectTitle('Daarna')
             expect(byId('tour-ok')).toBeNull()
@@ -255,7 +256,7 @@ describe('Tour', () => {
             rerender(<Tour steps={steps({done: undefined, need: 2})} context={ctx({project: {n: 1}})} onClose={vi.fn()} />)
             expect(byId('tour-ok')).toBeNull()
             rerender(<Tour steps={steps({done: undefined, need: 2})} context={ctx({project: {n: 2}})} onClose={vi.fn()} />)
-            expect(getById('tour-ok')).toHaveTextContent('✓ ' + t('tour.wellDone'))
+            expect(getById('tour-ok')).toHaveTextContent(t('tour.wellDone'))
         })
         test('what was already there at the start does not count; a base of 0 does', () => {
             const {unmount} = render(<Tour steps={steps()} context={ctx({project: {n: 5}})} onClose={vi.fn()} />)
@@ -263,7 +264,7 @@ describe('Tour', () => {
             expect(byId('tour-ok')).toBeNull()
             unmount()
             render(<Tour steps={steps({base: 0})} context={ctx({project: {n: 5}})} onClose={vi.fn()} />)
-            expect(getById('tour-ok')).toHaveTextContent('✓ Gelukt!')
+            expect(getById('tour-ok')).toHaveTextContent('Gelukt!')
         })
         test('notices a change in the page itself (not in the project) at the next look', () => {
             let on = 0
@@ -271,7 +272,7 @@ describe('Tour', () => {
             expect(byId('tour-ok')).toBeNull()
             on = 1
             tick(250)
-            expect(getById('tour-ok')).toHaveTextContent('✓ Gelukt!')
+            expect(getById('tour-ok')).toHaveTextContent('Gelukt!')
         })
     })
     test('the last step can have an extra button next to Klaar', () => {

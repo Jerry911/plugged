@@ -1,11 +1,13 @@
 // Copyright 2026 Pleysier Jeroen
 // SPDX-License-Identifier: AGPL-3.0-only
-// Mijn account: the signed-in user changes his password, downloads everything that is stored about and by him (GDPR) and removes his
-// account. The first tab of the Account page (AccountPage.jsx), for every user.
+// Mijn account: the signed-in user chooses the colours of the interface (the theme), changes his password, downloads everything that is
+// stored about and by him (GDPR) and removes his account. The first tab of the Account page (AccountPage.jsx), for every user.
 import {useState} from 'react'
 import {useTranslation} from '../../i18n/I18nProvider.jsx'
-import {deleteMyAccount, exportMyData} from '../../api/authApi.js'
+import {deleteMyAccount, exportMyData, saveTheme} from '../../api/authApi.js'
+import {applyTheme, DEFAULT_THEME, THEMES} from '../../app/theme.js'
 import {ChangePasswordForm, Field, Message, useSubmit} from '../auth/AuthScreens.jsx'
+import Icon from '../../components/Icon.jsx'
 
 /**
  * `user` the signed-in user ({primary}: the primary administrator cannot remove his account); `onDeleted()` after the account
@@ -16,8 +18,16 @@ export default function AccountPanel({user, onDeleted}) {
     const [exportResult, setExportResult] = useState(null),
         [exporting, setExporting] = useState(false),
         [confirmPassword, setConfirmPassword] = useState(''),
-        [confirmed, setConfirmed] = useState(false)
+        [confirmed, setConfirmed] = useState(false),
+        [theme, setTheme] = useState(() => document.documentElement.dataset.theme || DEFAULT_THEME),
+        [themeError, setThemeError] = useState('')
     const {busy, error, submit} = useSubmit()
+    // the new colours show at once; the server keeps them for the next sign-in, on any device
+    const chooseTheme = async (name) => {
+        setTheme(applyTheme(name))
+        const result = await saveTheme(name)
+        setThemeError(result.ok ? '' : result.error)
+    }
     const download = async () => {
         setExporting(true)
         setExportResult(await exportMyData())
@@ -47,17 +57,46 @@ export default function AccountPanel({user, onDeleted}) {
                     {t(role)}
                 </span>
             </div>
+            <section id="account-theme" className="accountcard">
+                <h3>
+                    <Icon name="palette" size={18} /> {t('account.theme.title')}
+                </h3>
+                <p>{t('account.theme.text')}</p>
+                <div className="themechoices" role="radiogroup" aria-label={t('account.theme.title')}>
+                    {THEMES.map((name) => (
+                        <label key={name} className={'themechoice' + (theme === name ? ' on' : '')}>
+                            <input type="radio" id={'account-theme-' + name} name="theme" value={name} checked={theme === name} onChange={() => chooseTheme(name)} />
+                            <span className={'themepreview preview-' + name} aria-hidden="true">
+                                <span className="tp-bar">
+                                    <span className="tp-tab" />
+                                    <span className="tp-tab on" />
+                                    <span className="tp-tab" />
+                                </span>
+                                <span className="tp-body">
+                                    <span className="tp-panel" />
+                                    <span className="tp-sheet" />
+                                </span>
+                            </span>
+                            <span className="themename">
+                                <b>{t('account.theme.names.' + name)}</b>
+                                <small>{t('account.theme.descriptions.' + name)}</small>
+                            </span>
+                        </label>
+                    ))}
+                </div>
+                <Message id="account-theme-error" kind="error" text={themeError} />
+            </section>
             <div className="accountgrid">
                 <section className="accountcard">
                     <h3>
-                        <span aria-hidden="true">🔑</span> {t('account.changePassword')}
+                        <Icon name="key" size={18} /> {t('account.changePassword')}
                     </h3>
                     <ChangePasswordForm />
                 </section>
                 <div className="accountcolumn">
                     <section className="accountcard">
                         <h3>
-                            <span aria-hidden="true">⬇</span> {t('account.exportTitle')}
+                            <Icon name="download" size={18} /> {t('account.exportTitle')}
                         </h3>
                         <p>{t('account.exportText')}</p>
                         <button id="account-export" className="accent" disabled={exporting} onClick={download}>
@@ -67,7 +106,7 @@ export default function AccountPanel({user, onDeleted}) {
                     </section>
                     <section className="accountcard danger-zone">
                         <h3>
-                            <span aria-hidden="true">🗑</span> {t('account.deleteTitle')}
+                            <Icon name="delete" size={18} /> {t('account.deleteTitle')}
                         </h3>
                     {user.primary ? (
                         <p id="account-delete-primary">{t('account.deletePrimary')}</p>

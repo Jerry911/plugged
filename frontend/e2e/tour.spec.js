@@ -27,7 +27,7 @@ test('a first visit starts the tour, which waits for the first circuit and is no
     await showsStep(page, 'kring')
     // the tour opened the category with the button it points to
     await page.locator('#eds-palette-kring').click()
-    await expect(page.locator('#tour-ok')).toHaveText('✓ ' + t('tour.steps.kring.done'))
+    await expect(page.locator('#tour-ok')).toHaveText(t('tour.steps.kring.done'))
     await showsStep(page, 'eigenschappen')
     await page.locator('#tour-close').click()
     await expect(card(page)).toHaveCount(0)

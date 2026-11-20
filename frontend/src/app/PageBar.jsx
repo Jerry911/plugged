@@ -6,36 +6,7 @@ import {defaultTree} from '../model/boardLayout.js'
 import {newId, withNewIds} from '../model/tree.js'
 import {emptyWiringPage} from '../model/wiring.js'
 import {useTranslation} from '../i18n/I18nProvider.jsx'
-
-// line icons in the colour of the text (yellow on the blue buttons), unlike the emoji ✎ and 🗑 that keep their own colours
-const ICONS = {
-    add: <path d="M12 5v14M5 12h14" />,
-    rename: (
-        <>
-            <path d="M15.5 4.5l4 4L9 19H5v-4z" />
-            <path d="M13 7l4 4" />
-        </>
-    ),
-    duplicate: (
-        <>
-            <path d="M9 9h11v11H9z" />
-            <path d="M5 15H4V4h11v1" />
-        </>
-    ),
-    earlier: <path d="M15 5l-7 7 7 7" />,
-    later: <path d="M9 5l7 7-7 7" />,
-    delete: (
-        <>
-            <path d="M4 7h16M10 4h4M6 7l1 13h10l1-13" />
-            <path d="M10 11v6M14 11v6" />
-        </>
-    ),
-}
-const Icon = ({name}) => (
-    <svg className="pageicon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-        {ICONS[name]}
-    </svg>
-)
+import Icon, {CountBadge} from '../components/Icon.jsx'
 
 /**
  * listKey = 'een' (eendraadschema pages), 'sit' (situatieschema pages) or 'wire' (bedradingsschema pages); pageIndex = the page that is shown.
@@ -104,13 +75,14 @@ export default function PageBar({project, setProject, listKey, pageIndex, setPag
             </button>
             {verify && (
                 <button id="btn-verify" onClick={verify.onToggle}>
+                    <Icon name="verify" />
                     {t('verify.button')}
-                    {verify.errorCount ? ` ✖${verify.errorCount}` : ''}
-                    {verify.warningCount ? ` ⚠${verify.warningCount}` : ''}
+                    {verify.errorCount > 0 && <CountBadge kind="error" count={verify.errorCount} />}
+                    {verify.warningCount > 0 && <CountBadge kind="warning" count={verify.warningCount} />}
                 </button>
             )}
             <button id={idPrefix + '-rename'} className="pageact" title={t('pages.rename')} aria-label={t('pages.rename')} onClick={renamePage}>
-                <Icon name="rename" />
+                <Icon name="edit" />
             </button>
             <button id={idPrefix + '-duplicate'} className="pageact" title={t('pages.duplicate')} aria-label={t('pages.duplicate')} onClick={duplicatePage}>
                 <Icon name="duplicate" />

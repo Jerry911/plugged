@@ -33,6 +33,8 @@ import org.springframework.web.bind.annotation.RestController;
  *   <li>GET /api/account/export: everything stored about and by him, as a JSON file to download (see AccountService#export)</li>
  *   <li>GET /api/account/rules: {disabled: [rule ids]}, the rules of Controleer he switched off; PUT /api/account/rules {disabled} sets them
  *       (400 for an id that is not a rule id, or too many)</li>
+ *   <li>GET /api/account/theme: {theme}, the colours of the interface he chose (marine, werkbank or helder); PUT /api/account/theme {theme}
+ *       stores them (400 for another name)</li>
  *   <li>DELETE /api/account {password}: removes his account and what is his, and signs him out (403 wrong password, 409 for the primary
  *       administrator)</li>
  * </ul>
@@ -68,6 +70,16 @@ public class AccountController {
     @PutMapping("/rules")
     public Map<String, List<String>> setRules(@Valid @RequestBody AuthRequests.RuleSettings body, Authentication authentication) {
         return ApiLog.run(log, "PUT /api/account/rules", "", () -> Map.of("disabled", accounts.setDisabledRules(Authentications.userId(authentication), body.disabled())));
+    }
+
+    @GetMapping("/theme")
+    public Map<String, String> theme(Authentication authentication) {
+        return Map.of("theme", accounts.theme(Authentications.userId(authentication)));
+    }
+
+    @PutMapping("/theme")
+    public Map<String, String> setTheme(@Valid @RequestBody AuthRequests.ThemeSetting body, Authentication authentication) {
+        return ApiLog.run(log, "PUT /api/account/theme", "", () -> Map.of("theme", accounts.setTheme(Authentications.userId(authentication), body.theme())));
     }
 
     @DeleteMapping

@@ -5,6 +5,7 @@ import {useState} from 'react'
 import {useTranslation} from '../../i18n/I18nProvider.jsx'
 import {fullName} from './names.js'
 import {EducationalSwitch} from './TeacherPage.jsx'
+import Icon from '../../components/Icon.jsx'
 
 function GroupCard({group, users, busy, actions}) {
     const {t} = useTranslation()
@@ -25,10 +26,10 @@ function GroupCard({group, users, busy, actions}) {
                 <span style={{flex: 1}} />
                 <EducationalSwitch group={group} disabled={busy} onChange={(on) => actions.setEducational(group, on)} />
                 <button id={'group-rename-' + group.id} disabled={busy} onClick={() => actions.renameGroup(group)}>
-                    ✎ {t('groups.rename')}
+                    <Icon name="edit" /> {t('groups.rename')}
                 </button>
                 <button id={'group-delete-' + group.id} className="danger" disabled={busy} onClick={() => actions.deleteGroup(group)}>
-                    {t('groups.delete')}
+                    <Icon name="delete" /> {t('groups.delete')}
                 </button>
             </div>
             {group.members.length ? (
@@ -44,7 +45,7 @@ function GroupCard({group, users, busy, actions}) {
                                 disabled={busy}
                                 onClick={() => actions.setOwner(group, member, !member.owner)}
                             >
-                                {member.owner ? '★' : '☆'}
+                                <Icon name="star" filled={!!member.owner} />
                             </button>
                             {fullName(member)}
                             <button
@@ -54,7 +55,7 @@ function GroupCard({group, users, busy, actions}) {
                                 disabled={busy}
                                 onClick={() => actions.removeMember(group, member)}
                             >
-                                ×
+                                <Icon name="close" size={12} />
                             </button>
                         </li>
                     ))}

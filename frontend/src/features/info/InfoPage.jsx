@@ -8,6 +8,7 @@ import {useTranslation} from '../../i18n/I18nProvider.jsx'
 import RichText, {renderInline} from '../../i18n/RichText.jsx'
 import {translation} from '../../i18n/translate.js'
 import SCREENSHOT_SIZES from './screenshotSizes.json'
+import UiIcon from '../../components/Icon.jsx'
 
 /** Where the source code is (AGPL: whoever uses Plugged can get it). */
 // the tools with a key, in the order of the rail; Draad and Kader are only on the bedradingsschema
@@ -162,11 +163,11 @@ const DonateButton = ({id, url, big}) => {
     const className = 'donate' + (big ? ' big' : '')
     return url ? (
         <a id={id} className={className} href={url} target="_blank" rel="noopener noreferrer">
-            ♥ {t('info.support.donate')}
+            <UiIcon name="heart" filled /> {t('info.support.donate')}
         </a>
     ) : (
         <button id={id} className={className} disabled title={t('info.support.notConfigured')}>
-            ♥ {t('info.support.donate')}
+            <UiIcon name="heart" filled /> {t('info.support.donate')}
         </button>
     )
 }
@@ -215,7 +216,7 @@ const Lightbox = ({image, onClose}) => {
         <div id="info-lightbox" className="lightbox" role="dialog" aria-modal="true" aria-label={image.alt} onClick={onClose}>
             <img src={image.src} alt={image.alt} />
             <button id="info-lightbox-close" type="button" aria-label={t('info.features.close')} onClick={onClose}>
-                ✕
+                <UiIcon name="close" />
             </button>
         </div>
     )
@@ -279,7 +280,7 @@ export default function InfoPage({onTour, visitor, onLogin, onRegister}) {
                         )}
                         {onTour && (
                             <button id="btn-tour" className="accent" onClick={onTour}>
-                                ▶ {t('info.startTour')}
+                                <UiIcon name="play" filled /> {t('info.startTour')}
                             </button>
                         )}
                         <DonateButton id="donate-button" url={info.donateUrl} big />
@@ -295,7 +296,7 @@ export default function InfoPage({onTour, visitor, onLogin, onRegister}) {
             <nav className="infonav" aria-label={t('info.navigation')}>
                 {SECTIONS.map((id) => (
                     <button key={id} id={'nav-' + id} className={id === 'info-steun' ? 'navdonate' : ''} onClick={() => scrollToSection(id)}>
-                        {id === 'info-steun' ? '♥ ' : ''}
+                        {id === 'info-steun' && <UiIcon name="heart" filled />}
                         {t('info.sections.' + id)}
                     </button>
                 ))}
@@ -373,11 +374,15 @@ export default function InfoPage({onTour, visitor, onLogin, onRegister}) {
                 <p>{renderInline(t('info.educational.intro'))}</p>
                 <div className="twocolumns">
                     <div className="cannot">
-                        <h3>✖ {t('info.educational.cannotTitle')}</h3>
+                        <h3>
+                            <UiIcon name="error" size={18} /> {t('info.educational.cannotTitle')}
+                        </h3>
                         <Points items={translation('info.educational.cannot')} className="points" />
                     </div>
                     <div className="can">
-                        <h3>✔ {t('info.educational.canTitle')}</h3>
+                        <h3>
+                            <UiIcon name="check" size={18} /> {t('info.educational.canTitle')}
+                        </h3>
                         <Points items={translation('info.educational.can')} className="points" />
                     </div>
                 </div>
@@ -404,7 +409,7 @@ export default function InfoPage({onTour, visitor, onLogin, onRegister}) {
                 {questions.map((question, index) => (
                     <details key={index} id={'faq-' + (index + 1)} className="faq">
                         <summary>{question.question}</summary>
-                        <p>{question.answer}</p>
+                        <p>{renderInline(question.answer)}</p>
                     </details>
                 ))}
             </section>
@@ -422,7 +427,9 @@ export default function InfoPage({onTour, visitor, onLogin, onRegister}) {
             </section>
 
             <section id="info-steun" className="supportbox">
-                <h2>♥ {t('info.support.title')}</h2>
+                <h2>
+                    <UiIcon name="heart" filled size={20} /> {t('info.support.title')}
+                </h2>
                 <p>{t('info.support.text')}</p>
                 <div className="heroactions">
                     <DonateButton id="donate-button-bottom" url={info.donateUrl} big />

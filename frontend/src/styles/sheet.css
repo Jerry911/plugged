@@ -22,9 +22,10 @@
     position: absolute;
     right: 2%;
     bottom: 13%;
-    background: #fffe;
+    background: var(--surface);
+    color: var(--text);
     padding: 2px 6px;
-    border: 1px solid #666;
+    border: 1px solid var(--border-strong);
     border-radius: 4px;
     font-size: 12px
 }
@@ -39,9 +40,10 @@
     right: 1.7em;
     display: flex;
     gap: 2px;
-    background: #fffe;
-    border: 1px solid #666;
-    border-radius: 4px;
+    background: var(--surface);
+    color: var(--text);
+    border: 1px solid var(--border-strong);
+    border-radius: 6px;
     padding: 2px
 }
 
@@ -83,7 +85,7 @@
 
 .tplintro {
     margin: 6px 0 12px;
-    color: #3b4a5c;
+    color: var(--text-2);
     line-height: 1.45
 }
 
@@ -97,8 +99,8 @@
     display: flex;
     flex-direction: column;
     gap: 6px;
-    background: #fff;
-    border: 1px solid #dde3ea;
+    background: var(--surface);
+    border: 1px solid var(--border);
     border-radius: 8px;
     padding: 12px 14px;
     box-shadow: 0 1px 2px rgba(31, 58, 95, .06)
@@ -111,7 +113,7 @@
 .tplcard h3 {
     margin: 0;
     font-size: 1.05em;
-    color: #1f3a5f
+    color: var(--head)
 }
 
 .tplfloors {
@@ -157,22 +159,22 @@
 }
 
 .tplfacts, .tplplace {
-    color: #5a6b80
+    color: var(--muted)
 }
 
 .tplscale.warn {
-    color: #b26a00
+    color: var(--warn)
 }
 
 .tplscale.error {
-    color: #c62828
+    color: var(--danger)
 }
 
 .tplcard .accent, .sitempty .accent {
     align-self: flex-start;
     margin-top: auto;
-    background: #ffd54a;
-    border: 1px solid #e0b400;
+    background: var(--accent);
+    border: 1px solid var(--accent-border);
     border-radius: 4px;
     font: inherit;
     font-weight: 700;
@@ -192,8 +194,8 @@
     gap: 12px;
     margin: 0 0 8px;
     padding: 8px 12px;
-    background: #fffbea;
-    border: 1px solid #f0d77a;
+    background: var(--warn-bg);
+    border: 1px solid var(--accent-border);
     border-radius: 6px
 }
 
@@ -210,7 +212,7 @@
 }
 
 .linestyle .tb button.on {
-    background: #cfe3ff;
+    background: var(--select);
     box-shadow: inset 0 0 0 1px #0a6cff
 }
 
@@ -250,7 +252,8 @@
     flex-direction: column;
     gap: 2px;
     padding: 4px;
-    background: #1f3a5f;
+    background: var(--rail-bg);
+    border: 1px solid var(--rail-sep);
     border-radius: 9px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, .25)
 }
@@ -265,24 +268,24 @@
     height: 38px;
     padding: 0;
     background: transparent;
-    color: #fff;
+    color: var(--rail-icon);
     border: 0;
     border-radius: 7px;
     cursor: pointer
 }
 
 .toolrail .railbtn:hover:not(:disabled), .toolrail .railbtn:focus-visible {
-    background: rgba(255, 255, 255, .16)
+    background: var(--rail-hover)
 }
 
 .toolrail .railbtn:focus-visible {
-    outline: 2px solid #ffd54a;
+    outline: 2px solid var(--focus);
     outline-offset: 1px
 }
 
 .toolrail .railbtn.on {
-    background: #ffd54a;
-    color: #1b1b1b
+    background: var(--rail-on-bg);
+    color: var(--rail-on-icon)
 }
 
 .toolrail .railbtn:disabled {
@@ -291,7 +294,7 @@
 }
 
 .toolrail .railextra {
-    color: #ffd54a
+    color: var(--rail-extra)
 }
 
 .toolrail.folded .railfold {
@@ -301,7 +304,7 @@
 .toolrail .railsep {
     height: 1px;
     margin: 3px 6px;
-    background: rgba(255, 255, 255, .25)
+    background: var(--rail-sep)
 }
 
 .toolrail .railtip {
@@ -316,7 +319,7 @@
     width: max-content;
     max-width: 280px;
     padding: 4px 8px;
-    background: #13263f;
+    background: var(--rail-tip-bg);
     color: #fff;
     font-size: 13px;
     border-radius: 5px;
@@ -354,8 +357,15 @@
     border-radius: 3px
 }
 
+/* the component editor: the rail stands beside the drawing grid, never on it */
+.toolrail.docked {
+    position: static;
+    flex: none;
+    align-self: flex-start
+}
+
 @media (max-width: 900px) {
-    .toolrail {
+    .toolrail:not(.docked) {
         left: 1em;
         top: 1em
     }

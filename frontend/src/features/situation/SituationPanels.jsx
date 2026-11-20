@@ -8,11 +8,12 @@ import {nodeName} from '../../model/project.js'
 import {useTranslation} from '../../i18n/I18nProvider.jsx'
 import {forwardRef} from 'react'
 import {toDomId} from '../../components/domId.js'
+import Icon from '../../components/Icon.jsx'
 
 /** One component as a button: symbol, name on the left, marking (e.g. A7) aligned right. */
 export const ComponentButton = ({project, node, name, mark, id, active, title, onClick}) => (
-    <button id={id} type="button" className="compbtn" title={title} style={active ? {background: '#cfe3ff'} : undefined} onClick={onClick}>
-        <svg width="20" height="20" viewBox="0 0 20 20" style={{flex: 'none'}}>
+    <button id={id} type="button" className={'compbtn' + (active ? ' on' : '')} title={title} onClick={onClick}>
+        <svg className="symtile" width="20" height="20" viewBox="0 0 20 20" style={{flex: 'none'}}>
             <SymbolGraphic shapes={placedShapesOf(typeOf(project, node.type), node.p)} x={10} y={10} size={18} />
         </svg>
         <span className="nm">{name ?? nodeName(project, node)}</span>
@@ -108,7 +109,13 @@ export const UnplacedPanel = forwardRef(function UnplacedPanel(
                 <>
                     {unplaced.length ? (
                         <div className={(neutral ? 'neutral' : 'warn') + ' fill-grow fill-col'} id="sit-unplaced">
-                            <span id="sit-unplaced-title">{neutral ? t('situation.elementsTitle') : '⚠ ' + t('situation.unplacedTitle', {count: unplaced.length})}</span>
+                            <span id="sit-unplaced-title">{neutral ? (
+                                    t('situation.elementsTitle')
+                                ) : (
+                                    <>
+                                        <Icon name="warning" /> {t('situation.unplacedTitle', {count: unplaced.length})}
+                                    </>
+                                )}</span>
                             <div className="pal unplist fill-grow">
                                 {unplaced.map((node) => (
                                     <div key={node.id} className="unprow">
@@ -144,13 +151,13 @@ export const UnplacedPanel = forwardRef(function UnplacedPanel(
                         </div>
                     ) : (
                         <div className="ok" id="sit-all-placed">
-                            ✓ {t('situation.allPlaced')}
+                            <Icon name="check" /> {t('situation.allPlaced')}
                         </div>
                     )}
                     {hidden.length > 0 && (
                         <div className="hiddenlist">
                             <button id="toggle-hidden" className="toggle" aria-expanded={showHidden} onClick={onToggleShowHidden}>
-                                {showHidden ? '▾' : '▸'} {t('situation.hiddenTitle', {count: hidden.length})}
+                                <Icon name={showHidden ? 'chevronDown' : 'chevronRight'} /> {t('situation.hiddenTitle', {count: hidden.length})}
                             </button>
                             {showHidden && (
                                 <div className="pal unplist">

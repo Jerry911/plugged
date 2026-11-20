@@ -888,7 +888,7 @@ export default {
                 },
                 {
                     id: 'samenwerken',
-                    title: 'Samen aan een project',
+                    title: 'Samen aan een project werken',
                     text: 'Heeft iemand anders hetzelfde project open, dan zie je dat in de bovenbalk ([icon:users], oranje als die persoon nog niet-opgeslagen wijzigingen heeft).',
                     points: [
                         'Slaat die persoon op, dan laadt de nieuwe versie bij jou meteen, tenzij jij zelf iets onbewaard hebt: dan krijg je ze aangeboden.',

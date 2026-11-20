@@ -926,7 +926,7 @@ export default {
                     id: 'talen',
                     title: 'Languages and screens',
                     text: 'Choose Nederlands, Français or English on the right of the top bar. Projects are not tied to a language; the names of the standard symbols follow the language, what you type yourself stays as you wrote it.',
-                    points: ['Plugged works on a laptop and a tablet, and in a simple way on a smartphone: on a narrow screen the panels are above the drawing.'],
+                    points: ['Plugged works on a laptop and a tablet, and in a simple way on a smartphone: on a narrow screen the panels are above the drawing.', 'On a **tablet** you draw, select and drag with one finger; with **two fingers** you move the zoomed drawing and pinch to zoom in and out. Tap a tool to see its name and help.'],
                 },
             ],
         },

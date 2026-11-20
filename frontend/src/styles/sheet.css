@@ -370,3 +370,8 @@
         top: 1em
     }
 }
+
+/* the controls that float on a drawing take a finger as the drawing does: a swipe that starts on them never scrolls or navigates the page */
+.toolrail, .zoomctl, .gridsel {
+    touch-action: none
+}

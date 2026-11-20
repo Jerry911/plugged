@@ -1,5 +1,16 @@
 /* Global resets, typography and the look of the plain controls. The controls use :where() (no specificity), so every rule of a part of
    the application that styles its own buttons or fields still wins; the colours come from theme.css. */
+/* a tablet: a swipe that reaches the edge of the page must not go back in the history or reload the page (pull to refresh), which
+   would throw away a drawing that is not saved yet */
+html, body {
+    overscroll-behavior: none
+}
+
+/* a tap on a control acts at once: no waiting to see whether it becomes a double tap that zooms the page */
+:where(button, a, input, select, textarea, label, summary) {
+    touch-action: manipulation
+}
+
 body {
     margin: 0;
     font: 14px system-ui, sans-serif;

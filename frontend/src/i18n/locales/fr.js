@@ -927,7 +927,7 @@ export default {
                     id: 'talen',
                     title: 'Langues et écrans',
                     text: 'Choisissez à droite dans la barre du haut Nederlands, Français ou English. Les projets ne sont pas liés à une langue ; les noms des symboles standard suivent la langue, ce que vous tapez vous-même reste tel quel.',
-                    points: ['Plugged fonctionne sur un ordinateur portable et une tablette, et simplement sur un smartphone : sur un écran étroit, les panneaux sont au-dessus du dessin.'],
+                    points: ['Plugged fonctionne sur un ordinateur portable et une tablette, et simplement sur un smartphone : sur un écran étroit, les panneaux sont au-dessus du dessin.', 'Sur une **tablette**, vous dessinez, sélectionnez et déplacez avec un doigt ; avec **deux doigts**, vous déplacez le dessin agrandi et pincez pour zoomer. Touchez un outil pour voir son nom et son aide.'],
                 },
             ],
         },

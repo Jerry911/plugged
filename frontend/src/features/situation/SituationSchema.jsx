@@ -1040,7 +1040,7 @@ export default function SituationSchema({project, setProject, pageIndex, onFoote
                 )}
                 {templateOpen && <TemplateDialog project={project} pageIndex={pageIndex} onChoose={insertTemplate} onClose={() => setTemplateOpen(false)} />}
                 <div style={{position: 'relative'}}>
-                    <ZoomPane zoom={zoom} rightPan>
+                    <ZoomPane zoom={zoom} rightPan onZoom={setZoom}>
                         <div style={{width: `${zoom * 100}%`}}>
                             <SituationSheet project={project} page={page} {...pageNumbering(project, page)} editor={editor} onFooter={onFooter} />
                         </div>

@@ -928,7 +928,7 @@ export default {
                     id: 'talen',
                     title: 'Talen en schermen',
                     text: 'Kies rechts in de bovenbalk Nederlands, Français of English. Projecten zijn niet aan een taal gebonden; de namen van de standaardsymbolen volgen de taal, wat je zelf intypt blijft zoals je het schreef.',
-                    points: ['Plugged werkt op een laptop en een tablet, en eenvoudig op een smartphone: op een smal scherm staan de panelen boven de tekening.'],
+                    points: ['Plugged werkt op een laptop en een tablet, en eenvoudig op een smartphone: op een smal scherm staan de panelen boven de tekening.', 'Op een **tablet** teken, kies en versleep je met één vinger; met **twee vingers** schuif je de ingezoomde tekening op en zoom je in en uit door te knijpen. Tik op een gereedschap om zijn naam en uitleg te zien.'],
                 },
             ],
         },

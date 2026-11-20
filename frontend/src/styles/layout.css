@@ -433,6 +433,12 @@
         border-width: 2px 0 0;
         box-shadow: 0 -6px 18px #0003
     }
+
+    /* ...and while it is open the page can scroll that much further, so nothing at the bottom (the list of what is not placed yet) stays
+       hidden under it */
+    body:has(.side .props) {
+        padding-bottom: 50vh
+    }
 }
 
 /* feedback (saved, loaded, ...) at the bottom right instead of in the top bar; it fades out and never catches a click */

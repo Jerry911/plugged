@@ -19,6 +19,54 @@
     font-weight: 700
 }
 
+/* the bar with the pages above a schema: blue buttons with yellow icons, the page that is shown in yellow (as in the top bar) */
+.pagebar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    padding: 6px 10px
+}
+
+.pagebar button {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: #1f3a5f;
+    color: #fff;
+    border: 1px solid #1f3a5f;
+    border-radius: 6px
+}
+
+.pagebar button:hover:not(:disabled) {
+    background: #2c5283;
+    border-color: #2c5283
+}
+
+.pagebar button:focus-visible {
+    outline: 2px solid #ffd54a;
+    outline-offset: 1px
+}
+
+.pagebar button.on {
+    background: #ffd54a;
+    border-color: #e0b52c;
+    color: #1f3a5f;
+    font-weight: 700
+}
+
+.pagebar .pageicon {
+    color: #ffd54a
+}
+
+.pagebar .pageact {
+    padding: 5px 8px
+}
+
+.pagebar button:disabled {
+    opacity: .4;
+    cursor: default
+}
+
 .row {
     display: flex;
     gap: 10px;

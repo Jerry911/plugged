@@ -476,11 +476,12 @@ test.describe('the tool rail', () => {
         await expect(tip).toBeHidden()
         await page.locator('#sit-tool-room').hover()
         await expect(tip).toBeVisible()
-        await expect(tip).toHaveText('KamerK')
+        await expect(tip.locator('.railtip-head')).toHaveText('KamerK')
+        await expect(tip.locator('.railtip-help')).toContainText('Klik twee hoeken')
         await page.mouse.move(5, 5)
         await page.keyboard.press('m')
         await expect(page.locator('#sit-tool-wall')).toHaveClass(/on/)
-        await expect(page.locator('#sit-help')).toContainText('Klik punten')
+        await expect(page.locator('#sit-help')).toHaveCount(0) // no help box on the drawing: it is in the tooltip
         // the wall tool works as before: two clicks and a click on the same point make a wall
         await app.clickSheet(60, 60)
         await app.clickSheet(120, 60)
@@ -491,7 +492,6 @@ test.describe('the tool rail', () => {
         await goto(page, app, backend, project())
         await page.locator('#sit-rail-toggle').click()
         await expect(page.locator('#sit-tool-wall')).toHaveCount(0)
-        await expect(page.locator('#sit-help')).toHaveCount(0)
         const folded = await page.locator('#sit-tools').boundingBox()
         expect(folded.height).toBeLessThan(60)
         await page.keyboard.press('k')

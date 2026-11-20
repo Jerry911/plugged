@@ -1,8 +1,8 @@
 // Copyright 2026 Pleysier Jeroen
 // SPDX-License-Identifier: AGPL-3.0-only
 // The tools of the situatieschema and the bedradingsschema as a narrow column of icons on the drawing (like drawing programs do): the
-// name and the shortcut key of a tool show when the mouse is on it (or the keyboard focus), a button folds the column away when it is in
-// the way of the drawing, and a short help for the active tool sits at the bottom of the drawing.
+// name, the shortcut key and a short help of a tool show when the mouse is on it (or the keyboard focus), and a button folds the column
+// away when it is in the way of the drawing.
 import {useEffect, useState} from 'react'
 import {useTranslation} from '../../i18n/I18nProvider.jsx'
 
@@ -92,10 +92,9 @@ export const toolOfKey = (event, tools, t) => {
 
 /**
  * prefix = 'sit' or 'wire' (the ids); tools = the tools in their order (null = a separator); tool / onTool = the active one; extra =
- * {id, label, title, onClick, disabled}: the button under the tools (a starter template, a plan to copy). The help of the active tool shows
- * under it on the drawing unless `hideHelp` (another box, such as the typed length, is there).
+ * {id, label, title, onClick, disabled}: the button under the tools (a starter template, a plan to copy).
  */
-export default function ToolRail({prefix, tools, tool, onTool, extra, hideHelp}) {
+export default function ToolRail({prefix, tools, tool, onTool, extra}) {
     const {t} = useTranslation()
     const [folded, setFolded] = useState(readFolded)
     useEffect(() => {
@@ -105,67 +104,63 @@ export default function ToolRail({prefix, tools, tool, onTool, extra, hideHelp})
             // no storage (private window): it is only for this visit
         }
     }, [folded])
-    const tip = (label, key) => (
+    const tip = (label, key, help) => (
         <span className="railtip" aria-hidden="true">
-            {label}
-            {key && <kbd>{key}</kbd>}
+            <span className="railtip-head">
+                {label}
+                {key && <kbd>{key}</kbd>}
+            </span>
+            {help && <span className="railtip-help">{help}</span>}
         </span>
     )
     return (
-        <>
-            <div className={'ui toolrail' + (folded ? ' folded' : '')} id={prefix + '-tools'} role="toolbar" aria-orientation="vertical" aria-label={t('situation.rail.label')}>
-                <button
-                    id={prefix + '-rail-toggle'}
-                    className="railbtn railfold"
-                    aria-expanded={!folded}
-                    aria-label={folded ? t('situation.rail.unfold') : t('situation.rail.fold')}
-                    onClick={() => setFolded(!folded)}
-                >
-                    {folded ? (
-                        <>
-                            <ToolIcon name={tool} size={18} />
-                            <ToolIcon name="unfold" size={14} />
-                        </>
-                    ) : (
-                        <ToolIcon name="fold" size={18} />
-                    )}
-                    {tip(folded ? t('situation.rail.unfold') : t('situation.rail.fold'))}
-                </button>
-                {!folded &&
-                    tools.map((name, index) =>
-                        name ? (
-                            <button
-                                key={name}
-                                id={prefix + '-tool-' + name}
-                                className={'railbtn' + (tool === name ? ' on' : '')}
-                                aria-pressed={tool === name}
-                                aria-label={t('situation.tools.' + name)}
-                                aria-keyshortcuts={toolKey(t, name)}
-                                data-tour={'tool-' + name}
-                                onClick={() => onTool(name)}
-                            >
-                                <ToolIcon name={name} />
-                                {tip(t('situation.tools.' + name), toolKey(t, name))}
-                            </button>
-                        ) : (
-                            <span key={'sep' + index} className="railsep" />
-                        ),
-                    )}
-                {!folded && extra && (
+        <div className={'ui toolrail' + (folded ? ' folded' : '')} id={prefix + '-tools'} role="toolbar" aria-orientation="vertical" aria-label={t('situation.rail.label')}>
+            <button
+                id={prefix + '-rail-toggle'}
+                className="railbtn railfold"
+                aria-expanded={!folded}
+                aria-label={folded ? t('situation.rail.unfold') : t('situation.rail.fold')}
+                onClick={() => setFolded(!folded)}
+            >
+                {folded ? (
                     <>
-                        <span className="railsep" />
-                        <button id={extra.id} className="railbtn railextra" aria-label={extra.label} disabled={extra.disabled} onClick={extra.onClick}>
-                            <ToolIcon name="template" />
-                            {tip(extra.title || extra.label)}
-                        </button>
+                        <ToolIcon name={tool} size={18} />
+                        <ToolIcon name="unfold" size={14} />
                     </>
+                ) : (
+                    <ToolIcon name="fold" size={18} />
                 )}
-            </div>
-            {!folded && !hideHelp && (
-                <div className="ui railhint" id={prefix + '-help'} role="status">
-                    <b>{t('situation.tools.' + tool)}</b> <span>{t('situation.toolHelp.' + tool)}</span>
-                </div>
+                {tip(folded ? t('situation.rail.unfold') : t('situation.rail.fold'))}
+            </button>
+            {!folded &&
+                tools.map((name, index) =>
+                    name ? (
+                        <button
+                            key={name}
+                            id={prefix + '-tool-' + name}
+                            className={'railbtn' + (tool === name ? ' on' : '')}
+                            aria-pressed={tool === name}
+                            aria-label={t('situation.tools.' + name)}
+                            aria-keyshortcuts={toolKey(t, name)}
+                            data-tour={'tool-' + name}
+                            onClick={() => onTool(name)}
+                        >
+                            <ToolIcon name={name} />
+                            {tip(t('situation.tools.' + name), toolKey(t, name), t('situation.toolHelp.' + name))}
+                        </button>
+                    ) : (
+                        <span key={'sep' + index} className="railsep" />
+                    ),
+                )}
+            {!folded && extra && (
+                <>
+                    <span className="railsep" />
+                    <button id={extra.id} className="railbtn railextra" aria-label={extra.label} disabled={extra.disabled} onClick={extra.onClick}>
+                        <ToolIcon name="template" />
+                        {tip(extra.title || extra.label)}
+                    </button>
+                </>
             )}
-        </>
+        </div>
     )
 }

@@ -690,7 +690,7 @@ export default {
             muur: {
                 title: 'Draw your first wall',
                 body: [
-                    '**1.** Click **Wall** in the tool bar on the sheet, or press [[W]] (the active tool turns yellow). Point at an icon to see its name and shortcut.\n**2.** Click the sheet, to the right of the bar, to start and click once more below it: that is your first wall.',
+                    '**1.** Click **Wall** in the tool bar on the sheet, or press [[W]] (the active tool turns yellow). Point at an icon to see its name, shortcut and a short help.\n**2.** Click the sheet, to the right of the bar, to start and click once more below it: that is your first wall.',
                     'Rather a rectangle in one go? Choose **Room** and type e.g. [[4x3.5]].',
                 ],
                 done: 'Your first wall is there. Plugged now carries on from the last point.',
@@ -847,7 +847,7 @@ export default {
                     title: 'Site plan',
                     text: 'Draw walls, rooms, doors and windows on the floor plan and place the symbols of the single-line diagram on it. Every wall shows its length, worked out from the scale in the title block.',
                     points: [
-                        'The **tools** are a narrow bar on the drawing: point at an icon for its name and shortcut (e.g. [[W]] for Wall, [[O]] for Room). If the bar is in the way, fold it away with the arrow at its top.',
+                        'The **tools** are a narrow bar on the drawing: point at an icon for its name, shortcut and how to use it (e.g. [[W]] for Wall, [[O]] for Room). If the bar is in the way, fold it away with the arrow at its top.',
                         'Start from a **template** (the house at the bottom of the tool bar): studio, apartment, terraced house or detached house, with one sheet per floor. After that it is all ordinary drawing you can change.',
                         '**Not placed anywhere** shows which elements of the single-line diagram are not on any plan yet.',
                         'Select with a box, rotate with [[R]], and a right click cancels what you are drawing.',

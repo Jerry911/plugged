@@ -692,7 +692,7 @@ export default {
             muur: {
                 title: 'Teken je eerste muur',
                 body: [
-                    '**1.** Klik in de gereedschapsbalk op het blad op **Muur**, of druk [[M]] (het actieve gereedschap kleurt geel). Wijs een icoon aan om zijn naam en sneltoets te zien.\n**2.** Klik op het blad, rechts van de balk, om te beginnen en klik daaronder nog een keer: dat is je eerste muur.',
+                    '**1.** Klik in de gereedschapsbalk op het blad op **Muur**, of druk [[M]] (het actieve gereedschap kleurt geel). Wijs een icoon aan om zijn naam, sneltoets en korte uitleg te zien.\n**2.** Klik op het blad, rechts van de balk, om te beginnen en klik daaronder nog een keer: dat is je eerste muur.',
                     'Liever een rechthoek in één keer? Kies **Kamer** en typ bv. [[4x3,5]].',
                 ],
                 done: 'Je eerste muur staat. Plugged tekent nu verder vanaf het laatste punt.',
@@ -849,7 +849,7 @@ export default {
                     title: 'Situatieschema',
                     text: 'Teken muren, ruimtes, deuren en ramen op de plattegrond en plaats er de symbolen van het eendraadschema op. De lengte van elke muur staat erbij, berekend uit de schaal in de kader.',
                     points: [
-                        'Het **gereedschap** staat als smalle balk op de tekening: wijs een icoon aan voor zijn naam en sneltoets (bv. [[M]] voor Muur, [[K]] voor Kamer). Zit de balk in de weg, klap hem dan in met het pijltje bovenaan.',
+                        'Het **gereedschap** staat als smalle balk op de tekening: wijs een icoon aan voor zijn naam, sneltoets en hoe je het gebruikt (bv. [[M]] voor Muur, [[K]] voor Kamer). Zit de balk in de weg, klap hem dan in met het pijltje bovenaan.',
                         'Begin van een **sjabloon** (het huisje onderaan de gereedschapsbalk): studio, appartement, rijwoning of vrijstaande woning, met een blad per verdieping. Daarna is alles gewone tekening die je aanpast.',
                         '**Nergens geplaatst** toont welke elementen van het eendraadschema nog op geen enkele plattegrond staan.',
                         'Selecteer met een kader, draai met [[R]], en een rechtermuisklik annuleert wat je aan het tekenen bent.',

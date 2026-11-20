@@ -64,7 +64,7 @@ test('a problem in the footer opens the Kaderinfo dialog; a problem of the plan 
     await expect(page.locator('#footer-dialog')).toBeVisible()
     await page.locator('#footer-close').click()
     await issues(page, 'plan.unplaced').first().click()
-    await expect(page.locator('#sit-help')).toBeVisible()
+    await expect(page.locator('#sit-tools')).toBeVisible()
     await issues(page, 'earth').click()
     await expect(page.locator('#eds-tree-title')).toBeVisible()
 })

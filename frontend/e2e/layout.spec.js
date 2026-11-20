@@ -102,7 +102,6 @@ test.describe('a phone', () => {
         const right = await page.locator('#sit-unplaced-panel').boundingBox()
         expect(right.y).toBeGreaterThan(sheet.y + sheet.height - 1)
         await expect(page.locator('#sit-unplaced-toggle .paneltoggle-text')).toBeVisible()
-        await expect(page.locator('#sit-help')).toBeHidden()
         // a tap places the socket and selects it: its Eigenschappen are in reach at the bottom
         await page.locator('#sit-unplaced .unprow button').first().tap()
         await expect(page.locator('#sit-props')).toBeInViewport()

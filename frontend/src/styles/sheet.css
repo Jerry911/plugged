@@ -310,9 +310,11 @@
     top: 50%;
     transform: translateY(-50%);
     display: none;
-    align-items: center;
-    gap: 8px;
-    white-space: nowrap;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 3px;
+    width: max-content;
+    max-width: 280px;
     padding: 4px 8px;
     background: #13263f;
     color: #fff;
@@ -326,6 +328,22 @@
     display: flex
 }
 
+.toolrail .railtip-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    white-space: nowrap;
+    font-weight: 600
+}
+
+/* how to use the tool (Shift, Del, a typed length, ...) */
+.toolrail .railtip-help {
+    text-align: left;
+    font-size: 12px;
+    line-height: 1.35;
+    color: #d6e0ec
+}
+
 .toolrail .railtip kbd {
     min-width: 1.2em;
     padding: 0 4px;
@@ -336,31 +354,7 @@
     border-radius: 3px
 }
 
-/* the help of the active tool: bottom left on the drawing, where the grid box is bottom right; clicks go through it */
-.railhint {
-    position: absolute;
-    left: 2%;
-    bottom: 13%;
-    max-width: 46%;
-    padding: 5px 10px;
-    background: #1f3a5fee;
-    color: #fff;
-    font-size: 12.5px;
-    line-height: 1.35;
-    border-radius: 6px;
-    pointer-events: none
-}
-
-.railhint b {
-    color: #ffd54a
-}
-
 @media (max-width: 900px) {
-    /* the help with the mouse and keyboard (right click, Shift, Del) does not apply to a touch screen */
-    .railhint {
-        display: none
-    }
-
     .toolrail {
         left: 1em;
         top: 1em

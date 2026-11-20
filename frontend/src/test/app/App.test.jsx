@@ -683,7 +683,7 @@ test('footer issue goes to eendraad tab, plan issue to situatieschema, global is
     fireEvent.click(issue('footer'))
     getById('footer-dialog')
     fireEvent.click(issue('plan.unplaced'))
-    getById('sit-help')
+    getById('sit-tools')
     fireEvent.click(issue('earth'))
     getById('eds-tree-title')
 })

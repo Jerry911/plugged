@@ -1049,7 +1049,6 @@ export default function SituationSchema({project, setProject, pageIndex, onFoote
                         tools={railTools}
                         tool={tool}
                         onTool={chooseTool}
-                        hideHelp={!!pending && (tool === 'wall' || tool === 'room')}
                         extra={
                             wiring
                                 ? {

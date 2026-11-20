@@ -21,7 +21,8 @@ test('the rail is on the drawing; each tool has an icon, its name and its key in
     const wall = getById('sit-tool-wall')
     expect(wall).toHaveAttribute('aria-label', 'Muur')
     expect(wall).toHaveAttribute('aria-keyshortcuts', 'M')
-    expect(wall.querySelector('.railtip').textContent).toBe('MuurM')
+    expect(wall.querySelector('.railtip-head').textContent).toBe('MuurM')
+    expect(wall.querySelector('.railtip-help').textContent).toContain('Typ een lengte')
     expect(wall.querySelector('.railtip kbd').textContent).toBe('M')
     const buttons = [...rail.querySelectorAll('button')].map((button) => button.id)
     expect(buttons).toEqual([
@@ -44,7 +45,9 @@ test('a letter chooses a tool, also with a selection, never while typing or with
     expect(active('sit')).toBe('sit-tool-select')
     key('m')
     expect(active('sit')).toBe('sit-tool-wall')
-    expect(getById('sit-help').textContent).toContain('Klik punten')
+    // how to use a tool is in its tooltip, not on the drawing
+    expect(getById('sit-tool-wall').querySelector('.railtip-help').textContent).toContain('Klik punten')
+    expect(byId('sit-help')).toBeNull()
     key('K')
     expect(active('sit')).toBe('sit-tool-room')
     key('v', {ctrlKey: true})
@@ -63,7 +66,7 @@ test('the bedradingsschema has the same rail with Draad and Kader and their keys
     expect([...getById('wire-tools').querySelectorAll('button')].at(-1).id).toBe('wire-copy-plan')
     key('l')
     expect(active('wire')).toBe('wire-tool-wire')
-    expect(getById('wire-help').textContent).toContain('aansluitpunt')
+    expect(getById('wire-tool-wire').querySelector('.railtip-help').textContent).toContain('aansluitpunt')
     key('b')
     expect(active('wire')).toBe('wire-tool-box')
 })
@@ -72,7 +75,6 @@ test('the rail folds away to one button with the active tool, and stays folded n
     clickId('sit-tool-wall')
     clickId('sit-rail-toggle')
     expect(byId('sit-tool-wall')).toBeNull()
-    expect(byId('sit-help')).toBeNull()
     expect(getById('sit-rail-toggle')).toHaveAttribute('aria-expanded', 'false')
     // the keys work while folded: the button shows the tool that is on
     key('k')

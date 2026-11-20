@@ -691,7 +691,7 @@ export default {
             muur: {
                 title: 'Dessinez votre premier mur',
                 body: [
-                    '**1.** Cliquez sur **Mur** dans la barre d’outils sur la feuille, ou appuyez sur [[M]] (l’outil actif devient jaune). Pointez une icône pour voir son nom et son raccourci.\n**2.** Cliquez sur la feuille, à droite de la barre, pour commencer, puis cliquez une fois plus bas : voilà votre premier mur.',
+                    '**1.** Cliquez sur **Mur** dans la barre d’outils sur la feuille, ou appuyez sur [[M]] (l’outil actif devient jaune). Pointez une icône pour voir son nom, son raccourci et une courte aide.\n**2.** Cliquez sur la feuille, à droite de la barre, pour commencer, puis cliquez une fois plus bas : voilà votre premier mur.',
                     'Vous préférez un rectangle d’un coup ? Choisissez **Pièce** et tapez p. ex. [[4x3,5]].',
                 ],
                 done: 'Votre premier mur est en place. Plugged continue maintenant à partir du dernier point.',
@@ -848,7 +848,7 @@ export default {
                     title: 'Plan de position',
                     text: 'Dessinez murs, pièces, portes et fenêtres sur le plan et placez-y les symboles du schéma unifilaire. La longueur de chaque mur est indiquée, calculée à partir de l’échelle du cartouche.',
                     points: [
-                        'Les **outils** forment une barre étroite sur le dessin : pointez une icône pour voir son nom et son raccourci (p. ex. [[M]] pour Mur, [[P]] pour Pièce). Si la barre gêne, repliez-la avec la flèche en haut.',
+                        'Les **outils** forment une barre étroite sur le dessin : pointez une icône pour voir son nom, son raccourci et comment l’utiliser (p. ex. [[M]] pour Mur, [[P]] pour Pièce). Si la barre gêne, repliez-la avec la flèche en haut.',
                         'Commencez à partir d’un **modèle** (la maison en bas de la barre d’outils) : studio, appartement, maison mitoyenne ou maison quatre façades, avec une feuille par étage. Ensuite tout est un dessin ordinaire que vous adaptez.',
                         '**Placé nulle part** montre les éléments du schéma unifilaire qui ne sont encore sur aucun plan.',
                         'Sélectionnez avec un cadre, tournez avec [[R]], et un clic droit annule ce que vous êtes en train de dessiner.',

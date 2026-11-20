@@ -7,6 +7,36 @@ import {newId, withNewIds} from '../model/tree.js'
 import {emptyWiringPage} from '../model/wiring.js'
 import {useTranslation} from '../i18n/I18nProvider.jsx'
 
+// line icons in the colour of the text (yellow on the blue buttons), unlike the emoji ✎ and 🗑 that keep their own colours
+const ICONS = {
+    add: <path d="M12 5v14M5 12h14" />,
+    rename: (
+        <>
+            <path d="M15.5 4.5l4 4L9 19H5v-4z" />
+            <path d="M13 7l4 4" />
+        </>
+    ),
+    duplicate: (
+        <>
+            <path d="M9 9h11v11H9z" />
+            <path d="M5 15H4V4h11v1" />
+        </>
+    ),
+    earlier: <path d="M15 5l-7 7 7 7" />,
+    later: <path d="M9 5l7 7-7 7" />,
+    delete: (
+        <>
+            <path d="M4 7h16M10 4h4M6 7l1 13h10l1-13" />
+            <path d="M10 11v6M14 11v6" />
+        </>
+    ),
+}
+const Icon = ({name}) => (
+    <svg className="pageicon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        {ICONS[name]}
+    </svg>
+)
+
 /**
  * listKey = 'een' (eendraadschema pages), 'sit' (situatieschema pages) or 'wire' (bedradingsschema pages); pageIndex = the page that is shown.
  * verify = {errorCount, warningCount, onToggle} shows the Controleer button.
@@ -63,14 +93,14 @@ export default function PageBar({project, setProject, listKey, pageIndex, setPag
         setPageIndex(Math.max(0, pageIndex - 1))
     }
     return (
-        <div id={idPrefix + 'bar'} className="tb ui" data-tour="pagebar" style={{padding: '6px 10px', display: 'flex', gap: 4, flexWrap: 'wrap'}}>
+        <div id={idPrefix + 'bar'} className="tb ui pagebar" data-tour="pagebar">
             {pages.map((page, index) => (
                 <button key={page.id} id={`${idPrefix}-${index + 1}`} className={index === pageIndex ? 'on' : ''} onClick={() => setPageIndex(index)}>
                     {page.name}
                 </button>
             ))}
             <button id={idPrefix + '-add'} onClick={addPage}>
-                ＋ {t('pages.add')}
+                <Icon name="add" /> {t('pages.add')}
             </button>
             {verify && (
                 <button id="btn-verify" onClick={verify.onToggle}>
@@ -79,20 +109,34 @@ export default function PageBar({project, setProject, listKey, pageIndex, setPag
                     {verify.warningCount ? ` ⚠${verify.warningCount}` : ''}
                 </button>
             )}
-            <button id={idPrefix + '-rename'} title={t('pages.rename')} onClick={renamePage}>
-                ✎
+            <button id={idPrefix + '-rename'} className="pageact" title={t('pages.rename')} aria-label={t('pages.rename')} onClick={renamePage}>
+                <Icon name="rename" />
             </button>
-            <button id={idPrefix + '-duplicate'} title={t('pages.duplicate')} onClick={duplicatePage}>
-                ⧉
+            <button id={idPrefix + '-duplicate'} className="pageact" title={t('pages.duplicate')} aria-label={t('pages.duplicate')} onClick={duplicatePage}>
+                <Icon name="duplicate" />
             </button>
-            <button id={idPrefix + '-earlier'} title={t('pages.moveEarlier')} disabled={pageIndex < 1} onClick={() => swapWith(-1)}>
-                ◀
+            <button
+                id={idPrefix + '-earlier'}
+                className="pageact"
+                title={t('pages.moveEarlier')}
+                aria-label={t('pages.moveEarlier')}
+                disabled={pageIndex < 1}
+                onClick={() => swapWith(-1)}
+            >
+                <Icon name="earlier" />
             </button>
-            <button id={idPrefix + '-later'} title={t('pages.moveLater')} disabled={pageIndex >= pages.length - 1} onClick={() => swapWith(1)}>
-                ▶
+            <button
+                id={idPrefix + '-later'}
+                className="pageact"
+                title={t('pages.moveLater')}
+                aria-label={t('pages.moveLater')}
+                disabled={pageIndex >= pages.length - 1}
+                onClick={() => swapWith(1)}
+            >
+                <Icon name="later" />
             </button>
-            <button id={idPrefix + '-delete'} title={t('pages.delete')} disabled={pages.length < 2} onClick={deletePage}>
-                🗑
+            <button id={idPrefix + '-delete'} className="pageact" title={t('pages.delete')} aria-label={t('pages.delete')} disabled={pages.length < 2} onClick={deletePage}>
+                <Icon name="delete" />
             </button>
         </div>
     )

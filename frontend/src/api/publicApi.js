@@ -4,7 +4,7 @@
 import {apiFetch} from './http.js'
 
 /** The header that carries the secret of the QR code (the server: PublicController#KEY_HEADER). */
-export const KEY_HEADER = 'X-Schema-Key'
+const KEY_HEADER = 'X-Schema-Key'
 
 /**
  * The newest saved document of project `id`, shown to whoever knows `key` (the secret of its QR code); null when there is no such project or

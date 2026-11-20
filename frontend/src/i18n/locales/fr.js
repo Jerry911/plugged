@@ -325,7 +325,20 @@ export default {
             box: 'Cadre',
         },
         kinds: {sym: 'symbole', text: 'texte', door: 'porte', window: 'fenêtre'},
-        help: 'Mur : cliquez des points, cliquez deux fois le même point pour arrêter ; tapez la longueur et appuyez sur Entrée. Clic droit : retour à Sélection. Sélection : tracez un cadre (Maj = ajouter), flèches, Suppr, R. Grille, dessin libre, cotes et zoom : dans le dessin.',
+        toolKeys: {select: 'V', wall: 'M', room: 'P', door: 'O', window: 'F', sym: 'S', text: 'T', erase: 'E', wire: 'L', box: 'C'},
+        toolHelp: {
+            select: 'Cliquez ou tracez un cadre (Maj = ajouter). Flèches pour déplacer, Suppr efface, R tourne.',
+            wall: 'Cliquez des points, cliquez deux fois le même point pour arrêter. Tapez une longueur et appuyez sur Entrée. Clic droit : retour à Sélection.',
+            room: 'Cliquez deux coins, ou cliquez un coin, tapez les dimensions (p. ex. 4x3,5) et appuyez sur Entrée.',
+            door: 'Cliquez sur un mur : la porte s’y place. Sélectionnez-la pour la tourner ou l’élargir.',
+            window: 'Cliquez sur un mur : la fenêtre s’y place.',
+            sym: 'Choisissez un composant à gauche et cliquez sur la feuille.',
+            text: 'Cliquez sur la feuille et tapez le texte à gauche.',
+            erase: 'Cliquez sur ce qui doit disparaître.',
+            wire: 'Cliquez sur un point de connexion (bleu) ou la grille, cliquez pour faire un coude, terminez sur un point de connexion ou un fil. Double clic, clic droit ou Entrée arrête ; Échap annule.',
+            box: 'Cliquez deux coins, p. ex. le boîtier d’un tableau.',
+        },
+        rail: {label: 'Outils', fold: 'Replier les outils', unfold: 'Afficher les outils'},
         selected: 'Sélection : {kind}',
         closeSelection: 'Fermer la sélection',
         text: 'Texte',
@@ -389,8 +402,6 @@ export default {
         nothingToPlace: 'Aucun élément à placer.',
     },
     wiring: {
-        help: "Fil : cliquez sur un point de connexion d'un symbole et continuez à cliquer jusqu'au suivant ; clic droit ou Entrée pour arrêter. Cadre : deux coins. Murs, portes, symboles et texte fonctionnent comme sur le plan de position.",
-        wireHelp: "Cliquez sur un point de connexion (points bleus) ou sur la grille pour commencer, cliquez pour faire un coude et cliquez sur un point de connexion ou un autre fil pour terminer. Double clic, clic droit ou Entrée : arrêter au dernier point. Échap : annuler le fil.",
         pen: 'Style de ligne',
         closePen: 'Retour à Sélectionner',
         wireSelected: 'Fil · {length}',
@@ -680,7 +691,7 @@ export default {
             muur: {
                 title: 'Dessinez votre premier mur',
                 body: [
-                    '**1.** Cliquez sur **Mur** (l’outil actif devient jaune).\n**2.** Cliquez en haut à gauche de la feuille pour commencer, puis cliquez une fois plus bas : voilà votre premier mur.',
+                    '**1.** Cliquez sur **Mur** dans la barre d’outils sur la feuille, ou appuyez sur [[M]] (l’outil actif devient jaune). Pointez une icône pour voir son nom et son raccourci.\n**2.** Cliquez sur la feuille, à droite de la barre, pour commencer, puis cliquez une fois plus bas : voilà votre premier mur.',
                     'Vous préférez un rectangle d’un coup ? Choisissez **Pièce** et tapez p. ex. [[4x3,5]].',
                 ],
                 done: 'Votre premier mur est en place. Plugged continue maintenant à partir du dernier point.',
@@ -837,7 +848,8 @@ export default {
                     title: 'Plan de position',
                     text: 'Dessinez murs, pièces, portes et fenêtres sur le plan et placez-y les symboles du schéma unifilaire. La longueur de chaque mur est indiquée, calculée à partir de l’échelle du cartouche.',
                     points: [
-                        'Commencez à partir d’un **modèle** (⌂ Modèle) : studio, appartement, maison mitoyenne ou maison quatre façades, avec une feuille par étage. Ensuite tout est un dessin ordinaire que vous adaptez.',
+                        'Les **outils** forment une barre étroite sur le dessin : pointez une icône pour voir son nom et son raccourci (p. ex. [[M]] pour Mur, [[P]] pour Pièce). Si la barre gêne, repliez-la avec la flèche en haut.',
+                        'Commencez à partir d’un **modèle** (la maison en bas de la barre d’outils) : studio, appartement, maison mitoyenne ou maison quatre façades, avec une feuille par étage. Ensuite tout est un dessin ordinaire que vous adaptez.',
                         '**Placé nulle part** montre les éléments du schéma unifilaire qui ne sont encore sur aucun plan.',
                         'Sélectionnez avec un cadre, tournez avec [[R]], et un clic droit annule ce que vous êtes en train de dessiner.',
                     ],
@@ -845,7 +857,7 @@ export default {
                 {
                     id: 'bedradingsschema',
                     title: 'Schéma de câblage',
-                    text: "Un troisième onglet pour le dessin technique du passage des fils : le câblage d'un tableau, une commande avec contacteurs et boutons-poussoirs, ou le passage des câbles sur un plan. Il fonctionne comme le plan de position, avec grille, zoom et échelle.",
+                    text: "Un troisième onglet pour le dessin technique du passage des fils : le câblage d'un tableau, une commande avec contacteurs et boutons-poussoirs, ou le passage des câbles sur un plan. Il fonctionne comme le plan de position, avec grille, zoom, échelle et la même barre d’outils sur le dessin, plus **Fil** ([[L]]) et **Cadre** ([[C]]).",
                     points: [
                         "Un **fil** s'attache aux points de connexion des symboles et suit quand vous déplacez un symbole. Là où des fils se dérivent, un point de jonction apparaît de lui-même.",
                         'Choisissez pour chaque fil ou cadre le **style de ligne** (continu, tirets, pointillé, tiret-point), la **couleur** (noir, gris, brun, bleu, rouge, vert, vert-jaune) et l’épaisseur.',
@@ -966,6 +978,8 @@ export default {
         },
         shortcuts: {
             title: 'Raccourcis clavier',
+            tool: "choisit l'outil {tool} sur le plan de position et le schéma de câblage",
+            toolWiring: "choisit l'outil {tool} sur le schéma de câblage",
             items: [
                 {keys: 'Suppr / Retour arrière', text: 'supprime l’élément, le mur ou le symbole sélectionné'},
                 {keys: 'Ctrl+Z', text: 'annuler'},
@@ -1266,14 +1280,12 @@ export default {
         since: 'à partir du {date}',
         sincePartial: 'prises et éclairage à partir du {date}',
         tab: 'Règles de contrôle',
-        title: 'Règles de contrôle',
         intro: 'Choisissez les règles que Contrôler vérifie. Cela vaut seulement pour vous, dans tous vos projets ; une règle désactivée disparaît de la liste et des compteurs ✖ ⚠. Un schéma unifilaire vide est toujours signalé.',
         allOn: 'Tout activer',
         offCount: '{count} règles sur {total} désactivées',
         allActive: 'Les {total} règles sont actives',
         saved: 'Enregistré',
         saveFailed: 'Les règles n’ont pas pu être enregistrées : {reason}',
-        loadFailed: 'Vos règles n’ont pas pu être chargées ; toutes les règles sont actives.',
         notArei: 'pas une exigence du RGIE',
         levels: {error: 'erreur', warn: 'avertissement', info: 'info'},
         groups: {

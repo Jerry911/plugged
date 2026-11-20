@@ -9,6 +9,13 @@ test('findNode', () => {
     expect(findNode(sampleTree(), 'C').id).toBe('C')
     expect(findNode(sampleTree(), 'zz')).toBeUndefined()
 })
+test('rotateNode turns a nested element and keeps the angle between 0 and 359', () => {
+    expect(findNode(rotateNode(sampleTree(), 'C', 15), 'C').r).toBe(15)
+    expect(findNode(rotateNode(sampleTree(), 'C', -15), 'C').r).toBe(345)
+    const turned = rotateNode(sampleTree(), 'C', 350)
+    expect(findNode(rotateNode(turned, 'C', 30), 'C').r).toBe(20)
+    expect(findNode(turned, 'B').r).toBeUndefined()
+})
 test('replaceNode replaces, removes and recurses', () => {
     expect(replaceNode(sampleTree(), 'D', (n) => [{...n, label: 'x'}])[1].label).toBe('x')
     expect(ids(replaceNode(sampleTree(), 'B', () => []))[0][1]).toEqual([['C', []]])

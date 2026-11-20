@@ -3,7 +3,7 @@
 // The situatieschema: drawing walls and rooms, placing doors, windows, symbols and text, selecting and editing, and the list of
 // components that are not placed yet. Everything is done with the real mouse on the drawing; the result is checked in the saved project.
 import {test, expect, t} from './fixtures.js'
-import {node, project, withCircuit} from './data.js'
+import {project, withCircuit} from './data.js'
 
 const SIT_TOOLS = {Selecteer: 'select', Muur: 'wall', Kamer: 'room', Deur: 'door', Raam: 'window', Symbool: 'sym', Tekst: 'text', Wis: 'erase'}
 // a tool of the situatieschema by its Dutch name (the tests read like the user guide), found by its id
@@ -464,3 +464,50 @@ test.describe('starter templates', () => {
         expect(doc.sit[1].walls.length).toBeGreaterThan(5)
     })
 })
+
+test.describe('the tool rail', () => {
+    test('is on the drawing; pointing at a tool shows its name and key; a letter chooses the tool', async ({page, app, backend}) => {
+        await goto(page, app, backend, project())
+        const rail = await page.locator('#sit-tools').boundingBox(),
+            sheet = await page.locator('#sit-sheet').boundingBox()
+        expect(rail.x).toBeGreaterThan(sheet.x)
+        expect(rail.y).toBeGreaterThan(sheet.y)
+        const tip = page.locator('#sit-tool-room .railtip')
+        await expect(tip).toBeHidden()
+        await page.locator('#sit-tool-room').hover()
+        await expect(tip).toBeVisible()
+        await expect(tip).toHaveText('KamerK')
+        await page.mouse.move(5, 5)
+        await page.keyboard.press('m')
+        await expect(page.locator('#sit-tool-wall')).toHaveClass(/on/)
+        await expect(page.locator('#sit-help')).toContainText('Klik punten')
+        // the wall tool works as before: two clicks and a click on the same point make a wall
+        await app.clickSheet(60, 60)
+        await app.clickSheet(120, 60)
+        await app.clickSheet(120, 60)
+        expect((await app.save(backend)).sit[0].walls).toHaveLength(1)
+    })
+    test('folds away to one button and stays folded after a reload; the keys still work', async ({page, app, backend}) => {
+        await goto(page, app, backend, project())
+        await page.locator('#sit-rail-toggle').click()
+        await expect(page.locator('#sit-tool-wall')).toHaveCount(0)
+        await expect(page.locator('#sit-help')).toHaveCount(0)
+        const folded = await page.locator('#sit-tools').boundingBox()
+        expect(folded.height).toBeLessThan(60)
+        await page.keyboard.press('k')
+        await page.reload()
+        await app.tab('sit')
+        await expect(page.locator('#sit-rail-toggle')).toHaveAttribute('aria-expanded', 'false')
+        await page.locator('#sit-rail-toggle').click()
+        await expect(page.locator('#sit-tool-select')).toBeVisible()
+    })
+    test('the components take the height of the window', async ({page, app, backend}) => {
+        await goto(page, app, backend, project())
+        const list = await page.locator('#sit-palette .pallist').boundingBox(),
+            height = page.viewportSize().height
+        expect(list.y + list.height).toBeGreaterThan(height - 30)
+        // the tools are no longer above it
+        expect(list.y).toBeLessThan(200)
+    })
+})
+

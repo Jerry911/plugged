@@ -187,9 +187,6 @@ export class FakeBackend {
     async symbolByName(name) {
         return this.symbols.find((s) => s.name === name)
     }
-    async symbolCount() {
-        return this.symbols.length
-    }
 }
 
 /** The real application: the same operations through its REST API. */
@@ -282,9 +279,6 @@ class RealBackend {
     }
     async symbolByName(name) {
         return (await (await this.request.get('/api/symbols')).json()).find((s) => s.name === name)
-    }
-    async symbolCount() {
-        return (await (await this.request.get('/api/symbols')).json()).length
     }
 }
 

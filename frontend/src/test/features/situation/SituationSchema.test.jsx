@@ -219,8 +219,8 @@ test('canvas delete button only appears once something is selected', () => {
     expect(btn()).toBeNull()
 })
 test('footer cells call onFooter', () => {
-    const fn = vi.fn(),
-        {container} = mount(SituationSchema, P(), {pageIndex: 0, onFooter: fn})
+    const fn = vi.fn()
+    mount(SituationSchema, P(), {pageIndex: 0, onFooter: fn})
     fireEvent.click(getById('sit-sheet-footer-straat'))
     expect(fn).toHaveBeenCalledWith('straat')
 })

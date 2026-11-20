@@ -326,7 +326,20 @@ export default {
             box: 'Kader',
         },
         kinds: {sym: 'symbool', text: 'tekst', door: 'deur', window: 'raam'},
-        help: 'Muur: klik punten, klik zelfde punt om te stoppen; typ de lengte en druk Enter. Rechtsklik: terug naar Selecteer. Selecteer: sleep een kader (Shift = toevoegen), pijltjes, Del, R. Raster, vrij tekenen, maten en zoom: in de tekening.',
+        toolKeys: {select: 'V', wall: 'M', room: 'K', door: 'D', window: 'A', sym: 'S', text: 'T', erase: 'W', wire: 'L', box: 'B'},
+        toolHelp: {
+            select: 'Klik of sleep een kader (Shift = toevoegen). Pijltjes schuiven, Del wist, R draait.',
+            wall: 'Klik punten, klik hetzelfde punt om te stoppen. Typ een lengte en druk Enter. Rechtsklik: terug naar Selecteer.',
+            room: 'Klik twee hoeken, of klik één hoek, typ de maten (bv. 4x3,5) en druk Enter.',
+            door: 'Klik op een muur: de deur gaat erin. Selecteer hem om hem te draaien of breder te maken.',
+            window: 'Klik op een muur: het raam gaat erin.',
+            sym: 'Kies links een component en klik op het blad.',
+            text: 'Klik op het blad en typ de tekst links.',
+            erase: 'Klik op wat weg moet.',
+            wire: 'Klik op een aansluitpunt (blauw) of het raster, klik om af te buigen, eindig op een aansluitpunt of een draad. Dubbelklik, rechtsklik of Enter stopt; Esc annuleert.',
+            box: 'Klik twee hoeken, bv. de behuizing van een bord.',
+        },
+        rail: {label: 'Gereedschap', fold: 'Gereedschap inklappen', unfold: 'Gereedschap uitklappen'},
         selected: 'Geselecteerd: {kind}',
         closeSelection: 'Selectie sluiten',
         text: 'Tekst',
@@ -390,8 +403,6 @@ export default {
         nothingToPlace: 'Geen elementen om te plaatsen.',
     },
     wiring: {
-        help: 'Draad: klik op een aansluitpunt van een symbool en klik verder tot het volgende; rechtsklik of Enter stopt. Kader: twee hoeken. Muren, deuren, symbolen en tekst werken zoals op het situatieschema.',
-        wireHelp: 'Klik op een aansluitpunt (blauwe bolletjes) of het raster om te beginnen, klik om af te buigen en klik op een aansluitpunt of een andere draad om te eindigen. Dubbelklik, rechtsklik of Enter: stoppen op het laatste punt. Esc: draad annuleren.',
         pen: 'Lijnstijl',
         closePen: 'Terug naar Selecteer',
         wireSelected: 'Draad · {length}',
@@ -681,7 +692,7 @@ export default {
             muur: {
                 title: 'Teken je eerste muur',
                 body: [
-                    '**1.** Klik op **Muur** (het actieve gereedschap kleurt geel).\n**2.** Klik op het blad links bovenaan om te beginnen en klik daaronder nog een keer: dat is je eerste muur.',
+                    '**1.** Klik in de gereedschapsbalk op het blad op **Muur**, of druk [[M]] (het actieve gereedschap kleurt geel). Wijs een icoon aan om zijn naam en sneltoets te zien.\n**2.** Klik op het blad, rechts van de balk, om te beginnen en klik daaronder nog een keer: dat is je eerste muur.',
                     'Liever een rechthoek in één keer? Kies **Kamer** en typ bv. [[4x3,5]].',
                 ],
                 done: 'Je eerste muur staat. Plugged tekent nu verder vanaf het laatste punt.',
@@ -838,7 +849,8 @@ export default {
                     title: 'Situatieschema',
                     text: 'Teken muren, ruimtes, deuren en ramen op de plattegrond en plaats er de symbolen van het eendraadschema op. De lengte van elke muur staat erbij, berekend uit de schaal in de kader.',
                     points: [
-                        'Begin van een **sjabloon** (⌂ Sjabloon): studio, appartement, rijwoning of vrijstaande woning, met een blad per verdieping. Daarna is alles gewone tekening die je aanpast.',
+                        'Het **gereedschap** staat als smalle balk op de tekening: wijs een icoon aan voor zijn naam en sneltoets (bv. [[M]] voor Muur, [[K]] voor Kamer). Zit de balk in de weg, klap hem dan in met het pijltje bovenaan.',
+                        'Begin van een **sjabloon** (het huisje onderaan de gereedschapsbalk): studio, appartement, rijwoning of vrijstaande woning, met een blad per verdieping. Daarna is alles gewone tekening die je aanpast.',
                         '**Nergens geplaatst** toont welke elementen van het eendraadschema nog op geen enkele plattegrond staan.',
                         'Selecteer met een kader, draai met [[R]], en een rechtermuisklik annuleert wat je aan het tekenen bent.',
                     ],
@@ -846,7 +858,7 @@ export default {
                 {
                     id: 'bedradingsschema',
                     title: 'Bedradingsschema',
-                    text: 'Een derde tabblad voor de technische tekening van hoe de draden lopen: de bedrading van een verdeelbord, een sturing met contactoren en drukknoppen, of de leidingen op een plattegrond. Het werkt zoals het situatieschema, met raster, zoom en schaal.',
+                    text: 'Een derde tabblad voor de technische tekening van hoe de draden lopen: de bedrading van een verdeelbord, een sturing met contactoren en drukknoppen, of de leidingen op een plattegrond. Het werkt zoals het situatieschema, met raster, zoom, schaal en dezelfde gereedschapsbalk op de tekening, met erbij **Draad** ([[L]]) en **Kader** ([[B]]).',
                     points: [
                         'Een **draad** hecht aan de aansluitpunten van de symbolen en volgt als je een symbool verschuift. Waar draden aftakken komt vanzelf een verbindingspunt.',
                         'Kies per draad of kader de **lijnstijl** (doorlopend, streepjes, stippellijn, streep-punt), de **kleur** (zwart, grijs, bruin, blauw, rood, groen, geel-groen) en de dikte.',
@@ -967,6 +979,8 @@ export default {
         },
         shortcuts: {
             title: 'Sneltoetsen',
+            tool: 'kiest het gereedschap {tool} op het situatie- en het bedradingsschema',
+            toolWiring: 'kiest het gereedschap {tool} op het bedradingsschema',
             items: [
                 {keys: 'Del / Backspace', text: 'verwijdert het geselecteerde element, de muur of het symbool'},
                 {keys: 'Ctrl+Z', text: 'ongedaan maken'},
@@ -1270,14 +1284,12 @@ export default {
         since: 'vanaf {date}',
         sincePartial: 'stopcontacten en verlichting vanaf {date}',
         tab: 'Controleregels',
-        title: 'Controleregels',
         intro: 'Kies welke regels Controleer nakijkt. Dit geldt enkel voor jou, in al je projecten; een uitgeschakelde regel verdwijnt uit de lijst en uit de tellers ✖ ⚠. Een leeg eendraadschema wordt altijd gemeld.',
         allOn: 'Alles aanzetten',
         offCount: '{count} van {total} regels uitgeschakeld',
         allActive: 'Alle {total} regels staan aan',
         saved: 'Opgeslagen',
         saveFailed: 'De regels konden niet opgeslagen worden: {reason}',
-        loadFailed: 'Je regels konden niet geladen worden; alle regels staan aan.',
         notArei: 'geen AREI-eis',
         levels: {error: 'fout', warn: 'waarschuwing', info: 'info'},
         groups: {

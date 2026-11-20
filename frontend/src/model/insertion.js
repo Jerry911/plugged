@@ -7,10 +7,7 @@
 // before = the new element takes the place of the target and the target hangs under it: parent -> new -> target
 // `symbolType.parents` is the "can be placed after" list of a symbol type: the types it may hang directly under.
 // `free` = free hierarchy: everything may hang under everything (except a circuit under a circuit).
-import {findNode, replaceNode} from './tree.js'
-
-/** Type of the empty element that is created by the "insert before / after" buttons; the Type dropdown turns it into a real symbol. */
-export const EMPTY = 'leeg'
+import {replaceNode} from './tree.js'
 
 /** May a symbol of type `symbolType` hang directly under an element of type `parentKey`? (a circuit can never hang under a circuit) */
 export const canHangUnder = (symbolType, parentKey, free = false) =>
@@ -69,12 +66,6 @@ export const insertAt = (tree, id, mode, newNode) => {
     }
 }
 
-/** The circuit (type 'kring') that holds `id`: the element itself or its nearest ancestor that is one; null when it is not inside a circuit. */
-export const circuitOf = (tree, id) => {
-    for (let node = findNode(tree, id); node; node = parentOf(tree, node.id)) if (node.type === 'kring') return node
-    return null
-}
-
 /** Can a symbol type be inserted before / after the element `target`? `typeOf(key)` gives the type object of a type key. */
 export const canInsert = (typeOf, tree, target, mode, symbolType, free = false) => {
     if (mode === 'after') return canHangUnder(symbolType, target.type, free) && (symbolType.parents || []).length > 0
@@ -96,7 +87,7 @@ export const canAddSibling = (tree, target, symbolType, free = false) => {
 }
 export const siblingTypes = (tree, symbolTypes, target, free = false) => symbolTypes.filter((symbolType) => canAddSibling(tree, target, symbolType, free))
 
-/** The types an EMPTY element can become: it must fit under its parent and everything that hangs under it must fit under the new type. */
+/** The types an empty element (type 'leeg', see EMPTY_TYPE in symbolLibrary.js) can become: it must fit under its parent and everything that hangs under it must fit under the new type. */
 export const emptyChoices = (typeOf, tree, symbolTypes, emptyNode, free = false) => {
     const parent = parentOf(tree, emptyNode.id)
     return symbolTypes.filter(

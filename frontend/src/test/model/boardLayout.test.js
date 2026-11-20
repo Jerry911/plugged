@@ -30,7 +30,6 @@ import {
     isDiffCircuit,
     connectionReach,
 } from '../../model/boardLayout.js'
-import {setLanguage} from '../../i18n/translate.js'
 import {typeOf} from '../../symbols/symbolLibrary.js'
 import {flatten} from '../../model/tree.js'
 import {FOOTER_TITLE_FONT_SIZE} from '../../components/Sheet.jsx'
@@ -143,7 +142,6 @@ test('long layoutCircuit names are written rotated and the name moves up', () =>
 test('chains make circuits wider and push following circuits to the right', () => {
     const w = (k) => layoutCircuit(baseProject(), kring('K', chain(k))).w
     expect(w(3)).toBeGreaterThan(w(1))
-    const x2 = (n) => layoutBoard(proj(tree([kring('K1', chain(n)), kring('K2')])), proj(tree([])).een[0]).circuits
     const a = layoutBoard(proj(tree([kring('K1', chain(1)), kring('K2')])), proj(tree([kring('K1', chain(1)), kring('K2')])).een[0]),
         b = layoutBoard(proj(tree([kring('K1', chain(4)), kring('K2')])), proj(tree([kring('K1', chain(4)), kring('K2')])).een[0])
     expect(b.circuits[1].x).toBeGreaterThan(a.circuits[1].x)

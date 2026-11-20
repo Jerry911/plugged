@@ -325,7 +325,20 @@ export default {
             box: 'Frame',
         },
         kinds: {sym: 'symbol', text: 'text', door: 'door', window: 'window'},
-        help: 'Wall: click points, click the same point to stop; type the length and press Enter. Right click: back to Select. Select: drag a box (Shift = add), arrow keys, Del, R. Grid, free drawing, lengths and zoom: in the drawing.',
+        toolKeys: {select: 'V', wall: 'W', room: 'O', door: 'D', window: 'N', sym: 'S', text: 'T', erase: 'E', wire: 'L', box: 'F'},
+        toolHelp: {
+            select: 'Click or drag a box (Shift = add). Arrow keys move, Del deletes, R turns.',
+            wall: 'Click points, click the same point to stop. Type a length and press Enter. Right click: back to Select.',
+            room: 'Click two corners, or click one corner, type the size (e.g. 4x3.5) and press Enter.',
+            door: 'Click a wall: the door goes into it. Select it to turn it or make it wider.',
+            window: 'Click a wall: the window goes into it.',
+            sym: 'Choose a component on the left and click the sheet.',
+            text: 'Click the sheet and type the text on the left.',
+            erase: 'Click what has to go.',
+            wire: 'Click a connection point (blue) or the grid, click to bend, end on a connection point or a wire. Double click, right click or Enter stops; Esc cancels.',
+            box: 'Click two corners, e.g. the enclosure of a board.',
+        },
+        rail: {label: 'Tools', fold: 'Fold the tools away', unfold: 'Show the tools'},
         selected: 'Selected: {kind}',
         closeSelection: 'Close selection',
         text: 'Text',
@@ -388,8 +401,6 @@ export default {
         nothingToPlace: 'No elements to place.',
     },
     wiring: {
-        help: 'Wire: click a connection point of a symbol and keep clicking up to the next one; right click or Enter stops. Frame: two corners. Walls, doors, symbols and text work as on the site plan.',
-        wireHelp: 'Click a connection point (blue dots) or the grid to start, click to bend and click a connection point or another wire to end. Double click, right click or Enter: stop at the last point. Esc: cancel the wire.',
         pen: 'Line style',
         closePen: 'Back to Select',
         wireSelected: 'Wire · {length}',
@@ -679,7 +690,7 @@ export default {
             muur: {
                 title: 'Draw your first wall',
                 body: [
-                    '**1.** Click **Wall** (the active tool turns yellow).\n**2.** Click at the top left of the sheet to start and click once more below it: that is your first wall.',
+                    '**1.** Click **Wall** in the tool bar on the sheet, or press [[W]] (the active tool turns yellow). Point at an icon to see its name and shortcut.\n**2.** Click the sheet, to the right of the bar, to start and click once more below it: that is your first wall.',
                     'Rather a rectangle in one go? Choose **Room** and type e.g. [[4x3.5]].',
                 ],
                 done: 'Your first wall is there. Plugged now carries on from the last point.',
@@ -836,7 +847,8 @@ export default {
                     title: 'Site plan',
                     text: 'Draw walls, rooms, doors and windows on the floor plan and place the symbols of the single-line diagram on it. Every wall shows its length, worked out from the scale in the title block.',
                     points: [
-                        'Start from a **template** (⌂ Template): studio, apartment, terraced house or detached house, with one sheet per floor. After that it is all ordinary drawing you can change.',
+                        'The **tools** are a narrow bar on the drawing: point at an icon for its name and shortcut (e.g. [[W]] for Wall, [[O]] for Room). If the bar is in the way, fold it away with the arrow at its top.',
+                        'Start from a **template** (the house at the bottom of the tool bar): studio, apartment, terraced house or detached house, with one sheet per floor. After that it is all ordinary drawing you can change.',
                         '**Not placed anywhere** shows which elements of the single-line diagram are not on any plan yet.',
                         'Select with a box, rotate with [[R]], and a right click cancels what you are drawing.',
                     ],
@@ -844,7 +856,7 @@ export default {
                 {
                     id: 'bedradingsschema',
                     title: 'Wiring diagram',
-                    text: 'A third tab for the technical drawing of how the wires run: the wiring of a distribution board, a control circuit with contactors and push buttons, or the cable runs on a floor plan. It works like the site plan, with grid, zoom and scale.',
+                    text: 'A third tab for the technical drawing of how the wires run: the wiring of a distribution board, a control circuit with contactors and push buttons, or the cable runs on a floor plan. It works like the site plan, with grid, zoom, scale and the same tool bar on the drawing, plus **Wire** ([[L]]) and **Frame** ([[F]]).',
                     points: [
                         'A **wire** attaches to the connection points of the symbols and follows when you move a symbol. Where wires branch off, a junction dot appears by itself.',
                         'Choose the **line style** of each wire or frame (solid, dashed, dotted, dash-dot), its **colour** (black, grey, brown, blue, red, green, green-yellow) and its width.',
@@ -965,6 +977,8 @@ export default {
         },
         shortcuts: {
             title: 'Keyboard shortcuts',
+            tool: 'chooses the {tool} tool on the site plan and the wiring diagram',
+            toolWiring: 'chooses the {tool} tool on the wiring diagram',
             items: [
                 {keys: 'Del / Backspace', text: 'deletes the selected element, wall or symbol'},
                 {keys: 'Ctrl+Z', text: 'undo'},
@@ -1265,14 +1279,12 @@ export default {
         since: 'from {date}',
         sincePartial: 'socket outlets and lighting from {date}',
         tab: 'Check rules',
-        title: 'Check rules',
         intro: 'Choose which rules Check verifies. This only applies to you, in all your projects; a rule that is off disappears from the list and from the ✖ ⚠ counts. An empty single-line diagram is always reported.',
         allOn: 'Switch all on',
         offCount: '{count} of {total} rules switched off',
         allActive: 'All {total} rules are on',
         saved: 'Saved',
         saveFailed: 'The rules could not be saved: {reason}',
-        loadFailed: 'Your rules could not be loaded; all rules are on.',
         notArei: 'not an AREI requirement',
         levels: {error: 'error', warn: 'warning', info: 'info'},
         groups: {

@@ -10,6 +10,10 @@ import {translation} from '../../i18n/translate.js'
 import SCREENSHOT_SIZES from './screenshotSizes.json'
 
 /** Where the source code is (AGPL: whoever uses Plugged can get it). */
+// the tools with a key, in the order of the rail; Draad and Kader are only on the bedradingsschema
+const TOOL_SHORTCUTS = ['select', 'erase', 'wall', 'room', 'door', 'window', 'sym', 'text', 'wire', 'box']
+const WIRING_ONLY_TOOLS = new Set(['wire', 'box'])
+
 export const SOURCE_URL = 'https://github.com/Jerry911/plugged'
 
 export const SECTIONS = ['info-over', 'info-functies', 'info-rollen', 'info-educatief', 'info-sneltoetsen', 'info-faq', 'info-contact', 'info-steun']
@@ -246,7 +250,14 @@ export default function InfoPage({onTour, visitor, onLogin, onRegister}) {
     }, [])
     const features = translation('info.features.items'),
         roles = translation('info.roles.items'),
-        shortcuts = translation('info.shortcuts.items'),
+        // the letters of the drawing tools come from the same texts as the tips of the tool rail, so this list never goes out of date
+        shortcuts = [
+            ...translation('info.shortcuts.items'),
+            ...TOOL_SHORTCUTS.map((tool) => ({
+                keys: t('situation.toolKeys.' + tool),
+                text: t(WIRING_ONLY_TOOLS.has(tool) ? 'info.shortcuts.toolWiring' : 'info.shortcuts.tool', {tool: t('situation.tools.' + tool)}),
+            })),
+        ],
         questions = translation('info.faq.questions')
     return (
         <div id="info-page" className="infopage">

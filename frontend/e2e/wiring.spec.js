@@ -3,7 +3,7 @@
 // The bedradingsschema: symbols with connection points, wires that attach to them (and follow when a symbol moves), line styles and colours,
 // junctions, frames, copying a plan of the situatieschema, and the settings of a symbol for this tab in Componenten.
 import {test, expect} from './fixtures.js'
-import {node, project, withCircuit} from './data.js'
+import {project, withCircuit} from './data.js'
 
 const tool = (page, name) => page.locator('#wire-tool-' + name)
 const wiringPage = async (app, backend) => (await app.save(backend)).wire[0]

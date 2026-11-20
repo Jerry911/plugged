@@ -140,7 +140,7 @@ test('the tour goes to the situatieschema and waits for the walls', async () => 
     await waitForStep('muur', {timeout: 3000})
     expect(byId('tab-sit').className).toBe('on')
     fireEvent.click(document.querySelector('[data-tour="tool-wall"]'))
-    expect(document.querySelector('[data-tour="tool-wall"]').className).toBe('on')
+    expect(document.querySelector('[data-tour="tool-wall"]')).toHaveClass('on')
 })
 
 test('the last step can start with an empty project', async () => {

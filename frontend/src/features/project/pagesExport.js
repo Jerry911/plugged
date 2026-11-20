@@ -6,8 +6,6 @@ import {zipSync} from 'fflate'
 import {t} from '../../i18n/translate.js'
 import {sheetPlan} from '../../model/boardLayout.js'
 
-export const PAGE_EXPORT_TYPES = ['svg', 'png']
-
 const twoDigits = (index) => String(index).padStart(2, '0')
 
 /** A file name without characters that a file system or zip tool does not like. */

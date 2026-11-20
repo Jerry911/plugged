@@ -1,7 +1,7 @@
 // Copyright 2026 Pleysier Jeroen
 // SPDX-License-Identifier: AGPL-3.0-only
 import pako from 'pako'
-import {decodeEds, edsToProject, edsTypeOf, encodeEds, exportEds, importEds, KNOWN_EDS_TYPES, lampKey, moduleKey, projectToEds, socketKey, switchKey} from '../../model/eds.js'
+import {decodeEds, edsToProject, edsTypeOf, encodeEds, exportEds, importEds, lampKey, moduleKey, projectToEds, socketKey, switchKey} from '../../model/eds.js'
 import {flatten} from '../../model/tree.js'
 import {verify} from '../../model/rules.js'
 import {setLanguage} from '../../i18n/translate.js'
@@ -82,8 +82,6 @@ test('type mapping and labels', () => {
     expect(get(r, 'e12')).toMatchObject({type: 'schakelaar', label: '', p: {aantal: 2}})
     expect(get(r, 'e9').type).toBe('subbord')
     expect(get(r, 'e9').label).toBe('Veranda')
-    expect(KNOWN_EDS_TYPES).toContain('Contactdoos')
-    expect(KNOWN_EDS_TYPES).toContain('Warmtepomp/airco')
 })
 test('kring, aansluiting and bord properties', () => {
     const r = edsToProject(J())

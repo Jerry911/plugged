@@ -8,7 +8,7 @@ const circuits = (saved) => saved.een[0].tree[0].children[0].children
 const btn = (page, id) => page.locator('#' + id)
 
 test.describe('building the schema', () => {
-    test('circuits and elements are added from the palette in the right place', async ({page, app, backend}) => {
+    test('circuits and elements are added from the palette in the right place', async ({app, backend}) => {
         await app.open(backend)
         await app.treeRow(t('board.boardLabel')).click()
         await app.add('kring')
@@ -33,7 +33,7 @@ test.describe('building the schema', () => {
         const saved = await app.save(backend)
         expect(saved.een[0].tree[0].children.map((n) => n.type)).toEqual(['bord', 'stopcontact'])
     })
-    test('without any selection an element is asked to be put somewhere sensible', async ({page, app, backend, dialogs}) => {
+    test('without any selection an element is asked to be put somewhere sensible', async ({app, backend, dialogs}) => {
         await app.open(backend, project({een: [{id: 'e1', name: 'Blad 1', tree: [node('A', 'aansluiting')]}]}))
         await app.add('stopcontact')
         expect(dialogs.messages.at(-1)).toBe(t('oneWire.selectParentFirst'))
@@ -49,7 +49,7 @@ test.describe('building the schema', () => {
         await search.fill('')
         expect(await page.locator('.pal details').count()).toBeGreaterThan(3)
     })
-    test('a circuit gets the next free letter', async ({page, app, backend}) => {
+    test('a circuit gets the next free letter', async ({app, backend}) => {
         await app.open(backend, withCircuit())
         await app.treeRow(t('board.boardLabel')).click()
         await app.add('kring')

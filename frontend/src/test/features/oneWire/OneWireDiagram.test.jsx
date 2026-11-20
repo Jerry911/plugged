@@ -207,8 +207,8 @@ test('Delete key removes node with its children', () => {
     expect(spy.project.een[0].tree).toEqual([])
 })
 test('footer cells in the diagram call onFooter', () => {
-    const fn = vi.fn(),
-        {container} = mount(OneWireDiagram, base(), {pageIndex: 0, onFooter: fn})
+    const fn = vi.fn()
+    mount(OneWireDiagram, base(), {pageIndex: 0, onFooter: fn})
     fireEvent.click(getById('eds-sheet-1-drawing-footer-ean'))
     expect(fn).toHaveBeenCalledWith('ean')
     fireEvent.click(getById('eds-sheet-1-drawing-footer-schaal'))
@@ -269,7 +269,7 @@ test('kring fields update props and the derived spec string', () => {
     expect(byId('eds-specs')).toBeNull()
 })
 test('aansluiting, bord and element fields', () => {
-    const {spy, container} = mount(OneWireDiagram, DEF(), {pageIndex: 0})
+    const {spy} = mount(OneWireDiagram, DEF(), {pageIndex: 0})
     fireEvent.click(row(spy.project.een[0].tree[0].id))
     fireEvent.change(field('delta'), {target: {value: '30'}})
     expect(spy.project.een[0].tree[0].p.delta).toBe('30')

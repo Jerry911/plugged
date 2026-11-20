@@ -155,7 +155,7 @@ test('the grid size dropdown changes the drawing grid and snaps clicks to it', a
     expect(r).toEqual({t: 'rect', x: 4, y: 4, w: 2, h: 2})
 })
 test('requires a name and at least one shape', async () => {
-    const {container} = mount()
+    mount()
     await create()
     fireEvent.click(saveButton('add'))
     expect(window.alert).toHaveBeenCalledTimes(1)

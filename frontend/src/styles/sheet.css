@@ -238,3 +238,131 @@
 .copyplandlg p {
     margin: 6px 0
 }
+
+/* the tools of the situatieschema and the bedradingsschema: a column of icons on the drawing (top left, the zoom buttons are top right);
+   the name and the key of a tool show next to it on hover or keyboard focus */
+.toolrail {
+    position: absolute;
+    left: 1.7em;
+    top: 1.8em;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 4px;
+    background: #1f3a5f;
+    border-radius: 9px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, .25)
+}
+
+.toolrail .railbtn {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1px;
+    width: 38px;
+    height: 38px;
+    padding: 0;
+    background: transparent;
+    color: #fff;
+    border: 0;
+    border-radius: 7px;
+    cursor: pointer
+}
+
+.toolrail .railbtn:hover:not(:disabled), .toolrail .railbtn:focus-visible {
+    background: rgba(255, 255, 255, .16)
+}
+
+.toolrail .railbtn:focus-visible {
+    outline: 2px solid #ffd54a;
+    outline-offset: 1px
+}
+
+.toolrail .railbtn.on {
+    background: #ffd54a;
+    color: #1b1b1b
+}
+
+.toolrail .railbtn:disabled {
+    opacity: .4;
+    cursor: default
+}
+
+.toolrail .railextra {
+    color: #ffd54a
+}
+
+.toolrail.folded .railfold {
+    width: 48px
+}
+
+.toolrail .railsep {
+    height: 1px;
+    margin: 3px 6px;
+    background: rgba(255, 255, 255, .25)
+}
+
+.toolrail .railtip {
+    position: absolute;
+    left: calc(100% + 10px);
+    top: 50%;
+    transform: translateY(-50%);
+    display: none;
+    align-items: center;
+    gap: 8px;
+    white-space: nowrap;
+    padding: 4px 8px;
+    background: #13263f;
+    color: #fff;
+    font-size: 13px;
+    border-radius: 5px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, .25);
+    pointer-events: none
+}
+
+.toolrail .railbtn:hover .railtip, .toolrail .railbtn:focus-visible .railtip {
+    display: flex
+}
+
+.toolrail .railtip kbd {
+    min-width: 1.2em;
+    padding: 0 4px;
+    text-align: center;
+    font: 600 12px ui-monospace, SFMono-Regular, Menlo, monospace;
+    color: #1b1b1b;
+    background: #ffd54a;
+    border-radius: 3px
+}
+
+/* the help of the active tool: bottom left on the drawing, where the grid box is bottom right; clicks go through it */
+.railhint {
+    position: absolute;
+    left: 2%;
+    bottom: 13%;
+    max-width: 46%;
+    padding: 5px 10px;
+    background: #1f3a5fee;
+    color: #fff;
+    font-size: 12.5px;
+    line-height: 1.35;
+    border-radius: 6px;
+    pointer-events: none
+}
+
+.railhint b {
+    color: #ffd54a
+}
+
+@media (max-width: 900px) {
+    /* the help with the mouse and keyboard (right click, Shift, Del) does not apply to a touch screen */
+    .railhint {
+        display: none
+    }
+
+    .toolrail {
+        left: 1em;
+        top: 1em
+    }
+}

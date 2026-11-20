@@ -280,11 +280,6 @@
         border-width: 2px 0 0;
         box-shadow: 0 -6px 18px #0003
     }
-
-    /* the help with the mouse and keyboard (right click, Shift, Del) does not apply to a touch screen */
-    #sit-help {
-        display: none
-    }
 }
 
 /* feedback (saved, loaded, ...) at the bottom right instead of in the top bar; it fades out and never catches a click */

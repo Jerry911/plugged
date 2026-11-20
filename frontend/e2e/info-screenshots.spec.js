@@ -181,6 +181,17 @@ const plan = (language) => {
         items: index === 0 ? [...page.items, ...items] : page.items,
     }))
 }
+// moves a drawing to the right, out from under the tool rail on the left of the sheet
+const shiftRight = (dx, pages) =>
+    pages.map((page) => {
+        const move = (point) => (point && Number.isFinite(point.x) ? {...point, x: point.x + dx} : point)
+        return {
+            ...page,
+            items: page.items.map(move),
+            wires: page.wires.map((wire) => ({...wire, a: move(wire.a), b: move(wire.b), points: wire.points.map(move)})),
+            boxes: page.boxes.map((box) => ({...box, x1: box.x1 + dx, x2: box.x2 + dx})),
+        }
+    })
 // the bedradingsschema: the control and the power circuit of a fan with a contactor (start / stop, emergency stop, thermal relay)
 const wiringSymbol = (id, type, x, y, s, mark) => ({id, kind: 'sym', type, x, y, r: 0, s, ...(mark ? {mark} : {})})
 const cable = (id, a, b, color, points = [], extra = {}) => ({id, a, b, points, style: 'solid', color, w: 0.35, ortho: true, ...extra})
@@ -193,7 +204,7 @@ const wiring = (language) => {
         en: {name: 'Fan', control: 'Control', power: 'Power'},
     }[language]
     const text = (id, x, y, txt, s = 4) => ({id, kind: 'text', x, y, txt, s, r: 0})
-    return [
+    return shiftRight(18, [
         {
             id: 'w1',
             name: words.name,
@@ -240,7 +251,7 @@ const wiring = (language) => {
                 {id: 'b2', x1: 140, y1: 6, x2: 230, y2: 184, style: 'dashdot', color: 'gray', w: 0.35},
             ],
         },
-    ]
+    ])
 }
 
 const house = (language) => ({
@@ -395,8 +406,12 @@ for (const language of LANGUAGES) {
         // the situatieschema, and the choice of templates
         await app.tab('sit')
         await expect(page.locator('svg.sheet').first()).toBeVisible()
+        // the tool rail on the drawing: Muur chosen with its key, the mouse on it shows its name and key
+        await page.keyboard.press(await page.locator('#sit-tool-wall kbd').textContent())
+        await page.locator('#sit-tool-wall').hover()
         await page.waitForTimeout(300)
         await shoot(page, language, 'situatieschema')
+        await page.keyboard.press('Escape')
         await page.locator('#sit-template').click()
         await expect(page.locator('#template-dialog')).toBeVisible()
         await shoot(page.locator('#template-dialog'), language, 'sjablonen')
@@ -407,7 +422,11 @@ for (const language of LANGUAGES) {
         await expect(page.locator('#wire-sheet')).toBeVisible()
         await page.locator('#wire-tool-wire').click()
         await page.locator('#wire-pen-color-red').click()
-        await app.moveSheet(80.3, 104.4)
+        // the mouse on the contact K1; measuring the point scrolls the page a little: back to the top with the mouse on the same spot
+        const contact = await app.sheetPoint(98.3, 104.4),
+            scrolled = await page.evaluate(() => window.scrollY)
+        await page.evaluate(() => window.scrollTo(0, 0))
+        await page.mouse.move(contact.x, contact.y + scrolled)
         await page.waitForTimeout(300)
         await shoot(page, language, 'bedradingsschema')
         await page.keyboard.press('Escape')

@@ -4,7 +4,7 @@
 // The bedradingsschema tab (listKey 'wire') is the same editor with wires and rectangles on top: wires attach to the connection points of the
 // symbols, have a line style and a colour; it has no list of elements to place and no starter templates, but can copy a plan of the situatieschema.
 import {useEffect, useRef, useState} from 'react'
-import {allTypes, symbolName, typeOf} from '../../symbols/symbolLibrary.js'
+import {allTypes, symbolName} from '../../symbols/symbolLibrary.js'
 import ZoomPane from '../../components/ZoomPane.jsx'
 import ZoomControls from '../../components/ZoomControls.jsx'
 import {circuitMarks, hiddenNodes, placeableNodes, setNodeProperties, unplacedNodes} from '../../model/project.js'
@@ -34,6 +34,7 @@ import {TOOLBAR_ICONS} from '../oneWire/icons.jsx'
 import {useFillHeight} from '../../hooks/useFillHeight.js'
 import {ComponentPalette, matchesSearch, UnplacedPanel} from './SituationPanels.jsx'
 import {itemTypeOf, pagePins, showsLengths} from './SituationSheet.jsx'
+import ToolRail, {toolOfKey} from './ToolRail.jsx'
 import {
     boxBox,
     boxHitsBox,
@@ -52,8 +53,9 @@ import {
 } from '../../model/wiring.js'
 import {CopyPlanDialog, copyPlan, LineStyleFields} from '../wiring/WiringPanels.jsx'
 
-const TOOLS = ['select', 'wall', 'room', 'door', 'window', 'sym', 'text', 'erase']
-const WIRING_TOOLS = ['select', 'wire', 'box', 'wall', 'room', 'door', 'window', 'sym', 'text', 'erase']
+// the tools in the order of the rail on the drawing; null = a separator between groups
+const TOOLS = ['select', 'erase', null, 'wall', 'room', 'door', 'window', null, 'sym', 'text']
+const WIRING_TOOLS = ['select', 'erase', null, 'wire', 'box', null, 'wall', 'room', 'door', 'window', null, 'sym', 'text']
 // the default size of a symbol placed on the bedradingsschema (mm) and the range of its size slider: furniture and cars are large
 const WIRING_SYMBOL_SIZE = 10
 const WIRING_SYMBOL_SIZES = [4, 150]
@@ -82,6 +84,7 @@ export default function SituationSchema({project, setProject, pageIndex, onFoote
     const {t} = useTranslation()
     const wiring = listKey === 'wire',
         P = wiring ? 'wire' : 'sit',
+        railTools = wiring ? WIRING_TOOLS : TOOLS,
         page = project[listKey][pageIndex],
         {walls, items} = page,
         wires = page.wires || [],
@@ -531,6 +534,12 @@ export default function SituationSchema({project, setProject, pageIndex, onFoote
         const onKeyDown = (event) => {
             if (/INPUT|TEXTAREA|SELECT/.test(event.target.tagName)) return
             if (event.key === 'Enter' && endWireAtLastPoint()) return event.preventDefault()
+            // a letter chooses a tool (shown when the mouse is on its button in the rail), with or without a selection
+            const keyTool = toolOfKey(event, railTools.filter(Boolean), t)
+            if (keyTool) {
+                event.preventDefault()
+                return chooseTool(keyTool)
+            }
             if (!selection.length) return
             const direction = ARROW_DIRECTIONS[event.key]
             if (event.key === 'Delete' || event.key === 'Backspace') {
@@ -715,29 +724,6 @@ export default function SituationSchema({project, setProject, pageIndex, onFoote
     return (
         <div className="row">
             <div className="side ui sticky-side fill" ref={leftPanel}>
-                <div className="tb" id={P + '-tools'}>
-                    {(wiring ? WIRING_TOOLS : TOOLS).map((name) => (
-                        <button
-                            key={name}
-                            id={P + '-tool-' + name}
-                            className={tool === name ? 'on' : ''}
-                            data-tour={'tool-' + name}
-                            onClick={() => chooseTool(name)}
-                        >
-                            {t('situation.tools.' + name)}
-                        </button>
-                    ))}
-                    {wiring ? (
-                        <button id="wire-copy-plan" title={t('wiring.copyPlan.buttonTitle')} disabled={!plansToCopy} onClick={() => setCopyPlanOpen(true)}>
-                            ⌂ {t('wiring.copyPlan.button')}
-                        </button>
-                    ) : (
-                        <button id={P + '-template'} title={t('templates.buttonTitle')} onClick={() => setTemplateOpen(true)}>
-                            ⌂ {t('templates.button')}
-                        </button>
-                    )}
-                </div>
-                <p id={P + '-help'}>{wiring ? t(tool === 'wire' ? 'wiring.wireHelp' : 'wiring.help') : t('situation.help')}</p>
                 {wiring && (tool === 'wire' || tool === 'box') && !selection.length && (
                     <PropertiesBox
                         id="wire-pen"
@@ -1058,6 +1044,24 @@ export default function SituationSchema({project, setProject, pageIndex, onFoote
                             <SituationSheet project={project} page={page} {...pageNumbering(project, page)} editor={editor} onFooter={onFooter} />
                         </div>
                     </ZoomPane>
+                    <ToolRail
+                        prefix={P}
+                        tools={railTools}
+                        tool={tool}
+                        onTool={chooseTool}
+                        hideHelp={!!pending && (tool === 'wall' || tool === 'room')}
+                        extra={
+                            wiring
+                                ? {
+                                      id: 'wire-copy-plan',
+                                      label: t('wiring.copyPlan.button'),
+                                      title: t('wiring.copyPlan.buttonTitle'),
+                                      disabled: !plansToCopy,
+                                      onClick: () => setCopyPlanOpen(true),
+                                  }
+                                : {id: P + '-template', label: t('templates.button'), title: t('templates.buttonTitle'), onClick: () => setTemplateOpen(true)}
+                        }
+                    />
                     <ZoomControls zoom={zoom} setZoom={setZoom} idPrefix={P + '-zoom'}>
                         <button
                             id={P + '-toggle-lengths'}

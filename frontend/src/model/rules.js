@@ -1,4 +1,5 @@
 // Copyright 2026 Pleysier Jeroen
+
 // SPDX-License-Identifier: AGPL-3.0-only
 // Simplified verification of an eendraadschema of a household installation against the AREI, Boek 1 (version 07, 15/09/2026); every
 // message names the part it comes from. Limits live in LIMITS so they are easy to adjust. NOT a substitute for the inspection by an

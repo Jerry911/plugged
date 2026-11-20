@@ -1,9 +1,9 @@
 // Copyright 2026 Pleysier Jeroen
 // SPDX-License-Identifier: AGPL-3.0-only
-import {act, fireEvent, render, waitFor} from '@testing-library/react'
+import {act, fireEvent, render} from '@testing-library/react'
 import Tour, {forgetTour, markTourSeen, place, TOUR_KEY, TOUR_VERSION, tourKey, tourSeen} from '../../../features/tour/Tour.jsx'
 import {tourSteps} from '../../../features/tour/tourSteps.jsx'
-import {setLanguage, t} from '../../../i18n/translate.js'
+import {t} from '../../../i18n/translate.js'
 import {byId, getById} from '../../utils.jsx'
 
 const TOUR_STEPS = tourSteps()

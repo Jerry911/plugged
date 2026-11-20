@@ -21,7 +21,6 @@ import org.springframework.test.web.servlet.ResultActions;
 import static com.pleysje.plugged.TestAccounts.account;
 import static com.pleysje.plugged.TestAccounts.as;
 import static org.hamcrest.Matchers.*;
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;

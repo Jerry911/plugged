@@ -4,7 +4,7 @@ import {act, fireEvent, render, waitFor} from '@testing-library/react'
 import App from '../../app/App.jsx'
 import pako from 'pako'
 import {importEds} from '../../model/eds.js'
-import {setLanguage, t} from '../../i18n/translate.js'
+import {t} from '../../i18n/translate.js'
 import {byId, getById, node} from '../utils.jsx'
 import standard from '../fixtures/standardSymbols.js'
 

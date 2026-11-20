@@ -3,7 +3,7 @@
 package com.pleysje.plugged.repository;
 
 import com.pleysje.plugged.catalog.StandardSymbols;
-import com.pleysje.plugged.catalog.SymbolShapes;
+import com.pleysje.plugged.catalog.TestShapes;
 import com.pleysje.plugged.dto.SymbolDto;
 import com.pleysje.plugged.entity.SymbolEntity;
 import com.pleysje.plugged.service.SymbolMapper;
@@ -53,14 +53,14 @@ class SymbolRepositoryTest {
     void seedingRemovesAStandardSymbolThatLeftTheCatalogUnlessTheUserChangedIt() {
         // the waterproof socket was a standard symbol of an older catalog: it is a property of the socket now
         SymbolEntity old = SymbolMapper.toEntity(new SymbolDto("stopcontact_h", "Waterdicht stopcontact", "Stopcontacten", List.of("kring"), true,
-                List.of(SymbolShapes.line(1, 12, 5, 12)), null, 0, false, false, null));
+                List.of(TestShapes.line(1, 12, 5, 12)), null, 0, false, false, null));
         old.setBuiltin(true);
         SymbolEntity edited = SymbolMapper.toEntity(new SymbolDto("stopcontact_x", "Mijn stopcontact", "Stopcontacten", List.of("kring"), true,
-                List.of(SymbolShapes.line(1, 12, 5, 12)), null, 0, false, false, null));
+                List.of(TestShapes.line(1, 12, 5, 12)), null, 0, false, false, null));
         edited.setBuiltin(true);
         edited.setModified(true);
         SymbolEntity mine = SymbolMapper.toEntity(new SymbolDto("custom:m", "Eigen", "Eigen", List.of("kring"), true,
-                List.of(SymbolShapes.line(1, 12, 5, 12)), null, 0, false, false, null));
+                List.of(TestShapes.line(1, 12, 5, 12)), null, 0, false, false, null));
         repository.saveAll(List.of(old, edited, mine));
         entityManager.flush();
         entityManager.clear();
@@ -76,10 +76,10 @@ class SymbolRepositoryTest {
     @Test
     void replacingAShapeListReplacesTheRows() {
         SymbolEntity entity = SymbolMapper.toEntity(new SymbolDto("custom:r", "R", null, List.of("kring", "bord"), true,
-                List.of(SymbolShapes.rect(1, 1, 4, 4), SymbolShapes.dot(5, 5, 1), SymbolShapes.text(2, 2, "t", 6)), Map.of("n", 2), 0, false, false, null));
+                List.of(TestShapes.rect(1, 1, 4, 4), TestShapes.dot(5, 5, 1), TestShapes.text(2, 2, "t", 6)), Map.of("n", 2), 0, false, false, null));
         repository.saveAndFlush(entity);
         entityManager.clear();
-        SymbolEntity again = SymbolMapper.toEntity(new SymbolDto("custom:r", "R2", "Eigen", List.of("kring"), false, List.of(SymbolShapes.line(0, 0, 3, 3)), null, 0, false, false, null));
+        SymbolEntity again = SymbolMapper.toEntity(new SymbolDto("custom:r", "R2", "Eigen", List.of("kring"), false, List.of(TestShapes.line(0, 0, 3, 3)), null, 0, false, false, null));
         repository.saveAndFlush(again);
         entityManager.clear();
         SymbolDto back = SymbolMapper.toDto(repository.findById("custom:r").orElseThrow());

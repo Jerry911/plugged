@@ -1,7 +1,7 @@
 // Copyright 2026 Pleysier Jeroen
 // SPDX-License-Identifier: AGPL-3.0-only
 // Working together: who else has the open project, and following their saves.
-import {act, fireEvent, render, waitFor} from '@testing-library/react'
+import {act, render, waitFor} from '@testing-library/react'
 import App from '../../app/App.jsx'
 import standard from '../fixtures/standardSymbols.js'
 import {t} from '../../i18n/translate.js'

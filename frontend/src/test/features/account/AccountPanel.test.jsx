@@ -16,7 +16,7 @@ const mount = (user = USER) => {
 }
 
 test('a new password, with the current one', async () => {
-    global.fetch = vi.fn(async (url, options) => (url === '/api/auth/password' ? json(USER) : json(null, 404)))
+    global.fetch = vi.fn(async (url) => (url === '/api/auth/password' ? json(USER) : json(null, 404)))
     mount()
     expect(getById('account-who')).toHaveTextContent('Jan Peeters · jan@example.be')
     typeInto('password-current', 'geheim123')

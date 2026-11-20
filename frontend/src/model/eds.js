@@ -37,7 +37,6 @@ const EDS_TYPE_TO_SYMBOL = {
     Ventilator: 'ventilatie',
     Verbruiker: 'vrij',
 }
-export const KNOWN_EDS_TYPES = Object.keys(EDS_TYPE_TO_SYMBOL)
 // A Contactdoos is one EDS type but several symbols in the library: the symbol follows its options (is_geaard, is_kinderveilig,
 // is_halfwaterdicht, as p.h). The number of sockets is NOT part of the symbol key (stopcontact2/3 would multiply it): it stays in p.aantal.
 // Missing options default like the eendraadschema does: earthed, no child protection.

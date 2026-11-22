@@ -1,8 +1,9 @@
 # Plugged as a program for one computer: the installers for Windows, macOS and Linux (desktop/jpackage.sh), each built on its own system.
 #
 # A release is made by raising the <version> in backend/pom.xml (the only place the version is written):
-#   - a push to main (or master) that changes backend/pom.xml: when there is no release v<version> yet, the installers are built and published
-#     as release v<version> (the tag is made on that commit). Another change of the pom (a dependency) with the same version does nothing.
+#   - every push to main (or master) looks at that version (a few seconds): when there is no release v<version> yet, the installers are
+#     built and published as release v<version> (the tag is made on that commit). When the release exists already, nothing else runs.
+#     So a release that failed is made by the next push that fixes it.
 #   - by hand (Actions > Desktop > Run workflow): the installers are built from the chosen branch and kept as artifacts of the run, nothing
 #     is published (to try them first).
 name: Desktop
@@ -11,7 +12,6 @@ on:
   workflow_dispatch:
   push:
     branches: [main, master]
-    paths: ['backend/pom.xml']
 
 permissions:
   contents: write
@@ -56,7 +56,8 @@ jobs:
           cache: maven
       - name: Build and pack
         shell: bash
-        run: desktop/jpackage.sh
+        # through bash: the script works without its execute permission (a checkout from Windows or a zip loses it)
+        run: bash desktop/jpackage.sh
       - uses: actions/upload-artifact@v4
         with:
           name: plugged-${{ needs.version.outputs.version }}-${{ runner.os }}

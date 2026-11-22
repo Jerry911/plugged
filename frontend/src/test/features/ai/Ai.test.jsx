@@ -82,4 +82,6 @@ test('on this computer only: the panel says the hosted assistants cannot reach i
     const text = strFromU8(files['plugged-drawings/SKILL.md'])
     expect(text).toMatch(/^---\nname: plugged-drawings\n/)
     expect(text).toContain('Plugged (https://plugged.example.be)')
+    // claude.ai refuses a skill whose description is longer than 200 characters
+    expect(text.match(/^description: (.*)$/m)[1].length).toBeLessThanOrEqual(200)
 })

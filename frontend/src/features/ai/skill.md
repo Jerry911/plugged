@@ -1,6 +1,6 @@
 ---
 name: plugged-drawings
-description: Turn an existing floor plan (PDF, photo, sketch) into Plugged drawings of a Belgian electrical installation (AREI) - situatieschema with rooms, doors, windows and the electrical points marked per circuit, ready for the eendraadschema. Use when the user asks to draw, convert or redraw a plan in Plugged.
+description: Turn an existing floor plan (PDF, photo, sketch) into Plugged drawings of a Belgian electrical installation (AREI), via the Plugged connector.
 ---
 
 # Plugged drawings

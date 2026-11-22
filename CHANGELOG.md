@@ -9,6 +9,11 @@ rename *Unreleased* to that version with the date and start a new, empty *Unrele
 
 ## [Unreleased]
 
+### Fixed
+
+- AI link: the steps now point to Customize › Connectors and Customize › Skills (the current place in Claude), with the Owner step for Team/Enterprise.
+- The downloadable skill had a description longer than the 200 characters claude.ai accepts, so uploading it failed.
+
 ## [1.0.0] - 2026-11-22
 
 The first release.

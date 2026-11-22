@@ -3,7 +3,8 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 #
 # Plugged as a program for one computer (see backend/.../desktop/DesktopLauncher.java), packed with its own Java by jpackage (part of the
-# JDK, 21 or newer). Run it on the operating system you build for (jpackage cannot build for another one); on Windows from Git Bash.
+# JDK, 21 or newer). Run it on the operating system you build for (jpackage cannot build for another one). On Windows use jpackage.cmd or
+# jpackage.ps1 (the same, in PowerShell), or run this script from Git Bash.
 #
 # The version is the <version> of backend/pom.xml (and nowhere else).
 #

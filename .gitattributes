@@ -1,0 +1,7 @@
+# Line endings that must not change on a Windows checkout (core.autocrlf):
+# shell scripts run on Linux, macOS and the NAS, and a CR at the end of a line breaks them ("sh\r: No such file or directory")
+*.sh    text eol=lf
+# Windows scripts keep Windows line endings
+*.cmd   text eol=crlf
+*.bat   text eol=crlf
+*.ps1   text eol=crlf

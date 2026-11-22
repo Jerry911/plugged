@@ -49,6 +49,14 @@ public class AccountService {
         this.symbols = symbols;
     }
 
+    /** The price lists of his offertes: part of his data. */
+    private com.pleysje.plugged.pricing.PriceListRepository priceLists;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    void setPriceLists(com.pleysje.plugged.pricing.PriceListRepository priceLists) {
+        this.priceLists = priceLists;
+    }
+
     private AppUser user(long userId) {
         return users.findById(userId).orElseThrow(() -> new LocalizedStatusException(HttpStatus.UNAUTHORIZED, "auth.signInRequired"));
     }
@@ -133,6 +141,16 @@ public class AccountService {
             symbol.getGroups().forEach(group -> shared.add(group.getName()));
             symbolList.add(node);
         }
+        ArrayNode priceListList = out.putArray("priceLists");
+        if (priceLists != null)
+            for (var list : priceLists.findByOwnerUserId(userId)) {
+                ObjectNode node = priceListList.addObject();
+                node.put("name", list.getName());
+                node.put("updated", list.getUpdated());
+                ArrayNode shared = node.putArray("sharedWith");
+                list.getGroups().forEach(group -> shared.add(group.getName()));
+                node.set("document", JSON.readTree(list.getJson()));
+            }
         log.info("User {} exported his data ({} project(s), {} symbol(s))", userId, projectList.size(), symbolList.size());
         return JSON.writerWithDefaultPrettyPrinter().writeValueAsString(out);
     }
@@ -151,8 +169,10 @@ public class AccountService {
         projectService.remove(owned);
         List<SymbolEntity> ownSymbols = symbols.findByOwnerUserId(userId);
         symbols.deleteAll(ownSymbols);
+        if (priceLists != null) priceLists.deleteAll(priceLists.findByOwnerUserId(userId));
         groups.removeOwnerEverywhere(userId);
         groups.removeMemberEverywhere(userId);
+        userService.endAiConnections(userId);
         users.delete(user);
         log.info("User {} removed his account ({} project(s), {} symbol(s) removed)", userId, owned.size(), ownSymbols.size());
     }

@@ -51,6 +51,25 @@ public class UserService {
     private final String adminEmail;
     /** Compared with when the email address is unknown, so a wrong address takes as long as a wrong password. */
     private final String dummyHash;
+    /** The keys of the AI assistants of the accounts: they stop with a new password and with the account. */
+    private com.pleysje.plugged.ai.AiTokenRepository aiTokens;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    void setAiTokens(com.pleysje.plugged.ai.AiTokenRepository aiTokens) {
+        this.aiTokens = aiTokens;
+    }
+
+    private com.pleysje.plugged.pricing.PriceListRepository priceLists;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    void setPriceLists(com.pleysje.plugged.pricing.PriceListRepository priceLists) {
+        this.priceLists = priceLists;
+    }
+
+    /** Every key of an AI assistant of the user stops (new password, removed account). */
+    public void endAiConnections(long userId) {
+        if (aiTokens != null) aiTokens.deleteByUserId(userId);
+    }
 
     public UserService(UserRepository users, ProjectRepository projects, UserGroupRepository groups, SymbolRepository symbols,
                        PasswordEncoder passwordEncoder, LoginThrottle throttle, @Value("${plugged.admin.email:}") String adminEmail) {
@@ -208,6 +227,7 @@ public class UserService {
         if (passwordEncoder.matches(request.newPassword(), user.getPasswordHash()))
             throw new LocalizedStatusException(HttpStatus.BAD_REQUEST, "auth.passwordUnchanged");
         user.changePassword(passwordEncoder.encode(request.newPassword()), false);
+        endAiConnections(userId);
         log.info("User {} changed his password", userId);
         return user;
     }
@@ -229,6 +249,7 @@ public class UserService {
         if (isPrimaryAdmin(user)) throw new LocalizedStatusException(HttpStatus.FORBIDDEN, "users.resetPrimaryPassword");
         String temporary = TemporaryPasswords.next();
         user.changePassword(passwordEncoder.encode(temporary), true);
+        endAiConnections(id);
         log.info("User {} got a temporary password from administrator {}", id, actingAdminId);
         return temporary;
     }
@@ -264,6 +285,8 @@ public class UserService {
         int movedSymbols = symbols.changeOwner(id, actingAdminId);
         groups.removeOwnerEverywhere(id);
         groups.removeMemberEverywhere(id);
+        endAiConnections(id);
+        if (priceLists != null) priceLists.deleteAll(priceLists.findByOwnerUserId(id));
         users.delete(user);
         log.info("User {} deleted; {} project(s) and {} symbol(s) now belong to user {}", id, moved, movedSymbols, actingAdminId);
     }

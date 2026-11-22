@@ -3,8 +3,8 @@
 // The situatieschema tab: tools and the selected item on the left, the plan in the middle, the elements that are not placed yet on the right.
 // The bedradingsschema tab (listKey 'wire') is the same editor with wires and rectangles on top: wires attach to the connection points of the
 // symbols, have a line style and a colour; it has no list of elements to place and no starter templates, but can copy a plan of the situatieschema.
-import {useEffect, useRef, useState} from 'react'
-import {allTypes, symbolName} from '../../symbols/symbolLibrary.js'
+import {useEffect, useMemo, useRef, useState} from 'react'
+import {allTypes, symbolName, typeOf} from '../../symbols/symbolLibrary.js'
 import ZoomPane from '../../components/ZoomPane.jsx'
 import ZoomControls from '../../components/ZoomControls.jsx'
 import {circuitMarks, hiddenNodes, placeableNodes, setNodeProperties, unplacedNodes} from '../../model/project.js'
@@ -53,6 +53,8 @@ import {
 } from '../../model/wiring.js'
 import {CopyPlanDialog, copyPlan, LineStyleFields} from '../wiring/WiringPanels.jsx'
 import Icon from '../../components/Icon.jsx'
+import GenerateOneWireDialog, {counted, planSummary} from './GenerateOneWireDialog.jsx'
+import {generateOneWire, planOneWire} from '../../model/generateOneWire.js'
 
 // the tools in the order of the rail on the drawing; null = a separator between groups
 const TOOLS = ['select', 'erase', null, 'wall', 'room', 'door', 'window', null, 'sym', 'text']
@@ -60,10 +62,51 @@ const WIRING_TOOLS = ['select', 'erase', null, 'wire', 'box', null, 'wall', 'roo
 // the default size of a symbol placed on the bedradingsschema (mm) and the range of its size slider: furniture and cars are large
 const WIRING_SYMBOL_SIZE = 10
 const WIRING_SYMBOL_SIZES = [4, 150]
-// the palette of the bedradingsschema starts with the symbols of control circuits and ends with the furniture
-const PALETTE_ORDER = {Schakelschema: 0, Inrichting: 2}
-const wiringOrder = (symbolTypes, wiring) =>
-    wiring ? [...symbolTypes].sort((a, b) => (PALETTE_ORDER[a.cat] ?? 1) - (PALETTE_ORDER[b.cat] ?? 1)) : symbolTypes
+// the palette of the bedradingsschema, per category: first what a control circuit or a board needs (the IEC 60617 symbols), then the
+// AREI symbols and the own ones, the furniture last
+const WIRING_CATEGORIES = [
+    'Contacten & schakelaars',
+    'Bediening & mechanisch',
+    'Relais, spoelen & starters',
+    'Beveiliging',
+    'Signalisatie & verlichting',
+    'Geleiders & verbindingen',
+    'Aarding & kentekens',
+    'Installatie (IEC)',
+    'Machines',
+    'Transformatoren',
+    'Meetinstrumenten',
+    'Omvormers & bronnen',
+    'Weerstanden, condensatoren & spoelen',
+    'Halfgeleiders',
+    'Algemene kentekens',
+    'Centrales & netten',
+    'Telecom & antennes',
+    'Kiezers (telefonie)',
+    'Schakelschema',
+]
+const paletteRank = (category) => (category === 'Inrichting' ? 1000 : WIRING_CATEGORIES.includes(category) ? WIRING_CATEGORIES.indexOf(category) : 500)
+// the strip of recently used symbols above the palette, per tab, in localStorage (browser storage can be unavailable: then nothing is kept)
+const RECENT_MAX = 8
+const recentKey = (wiring) => 'plugged.recentSymbols.' + (wiring ? 'wire' : 'sit')
+const readRecent = (wiring) => {
+    try {
+        const list = JSON.parse(window.localStorage.getItem(recentKey(wiring)) || '[]')
+        return Array.isArray(list) ? list.filter((key) => typeof key === 'string').slice(0, RECENT_MAX) : []
+    } catch {
+        return []
+    }
+}
+const rememberRecent = (wiring, key) => {
+    const list = [key, ...readRecent(wiring).filter((other) => other !== key)].slice(0, RECENT_MAX)
+    try {
+        window.localStorage.setItem(recentKey(wiring), JSON.stringify(list))
+    } catch {
+        // no storage: the strip only lasts this session
+    }
+    return list
+}
+const wiringOrder = (symbolTypes, wiring) => (wiring ? [...symbolTypes].sort((a, b) => paletteRank(a.cat) - paletteRank(b.cat)) : symbolTypes)
 const GRID_SIZES = [1, 2.5, 5, 10]
 // a door or window closer than this to a wall (mm) snaps onto it
 const WALL_SNAP_DISTANCE = 8
@@ -81,6 +124,10 @@ const wireReference = (wire, resolve) => (wire.a?.item == null ? wire.a : wire.p
  * `onPageIndex(index)` shows another sheet (after a template added sheets); `onStatus(text)` a message for the user (a toast).
  * listKey: 'sit' (the situatieschema) or 'wire' (the bedradingsschema).
  */
+// A selection for a plan that is about to be shown (Eendraadschema maken → Toon op het plan on another page): {pageId, ids}. The schema of
+// a page starts afresh when it is shown, so the page takes it over when it mounts.
+let handedSelection = null
+
 export default function SituationSchema({project, setProject, pageIndex, onFooter, neutral, onPageIndex = () => {}, onStatus = () => {}, listKey = 'sit'}) {
     const {t} = useTranslation()
     const wiring = listKey === 'wire',
@@ -96,14 +143,21 @@ export default function SituationSchema({project, setProject, pageIndex, onFoote
         // the wire being drawn: {a: its start (an end, see model/wiring.js), points: its bends so far}
         [wireDraft, setWireDraft] = useState(null),
         [copyPlanOpen, setCopyPlanOpen] = useState(false),
+        [generateOpen, setGenerateOpen] = useState(false),
         [componentType, setComponentType] = useState(null),
+        // the symbols chosen last on this tab, newest first, kept in this browser
+        [recentSymbols, setRecentSymbols] = useState(() => readRecent(wiring)),
         // the first point of the wall or room being drawn
         [pending, setPending] = useState(null),
         [gridSize, setGridSize] = useState(5),
         [freeDrawing, setFreeDrawing] = useState(false),
         [zoom, setZoom] = useState(1),
         [cursor, setCursor] = useState(null),
-        [selection, setSelection] = useState([]), // [{k: 'wall' | 'item', id}]
+        [selection, setSelection] = useState(() => {
+            const handed = handedSelection?.pageId === project[listKey][pageIndex]?.id ? handedSelection.ids : []
+            handedSelection = null
+            return handed.map((id) => ({k: 'item', id}))
+        }), // [{k: 'wall' | 'item', id}]
         [drag, setDrag] = useState(null),
         [selectionBox, setSelectionBox] = useState(null),
         [typedDimension, setTypedDimension] = useState(''),
@@ -223,7 +277,18 @@ export default function SituationSchema({project, setProject, pageIndex, onFoote
                       ? {...end, item: itemIds.get(end.item)}
                       : copyEnd(resolve(end)),
             newWalls = walls.filter((wall) => selectedIds.has(wall.id)).map((wall) => ({...movedWall(wall, 5, 5), id: newId()})),
-            newItems = items.filter((item) => itemIds.has(item.id)).map((item) => ({...item, id: itemIds.get(item.id), x: item.x + 5, y: item.y + 5})),
+            // copies of combined symbols are a combination of their own
+            combos = new Map(),
+            newItems = items
+                .filter((item) => itemIds.has(item.id))
+                .map((item) => {
+                    const copy = {...item, id: itemIds.get(item.id), x: item.x + 5, y: item.y + 5}
+                    if (item.combo) {
+                        if (!combos.has(item.combo)) combos.set(item.combo, newId())
+                        copy.combo = combos.get(item.combo)
+                    }
+                    return copy
+                }),
             newWires = wires
                 .filter((wire) => selectedIds.has(wire.id))
                 .map((wire) => ({
@@ -503,6 +568,8 @@ export default function SituationSchema({project, setProject, pageIndex, onFoote
             cancelDrawing()
         }
     }
+    // the situatieschema and the bedradingsschema each have their own strip
+    useEffect(() => setRecentSymbols(readRecent(wiring)), [wiring])
     useEffect(() => {
         if (pending && dimensionInput.current) dimensionInput.current.focus()
     }, [pending])
@@ -514,6 +581,31 @@ export default function SituationSchema({project, setProject, pageIndex, onFoote
     const updateSelected = (key, patch) =>
         updatePage({[key]: page[key].map((element) => (element.id === singleSelection.id ? {...element, ...patch} : element))})
     const updateSelectedItem = (patch) => updatePage({items: items.map((item) => (item.id === selectedItem.id ? {...item, ...patch} : item))})
+    // For the offerte (model/quote.js), not drawn: how a symbol is mounted (dir: horizontal, the default, or v) and which symbols share one
+    // cover frame (the same combo id; a combination has one direction). A combination of one symbol is no combination.
+    const selectedSymbols = items.filter((item) => item.kind === 'sym' && selectedIds.has(item.id)),
+        comboOf = (item) => (item?.combo ? items.filter((other) => other.combo === item.combo) : [])
+    const withCombos = (list) => {
+        const sizes = new Map()
+        for (const item of list) if (item.combo) sizes.set(item.combo, (sizes.get(item.combo) || 0) + 1)
+        return list.map((item) => (item.combo && sizes.get(item.combo) < 2 ? {...item, combo: undefined} : item))
+    }
+    const setMounting = (targets, direction) => {
+        const combos = new Set(targets.map((item) => item.combo).filter(Boolean)),
+            ids = new Set(targets.map((item) => item.id))
+        updatePage({items: items.map((item) => (ids.has(item.id) || (item.combo && combos.has(item.combo)) ? {...item, dir: direction === 'v' ? 'v' : undefined} : item))})
+    }
+    const combineSelection = () => {
+        if (selectedSymbols.length < 2) return
+        const combo = newId(),
+            direction = selectedSymbols.find((item) => item.dir === 'v') ? 'v' : undefined,
+            ids = new Set(selectedSymbols.map((item) => item.id))
+        updatePage({items: withCombos(items.map((item) => (ids.has(item.id) ? {...item, combo, dir: direction} : item)))})
+    }
+    const uncombine = (targets) => {
+        const combos = new Set(targets.map((item) => item.combo).filter(Boolean))
+        updatePage({items: items.map((item) => (item.combo && combos.has(item.combo) ? {...item, combo: undefined} : item))})
+    }
     // the selected symbol: linked to an element of the eendraadschema (its properties are those of that element, also the waterproof one) or a loose one
     const selectedNode = selectedItem?.kind === 'sym' && selectedItem.node ? nodes.find((node) => node.id === selectedItem.node) : null,
         selectedSymbolType = selectedItem ? itemTypeOf(project, selectedItem, nodes) : null
@@ -721,6 +813,40 @@ export default function SituationSchema({project, setProject, pageIndex, onFoote
         setTool('select')
         onStatus(t('wiring.copyPlan.done', {name: project.sit[sitPageIndex].name}))
     }
+    // Eendraadschema maken: the loose symbols of all plans become circuits by their text (B4 = point 4 of circuit B)
+    const oneWirePlan = useMemo(() => (wiring ? null : planOneWire(project, typeOf)), [project, wiring]),
+        looseCircuitSymbols = oneWirePlan ? oneWirePlan.linked + oneWirePlan.skipped.length : 0
+    // drawn by an AI assistant (MCP tool draw_floor_plan): the dialog opens once, the request goes out of the project
+    useEffect(() => {
+        if (wiring || !project.pending?.generateOneWire) return
+        setProject((current) => {
+            const {pending: _pending, ...rest} = current
+            return rest
+        })
+        if (looseCircuitSymbols > 0) setGenerateOpen(true)
+    }, [])
+    const generate = (choices) => {
+        const {project: generated, plan} = generateOneWire(project, typeOf, choices)
+        setProject(generated)
+        setGenerateOpen(false)
+        setSelection([])
+        onStatus(t('generate.done', {summary: planSummary(t, plan)}))
+    }
+    // Toon op het plan: the symbols that were left out, selected (on their page: the first one of them that has any)
+    const showSkipped = (entries) => {
+        setGenerateOpen(false)
+        const here = entries.filter((entry) => entry.pageIndex === pageIndex),
+            target = here.length ? pageIndex : entries[0].pageIndex,
+            ids = entries.filter((entry) => entry.pageIndex === target).map((entry) => entry.item.id)
+        onStatus(counted(t, 'generate.shown', entries.length))
+        if (target === pageIndex) {
+            setTool('select')
+            setSelection(ids.map((id) => ({k: 'item', id})))
+        } else {
+            handedSelection = {pageId: project.sit[target].id, ids}
+            onPageIndex(target)
+        }
+    }
     const wireLength = selectedWire ? lengthOf(wirePoints(selectedWire, resolve)) : 0
     return (
         <div className="row">
@@ -833,6 +959,17 @@ export default function SituationSchema({project, setProject, pageIndex, onFoote
                                 <input id="text-txt" className="props-wide" value={selectedItem.txt} onChange={(event) => updateSelectedItem({txt: event.target.value})} />
                             </label>
                         )}
+                        {selectedItem.kind === 'text' && (
+                            <label className="check" title={t('situation.roomAreaHint')}>
+                                <input
+                                    id="text-area"
+                                    type="checkbox"
+                                    checked={!!selectedItem.area}
+                                    onChange={(event) => updateSelectedItem({area: event.target.checked || undefined})}
+                                />{' '}
+                                {t('situation.roomArea')}
+                            </label>
+                        )}
                         <label>
                             {t('situation.size')}
                             <input
@@ -873,6 +1010,28 @@ export default function SituationSchema({project, setProject, pageIndex, onFoote
                                 />{' '}
                                 {t('situation.waterproof')}
                             </label>
+                        )}
+                        {selectedItem.kind === 'sym' && !wiring && (
+                            <div id="sym-mounting" className="mounting" title={t('situation.mountingHint')}>
+                                <label>
+                                    {t('situation.mounting')}
+                                    <select id="sym-mount" value={selectedItem.dir === 'v' ? 'v' : 'h'} onChange={(event) => setMounting([selectedItem], event.target.value)}>
+                                        <option value="h">{t('situation.horizontal')}</option>
+                                        <option value="v">{t('situation.vertical')}</option>
+                                    </select>
+                                </label>
+                                {comboOf(selectedItem).length > 1 && (
+                                    <span id="sym-combo" className="combo">
+                                        {t('situation.comboOf', {count: comboOf(selectedItem).length})}{' '}
+                                        <button id="sym-combo-select" type="button" onClick={() => setSelection(comboOf(selectedItem).map((item) => ({k: 'item', id: item.id})))}>
+                                            {t('situation.comboSelect')}
+                                        </button>{' '}
+                                        <button id="sym-combo-break" type="button" onClick={() => uncombine([selectedItem])}>
+                                            {t('situation.comboBreak')}
+                                        </button>
+                                    </span>
+                                )}
+                            </div>
                         )}
                         <div className="tb icons">
                             <IconButton
@@ -975,6 +1134,29 @@ export default function SituationSchema({project, setProject, pageIndex, onFoote
                         closeLabel={t('situation.closeSelection')}
                         onClose={() => setSelection([])}
                     >
+                        {!wiring && selectedSymbols.length > 1 && (
+                            <div id="multi-mounting" className="mounting" title={t('situation.mountingHint')}>
+                                <button id="multi-combine" type="button" onClick={combineSelection}>
+                                    {t('situation.combine', {count: selectedSymbols.length})}
+                                </button>
+                                {selectedSymbols.some((item) => item.combo) && (
+                                    <button id="multi-uncombine" type="button" onClick={() => uncombine(selectedSymbols)}>
+                                        {t('situation.comboBreak')}
+                                    </button>
+                                )}
+                                <label>
+                                    {t('situation.mounting')}
+                                    <select
+                                        id="multi-mount"
+                                        value={selectedSymbols.every((item) => item.dir === 'v') ? 'v' : 'h'}
+                                        onChange={(event) => setMounting(selectedSymbols, event.target.value)}
+                                    >
+                                        <option value="h">{t('situation.horizontal')}</option>
+                                        <option value="v">{t('situation.vertical')}</option>
+                                    </select>
+                                </label>
+                            </div>
+                        )}
                         <div className="tb icons">
                             <IconButton
                                 id={P + '-multi-rotate-ccw'}
@@ -1010,13 +1192,16 @@ export default function SituationSchema({project, setProject, pageIndex, onFoote
                 <ComponentPalette
                     project={project}
                     symbolTypes={paletteTypes}
+                    grouped={wiring}
                     placedCount={looseSymbolsOnPage}
                     search={search}
                     onSearch={setSearch}
                     activeType={componentType}
+                    recent={recentSymbols.filter((key) => allTypes(project).some((symbolType) => symbolType.k === key && (wiring ? inWiring(symbolType) : symbolType.place)))}
                     onChoose={(key) => {
                         setComponentType(key)
                         setTool('sym')
+                        setRecentSymbols(rememberRecent(wiring, key))
                     }}
                 />
             </div>
@@ -1030,6 +1215,14 @@ export default function SituationSchema({project, setProject, pageIndex, onFoote
                     </div>
                 )}
                 {copyPlanOpen && <CopyPlanDialog project={project} onCopy={insertPlan} onClose={() => setCopyPlanOpen(false)} />}
+                {generateOpen && oneWirePlan && (
+                    <GenerateOneWireDialog
+                        project={project}
+                        onGenerate={generate}
+                        onShow={showSkipped}
+                        onClose={() => setGenerateOpen(false)}
+                    />
+                )}
                 {pageEmpty && !wiring && (
                     <div id={P + '-empty'} className="sitempty">
                         <span>{t('templates.emptyHint')}</span>
@@ -1160,6 +1353,8 @@ export default function SituationSchema({project, setProject, pageIndex, onFoote
                     onPlaceAll={placeAllUnplaced}
                     onSetHidden={setHidden}
                     neutral={neutral}
+                    looseCircuitSymbols={looseCircuitSymbols}
+                    onGenerate={() => setGenerateOpen(true)}
                 />
             )}
         </div>

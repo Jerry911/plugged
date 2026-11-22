@@ -31,10 +31,19 @@ const withName = (url, project) => {
     return url + (name ? '?name=' + encodeURIComponent(name) : '')
 }
 
-/** Stores a new project; the server gives it its number. Resolves to that number, or null when it was not stored. */
-export const createProject = async (project) => {
+/**
+ * Stores a new project; the server gives it its number. Resolves to that number, or null when it was not stored. Without a connection it
+ * also resolves to null, unless `offlineError` is set: then the failed fetch() is thrown (the caller keeps the project on the device).
+ */
+export const createProject = async (project, {offlineError = false} = {}) => {
+    let response
     try {
-        const response = await apiFetch(withName('/api/projects', project), {method: 'POST', headers: JSON_HEADERS, body: JSON.stringify(project)})
+        response = await apiFetch(withName('/api/projects', project), {method: 'POST', headers: JSON_HEADERS, body: JSON.stringify(project)})
+    } catch (error) {
+        if (offlineError) throw error
+        return null
+    }
+    try {
         if (!response.ok) return null
         const {id, version} = await response.json()
         versions.set(String(id), response.headers?.get?.('ETag') || '"' + (version ?? 0) + '"')
@@ -49,12 +58,14 @@ export const createProject = async (project) => {
  * loaded or saved last. Resolves to true when it was stored. When somebody else saved the project in between, the server refuses it:
  * `onConflict()` is called and it resolves to false.
  * keepalive: the request goes on when the page is closed (an automatic save on leaving); browsers allow that only for small bodies.
+ * version: the version it is based on, when not the one this browser knows (a save kept on the device without a connection, offline/sync.js).
+ * Without a connection the failed fetch() is thrown.
  */
-export const saveProject = async (id, project, {keepalive = false, onConflict} = {}) => {
+export const saveProject = async (id, project, {keepalive = false, onConflict, version} = {}) => {
     const body = JSON.stringify(project)
     const response = await apiFetch(withName(projectUrl(id), project), {
         method: 'PUT',
-        headers: {...JSON_HEADERS, 'If-Match': knownVersion(id) ?? '"0"'},
+        headers: {...JSON_HEADERS, 'If-Match': version ?? knownVersion(id) ?? '"0"'},
         body,
         ...(keepalive && new TextEncoder().encode(body).length < KEEPALIVE_LIMIT ? {keepalive: true} : {}),
     })
@@ -165,14 +176,14 @@ export const versionNumber = (etag) => {
     return etag == null || Number.isNaN(number) ? null : number
 }
 
-/** {donateUrl, contactEmail} of this installation (empty strings when not configured or not reachable). */
+/** {donateUrl, contactEmail, desktop} of this installation (empty strings when not configured or not reachable; desktop: the program for one computer). */
 export const fetchInfo = async () => {
     try {
         const response = await apiFetch('/api/info')
         const info = response.ok ? await response.json() : null
-        return {donateUrl: info?.donateUrl || '', contactEmail: info?.contactEmail || ''}
+        return {donateUrl: info?.donateUrl || '', contactEmail: info?.contactEmail || '', desktop: !!info?.desktop}
     } catch {
-        return {donateUrl: '', contactEmail: ''}
+        return {donateUrl: '', contactEmail: '', desktop: false}
     }
 }
 

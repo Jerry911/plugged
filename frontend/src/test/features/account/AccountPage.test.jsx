@@ -137,6 +137,10 @@ describe('users', () => {
         const state = backend([ME, account(2, 'Jan', {approved: false}), account(3, 'Piet')])
         await mount()
         expect(getById('users-delete-2')).toHaveTextContent(t('users.reject'))
+        // a phone shows only the icon: the button keeps its name for a screen reader and as tooltip
+        expect(getById('users-delete-2')).toHaveAttribute('aria-label', t('users.reject'))
+        expect(getById('users-delete-3')).toHaveAttribute('aria-label', t('users.delete'))
+        expect(getById('users-delete-3').querySelector('svg')).not.toBeNull()
         window.confirm = vi.fn(() => false)
         clickId('users-delete-2')
         expect(window.confirm).toHaveBeenCalledWith(t('users.confirmReject', {name: 'Jan X', email: 'jan@example.be'}))

@@ -1,0 +1,95 @@
+[
+  {
+    "name": "plugged_guide",
+    "title": "How to draw in Plugged",
+    "description": "Read this first, once per conversation: how Plugged stores a project and how to turn a floor plan (a PDF, a photo, a sketch) into a situatieschema with the right symbols and circuit marks, so the user can make the eendraadschema from it.",
+    "inputSchema": {"type": "object", "properties": {}, "additionalProperties": false},
+    "annotations": {"readOnlyHint": true, "openWorldHint": false}
+  },
+  {
+    "name": "list_projects",
+    "title": "List projects",
+    "description": "The projects of the user in Plugged (own ones and those shared with a group), newest first: id, name, last saved, whether they are his own.",
+    "inputSchema": {"type": "object", "properties": {}, "additionalProperties": false},
+    "annotations": {"readOnlyHint": true, "openWorldHint": false}
+  },
+  {
+    "name": "get_project",
+    "title": "Read a project",
+    "description": "The whole project document (JSON) with its version, needed to change it with save_project. Large: read it only when you need the details.",
+    "inputSchema": {"type": "object", "properties": {"project_id": {"type": "integer", "description": "The id from list_projects"}}, "required": ["project_id"], "additionalProperties": false},
+    "annotations": {"readOnlyHint": true, "openWorldHint": false}
+  },
+  {
+    "name": "list_symbols",
+    "title": "List symbols",
+    "description": "The symbols of the library of the user (AREI and IEC 60617 symbols and his own), with the key to use in draw_floor_plan or in a project document. where: 'plan' = symbols that can be placed on the situatieschema (sockets, switches, lights, appliances, ...), 'one_wire' = elements of the eendraadschema, 'wiring' = symbols of the bedradingsschema. search filters on key, name and category.",
+    "inputSchema": {"type": "object", "properties": {
+      "where": {"type": "string", "enum": ["plan", "one_wire", "wiring"], "default": "plan"},
+      "search": {"type": "string", "description": "Optional words to look for, e.g. 'stopcontact' or 'licht'"}
+    }, "additionalProperties": false},
+    "annotations": {"readOnlyHint": true, "openWorldHint": false}
+  },
+  {
+    "name": "create_project",
+    "title": "New project",
+    "description": "Makes a new, empty project of the user (a connection with kWh meter, main differential and a board on the eendraadschema, an empty plan). Answers its id and version.",
+    "inputSchema": {"type": "object", "properties": {
+      "name": {"type": "string", "description": "Name in the project list, e.g. the address or the client"},
+      "language": {"type": "string", "enum": ["nl", "fr", "en"], "default": "nl", "description": "Language of the page names and of the default elements"},
+      "title_block": {"type": "object", "description": "Optional fields of the title block (Kaderinfo): straat, nr, postcode, gemeente, eigenaar, ean, tekenaar, rev, dossier, stelsel (e.g. '230V TT'), installatiedatum", "additionalProperties": {"type": "string"}}
+    }, "required": ["name"], "additionalProperties": false},
+    "annotations": {"readOnlyHint": false, "destructiveHint": false, "idempotentHint": false, "openWorldHint": false}
+  },
+  {
+    "name": "draw_floor_plan",
+    "title": "Draw floor plans",
+    "description": "Draws one or more floors on the situatieschema of a project, in real metres (x to the right, y down, from the top left corner of the building): rooms as rectangles (their walls are drawn and their name is shown with the floor area), extra walls, doors, windows, passages, texts, and the electrical symbols with their circuit mark (e.g. 'B4' = point 4 of circuit B). Plugged picks the scale and centres the plan on the sheet. Read plugged_guide first. The previous version stays in the history of the project.",
+    "inputSchema": {"type": "object", "properties": {
+      "project_id": {"type": "integer"},
+      "floors": {"type": "array", "minItems": 1, "maxItems": 10, "items": {"type": "object", "properties": {
+        "name": {"type": "string", "description": "e.g. 'Gelijkvloers', '1ste verdieping'"},
+        "rooms": {"type": "array", "items": {"type": "object", "properties": {
+          "name": {"type": "string"}, "x": {"type": "number"}, "y": {"type": "number"}, "w": {"type": "number", "description": "width (m)"}, "h": {"type": "number", "description": "depth (m)"}
+        }, "required": ["x", "y", "w", "h"]}},
+        "walls": {"type": "array", "items": {"type": "object", "properties": {"x1": {"type": "number"}, "y1": {"type": "number"}, "x2": {"type": "number"}, "y2": {"type": "number"}}, "required": ["x1", "y1", "x2", "y2"]}},
+        "doors": {"type": "array", "items": {"$ref": "#/$defs/opening"}},
+        "windows": {"type": "array", "items": {"$ref": "#/$defs/opening"}},
+        "passages": {"type": "array", "items": {"$ref": "#/$defs/opening"}, "description": "Openings without a door: cut out of the room walls"},
+        "symbols": {"type": "array", "items": {"type": "object", "properties": {
+          "type": {"type": "string", "description": "A key from list_symbols (where: plan)"},
+          "x": {"type": "number"}, "y": {"type": "number"},
+          "rotation": {"type": "integer", "description": "degrees, 0 by default"},
+          "mark": {"type": "string", "description": "circuit letter(s) + point number, e.g. 'A3'. Everything with the same mark is one point (a switch and the lamps it switches)"}
+        }, "required": ["type", "x", "y"]}},
+        "texts": {"type": "array", "items": {"type": "object", "properties": {
+          "text": {"type": "string"}, "x": {"type": "number"}, "y": {"type": "number"}, "size": {"type": "number", "description": "mm on the sheet, 4 by default"},
+          "area": {"type": "boolean", "description": "show the floor area of the room the text is in (for rooms drawn with walls)"}
+        }, "required": ["text", "x", "y"]}}
+      }}},
+      "replace": {"type": "boolean", "default": false, "description": "Replace all pages of the situatieschema (else: added after them, or replacing them when they are empty)"},
+      "make_one_wire": {"type": "boolean", "default": true, "description": "Ask the user, when he opens the project, to make the eendraadschema from the marked symbols"},
+      "version": {"type": "integer", "description": "The version you read (get_project); refused when somebody saved since. Leave out to draw on the newest version."}
+    },
+    "$defs": {"opening": {"type": "object", "properties": {
+      "x": {"type": "number", "description": "centre (m)"}, "y": {"type": "number"},
+      "rotation": {"type": "integer", "enum": [0, 90], "description": "0 on a horizontal wall, 90 on a vertical wall"},
+      "width": {"type": "number", "description": "m"},
+      "flip": {"type": "boolean", "description": "door opens to the other side"},
+      "mirror": {"type": "boolean", "description": "hinge on the other side"}
+    }, "required": ["x", "y", "rotation", "width"]}},
+    "required": ["project_id", "floors"], "additionalProperties": false},
+    "annotations": {"readOnlyHint": false, "destructiveHint": false, "idempotentHint": false, "openWorldHint": false}
+  },
+  {
+    "name": "save_project",
+    "title": "Save a project document",
+    "description": "Saves a whole project document (as read with get_project, changed), for changes draw_floor_plan cannot make, such as editing the eendraadschema tree or the title block. version must be the one you read: the save is refused when somebody saved since. The previous version stays in the history.",
+    "inputSchema": {"type": "object", "properties": {
+      "project_id": {"type": "integer"},
+      "version": {"type": "integer"},
+      "document": {"type": "object", "description": "The complete project document"}
+    }, "required": ["project_id", "version", "document"], "additionalProperties": false},
+    "annotations": {"readOnlyHint": false, "destructiveHint": true, "idempotentHint": true, "openWorldHint": false}
+  }
+]

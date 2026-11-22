@@ -34,6 +34,16 @@ test('the tab has the wire and frame tools, its own ids, no list of elements to 
     expect(keys[0]).toBe('comp-contact_no')
     expect(keys.at(-1)).toBe('comp-auto')
     expect(keys).toContain('comp-kring')
+    // one folding group per category: the contacts first and open, the others folded until a search opens them all
+    const groups = [...container.querySelectorAll('#sit-palette details.palgroup')]
+    expect(groups[0].id).toBe('comp-category-Contacten___schakelaars')
+    expect(groups.map((group) => group.open)).toEqual(groups.map((_, index) => index === 0))
+    expect(groups.at(-1).id).toBe('comp-category-Inrichting')
+    expect(getById('comp-iec_13_03_v').closest('details')).toBe(groups[0])
+    fireEvent.change(getById('comp-filter'), {target: {value: 'standhoudend'}})
+    const found = [...container.querySelectorAll('#sit-palette details.palgroup')]
+    expect(found.every((group) => group.open)).toBe(true)
+    expect(found.some((group) => group.querySelector('#comp-iec_13_03_v'))).toBe(true)
 })
 test('a wire drawn from a connection point to a connection point is attached to both symbols, in the line style of the pen', () => {
     const {container, spy} = open(contactAndLamp())

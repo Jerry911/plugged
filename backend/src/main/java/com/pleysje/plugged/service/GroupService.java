@@ -30,6 +30,14 @@ public class GroupService {
     private final ProjectRepository projects;
     private final SymbolRepository symbols;
 
+    /** The price lists of the offertes, shared with groups like projects (a group that goes is no longer shared with). */
+    private com.pleysje.plugged.pricing.PriceListRepository priceLists;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    void setPriceLists(com.pleysje.plugged.pricing.PriceListRepository priceLists) {
+        this.priceLists = priceLists;
+    }
+
     public GroupService(UserGroupRepository groups, UserRepository users, ProjectRepository projects, SymbolRepository symbols) {
         this.groups = groups;
         this.users = users;
@@ -74,6 +82,7 @@ public class GroupService {
         UserGroup group = find(id);
         int unshared = projects.unshareGroup(id);
         int unsharedSymbols = symbols.unshareGroup(id);
+        if (priceLists != null) priceLists.unshareGroup(id);
         groups.delete(group);
         log.info("Group {} deleted ({} project(s) and {} symbol(s) no longer shared with it)", id, unshared, unsharedSymbols);
     }

@@ -39,7 +39,8 @@ public class RequestSizeLimit {
     @Bean
     public FilterRegistrationBean<LimitFilter> requestSizeLimitFilter(@Value("${plugged.max-request-size:5MB}") DataSize maximum) {
         FilterRegistrationBean<LimitFilter> registration = new FilterRegistrationBean<>(new LimitFilter(maximum.toBytes()));
-        registration.addUrlPatterns("/api/*");
+        // the API, and what AI assistants send (a whole project through MCP; registration and keys are small)
+        registration.addUrlPatterns("/api/*", "/mcp", "/oauth/*");
         registration.setOrder(Ordered.HIGHEST_PRECEDENCE);
         return registration;
     }

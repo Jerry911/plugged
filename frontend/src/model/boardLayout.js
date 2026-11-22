@@ -12,7 +12,8 @@
 import {placedShapesOf, socketStackOf} from '../symbols/symbolShapes.js'
 import {pathPoints} from '../symbols/pathPoints.js'
 import {symbolName, typeOf} from '../symbols/symbolLibrary.js'
-import {t} from '../i18n/translate.js'
+import {getLocale, t} from '../i18n/translate.js'
+import {circuitLength, lengthText} from './calculations.js'
 import {flatten, newId} from './tree.js'
 
 // The full size of the drawing, which is also its smallest: its smallest text (13 units, also the details) is then as large as the titles of
@@ -575,7 +576,9 @@ export function layoutCircuit(project, node) {
         // a circuit protected by a differentieel (a differentieel that is a circuit of its own, or a kring with Bescherming differentieel):
         // the differentieel symbol and its specs (Δ30mA, 2P - 25A, Type A), like the differentieel of the aansluiting
         differential = node.diff || isDifferentialProtection(properties),
-        cable = properties.kabel || '',
+        // the cable with its length (typed, or ≈ estimated from the situatieschema)
+        length = properties.kabel && project ? circuitLength(project, node) : null,
+        cable = properties.kabel ? properties.kabel + (length ? ' · ' + lengthText(length, getLocale()) : '') : '',
         // the specs of the breaker and its short-circuit rating stand next to each other right of the stem, a bit above the bus; the cable
         // stands above them along the stem
         specs = unprotected

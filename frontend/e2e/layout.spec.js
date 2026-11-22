@@ -133,4 +133,32 @@ test.describe('a phone', () => {
             expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390)
         }
     })
+
+    test('the list of users fits the screen: the buttons of an account on one line, Verwijderen only a trash can', async ({page, app, backend}, run) => {
+        test.skip(REAL, 'the real application has no other accounts to show')
+        const json = (body) => ({status: 200, contentType: 'application/json', body: JSON.stringify(body)})
+        const admin = {...FAKE_USER, admin: true, primary: true, created: '2026-09-01T08:00:00', lastLogin: '2026-11-20T21:24:00', loginCount: 68}
+        const other = {id: 7, name: 'Testa', surname: 'Voorbeeldenaar-Langenaam', email: 'testa.voorbeeldenaar.langenaam@example.be', admin: false, approved: true}
+        const users = [admin, {...other, created: '2026-11-05T09:00:00', lastLogin: '2026-11-05T14:12:00', loginCount: 1, ownedGroups: []}]
+        await page.route('**/api/auth/status', (route) => route.fulfill(json({setupRequired: false, adminEmail: 'admin@school.be', user: admin})))
+        await page.route('**/api/admin/groups', (route) => route.fulfill(json([])))
+        await page.route('**/api/admin/users', (route) => route.fulfill(json(users)))
+        await app.open(backend)
+        await app.tab('account')
+        await page.locator('#admin-tab-users').click()
+        await expect(page.locator('#users-delete-7')).toBeVisible()
+        expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390)
+        const boxes = await Promise.all(['#users-password-7', '#users-promote-7', '#users-delete-7'].map((id) => page.locator(id).boundingBox()))
+        boxes.forEach((box) => {
+            expect(Math.abs(box.y - boxes[0].y)).toBeLessThan(1)
+            expect(Math.abs(box.height - boxes[0].height)).toBeLessThan(1)
+            expect(box.x + box.width).toBeLessThanOrEqual(390)
+        })
+        await expect(page.locator('#users-delete-7 .userslabel')).toBeHidden()
+        await expect(page.locator('#users-delete-7')).toHaveAccessibleName(t('users.delete'))
+        // without the header of the table, every line says what it is
+        const before = await page.locator('#users-login-7').evaluate((cell) => getComputedStyle(cell, '::before').content)
+        expect(before).toContain(t('users.lastLogin'))
+        await page.screenshot({path: run.outputPath('users-phone.png')})
+    })
 })

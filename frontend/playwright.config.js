@@ -1,6 +1,6 @@
 // Copyright 2026 Pleysier Jeroen
 // SPDX-License-Identifier: AGPL-3.0-only
-import {existsSync} from 'node:fs'
+import {existsSync, readdirSync, statSync} from 'node:fs'
 import {defineConfig, devices} from '@playwright/test'
 import {REAL} from './e2e/mode.js'
 
@@ -12,7 +12,7 @@ import {REAL} from './e2e/mode.js'
 //                             This is what `mvn install` does (integration-test phase, after the backend and frontend tests). A backend
 //                             that fails on purpose is simulated by answering those requests in the browser (see RealBackend in fixtures.js).
 //                             Settings (all optional):
-//                               E2E_JAR     the jar to start        (default ../backend/target/plugged-0.1.0.jar)
+//                               E2E_JAR     the jar to start        (default the plugged-<version>.jar in ../backend/target)
 //                               E2E_JAVA    the java to start it with (default: java on the PATH)
 //                               E2E_PORT    port of the application (default 18080, so a development instance on 8080 is left alone)
 //                               E2E_LOG=1   show the log of the application (it is off: e2e/application-test.properties)
@@ -22,7 +22,13 @@ const CI = !!process.env.CI
 const port = REAL ? Number(process.env.E2E_PORT || 18080) : 5173
 const showLog = process.env.E2E_LOG === '1'
 const java = process.env.E2E_JAVA || 'java',
-    jar = process.env.E2E_JAR || '../backend/target/plugged-0.1.0.jar'
+    // the version is only in backend/pom.xml: the plugged-<version>.jar the build made (the newest, when an older version is still there)
+    builtJar =
+        existsSync('../backend/target') &&
+        readdirSync('../backend/target')
+            .filter((name) => /^plugged-\d[\w.-]*\.jar$/.test(name))
+            .sort((a, b) => statSync('../backend/target/' + b).mtimeMs - statSync('../backend/target/' + a).mtimeMs)[0],
+    jar = process.env.E2E_JAR || '../backend/target/' + (builtJar || 'plugged-<version>.jar')
 if (REAL && !existsSync(jar) && process.env.E2E_REUSE_SERVER !== '1') throw new Error(`The application jar ${jar} does not exist: build it first (cd ../backend && mvn -DskipTests package) or set E2E_JAR.`)
 
 export default defineConfig({
@@ -40,6 +46,8 @@ export default defineConfig({
         // the application picks its language from the browser: the tests start in Dutch (i18n.spec.js switches the language itself)
         locale: 'nl-BE',
         acceptDownloads: true,
+        // the service worker of the PWA would answer requests before the page routes of the tests see them: only offline.spec.js lets it run
+        serviceWorkers: 'block',
         trace: 'on-first-retry',
         screenshot: 'only-on-failure',
     },

@@ -9,6 +9,7 @@ import {placedShapesOf} from '../../symbols/symbolShapes.js'
 import Sheet from '../../components/Sheet.jsx'
 import {circuitMarks, placeableNodes} from '../../model/project.js'
 import {formatLength, scaleOf} from '../../model/geometry.js'
+import {formatArea, roomArea, roomAt, roomFaces} from '../../model/rooms.js'
 import {centredTextBox, placeLabels, symbolExtent} from '../../model/labelPlacement.js'
 import {unionBounds} from '../../symbols/shapeHit.js'
 import {useTranslation} from '../../i18n/I18nProvider.jsx'
@@ -145,7 +146,7 @@ const DrawingPreview = ({editor, scale}) => {
  * pins, wirePreview, boxPreview}; prefix ('sit' or 'wire') starts the ids of the elements.
  */
 export function SituationSheet({project, page, number, total, editor, onFooter}) {
-    const {t} = useTranslation()
+    const {t, language} = useTranslation()
     const nodes = placeableNodes(project),
         marks = circuitMarks(project),
         {walls, items} = page,
@@ -154,6 +155,12 @@ export function SituationSheet({project, page, number, total, editor, onFooter})
         prefix = editor?.prefix || 'sit',
         scale = scaleOf(project.footer),
         showLengths = showsLengths(page),
+        // the rooms the walls enclose, only worked out when a text asks for the area of its room
+        faces = items.some((item) => item.kind === 'text' && item.area) ? roomFaces(walls) : [],
+        areaOf = (item) => {
+            const face = roomAt(faces, {x: item.x + (String(item.txt || '').length * (item.s || DEFAULT_ITEM_SIZE.text) * 0.55) / 2, y: item.y})
+            return face ? formatArea(roomArea(face, scale), language) : null
+        },
         isSelected = (id) => !!editor && editor.selection.some((entry) => entry.id === id),
         sizeOf = sizeOfItem,
         // text next to a symbol: the marking of the eendraadschema element (A5), unless the user typed their own
@@ -302,6 +309,11 @@ export function SituationSheet({project, page, number, total, editor, onFooter})
                                 <text x={item.x} y={item.y} fontSize={size}>
                                     {item.txt}
                                 </text>
+                                {item.area && areaOf(item) && (
+                                    <text id={prefix + '-area-' + item.id} className="roomarea" x={item.x} y={item.y + size * 1.15} fontSize={size * 0.8} fill="#555">
+                                        {areaOf(item)}
+                                    </text>
+                                )}
                             </g>
                             {selected && <circle cx={item.x} cy={item.y} r="2" fill="none" stroke={SELECTION_COLOUR} />}
                         </g>

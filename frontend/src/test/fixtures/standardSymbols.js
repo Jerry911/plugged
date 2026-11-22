@@ -6,6 +6,6 @@
 import catalog from '../../../../backend/src/main/resources/catalog/standard-symbols.json'
 
 // what StandardSymbols.VERSION gives the stored copies; nothing in the frontend depends on its value
-export const STANDARD_VERSION = 14
+export const STANDARD_VERSION = 15
 
 export default catalog.map((symbol) => ({...symbol, v: STANDARD_VERSION, builtin: true, modified: false}))

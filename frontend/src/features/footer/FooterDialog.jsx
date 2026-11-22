@@ -24,8 +24,8 @@ export const FOOTER_FIELDS = [
     'stelsel',
 ]
 /** The measurements for the inspection, also in project.footer: earth resistance (Ω), insulation resistance (MΩ), measured on. */
-export const MEASUREMENT_FIELDS = ['aardingsweerstand', 'isolatieweerstand', 'meetdatum']
-const NUMBER_FIELDS = new Set(['aardingsweerstand', 'isolatieweerstand'])
+export const MEASUREMENT_FIELDS = ['aardingsweerstand', 'isolatieweerstand', 'meetdatum', 'netimpedantie']
+const NUMBER_FIELDS = new Set(['aardingsweerstand', 'isolatieweerstand', 'netimpedantie'])
 /** When the work on site started; not printed. */
 export const INSTALLATION_FIELD = 'installatiedatum'
 

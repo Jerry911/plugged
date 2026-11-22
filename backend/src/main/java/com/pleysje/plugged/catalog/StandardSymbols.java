@@ -15,7 +15,8 @@ import java.util.Map;
 
 /**
  * The standard symbols that ship with the application, read from {@value #CATALOG} on the class path
- * (backend/src/main/resources/catalog/standard-symbols.json). The symbols were drawn after AREI Boek 1, hoofdstuk 2.13, tabel 2.23.
+ * (backend/src/main/resources/catalog/standard-symbols.json). The symbols of the eendraad- and situatieschema were drawn after AREI Boek 1,
+ * hoofdstuk 2.13, tabel 2.23; those of the bedradingsschema (keys iec_*) after the IEC 60617 symbols, with their names in nl, fr and en.
  * <p>
  * <b>Changing the standard symbols.</b> The catalog is made in the application itself: draw a standard symbol in the Componenten tab and
  * choose "make standard", then download the catalog with Beheer → Symbolen and replace the file above with it. On every start
@@ -27,7 +28,7 @@ import java.util.Map;
  */
 public final class StandardSymbols {
     /** The number the stored copies of standard symbols carry; raising it replaces every unedited copy at the next start. */
-    public static final int VERSION = 14;
+    public static final int VERSION = 15;
     /** The catalog file on the class path. */
     public static final String CATALOG = "catalog/standard-symbols.json";
 

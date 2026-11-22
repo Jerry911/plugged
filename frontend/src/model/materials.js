@@ -4,12 +4,14 @@
 //   - protection: main breaker / main differential of the connection, the breakers, differentials and RCBOs of the circuits, and the separate
 //     differential and fuse elements, grouped by everything that makes them a different article (kind, poles, rating, curve, sensitivity,
 //     type, breaking capacity);
-//   - cables: every cable designation with the circuits that use it (the length is not in the drawing: a column to fill in);
+//   - cables: every cable designation with the circuits that use it and their total length: typed in the circuit or estimated from the
+//     situatieschema (model/calculations.js); a circuit without either leaves the total incomplete, to fill in;
 //   - elements: the consumers, switches, sockets, ... by symbol, with their count (Aantal of the element), and how many socket outlets that is;
 //   - boards: distribution boards, sub boards, home automation.
 // Only the eendraadschema counts: the situatieschema shows the same elements once more.
 import {flatten} from './tree.js'
 import {parseSpecs} from './rules.js'
+import {circuitLength} from './calculations.js'
 import {symbolName, typeOf} from '../symbols/symbolLibrary.js'
 import {t} from '../i18n/translate.js'
 
@@ -71,7 +73,7 @@ const elementProtectionOf = (node) => {
 
 /**
  * The bill of materials: {protection: [{description, kind, poles, amp, curve, delta, diffType, kA, count, marks}], cables: [{cable, count,
- * marks}], elements: [{type, name, count, outlets}], boards: [{type, name, count}], outlets: total socket outlets, circuits: number of circuits}.
+ * marks, length (m, of the circuits whose length is known), estimated (part of it is an estimate), unknown (circuits without a length)}], elements: [{type, name, count, outlets}], boards: [{type, name, count}], outlets: total socket outlets, circuits: number of circuits}.
  * `marks` are the circuit letters that use the article (e.g. "A, B, C"). Sorted: protection by kind, the rest by count.
  */
 export function billOfMaterials(project) {
@@ -95,7 +97,15 @@ export function billOfMaterials(project) {
                 const article = protectionOf(node)
                 if (article) addTo(protection, article.key, () => article, mark)
                 const cable = clean(node.p?.kabel)
-                if (cable) addTo(cables, cable.toLowerCase(), () => ({cable}), mark || t('materials.connection'))
+                if (cable) {
+                    addTo(cables, cable.toLowerCase(), () => ({cable, length: 0, estimated: false, unknown: 0}), mark || t('materials.connection'))
+                    const row = cables.get(cable.toLowerCase()),
+                        length = node.type === 'kring' ? circuitLength(project, node) : null
+                    if (length) {
+                        row.length += length.length
+                        row.estimated ||= length.estimated
+                    } else row.unknown++
+                }
                 continue
             }
             if (PROTECTION_ELEMENTS[node.type]) {

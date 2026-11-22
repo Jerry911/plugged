@@ -98,6 +98,17 @@ export default function AuthGate({children}) {
                 <InfoPage visitor onLogin={go('login')} onRegister={state.setupRequired ? undefined : go('register')} />
             </AuthLayout>
         )
+    // Plugged as a program on this computer: the program signs the browser in (its window has a button for it), nobody types a password
+    if (!state.user && state.desktop)
+        return (
+            <div id="desktop-signin" className="ui" style={{padding: 24, maxWidth: 560}}>
+                <h2>{t('desktop.title')}</h2>
+                <p>{t('desktop.text')}</p>
+                <button id="desktop-retry" onClick={load}>
+                    {t('app.retry')}
+                </button>
+            </div>
+        )
     if (state.setupRequired) return <SetupScreen adminEmail={state.adminEmail} onDone={signedIn} onInfo={go('info')} />
     if (!state.user) {
         if (screen === 'register')
@@ -132,8 +143,16 @@ export default function AuthGate({children}) {
     }
     return (
         <>
-            {children({user: state.user, onLogout, onAccountDeleted})}
-            {sessionLost && (
+            {children({user: state.user, onLogout, onAccountDeleted, desktop: state.desktop})}
+            {sessionLost && state.desktop && (
+                <div id="session-lost" className="authoverlay ui" role="dialog" aria-modal="true">
+                    <div className="authcard">
+                        <h2>{t('desktop.title')}</h2>
+                        <p>{t('desktop.text')}</p>
+                    </div>
+                </div>
+            )}
+            {sessionLost && !state.desktop && (
                 <div id="session-lost" className="authoverlay ui" role="dialog" aria-modal="true">
                     <LoginForm email={state.user.email} title={t('auth.sessionLost.title')} notice={t('auth.sessionLost.text')} onLogin={signedIn} />
                 </div>

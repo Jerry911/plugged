@@ -173,7 +173,7 @@ test.describe('Info page without an account', () => {
         await expect(page.locator('#info-page')).toBeVisible()
         await expect(page).toHaveURL(/#info$/)
         // everything is there, with its screenshots, the donate button and the source code
-        await expect(page.locator('#info-functies article.feature')).toHaveCount(10)
+        await expect(page.locator('#info-functies article.feature')).toHaveCount(13)
         await expect(page.locator('#donate-button')).toBeInViewport()
         await expect(page.locator('#donate-button')).toHaveAttribute('href', testInfo.donateUrl)
         await expect(page.locator('#source-link')).toHaveAttribute('href', 'https://github.com/Jerry911/plugged')

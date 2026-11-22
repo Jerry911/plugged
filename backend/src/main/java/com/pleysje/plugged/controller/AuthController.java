@@ -59,6 +59,7 @@ public class AuthController {
     private final SecurityContextRepository contexts;
     private final SetupKey setupKey;
     private final LoginThrottle throttle;
+    private boolean desktop;
 
     public AuthController(UserService userService, GroupService groups, SecurityContextRepository contexts, SetupKey setupKey, LoginThrottle throttle) {
         this.userService = userService;
@@ -66,6 +67,12 @@ public class AuthController {
         this.contexts = contexts;
         this.setupKey = setupKey;
         this.throttle = throttle;
+    }
+
+    /** Plugged as a program on one computer (plugged.desktop.enabled): one local account, nobody registers. */
+    @org.springframework.beans.factory.annotation.Value("${plugged.desktop.enabled:false}")
+    void setDesktop(boolean desktop) {
+        this.desktop = desktop;
     }
 
     /** The user as the editor needs him: with what educational mode allows him (see GroupService#isRestricted) and the groups he owns. */
@@ -77,7 +84,7 @@ public class AuthController {
     public AuthStatusDto status(Authentication authentication) {
         return ApiLog.run(log, "GET /api/auth/status", "", () -> {
             AppUser user = authentication != null && authentication.getPrincipal() instanceof PluggedPrincipal principal ? userService.activeUser(principal.id()) : null;
-            return new AuthStatusDto(userService.setupRequired(), userService.adminEmail(), user == null ? null : forEditor(user));
+            return new AuthStatusDto(userService.setupRequired(), desktop ? "" : userService.adminEmail(), user == null ? null : forEditor(user), desktop);
         });
     }
 
@@ -100,6 +107,7 @@ public class AuthController {
     @ResponseStatus(HttpStatus.CREATED)
     public UserDto register(@Valid @RequestBody AuthRequests.Register body, HttpServletRequest request) {
         return ApiLog.run(log, "POST /api/auth/register", "", () -> {
+            if (desktop) throw new LocalizedStatusException(HttpStatus.FORBIDDEN, "auth.desktopOnly");
             String address = request.getRemoteAddr();
             throttle.checkAddress(address);
             throttle.recordAddress(address);

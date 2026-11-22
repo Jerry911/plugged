@@ -5,7 +5,8 @@
 // accredited body: what the drawing does not show (power of an appliance, which room a circuit feeds, the length of a cable) is not checked.
 // The messages are in the active language (translations: verify.rules.*).
 import {symbolName, typeOf} from '../symbols/symbolLibrary.js'
-import {t} from '../i18n/translate.js'
+import {getLocale, t} from '../i18n/translate.js'
+import {circuitCalculation} from './calculations.js'
 import {flatten} from './tree.js'
 import {circuitMarks, nodeName, unplacedNodes} from './project.js'
 import {sheetPlan} from './boardLayout.js'
@@ -209,6 +210,9 @@ export const RULE_CATALOG = [
             {id: 'kring.cable', level: 'error', article: '4.4.1.4'},
             {id: 'kring.section', level: 'error', article: '5.2.1.2'},
             {id: 'kring.breaking', level: 'error', article: '5.3.3.1 e'},
+            // indicative calculations (model/calculations.js): the voltage drop limits come from the standard, not from the AREI
+            {id: 'kring.voltageDrop', level: 'warn', article: ''},
+            {id: 'kring.shortCircuit', level: 'warn', article: ''},
             {id: 'cable.placement', level: 'error', article: '5.2.9.2, 5.2.9.10'},
         ],
     },
@@ -561,6 +565,16 @@ export function verify(project, {disabled} = {}) {
         if (mm2 != null && sockets && mm2 < LIMITS.minSectionWithSockets)
             add('error', 'kring.section', message('socketSection', {name, mm2, min: LIMITS.minSectionWithSockets}), page, node)
         else if (mm2 != null && mm2 < LIMITS.minSection) add('error', 'kring.section', message('minSection', {name, mm2, min: LIMITS.minSection}), page, node)
+        // the cable calculation, when the length is typed or can be estimated from the situatieschema
+        if (!unprotected && ownSection != null) {
+            const calc = circuitCalculation(project, node),
+                number = (value, digits = 0) => value.toLocaleString(getLocale(), {minimumFractionDigits: digits, maximumFractionDigits: digits}),
+                common = calc && {name, current: calc.current, length: number(calc.length ?? 0, 1), estimated: calc.estimated ? t('calc.estimated') : ''}
+            if (calc?.lengthKnown && calc.drop > calc.dropLimit)
+                add('warn', 'kring.voltageDrop', message('voltageDrop', {...common, drop: number(calc.drop, 1), limit: calc.dropLimit}), page, node)
+            if (calc?.lengthKnown && !calc.trips)
+                add('warn', 'kring.shortCircuit', message('shortCircuitTrip', {...common, current: number(calc.shortCircuit), trip: number(calc.tripCurrent), breaker: calc.curve + calc.current}), page, node)
+        }
         // AREI 5.3.5.2 b: at most 8 sockets per final circuit, a fixed appliance or a group of lights under one switch counting as one
         if (sockets && sockets + fixed > LIMITS.maxSockets)
             add(

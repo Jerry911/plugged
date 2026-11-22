@@ -38,7 +38,7 @@ A failing end-to-end test fails the build, so a broken jar is not installed. Rep
 ### Against the real backend by hand
 
 ```
-cd ../backend && mvn -DskipTests package       # builds target/plugged-0.1.0.jar with the frontend inside
+cd ../backend && mvn -DskipTests package       # builds target/plugged-<version>.jar with the frontend inside
 cd ../frontend
 npm run e2e:all                                 # works the same in every shell
 ```

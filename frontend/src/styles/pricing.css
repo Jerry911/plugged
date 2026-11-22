@@ -1,0 +1,258 @@
+/* Account › Prijzen (features/pricing), Project › Offerte (features/quote) and the mounting of symbols on the situatieschema */
+.pricing {
+    max-width: 1100px;
+}
+
+.pricingbar,
+.pricingmeta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    margin: 6px 0;
+}
+
+.pricingmeta label {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+}
+
+.pricinggroups {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.pricingfields {
+    border: none;
+    margin: 0;
+    padding: 0;
+    min-width: 0;
+}
+
+.pricingtabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    border-bottom: 1px solid var(--border);
+    margin: 8px 0;
+}
+
+.pricingtabs button.on {
+    background: var(--accent);
+    color: var(--on-accent);
+}
+
+.pricinghint {
+    color: var(--muted);
+    font-size: 13px;
+    max-width: 80ch;
+}
+
+.pricingtable {
+    overflow-x: auto;
+    max-width: 100%;
+}
+
+.pricingtable table,
+table.pricingtable {
+    border-collapse: collapse;
+    font-size: 13px;
+}
+
+.pricingtable th,
+.pricingtable td {
+    padding: 3px 4px;
+    border-bottom: 1px solid var(--border);
+    text-align: left;
+    vertical-align: middle;
+}
+
+.pricingtable input.code {
+    width: 7em;
+}
+
+.pricingtable input.name {
+    width: 22em;
+}
+
+.pricingtable input.num {
+    width: 5em;
+    text-align: right;
+}
+
+.pricingtable input.qty {
+    width: 3em;
+}
+
+.pricingtable input.match {
+    width: 9em;
+}
+
+.pricingtable .matchpair {
+    display: flex;
+    gap: 4px;
+}
+
+.pricingtable td.parts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 10px;
+    align-items: center;
+}
+
+.pricingtable .part {
+    display: inline-flex;
+    gap: 3px;
+    align-items: center;
+}
+
+.pricingform {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 8px 16px;
+}
+
+.pricingform label {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.pricingform .wide,
+.pricingform .pricinghint {
+    grid-column: 1 / -1;
+}
+
+.pricingrow {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin-top: 8px;
+}
+
+.logopreview {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.logopreview img {
+    max-height: 48px;
+    max-width: 160px;
+    background: #fff;
+}
+
+.quotedlg {
+    width: min(960px, 96vw);
+    max-height: 92vh;
+    overflow: auto;
+}
+
+.quotefields {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 6px 12px;
+}
+
+.quotefields label {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.quotefields label.check {
+    flex-direction: row;
+    align-items: center;
+}
+
+.quotefields .wide {
+    grid-column: 1 / -1;
+}
+
+.quoteextras {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin: 8px 0;
+    align-items: flex-start;
+}
+
+.quoteextras .extra {
+    display: flex;
+    gap: 4px;
+}
+
+.quoteextras .text {
+    width: 28em;
+    max-width: 60vw;
+}
+
+.quoteextras .num {
+    width: 6em;
+    text-align: right;
+}
+
+.quoteproblems {
+    background: var(--warn-bg);
+    color: var(--warn);
+    border-radius: 6px;
+    padding: 6px 10px;
+    margin: 8px 0;
+    font-size: 13px;
+}
+
+.quoteproblems ul {
+    margin: 4px 0;
+    padding-left: 18px;
+}
+
+.quotetable {
+    overflow-x: auto;
+}
+
+.quotetable table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+
+.quotetable th,
+.quotetable td {
+    padding: 3px 6px;
+    border-bottom: 1px solid var(--border);
+    text-align: left;
+}
+
+.quotetable .num {
+    text-align: right;
+    white-space: nowrap;
+}
+
+.quotetable tr.heading td {
+    font-weight: 600;
+    background: var(--hover);
+}
+
+.quotetable tfoot td {
+    font-weight: 600;
+}
+
+.quotetable tfoot tr.total td {
+    font-size: 15px;
+}
+
+.mounting {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+    margin: 4px 0;
+}
+
+.mounting .combo {
+    font-size: 12px;
+    color: var(--muted);
+}

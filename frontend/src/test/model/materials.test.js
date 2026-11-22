@@ -80,3 +80,13 @@ test('every page counts, the plan does not', () => {
 test('an empty project has nothing', () => {
     expect(billOfMaterials(baseProject())).toEqual({protection: [], cables: [], elements: [], boards: [], outlets: 0, circuits: 0})
 })
+
+test('the length of a cable adds up its circuits: typed, estimated from the plan, or unknown', () => {
+    const p = house(),
+        board = p.een[0].tree[0].children[0]
+    board.children[0].p.lengte = '12'
+    // K2 estimated: board at (0,0), its socket 100 mm away at 1:50 = 1,5 + 5 + 1,5 m
+    p.sit[0].items = [{id: 'b', kind: 'sym', type: 'bord', node: 'B', x: 0, y: 0}, {id: 's', kind: 'sym', type: 'stopcontact', node: 'S3', x: 100, y: 0}]
+    const cable = billOfMaterials(p).cables.find((row) => row.cable === 'XVB Cca 3G2,5')
+    expect(cable).toMatchObject({count: 3, length: 20, estimated: true, unknown: 1})
+})

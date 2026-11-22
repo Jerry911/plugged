@@ -7,9 +7,9 @@ const json = (body, status = 200) => ({ok: status < 400, status, json: async () 
 
 test('the status of the session', async () => {
     global.fetch = vi.fn(async () => json({setupRequired: true, adminEmail: 'a@b.be', user: null}))
-    expect(await fetchAuthStatus()).toEqual({setupRequired: true, adminEmail: 'a@b.be', user: null})
+    expect(await fetchAuthStatus()).toEqual({setupRequired: true, adminEmail: 'a@b.be', user: null, desktop: false})
     global.fetch = vi.fn(async () => json({}))
-    expect(await fetchAuthStatus()).toEqual({setupRequired: false, adminEmail: '', user: null})
+    expect(await fetchAuthStatus()).toEqual({setupRequired: false, adminEmail: '', user: null, desktop: false})
     global.fetch = vi.fn(async () => json(null, 500))
     await expect(fetchAuthStatus()).rejects.toThrow()
 })

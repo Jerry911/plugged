@@ -1,0 +1,62 @@
+{
+  "footer": {
+    "datum": "",
+    "schaal": "1:50",
+    "rev": "A"
+  },
+  "een": [
+    {
+      "id": "n1",
+      "name": "Blad 1",
+      "tree": [
+        {
+          "id": "n2",
+          "type": "aansluiting",
+          "label": "Aansluiting net",
+          "info": "",
+          "p": {
+            "teller": true,
+            "polen": 4,
+            "amp": 40,
+            "bescherming": "differentieel",
+            "delta": 300,
+            "diffType": "A",
+            "kabel": "4x16",
+            "kortsl": 3
+          },
+          "children": [
+            {
+              "id": "n3",
+              "type": "bord",
+              "label": "Verdeelbord",
+              "info": "",
+              "p": {
+                "geaard": true
+              },
+              "children": []
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "sit": [
+    {
+      "id": "n4",
+      "name": "Plattegrond 1",
+      "walls": [],
+      "items": []
+    }
+  ],
+  "wire": [
+    {
+      "id": "n5",
+      "name": "Bedrading 1",
+      "walls": [],
+      "items": [],
+      "wires": [],
+      "boxes": []
+    }
+  ],
+  "custom": []
+}

@@ -979,3 +979,66 @@ button.danger:hover:not(:disabled) .ico {
 .pal details > summary {
     padding: 3px 0
 }
+
+/* the folding categories of the palette of the bedradingsschema */
+.palgroup > summary {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background: var(--surface);
+    cursor: pointer
+}
+
+.recentstrip {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 3px;
+    margin: 0 0 4px
+}
+
+.recentstrip button {
+    padding: 2px;
+    line-height: 0
+}
+
+.recentstrip button.on {
+    background: var(--accent);
+    border-color: var(--accent)
+}
+
+.palcount {
+    color: var(--muted);
+    font-size: 11px;
+    font-weight: normal
+}
+
+/* the calculation of a circuit in its Eigenschappen */
+.props .calc {
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid var(--border);
+}
+.props .calc small {
+    display: block;
+    color: var(--muted);
+    margin-top: 4px;
+}
+.calclist {
+    list-style: none;
+    margin: 6px 0 0;
+    padding: 0;
+    font-size: 13px;
+}
+.calclist li {
+    padding: 3px 6px;
+    border-radius: 4px;
+    margin-bottom: 3px;
+}
+.calclist li.good {
+    color: var(--ok);
+    background: var(--ok-bg);
+}
+.calclist li.bad {
+    color: var(--warn);
+    background: var(--warn-bg);
+}

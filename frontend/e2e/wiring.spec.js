@@ -18,6 +18,8 @@ const withWiring = (page, base = project()) => ({...base, wire: [{id: 'w1', name
 const contactAndLamp = () => withWiring({items: [sym('c', 'contact_no', 60, 60), sym('l', 'lamp_s', 60, 120)]})
 const placeSymbol = async (page, app, key, x, y) => {
     await page.locator('#comp-filter').fill('')
+    // the palette folds its categories: open the one of this symbol first
+    await page.locator('#comp-' + key).evaluate((element) => (element.closest('details').open = true))
     await page.locator('#comp-' + key).click()
     await app.clickSheet(x, y)
 }
@@ -32,7 +34,13 @@ test.describe('the tab', () => {
         await expect(tool(page, 'wire')).toBeVisible()
         await expect(tool(page, 'box')).toBeVisible()
         await expect(page.locator('#wire-page-1')).toHaveText('Bedrading 1')
+        // the palette folds per category: the contacts open, the others (relays, ..., the furniture last) until they are opened
+        await expect(page.locator('#comp-contact_no')).toBeVisible()
+        await expect(page.locator('#comp-iec_13_03_v')).toBeVisible()
+        await expect(page.locator('#comp-contactor3')).toBeHidden()
+        await page.locator('#comp-category-Relais__spoelen___starters > summary').click()
         await expect(page.locator('#comp-contactor3')).toBeVisible()
+        await page.locator('#comp-category-Inrichting > summary').click()
         await expect(page.locator('#comp-auto')).toBeVisible()
         // no list of elements to place and no starter templates here
         await expect(page.locator('#sit-unplaced-panel')).toHaveCount(0)

@@ -22,7 +22,7 @@ export function materialsRows(bom, project) {
         items.forEach((item) => rows.push({cells: cells(item)}))
     }
     section('protection', ['article', 'count', 'circuits'], bom.protection, (row) => [row.description, row.count, row.marks])
-    section('cables', ['cable', 'count', 'circuits', 'length'], bom.cables, (row) => [row.cable, row.count, row.marks, ''])
+    section('cables', ['cable', 'count', 'circuits', 'length'], bom.cables, (row) => [row.cable, row.count, row.marks, row.length ? Math.round(row.length * 10) / 10 : ''])
     section('elements', ['element', 'count', 'outlets'], bom.elements, (row) => [row.name, row.count, row.outlets || ''])
     if (bom.outlets) rows.push({style: 'header', cells: [t('materials.totalOutlets'), '', bom.outlets]})
     section('boards', ['element', 'count'], bom.boards, (row) => [row.name, row.count])
@@ -53,12 +53,17 @@ const column = (index) => {
     for (let number = index + 1; number > 0; number = Math.floor((number - 1) / 26)) name = String.fromCharCode(65 + ((number - 1) % 26)) + name
     return name
 }
-// styles of styles.xml: 0 normal, 1 bold (header), 2 bold and larger (title), 3 bold on a grey fill (section)
-const STYLE = {title: 2, section: 3, header: 1}
+// styles of styles.xml: 0 normal, 1 bold (header), 2 bold and larger (title), 3 bold on a grey fill (section), 4 an amount in euro, 5 a bold
+// amount in euro (a total)
+const STYLE = {title: 2, section: 3, header: 1, total: 1}
+const MONEY = 4,
+    MONEY_TOTAL = 5
 
-/** The list as an Excel workbook (.xlsx), as bytes. */
-export function materialsXlsx(bom, project) {
-    const rows = materialsRows(bom, project)
+/**
+ * Rows ({style, cells}) as an Excel workbook (.xlsx), as bytes. A cell is a string, a number, or {money: number} (shown as an amount in
+ * euro, bold in a row with style 'total'). widths: the widths of the columns (characters).
+ */
+export function xlsxOf(rows, {sheetName, widths = [48, 12, 30, 14]} = {}) {
     const sheetRows = rows
         .map((row, rowIndex) => {
             const style = STYLE[row.style] || 0
@@ -66,6 +71,8 @@ export function materialsXlsx(bom, project) {
                 .map((value, columnIndex) => {
                     const reference = column(columnIndex) + (rowIndex + 1),
                         styled = style ? ` s="${style}"` : ''
+                    if (value && typeof value === 'object' && typeof value.money === 'number')
+                        return `<c r="${reference}" s="${row.style === 'total' ? MONEY_TOTAL : MONEY}"><v>${value.money}</v></c>`
                     if (typeof value === 'number') return `<c r="${reference}"${styled}><v>${value}</v></c>`
                     if (value === '' || value == null) return style ? `<c r="${reference}"${styled}/>` : ''
                     return `<c r="${reference}"${styled} t="inlineStr"><is><t xml:space="preserve">${xml(value)}</t></is></c>`
@@ -74,23 +81,27 @@ export function materialsXlsx(bom, project) {
             return `<row r="${rowIndex + 1}">${cells}</row>`
         })
         .join('')
+    const cols = widths.map((width, index) => `<col min="${index + 1}" max="${index + 1}" width="${width}" customWidth="1"/>`).join('')
     const sheet = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><cols><col min="1" max="1" width="48" customWidth="1"/><col min="2" max="2" width="12" customWidth="1"/><col min="3" max="3" width="30" customWidth="1"/><col min="4" max="4" width="14" customWidth="1"/></cols><sheetData>${sheetRows}</sheetData><pageSetup orientation="portrait" paperSize="9"/></worksheet>`
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><cols>${cols}</cols><sheetData>${sheetRows}</sheetData><pageSetup orientation="portrait" paperSize="9"/></worksheet>`
     const files = {
         '[Content_Types].xml': `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>`,
         '_rels/.rels': `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`,
         'xl/workbook.xml': `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="${xml(t('materials.sheetName')).slice(0, 31)}" sheetId="1" r:id="rId1"/></sheets></workbook>`,
+<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="${xml(sheetName || 'Plugged').slice(0, 31)}" sheetId="1" r:id="rId1"/></sheets></workbook>`,
         'xl/_rels/workbook.xml.rels': `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>`,
         'xl/styles.xml': `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fonts count="3"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="14"/><name val="Calibri"/></font></fonts><fills count="3"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FFE8EEF5"/><bgColor indexed="64"/></patternFill></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="4"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/><xf numFmtId="0" fontId="2" fillId="0" borderId="0" xfId="0" applyFont="1"/><xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1"/></cellXfs></styleSheet>`,
+<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><numFmts count="1"><numFmt numFmtId="164" formatCode="#,##0.00\ &quot;€&quot;"/></numFmts><fonts count="3"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="14"/><name val="Calibri"/></font></fonts><fills count="3"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FFE8EEF5"/><bgColor indexed="64"/></patternFill></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="6"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/><xf numFmtId="0" fontId="2" fillId="0" borderId="0" xfId="0" applyFont="1"/><xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1"/><xf numFmtId="164" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/><xf numFmtId="164" fontId="1" fillId="0" borderId="0" xfId="0" applyNumberFormat="1" applyFont="1"/></cellXfs></styleSheet>`,
         'xl/worksheets/sheet1.xml': sheet,
     }
     return zipSync(Object.fromEntries(Object.entries(files).map(([name, content]) => [name, strToU8(content)])))
 }
+
+/** The list as an Excel workbook (.xlsx), as bytes. */
+export const materialsXlsx = (bom, project) => xlsxOf(materialsRows(bom, project), {sheetName: t('materials.sheetName')})
 
 /** Lets the browser download `content` (bytes or text) as `fileName`. */
 export function download(content, fileName, mimeType) {

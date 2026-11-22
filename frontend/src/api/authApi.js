@@ -6,14 +6,15 @@ import {apiFetch, JSON_HEADERS} from './http.js'
 import {t} from '../i18n/translate.js'
 
 /**
- * {setupRequired, adminEmail, user}: user is the signed-in user ({id, name, surname, email, admin, approved}) or null.
+ * {setupRequired, adminEmail, user, desktop}: user is the signed-in user ({id, name, surname, email, admin, approved}) or null; desktop: Plugged
+ * runs as a program on this computer (the program signs the browser in, there is no sign-in screen).
  * Throws when the backend cannot be reached.
  */
 export const fetchAuthStatus = async () => {
     const response = await apiFetch('/api/auth/status')
     if (!response.ok) throw new Error('status ' + response.status)
     const status = await response.json()
-    return {setupRequired: !!status.setupRequired, adminEmail: status.adminEmail || '', user: status.user || null}
+    return {setupRequired: !!status.setupRequired, adminEmail: status.adminEmail || '', user: status.user || null, desktop: !!status.desktop}
 }
 
 /** The message of a refused request: the text of the backend (in the language of the user), else a general one. */

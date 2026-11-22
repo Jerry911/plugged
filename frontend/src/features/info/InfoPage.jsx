@@ -28,6 +28,9 @@ export const FEATURE_IMAGES = {
     controleren: ['controleren', 'controleregels'],
     projecten: ['projecten'],
     samenwerken: [],
+    offerte: [],
+    offline: [],
+    ai: [],
     componenten: ['componenten'],
     qr: ['qr'],
     export: ['materiaallijst', 'exporteren'],
@@ -56,6 +59,24 @@ const ICON_PATHS = {
     ),
     controleren: <path d="m4 12.5 5 5L20 6.5" />,
     projecten: <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />,
+    offerte: (
+        <>
+            <path d="M7 3h10v18l-3-2-2 2-2-2-3 2z" />
+            <path d="M10 8h4M10 12h4M10 16h2" />
+        </>
+    ),
+    offline: (
+        <>
+            <path d="M7 18h10.5a3.5 3.5 0 0 0 .9-6.9A5.5 5.5 0 0 0 7.8 9.3 4.3 4.3 0 0 0 7 18" />
+            <path d="M12 16v-5m-2.5 2.5L12 11l2.5 2.5" />
+        </>
+    ),
+    ai: (
+        <>
+            <path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z" />
+            <path d="M18 15l.8 2.2L21 18l-2.2.8L18 21l-.8-2.2L15 18l2.2-.8z" />
+        </>
+    ),
     samenwerken: (
         <>
             <circle cx="9" cy="8" r="3.5" />
@@ -249,17 +270,22 @@ export default function InfoPage({onTour, visitor, onLogin, onRegister}) {
             live = false
         }
     }, [])
-    const features = translation('info.features.items'),
+    // the program for one computer has no QR codes (nobody can reach it to scan one): not mentioned, except in the FAQ, which says why
+    const features = translation('info.features.items').filter((feature) => !(info.desktop && feature.id === 'qr')),
         roles = translation('info.roles.items'),
         // the letters of the drawing tools come from the same texts as the tips of the tool rail, so this list never goes out of date
         shortcuts = [
-            ...translation('info.shortcuts.items'),
+            ...translation('info.shortcuts.items').filter((shortcut) => !(info.desktop && shortcut.keys === 'Alt+Q')),
             ...TOOL_SHORTCUTS.map((tool) => ({
                 keys: t('situation.toolKeys.' + tool),
                 text: t(WIRING_ONLY_TOOLS.has(tool) ? 'info.shortcuts.toolWiring' : 'info.shortcuts.tool', {tool: t('situation.tools.' + tool)}),
             })),
         ],
-        questions = translation('info.faq.questions')
+        questions = info.desktop
+            ? [...translation('info.faq.questions').filter((question) => !/QR/.test(question.question + question.answer)), translation('info.faq.desktopQr')]
+            : translation('info.faq.questions'),
+        // the program for one computer: its own first paragraph (no server, no QR code), and the one about the QR code goes
+        about = info.desktop ? [t('info.about.desktopIntro'), ...translation('info.about.paragraphs').slice(1).filter((text) => !/QR/.test(text))] : translation('info.about.paragraphs')
     return (
         <div id="info-page" className="infopage">
             <header id="info-hero" className="infohero">
@@ -304,7 +330,7 @@ export default function InfoPage({onTour, visitor, onLogin, onRegister}) {
 
             <section id="info-over">
                 <h2>{t('info.about.title')}</h2>
-                <RichText text={translation('info.about.paragraphs')} />
+                <RichText text={about} />
                 <p className="note">{t('info.about.note')}</p>
             </section>
 

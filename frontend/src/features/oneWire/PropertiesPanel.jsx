@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // The Eigenschappen panel of the selected element of the eendraadschema: its texts, type, properties and a toolbar to insert, move,
 // duplicate, turn and delete it.
+import CircuitCalculation from './CircuitCalculation.jsx'
+import {circuitRoomNames} from '../../model/rooms.js'
 import {categoryName, EMPTY_TYPE, symbolName, typeOf} from '../../symbols/symbolLibrary.js'
 import {socketStackOf} from '../../symbols/symbolShapes.js'
 import {CABLE_PLACEMENTS, detailLines, hasPlacement, placementLabel} from '../../model/boardLayout.js'
@@ -47,7 +49,9 @@ export default function PropertiesPanel({
         isEmpty = node.type === EMPTY_TYPE.k,
         isDistribution = DISTRIBUTION_TYPES.includes(node.type),
         socketStack = socketStackOf(symbolType, properties),
-        swapCategories = [...new Set(swapTypes.map((candidate) => candidate.cat))]
+        swapCategories = [...new Set(swapTypes.map((candidate) => candidate.cat))],
+        // the rooms its points are drawn in on the situatieschema: one click makes that the name of the circuit
+        roomNames = node.type === 'kring' ? circuitRoomNames(project, node) : ''
     const shortField = ({key, label, maxLength}) => (
         <label key={key} style={{display: 'flex', alignItems: 'center', gap: 8}}>
             <span style={{minWidth: '8.5em'}}>{t(label)}</span>
@@ -172,6 +176,12 @@ export default function PropertiesPanel({
                 ) : (
                     row.fields.map((field) => (field.key === 'plaatsing' ? placementField(field) : wideField(field)))
                 ),
+            )}
+            {node.type === 'kring' && <CircuitCalculation project={project} node={node} onPropertyChange={onPropertyChange} />}
+            {node.type === 'kring' && roomNames && roomNames !== properties.tekst && (
+                <button id="eds-rooms" type="button" className="linkbtn" title={t('oneWire.roomsTitle')} onClick={() => onPropertyChange('tekst', roomNames)}>
+                    {t('oneWire.roomsFromPlan', {rooms: roomNames})}
+                </button>
             )}
             {socketStack && (
                 <label>

@@ -22,9 +22,13 @@ import {pagesZipName, sheetsPngZip, sheetsSvgZip} from '../features/project/page
 import Tour, {markTourSeen, tourSeen} from '../features/tour/Tour.jsx'
 import {tourSteps} from '../features/tour/tourSteps.jsx'
 import {useSymbolLibrary} from '../api/useSymbolLibrary.js'
-import {copyProject, createProject, deleteProject, fetchProject, fetchProjectSummaries, restoreVersion, saveProject} from '../api/projectApi.js'
+import {copyProject, createProject, deleteProject, fetchProject, fetchProjectSummaries, knownVersion, restoreVersion, saveProject} from '../api/projectApi.js'
+import ConsentPage from '../features/ai/ConsentPage.jsx'
+import {useOffline} from '../hooks/useOffline.js'
+import {clearOfflineCopies, isOffline, newLocalId, pendingSaves} from '../offline/offlineStore.js'
 import {usePresence} from '../hooks/usePresence.js'
 import MaterialsDialog from '../features/project/MaterialsDialog.jsx'
+import QuoteDialog from '../features/quote/QuoteDialog.jsx'
 import {QrDialog} from '../features/project/QrDialog.jsx'
 import SchemaPdfPage from '../features/project/SchemaPdfPage.jsx'
 import {schemaRequestFromSearch} from '../features/project/schemaLink.js'
@@ -54,6 +58,11 @@ const ONE_WIRE_TAB = 0,
     INFO_TAB = 4,
     ACCOUNT_TAB = 5,
     TEACHER_TAB = 6
+// /?project=<number>: the project the link points at, when the user may open it (else null)
+const linkedProject = (summaries) => {
+    const id = Number(new URLSearchParams(window.location.search).get('project'))
+    return (id > 0 && summaries.find((summary) => summary.id === id)) || null
+}
 // the editor opens with the most recently saved project of the user (null: none yet, a new project)
 const latestOwnProject = (summaries) => summaries.filter((summary) => summary.mine).sort((a, b) => (b.updated || '').localeCompare(a.updated || ''))[0] || null
 
@@ -77,6 +86,13 @@ const shortcutLetter = (event) => {
 
 export default function App() {
     // opened from the QR code on a circuit board (/?schema=<number>&key=<secret>): the PDF of that project for anybody with the key, without signing in
+    // an AI assistant asks to work in Plugged as the user (OAuth, see features/ai/ConsentPage.jsx): after signing in he agrees or not
+    if (window.location.pathname === '/oauth/authorize')
+        return (
+            <I18nProvider>
+                <AuthGate>{({user}) => <ConsentPage user={user} />}</AuthGate>
+            </I18nProvider>
+        )
     const schema = schemaRequestFromSearch()
     if (schema)
         return (
@@ -86,12 +102,14 @@ export default function App() {
         )
     return (
         <I18nProvider>
-            <AuthGate>{({user, onLogout, onAccountDeleted}) => <LibraryGate user={user} onLogout={onLogout} onAccountDeleted={onAccountDeleted} />}</AuthGate>
+            <AuthGate>
+                {({user, onLogout, onAccountDeleted, desktop}) => <LibraryGate user={user} desktop={desktop} onLogout={onLogout} onAccountDeleted={onAccountDeleted} />}
+            </AuthGate>
         </I18nProvider>
     )
 }
 
-function LibraryGate({user, onLogout, onAccountDeleted}) {
+function LibraryGate({user, desktop, onLogout, onAccountDeleted}) {
     const {t} = useTranslation()
     const library = useSymbolLibrary()
     if (library.status === 'loading')
@@ -109,10 +127,10 @@ function LibraryGate({user, onLogout, onAccountDeleted}) {
                 </button>
             </div>
         )
-    return <Editor library={library} user={user} onLogout={onLogout} onAccountDeleted={onAccountDeleted} />
+    return <Editor library={library} user={user} desktop={desktop} onLogout={onLogout} onAccountDeleted={onAccountDeleted} />
 }
 
-function Editor({library, user, onLogout, onAccountDeleted}) {
+function Editor({library, user, desktop = false, onLogout, onAccountDeleted}) {
     const {t, language} = useTranslation()
     const narrowScreen = useNarrowScreen()
     const [initialProject] = useState(newProject)
@@ -123,6 +141,8 @@ function Editor({library, user, onLogout, onAccountDeleted}) {
         [tab, setTab] = useState(() => (window.location.hash === '#info' ? INFO_TAB : ONE_WIRE_TAB)),
         [toast, setStatusMessage] = useToast(),
         [materialsOpen, setMaterialsOpen] = useState(false),
+        [quoteOpen, setQuoteOpen] = useState(false),
+        [priceListToOpen, setPriceListToOpen] = useState(null),
         [qrTarget, setQrTarget] = useState(null), // {id, title} of the project whose QR code is shown: the open one (Project menu, Alt+Q) or one from the list
         [newerVersion, setNewerVersion] = useState(null), // somebody else saved the open project while it has unsaved changes here
         [oneWirePage, setOneWirePage] = useState(0),
@@ -192,8 +212,41 @@ function Editor({library, user, onLogout, onAccountDeleted}) {
         setProject((current) => ({...current, custom: []}))
     }, [project.custom])
     const markSaved = (savedProject) => (savedSnapshot.current = JSON.stringify(savedProject))
+    // Without a connection a save is kept on this device and sent later (useOffline, offline/sync.js). localId names a project that was
+    // never on the server; current: the open project for the reports of the sync, which come in later.
+    const localId = useRef(newLocalId()),
+        current = useRef({})
+    current.current = {projectId, ownProject}
+    const offline = useOffline({
+        userId: user.id,
+        onReport: ({entry, outcome, id, name}) => {
+            const open = entry.id != null ? entry.id === current.current.projectId : current.current.projectId == null && entry.localId === localId.current
+            if (outcome === 'refused') return setStatusMessage(t('offline.refused'))
+            if (outcome === 'copied') {
+                setStatusMessage(t('offline.copied', {name, number: id}))
+                if (open) {
+                    setProjectId(id)
+                    setOwnProject(true)
+                }
+            } else {
+                if (open && outcome === 'created') setProjectId(id)
+                setStatusMessage(t('offline.synced'))
+            }
+            setProjectListKey((key) => key + 1)
+        },
+    })
+    const keepOffline = (id, document) =>
+        offline
+            .keep({id, localId: localId.current, version: id != null ? knownVersion(id) : undefined, own: id == null || ownProject, name: document.name, document: embedSymbols(document)})
+            .then(() => {
+                markSaved(document)
+                setStatusMessage(t('offline.savedLocally'))
+                return true
+            })
     // a loaded or new project replaces the open one: the undo history and the page selection start over
-    const openProject = (loaded, id, own = true) => {
+    // keepTab: the first project at the start (a link to the Info page stays there)
+    const openProject = (loaded, id, own = true, {keepTab = false} = {}) => {
+        localId.current = newLocalId()
         reset(loaded)
         markSaved(loaded)
         setProjectId(id)
@@ -201,22 +254,34 @@ function Editor({library, user, onLogout, onAccountDeleted}) {
         setOneWirePage(0)
         setSituationPage(0)
         setWiringPage(0)
-        setTab(ONE_WIRE_TAB)
+        // drawn by an AI assistant: the situatieschema opens and offers to make the eendraadschema (SituationSchema, project.pending)
+        if (loaded.pending?.generateOneWire) setTab(SITUATION_TAB)
+        else if (!keepTab) setTab(ONE_WIRE_TAB)
     }
     useEffect(() => {
         ;(async () => {
             try {
-                const latest = latestOwnProject(await fetchProjectSummaries())
-                const document = latest && (await fetchProject(latest.id))
-                if (document) {
-                    const loaded = normalizeProject(document)
+                // work kept on this device that did not reach the server yet: that one is the newest
+                const waiting = (await pendingSaves(user.id)).at(-1)
+                if (waiting) {
+                    const loaded = normalizeProject(waiting.document)
                     reset(loaded)
                     markSaved(loaded)
-                    setProjectId(latest.id)
-                    setOwnProject(true)
-                    setOneWirePage(0)
-                    setSituationPage(0)
-                    setWiringPage(0)
+                    setProjectId(waiting.id)
+                    localId.current = waiting.localId
+                    setOwnProject(waiting.own !== false)
+                    setStatusMessage(t('offline.restored'))
+                    return
+                }
+                // a link to a project (/?project=12, as an AI assistant gives it) opens that one; else the newest own project
+                const summaries = await fetchProjectSummaries(),
+                    requested = linkedProject(summaries),
+                    latest = requested || latestOwnProject(summaries)
+                const document = latest && (await fetchProject(latest.id))
+                if (requested) history.replaceState(null, '', window.location.pathname + window.location.hash)
+                if (document) {
+                    const loaded = normalizeProject(document)
+                    openProject(loaded, latest.id, latest.mine, {keepTab: true})
                     // somebody who finds real work on the server is not a beginner: the tour does not draw in it by itself
                     setTourAllowed(isProjectEmpty(loaded))
                 } else setTourAllowed(true)
@@ -282,7 +347,13 @@ function Editor({library, user, onLogout, onAccountDeleted}) {
     }
     const hasUnsavedChanges = () => JSON.stringify(project) !== savedSnapshot.current
     const confirmDiscard = () => !hasUnsavedChanges() || window.confirm(t('app.confirmUnsaved'))
-    const signOut = () => confirmDiscard() && onLogout()
+    // the copies of the answers of the server go (somebody else may use this browser next); work that did not reach the server yet stays on
+    // this device, for this user only, and is sent after he signs in again
+    const signOut = () => {
+        if (!confirmDiscard() || (offline.pending > 0 && !window.confirm(t('offline.logoutPending', {count: offline.pending})))) return
+        clearOfflineCopies()
+        onLogout()
+    }
     const countWaiting = useCallback((users) => setWaitingUsers(users.filter((account) => !account.approved).length), [])
     useEffect(() => {
         if (user.admin) fetchUsers().then(countWaiting, () => {})
@@ -296,7 +367,7 @@ function Editor({library, user, onLogout, onAccountDeleted}) {
     const store = async (id, document) => {
         let storedId = id
         if (storedId == null) {
-            storedId = await createProject(embedSymbols(restricted ? {...newProject(), name: document.name, footer: document.footer} : document))
+            storedId = await createProject(embedSymbols(restricted ? {...newProject(), name: document.name, footer: document.footer} : document), {offlineError: true})
             if (storedId == null) return null
             if (restricted) setProjectId(storedId)
         }
@@ -308,15 +379,34 @@ function Editor({library, user, onLogout, onAccountDeleted}) {
         return storedId
     }
     const save = async () => {
-        const id = await store(projectId, project)
+        let id
+        try {
+            id = await store(projectId, project)
+        } catch (error) {
+            if (isOffline(error)) await keepOffline(projectId, project)
+            else setStatusMessage(t('app.saveFailed'))
+            return
+        }
         if (id != null) setProjectId(id)
         setStatusMessage((current) => (id != null ? t('app.saved') : current === t('app.saveConflict') ? current : t('app.saveFailed')))
     }
     const saveAs = async () => {
         const name = window.prompt(t('app.saveAsPrompt'), (project.name || project.footer?.titel || '').trim())
         if (name === null) return
-        const document = {...project, name: name.trim()},
+        const document = {...project, name: name.trim()}
+        let id
+        try {
             id = await store(null, document)
+        } catch (error) {
+            if (!isOffline(error)) return setStatusMessage(t('app.saveFailed'))
+            // a new project on this device: it gets its number when it reaches the server
+            localId.current = newLocalId()
+            setProject(document)
+            setProjectId(null)
+            setOwnProject(true)
+            await keepOffline(null, document)
+            return
+        }
         if (id != null) {
             setProject(document)
             setProjectId(id)
@@ -329,8 +419,14 @@ function Editor({library, user, onLogout, onAccountDeleted}) {
     // what changed (see useAutoSave for how seldom); a project of somebody else is only saved by hand, so two people with the same project
     // open do not overwrite each other's work without noticing
     const autoSave = async ({keepalive} = {}) => {
-        const document = project,
+        const document = project
+        let stored
+        try {
             stored = await saveProject(projectId, embedSymbols(document), {keepalive, onConflict})
+        } catch (error) {
+            if (isOffline(error)) return keepOffline(projectId, document)
+            throw error
+        }
         if (stored) {
             markSaved(document)
             setStatusMessage(t('app.autoSaved', {time: new Date().toLocaleTimeString(language, {hour: '2-digit', minute: '2-digit'})}))
@@ -340,6 +436,7 @@ function Editor({library, user, onLogout, onAccountDeleted}) {
     useAutoSave({enabled: projectId != null && ownProject, changed: project, isDirty: hasUnsavedChanges, save: autoSave})
     const startNewProject = async () => {
         if (!confirmDiscard()) return
+        localId.current = newLocalId()
         openProject(newProject(), null)
         setStatusMessage(t('app.newProject'))
     }
@@ -421,7 +518,7 @@ function Editor({library, user, onLogout, onAccountDeleted}) {
     // Alt+Q QR code, Alt+P print (Ctrl+P stays the browser's own, which prints the screen as it is).
     // Alt and not Ctrl: the browser keeps several Ctrl keys for itself (Ctrl+N a new window, Ctrl+L the address bar). Only Alt alone: with
     // Ctrl too it is AltGr on Windows (AltGr+E = €), with Shift or Cmd it is not ours either.
-    const projectShortcuts = {s: save, n: startNewProject, l: () => setLoadMenuRequest((count) => count + 1), i: openImport, e: openExport, q: () => openQr(), p: () => setPrintJob('print')}
+    const projectShortcuts = {s: save, n: startNewProject, l: () => setLoadMenuRequest((count) => count + 1), i: openImport, e: openExport, ...(desktop ? {} : {q: () => openQr()}), p: () => setPrintJob('print')}
     // The listener stays and calls the shortcuts of the last render. They are handed over in a layout effect, before the browser handles
     // the next key: a listener added again in a normal effect (after the screen is painted) still had the old ones for a moment, so Alt+S
     // right after Laden saved the previous project instead of the loaded one.
@@ -541,9 +638,10 @@ function Editor({library, user, onLogout, onAccountDeleted}) {
                     onTrashChanged={onTrashChanged}
                     restricted={restricted}
                     onMaterials={() => setMaterialsOpen(true)}
+                    onQuote={() => setQuoteOpen(true)}
                     onPdf={() => setPrintJob('pdf')}
                     onPrint={() => setPrintJob('print')}
-                    onQr={openQr}
+                    onQr={desktop ? undefined : openQr}
                     locked={restricted}
                     onImport={openImport}
                     onExport={openExport}
@@ -579,6 +677,17 @@ function Editor({library, user, onLogout, onAccountDeleted}) {
                     <Icon name="footer" size={18} /> <span className="bar-text">{t('app.footer')}</span>
                 </button>
                 <span className="bar-spacer" />
+                {(!offline.online || offline.pending > 0) && (
+                    <button
+                        id="offline-status"
+                        className={'presence offline' + (offline.online ? '' : ' editing')}
+                        title={offline.pending ? t('offline.pendingTitle', {count: offline.pending}) : t('offline.offlineTitle')}
+                        onClick={() => offline.sync()}
+                    >
+                        <Icon name={offline.online ? 'cloudUp' : 'cloudOff'} size={16} />{' '}
+                        {offline.pending ? t('offline.pending', {count: offline.pending}) : t('offline.offline')}
+                    </button>
+                )}
                 {others.length > 0 && (
                     <span
                         id="presence"
@@ -629,25 +738,44 @@ function Editor({library, user, onLogout, onAccountDeleted}) {
                         </span>
                     )}
                 </button>
-                <button id="btn-logout" title={t('auth.logoutTitle', {name: `${user.name} ${user.surname}`})} onClick={signOut}>
-                    <Icon name="power" size={18} />
-                    <span className="bar-text minor">{t('auth.logout')}</span>
-                </button>
+                {/* as a program on this computer there is nobody else to sign in: no signing out */}
+                {!desktop && (
+                    <button id="btn-logout" title={t('auth.logoutTitle', {name: `${user.name} ${user.surname}`})} onClick={signOut}>
+                        <Icon name="power" size={18} />
+                        <span className="bar-text minor">{t('auth.logout')}</span>
+                    </button>
+                )}
             </div>
             <Toast toast={toast} />
             {materialsOpen && <MaterialsDialog project={project} projectId={projectId} onClose={() => setMaterialsOpen(false)} />}
-            {qrTarget && <QrDialog projectId={qrTarget.id} title={qrTarget.title} onClose={() => setQrTarget(null)} />}
+            {quoteOpen && (
+                <QuoteDialog
+                    project={project}
+                    projectId={projectId}
+                    onChange={(quote) => setProject((current) => ({...current, quote}))}
+                    onClose={() => setQuoteOpen(false)}
+                    onManagePrices={(id) => {
+                        setQuoteOpen(false)
+                        setPriceListToOpen(id ?? null)
+                        setAccountSection('prices')
+                        setTab(ACCOUNT_TAB)
+                    }}
+                />
+            )}
+            {qrTarget && !desktop && <QrDialog projectId={qrTarget.id} title={qrTarget.title} onClose={() => setQrTarget(null)} />}
             {exportOpen && !restricted && <ExportDialog onExport={exportAs} onClose={() => setExportOpen(false)} />}
             {verifyOpen && !restricted && (
                 <VerifyPanel
                     issues={issues}
+                    project={project}
                     onGoTo={goToIssue}
                     onClose={() => setVerifyOpen(false)}
-                    disabledCount={disabledRules.length}
+                    disabled={disabledRules}
                     onRules={() => (setVerifyOpen(false), setAccountSection('rules'), setTab(ACCOUNT_TAB))}
                     notApplicable={rulesNotApplicable(project).length}
                     installationDate={(project.footer?.installatiedatum || '').trim()}
                     onInstallation={() => openFooter('installatiedatum')}
+                    onFooter={openFooter}
                 />
             )}
             {footerDialog && (
@@ -708,12 +836,15 @@ function Editor({library, user, onLogout, onAccountDeleted}) {
                 {tab === INFO_TAB && <InfoPage onTour={startTour} />}
                 {tab === ACCOUNT_TAB && (
                     <AccountPage
+                        key={accountSection || 'account'}
                         currentUser={user}
+                        priceListId={priceListToOpen}
                         onDeleted={onAccountDeleted}
                         onUsersChange={user.admin ? countWaiting : undefined}
                         initialSection={accountSection || (user.admin && waitingUsers > 0 ? 'users' : 'account')}
                         disabledRules={disabledRules}
                         onRulesChange={setDisabledRules}
+                        desktop={desktop}
                     />
                 )}
                 {tab === TEACHER_TAB && !user.admin && <TeacherPage />}
@@ -731,7 +862,7 @@ function Editor({library, user, onLogout, onAccountDeleted}) {
                     />
                 )}
             </div>
-            {tourOpen && <Tour steps={tourSteps()} context={{project, tab, setTab, onNew: startNewProject}} onClose={closeTour} />}
+            {tourOpen && <Tour steps={tourSteps().filter((step) => !(desktop && step.id === 'qr'))} context={{project, tab, setTab, onNew: startNewProject}} onClose={closeTour} />}
             {printJob && (
                 <div ref={printArea}>
                     <AllSheets project={project} />

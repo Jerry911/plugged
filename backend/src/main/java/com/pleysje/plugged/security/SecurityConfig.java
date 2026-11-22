@@ -49,8 +49,30 @@ public class SecurityConfig {
     public static final String DEFAULT_CSP = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; "
             + "font-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'";
 
+    /**
+     * The AI link (com.pleysje.plugged.ai): the MCP endpoint, the token and registration endpoints of OAuth and the metadata. No session,
+     * no cookie, no CSRF token: an assistant proves itself with its key (McpController) or with its code and PKCE verifier (AiAuthController).
+     */
+    @Bean
+    @org.springframework.core.annotation.Order(1)
+    @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
+    public SecurityFilterChain aiFilterChain(HttpSecurity http) throws Exception {
+        http.securityMatcher("/mcp", "/oauth/token", "/oauth/register", "/.well-known/**")
+                .authorizeHttpRequests(requests -> requests.anyRequest().permitAll())
+                .csrf(AbstractHttpConfigurer::disable)
+                .sessionManagement(sessions -> sessions.sessionCreationPolicy(org.springframework.security.config.http.SessionCreationPolicy.STATELESS))
+                .requestCache(AbstractHttpConfigurer::disable)
+                .securityContext(AbstractHttpConfigurer::disable)
+                .anonymous(AbstractHttpConfigurer::disable)
+                .formLogin(AbstractHttpConfigurer::disable)
+                .httpBasic(AbstractHttpConfigurer::disable)
+                .logout(AbstractHttpConfigurer::disable);
+        return http.build();
+    }
+
     /** Only in a web application (not in a run with spring.main.web-application-type=none, which has no HttpSecurity). */
     @Bean
+    @org.springframework.core.annotation.Order(2)
     @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
     public SecurityFilterChain securityFilterChain(HttpSecurity http, UserService userService, SecurityContextRepository contexts,
                                                    @Value("${plugged.content-security-policy:" + DEFAULT_CSP + "}") String contentSecurityPolicy) throws Exception {
@@ -64,7 +86,9 @@ public class SecurityConfig {
                         .requestMatchers("/api/admin/**").hasRole(ROLE_ADMIN)
                         .requestMatchers("/api/**").authenticated()
                         .anyRequest().permitAll())
-                .csrf(csrf -> csrf.spa())
+                .csrf(csrf -> csrf.spa()
+                        // a second start of the desktop program: no browser, it proves itself with the secret of its instance file
+                        .ignoringRequestMatchers("/desktop/show"))
                 .securityContext(context -> context.securityContextRepository(contexts))
                 .exceptionHandling(exceptions -> exceptions.authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
                 .addFilterAfter(new ActiveUserFilter(userService, contexts), SecurityContextHolderFilter.class)

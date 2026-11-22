@@ -12,7 +12,12 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 @SpringBootApplication
 @org.springframework.scheduling.annotation.EnableScheduling
 public class PluggedApplication {
-    public static void main(String[] arguments) {
+    /** With --desktop: Plugged as a program on one computer (see DesktopLauncher), else the server. */
+    public static void main(String[] arguments) throws Exception {
+        if (java.util.Arrays.asList(arguments).contains(com.pleysje.plugged.desktop.DesktopLauncher.ARGUMENT)) {
+            com.pleysje.plugged.desktop.DesktopLauncher.main(arguments);
+            return;
+        }
         SpringApplication.run(PluggedApplication.class, arguments);
     }
 }

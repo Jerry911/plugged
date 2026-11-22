@@ -29,6 +29,8 @@ import SymbolsPanel from '../admin/SymbolsPanel.jsx'
 import {fullName} from '../admin/names.js'
 import AccountPanel from './AccountPanel.jsx'
 import RulesPanel from './RulesPanel.jsx'
+import AiPanel from '../ai/AiPanel.jsx'
+import PricingPanel from '../pricing/PricingPanel.jsx'
 import Icon from '../../components/Icon.jsx'
 
 /**
@@ -36,9 +38,9 @@ import Icon from '../../components/Icon.jsx'
  * of Controleer he switched off. For an administrator `onUsersChange(users)` is told
  * the accounts after every change (the top bar counts the waiting ones) and `initialSection` chooses the first tab ('users' when someone waits).
  */
-const OWN_SECTIONS = ['account', 'rules']
+const OWN_SECTIONS = ['account', 'rules', 'prices', 'ai']
 
-export default function AccountPage({currentUser, onDeleted, onUsersChange, initialSection = 'account', disabledRules = [], onRulesChange = () => {}}) {
+export default function AccountPage({currentUser, onDeleted, onUsersChange, initialSection = 'account', disabledRules = [], onRulesChange = () => {}, desktop = false, priceListId = null}) {
     const {t} = useTranslation()
     const admin = !!currentUser.admin
     const [section, setSection] = useState(admin || OWN_SECTIONS.includes(initialSection) ? initialSection : 'account'),
@@ -121,6 +123,15 @@ export default function AccountPage({currentUser, onDeleted, onUsersChange, init
                     {t('ruleSettings.tab')}
                     {disabledRules.length > 0 && <span className="admincount">{disabledRules.length}</span>}
                 </button>
+                <button id="account-tab-prices" role="tab" aria-selected={section === 'prices'} className={section === 'prices' ? 'on' : ''} onClick={() => setSection('prices')}>
+                    {t('pricing.tab')}
+                </button>
+                {/* a student in educational mode does not let an assistant draw for him (the server refuses it as well) */}
+                {!currentUser.restricted && (
+                    <button id="account-tab-ai" role="tab" aria-selected={section === 'ai'} className={section === 'ai' ? 'on' : ''} onClick={() => setSection('ai')}>
+                        {t('ai.tab')}
+                    </button>
+                )}
                 {admin && (
                     <>
                         <button id="admin-tab-users" role="tab" aria-selected={section === 'users'} className={section === 'users' ? 'on' : ''} onClick={() => setSection('users')}>
@@ -139,6 +150,8 @@ export default function AccountPage({currentUser, onDeleted, onUsersChange, init
             </nav>
             {section === 'account' && <AccountPanel user={currentUser} onDeleted={onDeleted} />}
             {section === 'rules' && <RulesPanel disabled={disabledRules} onChange={onRulesChange} />}
+            {section === 'prices' && <PricingPanel initialId={priceListId} />}
+            {section === 'ai' && !currentUser.restricted && <AiPanel desktop={desktop} />}
             {admin && !OWN_SECTIONS.includes(section) && message.text && (
                 <p id="admin-message" className={'authmsg ' + (message.kind === 'ok' ? 'info' : 'error')} role="status">
                     {message.text}

@@ -300,6 +300,8 @@ export const templatePages = (template, scale, translate, newId) => {
                 txt,
                 s: size,
                 r: 0,
+                // the room name shows the floor area under it
+                area: true,
             }
         })
         return {

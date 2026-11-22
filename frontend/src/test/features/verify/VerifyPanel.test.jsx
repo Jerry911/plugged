@@ -41,9 +41,43 @@ test('a click that ends a text selection does not jump to the element, so a mess
 
 test('shows the circuit and point of an issue in front of the message', () => {
     render(<VerifyPanel issues={[{id: '9', level: 'warn', rule: 'x', msg: 'Niet geplaatst', mark: 'F6'}, issues[0]]} onGoTo={() => {}} onClose={() => {}} />)
-    const mark = getById('verify-issue-0').querySelector('b')
+    // the error comes first (its group is the most serious), the warning of a rule outside the catalog after it
+    const mark = getById('verify-issue-1').querySelector('b')
     expect(mark.textContent.trim()).toBe('F6')
-    expect(getById('verify-issue-1').textContent).not.toMatch(/undefined/)
+    expect(getById('verify-issue-0').textContent).not.toMatch(/undefined/)
+})
+
+test('groups the issues as on the Controleregels page, the most serious group first and open, with how many of its checks are in order', () => {
+    render(<VerifyPanel issues={issues} project={{footer: {}}} onGoTo={() => {}} onClose={() => {}} />)
+    const groups = [...document.querySelectorAll('#verify-issues details')]
+    expect(groups.map((group) => group.id).slice(0, 3)).toEqual(['verify-group-structure', 'verify-group-other', 'verify-group-special'])
+    expect(groups[0].open).toBe(true)
+    expect(groups[2].open).toBe(false)
+    // groups without issues come last, folded and marked clean
+    expect(getById('verify-group-sockets').className).toContain('clean')
+    expect(getById('verify-group-sockets').open).toBe(false)
+    // the earth rule fails: one check of its group is not in order
+    const structure = getById('verify-group-structure').querySelector('.count').textContent.split('/').map(Number)
+    expect(structure[1] - structure[0]).toBe(1)
+    expect(getById('verify-checks')).toHaveTextContent(/\d+/)
+})
+
+test('lists what is still to be filled in before the inspection; a missing field opens Kaderinfo on it', () => {
+    const onFooter = vi.fn()
+    render(
+        <VerifyPanel
+            issues={[]}
+            project={{footer: {straat: 'Kerkstraat 1', aardingsweerstand: '25'}}}
+            onGoTo={() => {}}
+            onClose={() => {}}
+            onFooter={onFooter}
+        />,
+    )
+    expect(getById('verify-todo-measurements').querySelector('.count')).toHaveTextContent('1/3')
+    expect(byId('verify-fill-aardingsweerstand')).toBeNull()
+    fireEvent.click(getById('verify-fill-isolatieweerstand'))
+    expect(onFooter).toHaveBeenCalledWith('isolatieweerstand')
+    expect(getById('verify-todo-footer').querySelector('.count')).toHaveTextContent('1/8')
 })
 
 test('the panel follows the language', () => {

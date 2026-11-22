@@ -1,8 +1,26 @@
 import {defineConfig} from 'vite';
 import react from '@vitejs/plugin-react'
+import {createHash} from 'node:crypto'
+import {readFileSync} from 'node:fs'
+
+// The service worker of the PWA (src/offline/sw.js) as /sw.js, with the files of this build to store at installation and a version that
+// changes with them (so a new build replaces the old store).
+const serviceWorker = () => ({
+    name: 'plugged-service-worker',
+    apply: 'build',
+    generateBundle(_options, bundle) {
+        const files = ['/', '/index.html', '/manifest.webmanifest', '/icons/icon.svg', '/icons/icon-192.png', '/icons/icon-512.png',
+            ...Object.keys(bundle).filter((name) => !name.endsWith('.map')).map((name) => '/' + name)]
+        const version = createHash('sha256').update(files.join('\n')).digest('hex').slice(0, 12)
+        const source = readFileSync(new URL('./src/offline/sw.js', import.meta.url), 'utf8')
+            .replace("'__VERSION__'", JSON.stringify(version))
+            .replace("['__PRECACHE__']", JSON.stringify(files))
+        this.emitFile({type: 'asset', fileName: 'sw.js', source})
+    },
+})
 
 export default defineConfig({
-    plugins: [react()],
+    plugins: [react(), serviceWorker()],
     server: {proxy: {'/api': 'http://localhost:8080'}},
     build: {outDir: '../backend/src/main/resources/static', emptyOutDir: true},
     test: {
@@ -11,7 +29,7 @@ export default defineConfig({
         coverage: {
             provider: 'v8',
             include: ['src/**'],
-            exclude: ['src/test/**', 'src/main.jsx', '**/*.test.*'],
+            exclude: ['src/test/**', 'src/main.jsx', 'src/offline/sw.js', '**/*.test.*'],
             reporter: ['text', 'html'],
             thresholds: {lines: 95, statements: 95, functions: 95, branches: 90}
         }

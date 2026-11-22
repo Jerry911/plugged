@@ -1214,3 +1214,191 @@ test('the marking of a symbol grows and shrinks with the symbol, but stays reada
     expect(size(14)).toBeCloseTo(5.2, 5)
     expect(size(4)).toBeCloseTo(2.2, 5)
 })
+
+test('Eendraadschema maken: the symbols with a circuit number become circuits after a preview; the others are named', () => {
+    const init = P()
+    init.een[0].tree = []
+    let n = 0
+    const loose = (type, mark) => ({id: 'l' + ++n, kind: 'sym', type, x: 20 * n, y: 40, r: 0, s: 7, ...(mark ? {mark} : {})})
+    init.sit[0].items = [
+        loose('schakelaar', 'B3'),
+        loose('lichtpunt', 'B3'),
+        loose('wissel', 'B4'),
+        loose('wissel', 'B4'),
+        loose('lichtpunt', 'B4'),
+        loose('stopcontact', 'A1'),
+        loose('stopcontact'),
+        loose('stopcontact'),
+        loose('lichtpunt', 'keuken'),
+        loose('bed', 'B9'),
+    ]
+    const onStatus = vi.fn()
+    const {spy} = mount(SituationSchema, init, {pageIndex: 0, onStatus})
+    // nine symbols of a circuit are not in the eendraadschema (the bed is furniture)
+    expect(getById('sit-generate-box')).toHaveTextContent(t('generate.panelText', {count: 9}))
+    fireEvent.click(getById('sit-generate'))
+    expect(getById('generate-dialog')).toHaveAttribute('aria-modal', 'true')
+    // nothing changes before it is confirmed
+    expect(spy.project.een[0].tree).toEqual([])
+    // the summary: what is made and what is left out
+    expect(getById('generate-summary')).toHaveTextContent('2 kringen · 1 × 16 A · 1 × 20 A · 6 symbolen · 3 niet opgenomen')
+    // a row per circuit: letter, new, breaker, cable, points; its points when the row is opened
+    const row = getById('generate-circuit-B')
+    expect(row.querySelector('.genletter')).toHaveTextContent('B')
+    expect(row).toHaveTextContent(t('generate.state.new'))
+    expect(getById('generate-amp-B')).toHaveValue('16')
+    expect(getById('generate-cable-B')).toHaveValue('XVB Cca 3G1,5')
+    expect(row).toHaveTextContent('2 punten')
+    expect(getById('generate-toggle-B')).toHaveAttribute('aria-expanded', 'false')
+    expect(byId('generate-points-B')).toBeNull()
+    fireEvent.click(getById('generate-toggle-B'))
+    expect(getById('generate-toggle-B')).toHaveAttribute('aria-expanded', 'true')
+    expect([...getById('generate-points-B').querySelectorAll('li')].map((point) => point.textContent)).toEqual([
+        'B3Enkelpolige schakelaar → Lichtpunt',
+        'B4Wisselschakelaar → Wisselschakelaar → Lichtpunt',
+    ])
+    fireEvent.click(getById('generate-toggle-B'))
+    expect(byId('generate-points-B')).toBeNull()
+    fireEvent.click(getById('generate-expand'))
+    expect(getById('generate-points-A')).toBeTruthy()
+    expect(getById('generate-points-B')).toBeTruthy()
+    expect(getById('generate-expand')).toHaveTextContent(t('generate.collapseAll'))
+    fireEvent.click(getById('generate-expand'))
+    expect(byId('generate-points-A')).toBeNull()
+    // the breaker and cable can be changed: the cable follows the breaker, a cable typed by hand stays
+    fireEvent.change(getById('generate-amp-A'), {target: {value: '25'}})
+    expect(getById('generate-cable-A')).toHaveValue('XVB Cca 3G4')
+    expect(getById('generate-summary')).toHaveTextContent('2 kringen · 1 × 16 A · 1 × 25 A · 6 symbolen')
+    fireEvent.change(getById('generate-cable-B'), {target: {value: 'VOB 3G1,5 in buis'}})
+    fireEvent.change(getById('generate-amp-B'), {target: {value: '10'}})
+    expect(getById('generate-cable-B')).toHaveValue('VOB 3G1,5 in buis')
+    expect(getById('generate-cable-B')).toHaveAttribute('list', 'generate-cables')
+    expect(document.querySelectorAll('#generate-cables option').length).toBeGreaterThan(5)
+    // left out: one line per kind of symbol and reason
+    expect(getById('generate-skip-0')).toHaveTextContent(t('generate.skippedGroup', {count: 2, name: 'Stopcontact (aarding)'}))
+    expect(getById('generate-skip-0')).toHaveTextContent(t('generate.reasons.noLabel'))
+    expect(getById('generate-skip-1')).toHaveTextContent(t('generate.skippedGroup', {count: 1, name: 'Lichtpunt'}))
+    expect(byId('generate-skip-2')).toBeNull()
+    expect(getById('generate-ok')).toHaveTextContent(t('generate.ok', {count: 2}))
+    fireEvent.click(getById('generate-ok'))
+    expect(byId('generate-dialog')).toBeNull()
+    const marks = marksOf(spy.project)
+    expect(sit(spy).items.slice(0, 6).map((item) => marks.get(item.node))).toEqual(['B3', 'B3', 'B4', 'B4', 'B4', 'A1'])
+    expect(onStatus).toHaveBeenCalledWith(t('generate.done', {summary: '2 kringen · 1 × 10 A · 1 × 25 A · 6 symbolen'}))
+    const circuits = Object.fromEntries(spy.project.een[0].tree[0].children[0].children.map((circuit) => [circuit.label, circuit.p]))
+    expect([circuits.A.amp, circuits.A.kabel, circuits.B.amp, circuits.B.kabel]).toEqual([25, 'XVB Cca 3G4', 10, 'VOB 3G1,5 in buis'])
+    // the three without a number are still there to label
+    expect(getById('sit-generate-box')).toHaveTextContent(t('generate.panelText', {count: 3}))
+    fireEvent.click(getById('sit-generate'))
+    expect(getById('generate-nothing')).toBeVisible()
+    expect(getById('generate-ok')).toBeDisabled()
+    expect(getById('generate-summary')).toHaveTextContent('3 niet opgenomen')
+    // Toon op het plan: those symbols selected, with the select tool, and what to do with them
+    fireEvent.click(getById('generate-show-0'))
+    expect(byId('generate-dialog')).toBeNull()
+    expect(onStatus).toHaveBeenLastCalledWith(t('generate.shown', {count: 2}))
+    expect(toolButton('select')).toHaveClass('on')
+    expect(getById('sit-multi')).toHaveTextContent(t('situation.multipleSelected', {count: 2}))
+    fireEvent.click(getById('sit-generate'))
+    fireEvent.click(getById('generate-show-1'))
+    expect(onStatus).toHaveBeenLastCalledWith(t('generate.shownOne'))
+    fireEvent.click(getById('sit-generate'))
+    fireEvent.click(document.querySelector('.genback'))
+    expect(byId('generate-dialog')).toBeNull()
+    fireEvent.click(getById('sit-generate'))
+    fireEvent.keyDown(getById('generate-dialog'), {key: 'Escape'})
+    expect(byId('generate-dialog')).toBeNull()
+})
+
+test('Eendraadschema maken: the symbols left out on another plan are selected there', () => {
+    const init = P()
+    init.sit = [
+        {id: 's1', name: 'Gelijkvloers', walls: [], items: [{id: 'a', kind: 'sym', type: 'stopcontact', mark: 'A1', x: 20, y: 20, r: 0, s: 7}]},
+        {id: 's2', name: 'Verdieping', walls: [], items: [{id: 'b', kind: 'sym', type: 'stopcontact', x: 40, y: 40, r: 0, s: 7}]},
+    ]
+    const onPageIndex = vi.fn()
+    const first = mount(SituationSchema, init, {pageIndex: 0, onPageIndex})
+    fireEvent.click(getById('sit-generate'))
+    // with more than one plan, the plan of the symbols is named
+    expect(getById('generate-skip-0')).toHaveTextContent('Verdieping')
+    fireEvent.click(getById('generate-show-0'))
+    expect(onPageIndex).toHaveBeenCalledWith(1)
+    first.unmount()
+    // the plan that is shown next starts with them selected
+    mount(SituationSchema, init, {pageIndex: 1})
+    expect(getById('sit-props')).toHaveTextContent(t('situation.selected', {kind: t('situation.kinds.sym')}))
+})
+
+test('Eendraadschema maken: no box when every symbol on the plan is in the eendraadschema', () => {
+    const init = P()
+    init.sit[0].items = [{id: 'i1', kind: 'sym', node: 'n1', x: 100, y: 100, r: 0, s: 7}]
+    mount(SituationSchema, init, {pageIndex: 0})
+    expect(byId('sit-generate-box')).toBeNull()
+})
+
+test('the symbols chosen last stand in a strip above the palette, newest first, and stay for the next visit', () => {
+    window.localStorage.removeItem('plugged.recentSymbols.sit')
+    const first = mount(SituationSchema, P(), {pageIndex: 0})
+    expect(byId('comp-recent')).toBeNull()
+    fireEvent.click(getById('comp-stopcontact'))
+    fireEvent.click(getById('comp-lichtpunt'))
+    const keys = () => [...document.querySelectorAll('#comp-recent button')].map((button) => button.id)
+    expect(keys()).toEqual(['comp-recent-lichtpunt', 'comp-recent-stopcontact'])
+    first.unmount()
+    mount(SituationSchema, P(), {pageIndex: 0})
+    expect(keys()).toEqual(['comp-recent-lichtpunt', 'comp-recent-stopcontact'])
+    fireEvent.click(getById('comp-recent-stopcontact'))
+    expect(keys()[0]).toBe('comp-recent-stopcontact')
+    // while searching the strip makes room for the results
+    fireEvent.change(getById('comp-filter'), {target: {value: 'bed'}})
+    expect(byId('comp-recent')).toBeNull()
+})
+
+test('a room name can show the floor area of its room under it, worked out from the walls and the scale', () => {
+    const walls = [
+        {id: 'w1', x1: 20, y1: 20, x2: 60, y2: 20},
+        {id: 'w2', x1: 60, y1: 20, x2: 60, y2: 70},
+        {id: 'w3', x1: 60, y1: 70, x2: 20, y2: 70},
+        {id: 'w4', x1: 20, y1: 70, x2: 20, y2: 20},
+    ]
+    const project = {...P(), footer: {...P().footer, schaal: '1:50'}, sit: [{id: 's', name: 'Plan', walls, items: [{id: 't', kind: 'text', x: 30, y: 40, txt: 'Keuken', s: 4}]}]}
+    const {container, spy} = mount(SituationSchema, project, {pageIndex: 0})
+    expect(byId('sit-area-t')).toBeNull()
+    fireEvent.pointerDown(container.querySelector('svg.sheet g[style*="move"]'), {clientX: 30, clientY: 40})
+    fireEvent.click(getById('text-area'))
+    expect(spy.project.sit[0].items[0].area).toBe(true)
+    // 40 x 50 mm at 1:50 = 2 x 2,5 m
+    expect(getById('sit-area-t')).toHaveTextContent('5,00 m²')
+})
+test('for the offerte: symbols are mounted horizontally or vertically and several can share one cover frame', () => {
+    const init = P()
+    init.sit[0].items = [
+        {id: 's1', kind: 'sym', type: 'stopcontact', x: 30, y: 40, r: 0, s: 7},
+        {id: 's2', kind: 'sym', type: 'stopcontact', x: 60, y: 40, r: 0, s: 7},
+        {id: 's3', kind: 'sym', type: 'schakelaar', x: 200, y: 60, r: 0, s: 7},
+    ]
+    const {container, spy} = mount(SituationSchema, init, {pageIndex: 0})
+    fireEvent.pointerDown(grabs(container)[0], {clientX: 30, clientY: 40})
+    up(container)
+    fireEvent.change(getById('sym-mount'), {target: {value: 'v'}})
+    expect(sit(spy).items[0].dir).toBe('v')
+    fireEvent.pointerDown(grabs(container)[1], {clientX: 60, clientY: 40, shiftKey: true})
+    up(container)
+    fireEvent.click(getById('multi-combine'))
+    const [a, b] = sit(spy).items
+    expect(a.combo).toBeTruthy()
+    expect(b.combo).toBe(a.combo)
+    // a combination has one direction: the vertical one of the first
+    expect(b.dir).toBe('v')
+    fireEvent.change(getById('multi-mount'), {target: {value: 'h'}})
+    expect(sit(spy).items.slice(0, 2).map((item) => item.dir)).toEqual([undefined, undefined])
+    // one of them selected: the combination shows, and can be selected whole or undone
+    fireEvent.click(getById('sit-multi-close'))
+    fireEvent.pointerDown(grabs(container)[1], {clientX: 60, clientY: 40})
+    up(container)
+    expect(getById('sym-combo')).toHaveTextContent(t('situation.comboOf', {count: 2}))
+    fireEvent.click(getById('sym-combo-select'))
+    expect(getById('sit-multi-title')).toHaveTextContent(t('situation.multipleSelected', {count: 2}))
+    fireEvent.click(getById('multi-uncombine'))
+    expect(sit(spy).items.map((item) => item.combo)).toEqual([undefined, undefined, undefined])
+})

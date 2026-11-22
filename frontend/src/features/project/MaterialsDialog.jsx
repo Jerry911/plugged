@@ -27,7 +27,7 @@ function Section({id, title, columns, rows}) {
                     {rows.map((row, index) => (
                         <tr key={index}>
                             {columns.map(([key, value]) => (
-                                <td key={key} className={key === 'count' || key === 'outlets' ? 'num' : undefined}>
+                                <td key={key} className={key === 'count' || key === 'outlets' || key === 'length' ? 'num' : undefined}>
                                     {value(row)}
                                 </td>
                             ))}
@@ -40,9 +40,12 @@ function Section({id, title, columns, rows}) {
 }
 
 export default function MaterialsDialog({project, projectId, onClose}) {
-    const {t, language} = useTranslation()
+    const {t, language, locale} = useTranslation()
     // the names of the kinds are in the active language
     const bom = useMemo(() => billOfMaterials(project), [project, language])
+    // the total length of a cable: "≈" when part of it is estimated, "+ ?" when a circuit on it has no length
+    const lengthOf = (row) =>
+        [row.length ? (row.estimated ? '≈ ' : '') + row.length.toLocaleString(locale, {maximumFractionDigits: 1}) : '', row.unknown ? (row.length ? '+ ?' : '?') : ''].filter(Boolean).join(' ')
     const empty = !bom.protection.length && !bom.cables.length && !bom.elements.length && !bom.boards.length
     return (
         <div id="materials-dialog" className="dlg ui materialsdlg" role="dialog" aria-label={t('materials.title')} onKeyDown={(event) => event.key === 'Escape' && onClose()}>
@@ -58,7 +61,7 @@ export default function MaterialsDialog({project, projectId, onClose}) {
             ) : (
                 <div className="matbody">
                     <Section id="materials-protection" title="protection" rows={bom.protection} columns={[['article', (row) => row.description], ['count', (row) => row.count], ['circuits', (row) => row.marks]]} />
-                    <Section id="materials-cables" title="cables" rows={bom.cables} columns={[['cable', (row) => row.cable], ['count', (row) => row.count], ['circuits', (row) => row.marks]]} />
+                    <Section id="materials-cables" title="cables" rows={bom.cables} columns={[['cable', (row) => row.cable], ['count', (row) => row.count], ['circuits', (row) => row.marks], ['length', lengthOf]]} />
                     <Section id="materials-elements" title="elements" rows={bom.elements} columns={[['element', (row) => row.name], ['count', (row) => row.count], ['outlets', (row) => row.outlets || '']]} />
                     {bom.outlets > 0 && (
                         <p id="materials-outlets">

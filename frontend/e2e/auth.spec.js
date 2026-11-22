@@ -58,7 +58,7 @@ test('without signing in the API answers 401 and the administrator cannot be cre
     expect((await anonymous.get('/api/projects')).status()).toBe(401)
     expect((await anonymous.get('/api/info')).status()).toBe(200)
     const status = await (await anonymous.get('/api/auth/status')).json()
-    expect(status).toEqual({setupRequired: false, adminEmail: ADMIN.email, user: null})
+    expect(status).toEqual({setupRequired: false, adminEmail: ADMIN.email, user: null, desktop: false})
     const token = (await anonymous.storageState()).cookies.find((cookie) => cookie.name === 'XSRF-TOKEN').value
     const again = await anonymous.post('/api/auth/setup', {data: {name: 'X', surname: 'Y', password: 'geheim123'}, headers: {'X-XSRF-TOKEN': token}})
     expect(again.status()).toBe(409)

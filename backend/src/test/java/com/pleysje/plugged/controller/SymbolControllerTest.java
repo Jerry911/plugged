@@ -252,7 +252,7 @@ class SymbolControllerTest {
     @Test
     void theSymbolsOfTheWiringDiagramShipWithTheirConnectionPoints() throws Exception {
         mvc.perform(get("/api/symbols/contactor3"))
-                .andExpect(jsonPath("$.cat").value("Schakelschema"))
+                .andExpect(jsonPath("$.cat").value("Relais, spoelen & starters"))
                 .andExpect(jsonPath("$.een").value(false))
                 .andExpect(jsonPath("$.wire").value(true))
                 .andExpect(jsonPath("$.place").value(false))

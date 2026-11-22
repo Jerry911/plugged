@@ -292,6 +292,35 @@
     z-index: 2
 }
 
+/* Controleer: what to fill in before the inspection, then the issues per group with how many of its checks are in order */
+.verifylist {
+    margin: 4px 0 8px;
+    padding: 6px 8px;
+    border: 1px solid var(--border);
+    background: var(--surface)
+}
+
+.verifytodo {
+    margin-top: 3px
+}
+
+.verifytodo.done {
+    color: var(--muted)
+}
+
+.verifygroup > summary {
+    cursor: pointer;
+    padding: 3px 0
+}
+
+.verifygroup.clean > summary {
+    color: var(--muted)
+}
+
+.verifygroup ul {
+    margin: 2px 0 6px 18px
+}
+
 .verify {
     /* stays in view while the drawing scrolls to the element of a clicked message; long lists scroll inside */
     position: sticky;

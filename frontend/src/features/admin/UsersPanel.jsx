@@ -39,12 +39,14 @@ export default function UsersPanel({users, groups, currentUser, busy, actions}) 
                                     {fullName(user)}
                                     {self && <span className="usersyou"> {t('users.you')}</span>}
                                 </td>
-                                <td>{user.email}</td>
-                                <td id={'users-groups-' + user.id} className="usersgroups">
+                                <td className="usersemail">{user.email}</td>
+                                <td id={'users-groups-' + user.id} className="usersgroups" data-label={t('users.groups')}>
                                     {groupsOf(user).join(', ') || '—'}
                                 </td>
-                                <td>{date(user.created)}</td>
-                                <td id={'users-login-' + user.id} className="userslogin">
+                                <td className="userscreated" data-label={t('users.registered')}>
+                                    {date(user.created)}
+                                </td>
+                                <td id={'users-login-' + user.id} className="userslogin" data-label={t('users.lastLogin')}>
                                     {user.lastLogin ? moment(user.lastLogin) : <i>{t('users.neverSignedIn')}</i>}
                                 </td>
                                 <td
@@ -92,9 +94,17 @@ export default function UsersPanel({users, groups, currentUser, busy, actions}) 
                                             {t('users.makeUser')}
                                         </button>
                                     )}
+                                    {/* on a phone only the trash can, so the buttons fit next to each other; the name stays for the screen reader and as tooltip */}
                                     {!user.admin && (
-                                        <button id={'users-delete-' + user.id} className="danger" disabled={busy} onClick={() => actions.remove(user)}>
-                                            {t(user.approved ? 'users.delete' : 'users.reject')}
+                                        <button
+                                            id={'users-delete-' + user.id}
+                                            className="danger"
+                                            disabled={busy}
+                                            title={t(user.approved ? 'users.delete' : 'users.reject')}
+                                            aria-label={t(user.approved ? 'users.delete' : 'users.reject')}
+                                            onClick={() => actions.remove(user)}
+                                        >
+                                            <Icon name={user.approved ? 'delete' : 'close'} /> <span className="userslabel">{t(user.approved ? 'users.delete' : 'users.reject')}</span>
                                         </button>
                                     )}
                                 </td>

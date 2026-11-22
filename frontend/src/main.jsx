@@ -9,3 +9,6 @@ import {applyTheme, storedTheme} from './app/theme.js'
 applyTheme(storedTheme())
 
 createRoot(document.getElementById('root')).render(<App />)
+
+// the PWA: the service worker keeps the application opening without a connection (src/offline/sw.js, made by the build)
+if (import.meta.env.PROD && 'serviceWorker' in navigator) addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(() => {}))

@@ -411,6 +411,16 @@
     text-align: right
 }
 
+/* the buttons next to each other on one line, all the same height, whether they have an icon or not */
+.usersactions button {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    vertical-align: middle;
+    min-height: 32px;
+    box-sizing: border-box
+}
+
 .usersactions button + button {
     margin-left: 6px
 }
@@ -438,15 +448,33 @@
     }
 
     .usersactions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-top: 4px;
+        white-space: normal;
         text-align: left
     }
 
-    /* no header on a phone: say what the number is */
+    .usersactions button + button {
+        margin-left: 0
+    }
+
+    /* Verwijderen / Weigeren: only the icon */
+    .usersactions .userslabel {
+        display: none
+    }
+
+    .userstable td.usersemail {
+        overflow-wrap: anywhere
+    }
+
+    /* no header on a phone: say what each line is */
     .userstable td.userslogins {
         text-align: left
     }
 
-    .userstable td.userslogins::before {
+    .userstable td.userslogins::before, .userstable td.usersgroups::before, .userstable td.userscreated::before, .userstable td.userslogin::before {
         content: attr(data-label) ': ';
         color: var(--muted)
     }
@@ -694,6 +722,13 @@
 .presence.editing {
     background: var(--warn-bg);
     color: var(--warn)
+}
+
+/* offline, or saves waiting on this device for the connection (a button: tries again) */
+button.presence.offline {
+    border: none;
+    cursor: pointer;
+    min-height: 0
 }
 
 /* the project list: search, sort and trash */
@@ -1099,4 +1134,85 @@
 .preview-helder .tp-panel {
     background: #fff;
     border: 1px solid #e2e6ec
+}
+
+/* Account › AI-assistent and the page where an assistant asks to connect */
+.aiurl {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    flex-wrap: wrap;
+    margin: 4px 0 8px
+}
+
+.aiurl input {
+    flex: 1;
+    min-width: 0;
+    font-family: ui-monospace, monospace
+}
+
+.ailabel {
+    font-weight: 600
+}
+
+.aisteps li {
+    margin-bottom: 6px;
+    line-height: 1.4
+}
+
+.aisteps code {
+    display: block;
+    margin-top: 4px;
+    padding: 4px 6px;
+    background: var(--hover);
+    border-radius: 4px;
+    overflow-wrap: anywhere
+}
+
+.ailist {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 12px
+}
+
+.ailist li {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 0;
+    border-bottom: 1px solid var(--border)
+}
+
+.aikeyform {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap
+}
+
+.aikeyform input {
+    flex: 1;
+    min-width: 180px
+}
+
+.aistatus:empty {
+    display: none
+}
+
+.consentlist {
+    padding-left: 20px;
+    line-height: 1.5
+}
+
+.consentwarn {
+    display: block;
+    margin-top: 6px;
+    color: var(--warn)
+}
+
+.consentbuttons {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 12px
 }

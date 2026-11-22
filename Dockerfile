@@ -12,6 +12,11 @@ RUN --mount=type=cache,target=/root/.m2 \
 
 # ---- Runtime ----
 FROM eclipse-temurin:21-jre
+# the version of backend/pom.xml, passed by docker-build.sh (docker inspect shows it)
+ARG VERSION=unknown
+LABEL org.opencontainers.image.title="Plugged" \
+      org.opencontainers.image.version="$VERSION" \
+      org.opencontainers.image.source="https://github.com/Jerry911/plugged"
 RUN useradd --system --uid 10001 --create-home plugged \
     && mkdir /data && chown plugged:plugged /data
 WORKDIR /app

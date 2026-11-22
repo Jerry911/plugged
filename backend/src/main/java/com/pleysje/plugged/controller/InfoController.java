@@ -23,8 +23,10 @@ public class InfoController {
     private final InfoDto info;
 
     public InfoController(@Value("${plugged.donate.paypal-url:}") String donateUrl,
-                          @Value("${plugged.admin.email:}") String contactEmail) {
-        this.info = new InfoDto(donateUrl.trim(), contactEmail.trim());
+                          @Value("${plugged.admin.email:}") String contactEmail,
+                          @Value("${plugged.desktop.enabled:false}") boolean desktop) {
+        // as a program on one computer the address is the local account: there is nobody to write to
+        this.info = new InfoDto(donateUrl.trim(), desktop ? "" : contactEmail.trim(), desktop);
         // the address itself is not logged, only whether the contact form is on
         log.info("Info page configured: donate button {}, contact form {}", info.donateUrl().isEmpty() ? "disabled" : "enabled (" + info.donateUrl() + ")",
                 info.contactEmail().isEmpty() ? "hidden" : "enabled");

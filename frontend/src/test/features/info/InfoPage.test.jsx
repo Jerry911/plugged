@@ -14,6 +14,18 @@ const fill = (name = 'Jan', message = 'Mooie tool!') => {
 }
 
 describe('Info page', () => {
+    test('the program for one computer has no QR code: only the FAQ says why', async () => {
+        api({donateUrl: '', contactEmail: '', desktop: true})
+        render(<Info />)
+        await waitFor(() => expect(getById('info-faq').textContent).toContain(t('info.faq.desktopQr.question')))
+        expect(byId('feature-qr')).toBeNull()
+        expect(getById('info-sneltoetsen').textContent).not.toContain('Alt+Q')
+        expect(getById('info-over').textContent).toContain(t('info.about.desktopIntro'))
+        // apart from that one question nothing mentions it
+        const withoutFaq = getById('info-page').textContent.replace(getById('info-faq').textContent, '')
+        expect(withoutFaq).not.toMatch(/QR/)
+        expect([...getById('info-faq').querySelectorAll('details')].filter((item) => /QR/.test(item.textContent))).toHaveLength(1)
+    })
     test('shows every section, each in the navigation', async () => {
         api({donateUrl: 'https://www.paypal.com/donate/?hosted_button_id=ABC', contactEmail: 'me@example.be'})
         render(<Info />)

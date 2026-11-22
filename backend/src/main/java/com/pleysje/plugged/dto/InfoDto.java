@@ -4,7 +4,8 @@ package com.pleysje.plugged.dto;
 
 /**
  * What this installation offers on the Info page: the PayPal donate link and the address the contact form writes to (the address of the
- * administrator, plugged.admin.email; empty = not offered).
+ * administrator, plugged.admin.email; empty = not offered), and whether this is the program for one computer (desktop: no QR codes).
  */
-public record InfoDto(String donateUrl, String contactEmail) {
+public record InfoDto(String donateUrl, String contactEmail, boolean desktop) {
+
 }

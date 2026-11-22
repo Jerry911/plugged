@@ -31,9 +31,25 @@ export const matchesSearch = (symbolType, search) => {
         .every((word) => haystack.includes(word))
 }
 
-/** The searchable list of general library components that can be placed loose on the drawing. */
-export function ComponentPalette({project, symbolTypes, placedCount, search, onSearch, activeType, onChoose}) {
+/**
+ * The searchable list of general library components that can be placed loose on the drawing. grouped (the bedradingsschema, some 580
+ * symbols): one folding group per category, in the order of symbolTypes; the first one open, all of them while searching.
+ */
+export function ComponentPalette({project, symbolTypes, placedCount, search, onSearch, activeType, onChoose, grouped = false, recent = []}) {
     const {t} = useTranslation()
+    const button = (symbolType) => (
+        <ComponentButton
+            key={symbolType.k}
+            project={project}
+            node={{type: symbolType.k}}
+            name={symbolName(symbolType)}
+            title={symbolName(symbolType)}
+            id={'comp-' + toDomId(symbolType.k)}
+            active={activeType === symbolType.k}
+            onClick={() => onChoose(symbolType.k)}
+        />
+    )
+    const categories = grouped ? [...new Set(symbolTypes.map((symbolType) => symbolType.cat || ''))] : []
     return (
         <div className="pal fill-grow fill-col" data-tour="comp-palette" id="sit-palette">
             <b>{t('situation.components', {count: placedCount})}</b>
@@ -46,18 +62,43 @@ export function ComponentPalette({project, symbolTypes, placedCount, search, onS
                 onChange={(event) => onSearch(event.target.value)}
                 style={{width: '100%', boxSizing: 'border-box', margin: '4px 0'}}
             />
+            {/* the symbols used last on this tab: one tap to place them again */}
+            {!search && recent.length > 0 && (
+                <div id="comp-recent" className="recentstrip" aria-label={t('situation.recent')}>
+                    {recent.map((key) => {
+                        const symbolType = typeOf(project, key)
+                        return (
+                            <button
+                                key={key}
+                                id={'comp-recent-' + toDomId(key)}
+                                type="button"
+                                className={activeType === key ? 'on' : ''}
+                                title={symbolName(symbolType)}
+                                aria-label={symbolName(symbolType)}
+                                onClick={() => onChoose(key)}
+                            >
+                                <svg width="22" height="22" viewBox="0 0 22 22">
+                                    <SymbolGraphic shapes={placedShapesOf(symbolType)} x={11} y={11} size={20} />
+                                </svg>
+                            </button>
+                        )
+                    })}
+                </div>
+            )}
             <div className="pallist fill-grow">
-                {symbolTypes.map((symbolType) => (
-                    <ComponentButton
-                        key={symbolType.k}
-                        project={project}
-                        node={{type: symbolType.k}}
-                        name={symbolName(symbolType)}
-                        id={'comp-' + toDomId(symbolType.k)}
-                        active={activeType === symbolType.k}
-                        onClick={() => onChoose(symbolType.k)}
-                    />
-                ))}
+                {grouped
+                    ? categories.map((category, index) => {
+                          const inCategory = symbolTypes.filter((symbolType) => (symbolType.cat || '') === category)
+                          return (
+                              <details key={category} id={'comp-category-' + toDomId(category || '-')} className="palgroup" open={!!search || index === 0}>
+                                  <summary>
+                                      <b>{categoryName(category)}</b> <span className="palcount">{inCategory.length}</span>
+                                  </summary>
+                                  {inCategory.map(button)}
+                              </details>
+                          )
+                      })
+                    : symbolTypes.map(button)}
                 {!symbolTypes.length && <i id="comp-none">{t('situation.noComponentsFound')}</i>}
             </div>
         </div>
@@ -87,7 +128,7 @@ const ShowIcon = () => (
  * the same list without any judgement: no warning styling or title, no counts and no "all placed" check (see App.jsx).
  */
 export const UnplacedPanel = forwardRef(function UnplacedPanel(
-    {project, unplaced, hidden, marks, open, onToggleOpen, showHidden, onToggleShowHidden, onPlace, onPlaceAll, onSetHidden, neutral},
+    {project, unplaced, hidden, marks, open, onToggleOpen, showHidden, onToggleShowHidden, onPlace, onPlaceAll, onSetHidden, neutral, looseCircuitSymbols = 0, onGenerate},
     ref,
 ) {
     const {t} = useTranslation()
@@ -107,6 +148,14 @@ export const UnplacedPanel = forwardRef(function UnplacedPanel(
             </button>
             {open && (
                 <>
+                    {looseCircuitSymbols > 0 && onGenerate && (
+                        <div className="genbox" id="sit-generate-box">
+                            <span>{t('generate.panelText', {count: looseCircuitSymbols})}</span>
+                            <button type="button" id="sit-generate" className="accent" onClick={onGenerate}>
+                                <Icon name="add" /> {t('generate.button')}
+                            </button>
+                        </div>
+                    )}
                     {unplaced.length ? (
                         <div className={(neutral ? 'neutral' : 'warn') + ' fill-grow fill-col'} id="sit-unplaced">
                             <span id="sit-unplaced-title">{neutral ? (

@@ -174,7 +174,7 @@ test('Project opens the menu, clicking Project again closes it; the items are li
     fireEvent.click(btn)
     expect(btn).toHaveAttribute('aria-expanded', 'true')
     expect(getById('project-menu').querySelector('[role="menu"]')).toHaveAttribute('aria-label', t('projects.menu'))
-    expect([...document.querySelectorAll('#project-menu [role="menuitem"]')].map((b) => b.id)).toEqual(['btn-save', 'btn-saveas', 'btn-new', 'btn-load', 'btn-import', 'btn-export', 'btn-materials', 'btn-pdf', 'btn-qr', 'btn-print'])
+    expect([...document.querySelectorAll('#project-menu [role="menuitem"]')].map((b) => b.id)).toEqual(['btn-save', 'btn-saveas', 'btn-new', 'btn-load', 'btn-import', 'btn-export', 'btn-materials', 'btn-quote', 'btn-pdf', 'btn-qr', 'btn-print'])
     // PDF and printing moved from the top bar into this menu
     expect(getById('top-bar').querySelector('#btn-pdf')).toBe(getById('project-menu').querySelector('#btn-pdf'))
     // opening the menu is not a page switch: the drawing stays where it was

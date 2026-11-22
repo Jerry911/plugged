@@ -46,6 +46,8 @@ export class FakeBackend {
     symbols = clone(standard)
     puts = [] // every project save: {id, body}
     failSave = false // PUT /api/projects/:id answers 500
+    offline = false // every request that changes something fails as without a network (the GETs still answer: the copies of the PWA)
+    priceLists = new Map() // id → {id, name, mine, owner, groups, updated, version, document}
     symbolsDown = false // /api/symbols is not reachable
     gate = null // a promise the first symbol request waits for (to look at the loading state)
     info = {...testInfo} // GET /api/info: what the "test" profile of the real application says
@@ -70,6 +72,7 @@ export class FakeBackend {
             m = req.method(),
             json = (body, status = 200) => route.fulfill({status, contentType: 'application/json', body: JSON.stringify(body)}),
             empty = (status = 204) => route.fulfill({status})
+        if (this.offline && m !== 'GET') return route.abort('internetdisconnected')
         if (path.startsWith('/api/projects')) {
             // working together (usePresence): in the fake nobody else is ever there
             if (path.endsWith('/presence')) return m === 'POST' ? json({others: [], version: 0, savedBy: null, savedByMe: true}) : empty()
@@ -152,6 +155,26 @@ export class FakeBackend {
         if (path === '/api/auth/status') return json({setupRequired: false, adminEmail: testInfo.contactEmail, user: FAKE_USER})
         if (path === '/api/groups') return json([])
         if (path === '/api/info') return json(this.info)
+        // Account → Prijzen (only own price lists here, not shared)
+        if (path === '/api/price-lists/groups') return json([])
+        if (path === '/api/price-lists' && m === 'GET')
+            return json([...this.priceLists.values()].map(({document: _document, version: _version, ...summary}) => summary))
+        if (path === '/api/price-lists' && m === 'POST') {
+            const save = JSON.parse(req.postData()),
+                list = {id: this.priceLists.size + 1, name: save.name, mine: true, owner: null, groups: [], updated: new Date().toISOString(), version: 0, document: save.document}
+            this.priceLists.set(list.id, list)
+            return json(list, 201)
+        }
+        if (path.startsWith('/api/price-lists/')) {
+            const list = this.priceLists.get(Number(path.split('/')[3]))
+            if (!list) return empty(404)
+            if (m === 'PUT') {
+                const save = JSON.parse(req.postData())
+                if (req.headers()['if-match'] !== '"' + list.version + '"') return json({detail: 'changed'}, 409)
+                Object.assign(list, {name: save.name, document: save.document, version: list.version + 1})
+            }
+            return json(list)
+        }
         // Account → Controleregels
         if (path === '/api/account/theme') {
             if (m === 'PUT') {
@@ -204,6 +227,7 @@ class RealBackend {
     // The same switches as the fake has. A backend that breaks on purpose is simulated in the browser: the requests of the page are answered
     // here instead of by the application (the requests of the tests themselves, through `request`, always reach the real one).
     failSave = false // saving a project (PUT /api/projects/:id, POST /api/projects) answers 500
+    offline = false // every request of the page that changes something fails as without a network
     symbolsDown = false // /api/symbols answers 503
     gate = null // a promise every /api/symbols request waits for (to look at the loading state)
     info = null // GET /api/info answers this instead of the settings of the application
@@ -214,6 +238,7 @@ class RealBackend {
         await page.route(API_REQUEST, async (route) => {
             const req = route.request(),
                 path = new URL(req.url()).pathname
+            if (this.offline && req.method() !== 'GET') return route.abort('internetdisconnected')
             if (path === '/api/info' && this.info) return route.fulfill({status: 200, contentType: 'application/json', body: JSON.stringify(this.info)})
             if (path.startsWith('/api/symbols')) {
                 if (this.gate) await this.gate

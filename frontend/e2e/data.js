@@ -1,7 +1,7 @@
 // Copyright 2026 Pleysier Jeroen
 // SPDX-License-Identifier: AGPL-3.0-only
 // Project documents for the tests (same shape as the ones in the unit tests) and a few helpers to build them.
-import pako from 'pako'
+import * as pako from 'pako'
 
 export const node = (id, type, children = [], extra = {}) => ({id, type, label: id, info: '', children, ...extra})
 export const project = (over = {}) => ({

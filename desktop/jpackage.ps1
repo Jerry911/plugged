@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 #
 # Plugged as a program for Windows (see backend/.../desktop/DesktopLauncher.java), packed with its own Java by jpackage: the Windows
-# counterpart of jpackage.sh, without Git Bash. Needs a JDK 21 or newer (jpackage is part of it) and Maven on the PATH; for the .msi also
+# counterpart of jpackage.sh, without Git Bash. Needs a JDK 25 or newer (jpackage is part of it) and Maven on the PATH; for the .msi also
 # the WiX toolset. Easiest: double-click desktop\jpackage.cmd, or in PowerShell:
 #
 #   .\desktop\jpackage.ps1            builds the application (mvn package, frontend included) and packs it
@@ -30,7 +30,7 @@ if (-not $Valid) {
     throw "The <version> in backend\pom.xml is ""$Version"": it must be three numbers such as 1.2.0, the first at least 1, at most 255.255.65535."
 }
 foreach ($tool in @('jpackage') + $(if ($NoBuild) { @() } else { @('mvn') })) {
-    if (-not (Get-Command $tool -ErrorAction SilentlyContinue)) { throw "$tool is not on the PATH: install a JDK 21 or newer$(if ($tool -eq 'mvn') { ' and Maven' })." }
+    if (-not (Get-Command $tool -ErrorAction SilentlyContinue)) { throw "$tool is not on the PATH: install a JDK 25 or newer$(if ($tool -eq 'mvn') { ' and Maven' })." }
 }
 
 $Jar = "plugged-$Version.jar"

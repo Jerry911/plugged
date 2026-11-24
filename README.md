@@ -1,7 +1,7 @@
 # Plugged
 Draw Belgian (AREI) electrical schemas in the browser: eendraadschema, situatieschema, bedradingsschema (wiring diagram), your own symbols, rule verification and vector PDF export.
 
-Spring Boot 4 backend (Java 21, JPA, file-based H2) with a React 18 + Vite frontend. The built frontend is served by the backend, so a production install is a single jar.
+Spring Boot 4 backend (Java 25, JPA, file-based H2) with a React 19 + Vite frontend. The built frontend is served by the backend, so a production install is a single jar.
 
 ## Quick start
 | You want to | Command | Open |
@@ -14,7 +14,7 @@ Spring Boot 4 backend (Java 21, JPA, file-based H2) with a React 18 + Vite front
 
 On the first start Plugged asks for the details of the administrator account and a **setup key** that it prints in its log (the console; `docker compose logs plugged` in Docker), see [Accounts and signing in](#accounts-and-signing-in).
 
-Requirements: JDK 21 and Maven 3.9+. Node is only needed for frontend development (`mvn clean install` downloads Node 22 into `frontend/node` by itself). Docker is optional.
+Requirements: JDK 25 and Maven 3.9+. Node is only needed for frontend development (`mvn clean install` downloads Node 26 into `frontend/node` by itself). Docker is optional.
 
 ## Changing the port
 | What | Default | How to change it |
@@ -68,7 +68,7 @@ Plugged is a Progressive Web App: Chrome, Edge and Safari offer to **install** i
 - On Android the installed PWA is the app; iOS adds it to the home screen from Safari (Share › Add to Home Screen). The service worker needs HTTPS (or `localhost`), so a server behind a reverse proxy with a certificate.
 
 ## Desktop program (one computer)
-For somebody who works alone (an independent electrician): Plugged as a program with its own Java, no server to install, no account to make. `desktop/jpackage.sh` builds it with `jpackage` (JDK 21) on the system it runs on: a `.tar.gz` (and a `.deb` when `dpkg-deb` and `fakeroot` are installed) on Linux, a `.zip` (and an `.msi` with the WiX toolset) on Windows with `desktop\jpackage.cmd` (double-click it; it runs `desktop\jpackage.ps1`, add `-NoBuild` to pack the jar that is already built), a `.dmg` on macOS (not signed: the first time open it with right-click › Open). The workflow `.github/workflows/desktop.yml` builds all three on GitHub.
+For somebody who works alone (an independent electrician): Plugged as a program with its own Java, no server to install, no account to make. `desktop/jpackage.sh` builds it with `jpackage` (JDK 25) on the system it runs on: a `.tar.gz` (and a `.deb` when `dpkg-deb` and `fakeroot` are installed) on Linux, a `.zip` (and an `.msi` with the WiX toolset) on Windows with `desktop\jpackage.cmd` (double-click it; it runs `desktop\jpackage.ps1`, add `-NoBuild` to pack the jar that is already built), a `.dmg` on macOS (not signed: the first time open it with right-click › Open). The workflow `.github/workflows/desktop.yml` builds all three on GitHub.
 
 **Versions and releases.** The version of Plugged is written in one place only: `<version>` in `backend/pom.xml` (three numbers, the first at least 1, e.g. `1.2.0`). The jar (`plugged-<version>.jar`), the installers, the MCP server and the tests take it from there. To publish a release, raise that version and push it to `main` (or `master`): every push there lets the workflow check the version, and for a version without a release it builds the installers on Windows, macOS and Linux, and publishes them as release `v<version>` with the tag on that commit. Other pushes, and pom changes that keep the version, publish nothing. *Run workflow* (by hand) builds the installers of any branch as downloads of the run, without a release, to try them first. Raise the last number for fixes, the middle one for new features, the first one for big changes.
 - The program (`desktop/DesktopLauncher`, started with `--desktop`, profile `desktop`) listens on **127.0.0.1 only**, on port 47800 (or the next free one), and keeps its data (database, logs) in the user's folder: `%LOCALAPPDATA%\Plugged` on Windows, `~/Library/Application Support/Plugged` on macOS, `~/.local/share/plugged` on Linux; `PLUGGED_HOME` overrides it.
@@ -348,7 +348,7 @@ desktop/          jpackage.sh and the icons of the program; .github/workflows/de
 Tests find elements by their **id**, never by the text on a button: texts change with the language. Every interactive element has a stable id, prefixed by the part of the screen it belongs to (`tab-*`, `btn-*`, `eds-*` eendraadschema, `sit-*` situatieschema, `comp-*` symbol editor, `verify-*`, `footer-*`, `tour-*`, `project-*`, `export-*`, `auth-*` sign-in / registration / first start, `admin-*`, `users-*`, `group-*` Account page). Ids built from data go through `toDomId` (`custom:1` becomes `custom_1`), e.g. `#eds-palette-stopcontact`, `#eds-tree-<node id>`, `#comp-item-<symbol key>`. Where a test does check a text, it compares it with the dictionary (`t('app.saved')` in unit tests, `t()` of `e2e/texts.js` in Playwright), so a rewording of a text never breaks a test. Unit tests run in Dutch (`src/test/setup.js`), the browser tests in a Dutch browser (`locale: 'nl-BE'`); `i18n.test.jsx` and `e2e/i18n.spec.js` cover the switching.
 
 ## Build, tests and Docker
-- `cd backend && mvn clean install` builds everything: it installs Node 22 locally (into `frontend/node`), runs `npm ci`, builds the React app into the jar, runs the backend tests **and the frontend tests** (`npm test`), then enforces the JaCoCo gate.
+- `cd backend && mvn clean install` builds everything: it installs Node 26 locally (into `frontend/node`), runs `npm ci`, builds the React app into the jar, runs the backend tests **and the frontend tests** (`npm test`), then enforces the JaCoCo gate.
   - `-DskipTests` skips backend and frontend tests; `-Dfrontend.skip=true` skips Node, the frontend build and the frontend tests (the jar then has no UI).
 - Frontend only: `cd frontend && npm test` (Vitest + React Testing Library, jsdom); `npm run coverage` enforces thresholds (95% lines/statements/functions, 90% branches).
 - Backend only: `cd backend && mvn verify` (JUnit 5, Spring Boot Test, MockMvc, @DataJpaTest, JaCoCo with a 90% line gate; report in `target/site/jacoco`).

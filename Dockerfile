@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 
 # ---- Build: Maven builds the React frontend (frontend-maven-plugin) and the Spring Boot jar ----
-FROM maven:3.9-eclipse-temurin-21 AS build
+FROM maven:3.9-eclipse-temurin-25 AS build
 WORKDIR /build
 COPY frontend frontend
 COPY backend backend
@@ -11,7 +11,7 @@ RUN --mount=type=cache,target=/root/.m2 \
     mvn -B -ntp -f backend/pom.xml clean package -DskipTests=$([ "$RUN_TESTS" = "true" ] && echo false || echo true)
 
 # ---- Runtime ----
-FROM eclipse-temurin:21-jre
+FROM eclipse-temurin:25-jre
 # the version of backend/pom.xml, passed by docker-build.sh (docker inspect shows it)
 ARG VERSION=unknown
 LABEL org.opencontainers.image.title="Plugged" \

@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import {act, fireEvent, render, waitFor} from '@testing-library/react'
 import App from '../../app/App.jsx'
-import pako from 'pako'
+import * as pako from 'pako'
 import {importEds} from '../../model/eds.js'
 import {t} from '../../i18n/translate.js'
 import {byId, getById, node} from '../utils.jsx'

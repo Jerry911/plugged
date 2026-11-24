@@ -1,6 +1,6 @@
 // Copyright 2026 Pleysier Jeroen
 // SPDX-License-Identifier: AGPL-3.0-only
-import pako from 'pako'
+import * as pako from 'pako'
 import {decodeEds, edsToProject, edsTypeOf, encodeEds, exportEds, importEds, lampKey, moduleKey, projectToEds, socketKey, switchKey} from '../../model/eds.js'
 import {flatten} from '../../model/tree.js'
 import {verify} from '../../model/rules.js'

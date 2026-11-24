@@ -9,6 +9,10 @@ rename *Unreleased* to that version with the date and start a new, empty *Unrele
 
 ## [Unreleased]
 
+### Changed
+
+- Everything up to date: Java 25 (was 21; the Docker images and the desktop program too), Spring Boot 4.2.0, Node 26 LTS for the build, React 19 and the other frontend packages (Vite, Vitest, Playwright, jsdom, pako 3 ...), and the GitHub Actions of the release workflow.
+
 ### Added
 
 - Situatieschema: copy and paste with Ctrl+C / Ctrl+V (also to another sheet), Ctrl+X and Ctrl+D, and a copy button under the trash button of the selection.

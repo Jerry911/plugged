@@ -3,7 +3,7 @@
 // Import of files (.eds = "EDS004" header + base64(zlib(JSON))).
 // Lights (type_lamp, is_wandlamp, type_noodverlichting) and switches (type_schakelaar, heeft_verklikkerlampje) choose their symbol from their options.
 // Only the eendraadschema (circuits, elements) and the owner/address footer are imported; the situatieschema (sitplanjson) is ignored.
-import pako from 'pako'
+import * as pako from 'pako'
 import {circuitInfo, detailLines, isDiffCircuit, placementOf} from './boardLayout.js'
 import {newId} from './tree.js'
 import {allTranslations, t} from '../i18n/translate.js'
@@ -103,12 +103,8 @@ export function decodeEds(text) {
     if (!content.startsWith('EDS')) throw new Error(t('eds.notAnEdsFile'))
     try {
         const binary = atob(content.slice(10))
-        return JSON.parse(
-            pako.inflate(
-                Uint8Array.from(binary, (character) => character.charCodeAt(0)),
-                {to: 'string'},
-            ),
-        )
+        // pako 3 always gives bytes: the JSON in them is UTF-8
+        return JSON.parse(new TextDecoder().decode(pako.inflate(Uint8Array.from(binary, (character) => character.charCodeAt(0)))))
     } catch {
         throw new Error(t('eds.unreadable'))
     }

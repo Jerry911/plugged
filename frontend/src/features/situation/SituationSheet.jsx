@@ -32,7 +32,7 @@ export const showsLengths = (page) => (page.wires ? page.dims === true : page.di
  * follow the scale of the drawing, they have to be easy to see and to pick. A page without its own size has the default. A page of the
  * bedradingsschema (with wires) draws its symbols at their own size: there they connect to wires.
  */
-export const SYMBOL_SCALE = {min: 0.5, max: 4, step: 0.1, default: 2}
+export const SYMBOL_SCALE = {min: 0.5, max: 4, step: 0.1, default: 1.5}
 export const symbolScaleOf = (page) => (page.wires ? 1 : Number(page.symScale) || SYMBOL_SCALE.default)
 /** The items of a page as they are drawn: the symbols at their size times the symbol size of the page. */
 export const shownItems = (page) => {

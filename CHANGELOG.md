@@ -12,7 +12,7 @@ rename *Unreleased* to that version with the date and start a new, empty *Unrele
 ### Added
 
 - Situatieschema: copy and paste with Ctrl+C / Ctrl+V (also to another sheet), Ctrl+X and Ctrl+D, and a copy button under the trash button of the selection.
-- Situatieschema: a *Symbolen* slider under the plan sets how big the symbols are drawn (default 200 %, twice as big as before); they do not follow the scale.
+- Situatieschema: a *Symbolen* slider under the plan sets how big the symbols are drawn (default 150 %, bigger than before); they do not follow the scale.
 
 ### Fixed
 

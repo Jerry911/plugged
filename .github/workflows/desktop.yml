@@ -53,11 +53,30 @@ jobs:
         with:
           distribution: temurin
           java-version: '21'
-          cache: maven
+      # The Maven repository of the last build, also when the pom changed: raising the version changes the pom, and without the old cache
+      # every system downloads everything from Maven Central at once, which then answers 429 Too Many Requests.
+      - uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository
+          key: maven-${{ runner.os }}-${{ hashFiles('backend/pom.xml') }}
+          restore-keys: maven-${{ runner.os }}-
       - name: Build and pack
         shell: bash
+        # Maven retries a download that is refused for a while (429 / 503) longer than its default; a build that still fails on the
+        # network is tried again after a pause, up to three times (what was downloaded stays).
+        env:
+          MAVEN_ARGS: >-
+            -Daether.connector.http.retryHandler.count=6
+            -Daether.connector.http.retryHandler.interval=10000
+            -Daether.transport.http.retryHandler.count=6
+            -Daether.transport.http.retryHandler.interval=10000
         # through bash: the script works without its execute permission (a checkout from Windows or a zip loses it)
-        run: bash desktop/jpackage.sh
+        run: |
+          for attempt in 1 2 3; do
+            bash desktop/jpackage.sh && exit 0
+            [ "$attempt" = 3 ] || { echo "::warning::Build attempt $attempt failed, trying again in 2 minutes"; sleep 120; }
+          done
+          exit 1
       - uses: actions/upload-artifact@v4
         with:
           name: plugged-${{ needs.version.outputs.version }}-${{ runner.os }}

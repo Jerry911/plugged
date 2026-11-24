@@ -531,10 +531,10 @@ test('a trash button appears at the top right of the selection and deletes it', 
     fireEvent.pointerDown(grabs(container)[0], {clientX: 100, clientY: 100})
     expect(trash()).toBeNull()
     up(container)
-    // a symbol of 7 mm is drawn at twice its size on a plan (the default symbol size): 14 mm
-    expect(trash().getAttribute('transform')).toBe('translate(111,89)')
+    // a symbol of 7 mm is drawn at 1.5 times its size on a plan (the default symbol size): 10.5 mm
+    expect(trash().getAttribute('transform')).toBe('translate(109.25,90.75)')
     // the copy button under it
-    expect(byId('sit-copy-selection').getAttribute('transform')).toBe('translate(111,96.5)')
+    expect(byId('sit-copy-selection').getAttribute('transform')).toBe('translate(109.25,98.25)')
     fireEvent.pointerDown(trash(), {clientX: 107, clientY: 92})
     mv(container, 130, 130)
     expect(boxRect(container)).toBeNull()
@@ -548,7 +548,7 @@ test('the trash button covers a whole group, stays inside the sheet and is hidde
     dn(container, 5, 10)
     mv(container, 70, 50)
     up(container)
-    expect(trash().getAttribute('transform')).toBe('translate(71,16.2)')
+    expect(trash().getAttribute('transform')).toBe('translate(69.25,16.2)')
     tool('wall')
     expect(trash()).toBeNull()
     tool('select')
@@ -572,7 +572,7 @@ test('items and walls have generous invisible hit areas', () => {
     const g = grabs(container)
     expect(g).toHaveLength(4)
     g.forEach((x) => expect(x.querySelector('[fill="transparent"]')).toBeTruthy())
-    expect(g[1].querySelector('circle[fill="transparent"]').getAttribute('r')).toBe('8.5')
+    expect(g[1].querySelector('circle[fill="transparent"]').getAttribute('r')).toBe('6.75')
 })
 
 // ---- dimensions ----
@@ -1487,9 +1487,9 @@ test('the symbol size of a plan: bigger by default, set with the slider under th
     init.sit[0].items = [{id: 'i', kind: 'sym', node: 'n1', x: 100, y: 100, r: 0, s: 7}]
     const {container, spy} = mount(SituationSchema, init, {pageIndex: 0}),
         hit = () => grabs(container)[0].querySelector('circle[fill="transparent"]').getAttribute('r')
-    expect(getById('sit-symbol-size')).toHaveValue('2')
-    expect(getById('sit-symbol-size-value')).toHaveTextContent('200%')
-    expect(hit()).toBe('8.5')
+    expect(getById('sit-symbol-size')).toHaveValue('1.5')
+    expect(getById('sit-symbol-size-value')).toHaveTextContent('150%')
+    expect(hit()).toBe('6.75')
     fireEvent.change(getById('sit-symbol-size'), {target: {value: '3'}})
     expect(sit(spy).symScale).toBe(3)
     expect(getById('sit-symbol-size-value')).toHaveTextContent('300%')

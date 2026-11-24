@@ -145,13 +145,32 @@ const orderedEntries = (entries) => [
 
 const elementOf = (item) => ({id: newId(), type: item.type, label: '', info: '', ...(item.h ? {p: {h: true}} : {}), children: []})
 
+// The entries of a point as groups: every switch on its own (two wissels are two switches in series), but the same lamp or socket more than
+// once (four spots marked B4) is one element with its count, as the eendraadschema draws it (one spot, x4).
+const groupedEntries = (entries) => {
+    const groups = [],
+        byKind = new Map()
+    entries.forEach((entry) => {
+        if (CONTROL_TYPES.has(entry.item.type)) return groups.push([entry])
+        const kind = entry.item.type + (entry.item.h ? '|h' : '')
+        if (byKind.has(kind)) byKind.get(kind).push(entry)
+        else {
+            const group = [entry]
+            byKind.set(kind, group)
+            groups.push(group)
+        }
+    })
+    return groups
+}
+
 // One point: its switches in series, the rest under the last switch; without a switch the rest hangs under the first element. `link` gets
-// item id -> element id.
+// item id -> element id (the symbols of one group all link to the same element).
 const pointElement = (point, link) => {
     const entries = orderedEntries(point.entries),
-        elements = entries.map((entry) => {
-            const element = elementOf(entry.item)
-            link.set(entry.item.id, element.id)
+        elements = groupedEntries(entries).map((group) => {
+            const element = elementOf(group[0].item)
+            if (group.length > 1) element.p = {...element.p, aantal: group.length}
+            group.forEach((entry) => link.set(entry.item.id, element.id))
             return element
         }),
         switches = entries.filter((entry) => CONTROL_TYPES.has(entry.item.type)).length,

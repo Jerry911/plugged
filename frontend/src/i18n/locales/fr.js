@@ -422,8 +422,13 @@ export default {
         lengths: 'Cotes',
         grid: 'Grille',
         freeDrawing: 'Dessin libre',
+        symbolSize: 'Symboles',
+        symbolSizeTitle: 'La taille des symboles sur ce plan (aussi à l’impression). Ils ne suivent pas l’échelle : ils restent faciles à voir et à sélectionner.',
         deletedSymbol: '(supprimé)',
         deleteSelection: 'Supprimer la sélection',
+        duplicateTitle: 'Dupliquer : une copie à côté (Ctrl+D). Ctrl+C et Ctrl+V copient aussi vers une autre feuille.',
+        copied: '{count} copié(s) : collez avec Ctrl+V, aussi sur une autre feuille.',
+        copySelection: 'Copier la sélection',
         deleteSelectionTitle: 'Supprimer (Suppr)',
         dimension: {
             invalid: 'Valeur non valable',
@@ -1104,6 +1109,9 @@ export default {
                 {keys: 'Alt+Q', text: 'code QR du projet ouvert'},
                 {keys: 'Alt+P', text: 'imprimer'},
                 {keys: 'R', text: 'tourne la sélection dans le plan de position'},
+                {keys: 'Ctrl+C / Ctrl+V', text: 'copie la sélection du schéma de position ou de câblage et la colle, aussi sur une autre feuille'},
+                {keys: 'Ctrl+X', text: 'coupe la sélection'},
+                {keys: 'Ctrl+D', text: 'duplique la sélection'},
             ],
         },
         faq: {

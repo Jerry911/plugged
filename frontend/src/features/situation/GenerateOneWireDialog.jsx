@@ -11,11 +11,14 @@ import {symbolName, typeOf} from '../../symbols/symbolLibrary.js'
 import {BREAKERS, CABLE_FOR_BREAKER, CABLES, CONTROL_TYPES, planOneWire} from '../../model/generateOneWire.js'
 import Icon from '../../components/Icon.jsx'
 
-// "wissel → wissel → lichtpunt": the switches in series, then what hangs under the last one
-const pointText = (project, types) => {
+// "wissel → wissel → spot x4": the switches in series, then what hangs under the last one (the same lamp more than once is one element with
+// its count, as generating makes it)
+export const pointText = (project, types) => {
     const name = (type) => symbolName(typeOf(project, type)),
         switches = types.filter((type) => CONTROL_TYPES.has(type)).map(name),
-        rest = types.filter((type) => !CONTROL_TYPES.has(type)).map(name)
+        counts = new Map()
+    types.filter((type) => !CONTROL_TYPES.has(type)).forEach((type) => counts.set(type, (counts.get(type) || 0) + 1))
+    const rest = [...counts].map(([type, count]) => name(type) + (count > 1 ? ' x' + count : ''))
     return [...switches, rest.join(', ')].filter(Boolean).join(' → ')
 }
 

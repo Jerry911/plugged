@@ -1,7 +1,7 @@
 // Copyright 2026 Pleysier Jeroen
 // SPDX-License-Identifier: AGPL-3.0-only
 import {fireEvent, render} from '@testing-library/react'
-import SituationSchema from '../../../features/situation/SituationSchema.jsx'
+import SituationSchema, {clearClipboard} from '../../../features/situation/SituationSchema.jsx'
 import {SituationSheet, lengthLabelBox} from '../../../features/situation/SituationSheet.jsx'
 import {ZOOM_LEVELS as ZOOMS} from '../../../components/ZoomControls.jsx'
 import {circuitMarks as marksOf} from '../../../model/project.js'
@@ -531,7 +531,10 @@ test('a trash button appears at the top right of the selection and deletes it', 
     fireEvent.pointerDown(grabs(container)[0], {clientX: 100, clientY: 100})
     expect(trash()).toBeNull()
     up(container)
-    expect(trash().getAttribute('transform')).toBe('translate(107.5,92.5)')
+    // a symbol of 7 mm is drawn at twice its size on a plan (the default symbol size): 14 mm
+    expect(trash().getAttribute('transform')).toBe('translate(111,89)')
+    // the copy button under it
+    expect(byId('sit-copy-selection').getAttribute('transform')).toBe('translate(111,96.5)')
     fireEvent.pointerDown(trash(), {clientX: 107, clientY: 92})
     mv(container, 130, 130)
     expect(boxRect(container)).toBeNull()
@@ -545,7 +548,7 @@ test('the trash button covers a whole group, stays inside the sheet and is hidde
     dn(container, 5, 10)
     mv(container, 70, 50)
     up(container)
-    expect(trash().getAttribute('transform')).toBe('translate(67.5,16.2)')
+    expect(trash().getAttribute('transform')).toBe('translate(71,16.2)')
     tool('wall')
     expect(trash()).toBeNull()
     tool('select')
@@ -569,7 +572,7 @@ test('items and walls have generous invisible hit areas', () => {
     const g = grabs(container)
     expect(g).toHaveLength(4)
     g.forEach((x) => expect(x.querySelector('[fill="transparent"]')).toBeTruthy())
-    expect(g[1].querySelector('circle[fill="transparent"]').getAttribute('r')).toBe('5')
+    expect(g[1].querySelector('circle[fill="transparent"]').getAttribute('r')).toBe('8.5')
 })
 
 // ---- dimensions ----
@@ -1203,6 +1206,8 @@ test('Eigenschappen of several elements: turn, duplicate, delete all of them, or
 test('the marking of a symbol grows and shrinks with the symbol, but stays readable', () => {
     const init = P()
     init.sit[0].items = [{id: 'i1', kind: 'sym', node: 'n1', x: 100, y: 100, r: 0, s: 7, mark: 'A1'}]
+    // at the size of the symbol itself
+    init.sit[0].symScale = 1
     const size = (s) => {
         init.sit[0].items[0].s = s
         const {container, unmount} = render(<SituationSheet project={init} page={init.sit[0]} number={1} total={1} />)
@@ -1401,4 +1406,96 @@ test('for the offerte: symbols are mounted horizontally or vertically and severa
     expect(getById('sit-multi-title')).toHaveTextContent(t('situation.multipleSelected', {count: 2}))
     fireEvent.click(getById('multi-uncombine'))
     expect(sit(spy).items.map((item) => item.combo)).toEqual([undefined, undefined, undefined])
+})
+
+// ---- copy and paste ----
+test('Ctrl+C and Ctrl+V copy the selection, each paste a bit further; the copy button and Ctrl+D duplicate; Ctrl+X cuts', () => {
+    clearClipboard()
+    const init = P()
+    init.sit[0].items = [
+        {id: 'a', kind: 'sym', type: 'spot', mark: 'B4', x: 100, y: 100, r: 0, s: 7, combo: 'k', dir: 'v'},
+        {id: 'b', kind: 'sym', type: 'schakelaar', mark: 'B4', x: 110, y: 100, r: 0, s: 7, combo: 'k', dir: 'v'},
+    ]
+    const {container, spy} = mount(SituationSchema, init, {pageIndex: 0}),
+        b = document.body
+    // nothing copied yet: Ctrl+V does nothing
+    fireEvent.keyDown(b, {key: 'v', ctrlKey: true})
+    expect(sit(spy).items).toHaveLength(2)
+    dn(container, 90, 90)
+    mv(container, 120, 110)
+    up(container)
+    fireEvent.keyDown(b, {key: 'c', ctrlKey: true})
+    fireEvent.keyDown(b, {key: 'v', ctrlKey: true})
+    fireEvent.keyDown(b, {key: 'v', metaKey: true})
+    const items = sit(spy).items
+    expect(items.map((item) => [item.x, item.y])).toEqual([
+        [100, 100],
+        [110, 100],
+        [105, 105],
+        [115, 105],
+        [110, 110],
+        [120, 110],
+    ])
+    // the copies keep type, marking and mounting; each paste is a combination of its own
+    expect(items[2]).toMatchObject({type: 'spot', mark: 'B4', dir: 'v'})
+    expect(new Set(items.map((item) => item.combo)).size).toBe(3)
+    expect(items[2].combo).toBe(items[3].combo)
+    expect(new Set(items.map((item) => item.id)).size).toBe(6)
+    // the last paste is selected: the copy button under the trash duplicates it, so does Ctrl+D
+    fireEvent.click(getById('sit-copy-selection'))
+    expect(sit(spy).items).toHaveLength(8)
+    fireEvent.keyDown(b, {key: 'd', ctrlKey: true})
+    expect(sit(spy).items).toHaveLength(10)
+    // Ctrl+X: copied and gone
+    fireEvent.keyDown(b, {key: 'x', ctrlKey: true})
+    expect(sit(spy).items).toHaveLength(8)
+    fireEvent.keyDown(b, {key: 'v', ctrlKey: true})
+    expect(sit(spy).items).toHaveLength(10)
+    // in a text box Ctrl+V is the usual paste
+    fireEvent.keyDown(getById('sit-grid'), {key: 'v', ctrlKey: true})
+    expect(sit(spy).items).toHaveLength(10)
+})
+
+test('what is copied on one plan is pasted on another at the same place; not on the bedradingsschema', () => {
+    clearClipboard()
+    const init = P()
+    init.sit = [
+        {...init.sit[0], items: [{id: 'a', kind: 'sym', node: 'n1', x: 100, y: 100, r: 0, s: 7}], walls: [wall('w', 10, 20, 50, 20)]},
+        {id: 's2', name: '2', walls: [], items: []},
+    ]
+    const first = mount(SituationSchema, init, {pageIndex: 0})
+    dn(first.container, 5, 5)
+    mv(first.container, 120, 120)
+    up(first.container)
+    fireEvent.keyDown(document.body, {key: 'c', ctrlKey: true})
+    const project = first.spy.project
+    first.unmount()
+    const second = mount(SituationSchema, project, {pageIndex: 1})
+    fireEvent.keyDown(document.body, {key: 'v', ctrlKey: true})
+    const page = second.spy.project.sit[1]
+    expect(page.items).toMatchObject([{kind: 'sym', node: 'n1', x: 100, y: 100}])
+    expect(page.walls).toMatchObject([{x1: 10, y1: 20, x2: 50, y2: 20}])
+    expect(page.items[0].id).not.toBe('a')
+    second.unmount()
+    const wiring = mount(SituationSchema, {...project, wire: [{id: 'w1', name: '1', walls: [], items: [], wires: []}]}, {pageIndex: 0, listKey: 'wire'})
+    fireEvent.keyDown(document.body, {key: 'v', ctrlKey: true})
+    expect(wiring.spy.project?.wire?.[0].items || []).toHaveLength(0)
+})
+
+test('the symbol size of a plan: bigger by default, set with the slider under the plan, also for printing', () => {
+    const init = P()
+    init.sit[0].items = [{id: 'i', kind: 'sym', node: 'n1', x: 100, y: 100, r: 0, s: 7}]
+    const {container, spy} = mount(SituationSchema, init, {pageIndex: 0}),
+        hit = () => grabs(container)[0].querySelector('circle[fill="transparent"]').getAttribute('r')
+    expect(getById('sit-symbol-size')).toHaveValue('2')
+    expect(getById('sit-symbol-size-value')).toHaveTextContent('200%')
+    expect(hit()).toBe('8.5')
+    fireEvent.change(getById('sit-symbol-size'), {target: {value: '3'}})
+    expect(sit(spy).symScale).toBe(3)
+    expect(getById('sit-symbol-size-value')).toHaveTextContent('300%')
+    expect(hit()).toBe('12')
+    // the symbol itself keeps its own size; the printed sheet draws it as on screen
+    expect(sit(spy).items[0].s).toBe(7)
+    const printed = render(<SituationSheet project={spy.project} page={sit(spy)} number={1} total={1} />)
+    expect(printed.container.querySelector('svg.sheet')).toBeTruthy()
 })

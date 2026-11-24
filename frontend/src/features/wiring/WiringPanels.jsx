@@ -8,6 +8,7 @@ import {colourOf, dashArray, EARTH_YELLOW, WIRE_COLOURS, WIRE_STYLES, WIRE_WIDTH
 import {circuitMarks, placeableNodes} from '../../model/project.js'
 import {newId} from '../../model/tree.js'
 import Icon from '../../components/Icon.jsx'
+import {shownItems} from '../situation/SituationSheet.jsx'
 
 /** A small sample of a line style for the style buttons. */
 const StyleSample = ({style, color = 'black'}) => (
@@ -96,7 +97,8 @@ export function LineStyleFields({value, onChange, idPrefix, withOrtho}) {
 export const copyPlan = (project, sitPage, withSymbols) => {
     const nodes = placeableNodes(project),
         marks = circuitMarks(project)
-    const items = sitPage.items.flatMap((item) => {
+    // the symbols as big as they are drawn on the plan
+    const items = shownItems(sitPage).flatMap((item) => {
         if (item.kind !== 'sym') return [{...item, id: newId()}]
         if (!withSymbols) return []
         if (!item.node) return [{...item, id: newId()}]

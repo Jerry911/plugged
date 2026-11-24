@@ -421,8 +421,13 @@ export default {
         lengths: 'Lengths',
         grid: 'Grid',
         freeDrawing: 'Free drawing',
+        symbolSize: 'Symbols',
+        symbolSizeTitle: 'How big the symbols are drawn on this plan (also when printed). They do not follow the scale, so they stay easy to see and to select.',
         deletedSymbol: '(deleted)',
         deleteSelection: 'Delete selection',
+        duplicateTitle: 'Duplicate: a copy next to it (Ctrl+D). Ctrl+C and Ctrl+V also copy to another sheet.',
+        copied: '{count} copied: paste with Ctrl+V, also on another sheet.',
+        copySelection: 'Copy selection',
         deleteSelectionTitle: 'Delete (Del)',
         dimension: {
             invalid: 'Invalid value',
@@ -1103,6 +1108,9 @@ export default {
                 {keys: 'Alt+Q', text: 'QR code of the open project'},
                 {keys: 'Alt+P', text: 'print'},
                 {keys: 'R', text: 'rotates the selection in the site plan'},
+                {keys: 'Ctrl+C / Ctrl+V', text: 'copies the selection on the situatieschema or bedradingsschema and pastes it, also on another sheet'},
+                {keys: 'Ctrl+X', text: 'cuts the selection'},
+                {keys: 'Ctrl+D', text: 'duplicates the selection'},
             ],
         },
         faq: {

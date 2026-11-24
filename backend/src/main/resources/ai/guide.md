@@ -71,5 +71,5 @@ JSON, owned by the editor: keep what you do not understand exactly as it is.
 - `sit`: pages of the situatieschema `{id, name, walls: [{id, x1, y1, x2, y2}], items: [...]}` in **mm on an A4 sheet**
   (297 x 210, drawing area above the title block); real size = mm x scale / 1000. Items: `{kind: "sym", type, x, y, r, s, mark, node}`,
   `{kind: "text", txt, x, y, s, r, area}`, `{kind: "door" | "window", x, y, r, w, f, m}`. `node` links a symbol to an element of the
-  eendraadschema.
+  eendraadschema. A page may have `symScale` (default 2): the plan draws its symbols at `s` times that, so keep `s` at 7.
 - `wire`: pages of the bedradingsschema.

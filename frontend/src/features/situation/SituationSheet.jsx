@@ -27,6 +27,21 @@ const LENGTH_FONT_SIZE = 2.4
 /** Are the lengths of walls (and wires) written? On a plan unless switched off, on a page of the bedradingsschema only when switched on. */
 export const showsLengths = (page) => (page.wires ? page.dims === true : page.dims !== false)
 
+/**
+ * The symbols of a plan are drawn bigger than their own size by the symbol size of the page (the slider "Symbolen" under the plan): they do not
+ * follow the scale of the drawing, they have to be easy to see and to pick. A page without its own size has the default. A page of the
+ * bedradingsschema (with wires) draws its symbols at their own size: there they connect to wires.
+ */
+export const SYMBOL_SCALE = {min: 0.5, max: 4, step: 0.1, default: 2}
+export const symbolScaleOf = (page) => (page.wires ? 1 : Number(page.symScale) || SYMBOL_SCALE.default)
+/** The items of a page as they are drawn: the symbols at their size times the symbol size of the page. */
+export const shownItems = (page) => {
+    const factor = symbolScaleOf(page)
+    return factor === 1
+        ? page.items
+        : page.items.map((item) => (item.kind === 'sym' ? {...item, s: Math.round((item.s || DEFAULT_ITEM_SIZE.sym) * factor * 100) / 100} : item))
+}
+
 /** The size of an item on the sheet (mm). */
 export const sizeOfItem = (item) => item.s || item.w || DEFAULT_ITEM_SIZE[item.kind]
 
@@ -142,14 +157,15 @@ const DrawingPreview = ({editor, scale}) => {
 
 /**
  * page = the situatieschema (or bedradingsschema) page; number / total = its sheet number. `editor` (only in the editing view):
- * {svgRef, prefix, selection, interactionProps(kind, id, part), pending, typedEnd, cursor, tool, gridSize, selectionBox, deleteButton, sheetEvents,
+ * {svgRef, prefix, selection, interactionProps(kind, id, part), pending, typedEnd, cursor, tool, gridSize, selectionBox, deleteButton, copyButton, sheetEvents,
  * pins, wirePreview, boxPreview}; prefix ('sit' or 'wire') starts the ids of the elements.
  */
 export function SituationSheet({project, page, number, total, editor, onFooter}) {
     const {t, language} = useTranslation()
     const nodes = placeableNodes(project),
         marks = circuitMarks(project),
-        {walls, items} = page,
+        {walls} = page,
+        items = shownItems(page),
         wires = page.wires || [],
         boxes = page.boxes || [],
         prefix = editor?.prefix || 'sit',
@@ -401,6 +417,31 @@ export function SituationSheet({project, page, number, total, editor, onFooter})
                         d="M-1.5,-1.3 H1.5 M-.7,-1.3 V-2 H.7 V-1.3 M-1.2,-.7 L-.95,2.1 H.95 L1.2,-.7"
                         fill="none"
                         stroke="#c62828"
+                        strokeWidth=".35"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                    />
+                </g>
+            )}
+            {editor?.copyButton && (
+                <g
+                    id={prefix + '-copy-selection'}
+                    role="button"
+                    aria-label={t('situation.copySelection')}
+                    transform={`translate(${editor.copyButton.x},${editor.copyButton.y})`}
+                    style={{cursor: 'pointer'}}
+                    onPointerDown={(event) => event.stopPropagation()}
+                    onClick={(event) => {
+                        event.stopPropagation()
+                        editor.copyButton.onClick()
+                    }}
+                >
+                    <title>{t('situation.duplicateTitle')}</title>
+                    <circle r="3.2" fill="#fff" stroke={SELECTION_COLOUR} strokeWidth=".5" />
+                    <path
+                        d="M-.6,-.6 H1.6 V1.6 H-.6 Z M-1.4,.6 H-1.6 V-1.6 H.6 V-1.4"
+                        fill="none"
+                        stroke={SELECTION_COLOUR}
                         strokeWidth=".35"
                         strokeLinecap="round"
                         strokeLinejoin="round"

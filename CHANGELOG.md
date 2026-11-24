@@ -9,8 +9,14 @@ rename *Unreleased* to that version with the date and start a new, empty *Unrele
 
 ## [Unreleased]
 
+### Added
+
+- Situatieschema: copy and paste with Ctrl+C / Ctrl+V (also to another sheet), Ctrl+X and Ctrl+D, and a copy button under the trash button of the selection.
+- Situatieschema: a *Symbolen* slider under the plan sets how big the symbols are drawn (default 200 %, twice as big as before); they do not follow the scale.
+
 ### Fixed
 
+- Eendraadschema maken: several of the same lamp in one point (four spots marked B4) became four elements; now one element with its count (*x4*).
 - AI link: the steps now point to Customize › Connectors and Customize › Skills (the current place in Claude), with the Owner step for Team/Enterprise.
 - The downloadable skill had a description longer than the 200 characters claude.ai accepts, so uploading it failed.
 

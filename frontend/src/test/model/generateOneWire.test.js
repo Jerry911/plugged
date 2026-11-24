@@ -46,6 +46,35 @@ test('one point per number: the switches in series, the lamp under the last one 
     })
 })
 
+test('the same lamp more than once in one point is one element with its count (B1: 4 spots, B2: 3 lamps and a waterproof one)', () => {
+    const project = withPlan([
+        sym('schakelaar', 'B1'),
+        sym('spot', 'B1'),
+        sym('spot', 'B1'),
+        sym('spot', 'B1'),
+        sym('spot', 'B1'),
+        sym('lichtpunt', 'B2'),
+        sym('lichtpunt', 'B2'),
+        sym('lichtpunt', 'B2'),
+        sym('lichtpunt', 'B2', {h: true}),
+        sym('wissel', 'B3'),
+        sym('wissel', 'B3'),
+        sym('lichtpunt', 'B3'),
+    ])
+    const {project: made} = generateOneWire(project, typeOf)
+    const [circuit] = circuitsOf(made)
+    // without a switch the rest hangs under the first element: the three lamps, with the waterproof one under it
+    expect(shape(circuit.children)).toEqual([{schakelaar: ['spot']}, {lichtpunt: ['lichtpunt']}, {wissel: [{wissel: ['lichtpunt']}]}])
+    const [spot] = circuit.children[0].children
+    expect(spot.p).toEqual({aantal: 4})
+    expect(circuit.children[1].p).toEqual({aantal: 3})
+    expect(circuit.children[1].children[0].p).toEqual({h: true})
+    // two wissels stay two switches in series
+    expect(circuit.children[2].p).toBeUndefined()
+    // all four spots on the plan are linked to the one element
+    expect(made.sit[0].items.filter((item) => item.node === spot.id)).toHaveLength(4)
+})
+
 test('only lighting: 16 A with 3G1,5; anything else (an outlet, an appliance, lighting mixed with outlets) 20 A with 3G2,5', () => {
     const {project: made} = generateOneWire(
         withPlan([
@@ -195,4 +224,12 @@ describe('the aansluiting net is always there and complete', () => {
         expect(aansluiting.p).toMatchObject(DEFAULTS)
         expect(aansluiting.children[0].children.map((circuit) => circuit.id)).toEqual(['K'])
     })
+})
+
+test('the dialog shows the same lamp more than once as one with its count', async () => {
+    const {pointText} = await import('../../features/situation/GenerateOneWireDialog.jsx')
+    const {symbolName} = await import('../../symbols/symbolLibrary.js')
+    const project = baseProject(),
+        name = (type) => symbolName(typeOf(project, type))
+    expect(pointText(project, ['schakelaar', 'spot', 'spot', 'spot', 'lichtpunt'])).toBe(`${name('schakelaar')} → ${name('spot')} x3, ${name('lichtpunt')}`)
 })

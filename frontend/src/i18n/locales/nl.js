@@ -423,8 +423,13 @@ export default {
         lengths: 'Maten',
         grid: 'Raster',
         freeDrawing: 'Vrij tekenen',
+        symbolSize: 'Symbolen',
+        symbolSizeTitle: 'Hoe groot de symbolen op dit plan getekend worden (ook bij afdrukken). Ze volgen de schaal niet: zo zijn ze makkelijk te zien en te selecteren.',
         deletedSymbol: '(verwijderd)',
         deleteSelection: 'Verwijder selectie',
+        duplicateTitle: 'Dupliceren: een kopie ernaast (Ctrl+D). Ctrl+C en Ctrl+V kopiëren ook naar een ander blad.',
+        copied: '{count} gekopieerd: plak met Ctrl+V, ook op een ander blad.',
+        copySelection: 'Kopieer selectie',
         deleteSelectionTitle: 'Verwijder (Del)',
         dimension: {
             invalid: 'Ongeldige waarde',
@@ -1105,6 +1110,9 @@ export default {
                 {keys: 'Alt+Q', text: 'QR-code van het geopende project'},
                 {keys: 'Alt+P', text: 'afdrukken'},
                 {keys: 'R', text: 'draait de selectie in het situatieschema'},
+                {keys: 'Ctrl+C / Ctrl+V', text: 'kopieert de selectie in het situatie- of bedradingsschema en plakt ze, ook op een ander blad'},
+                {keys: 'Ctrl+X', text: 'knipt de selectie'},
+                {keys: 'Ctrl+D', text: 'dupliceert de selectie'},
             ],
         },
         faq: {

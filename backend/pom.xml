@@ -10,7 +10,7 @@
     <!-- THE version of Plugged, the only place it is written: the jar, the desktop installers (desktop/jpackage.sh), the MCP server and the
          releases on GitHub (.github/workflows/desktop.yml: raising it on the main branch publishes a release v<version>) take it from here.
          Three numbers, the first at least 1 (macOS refuses 0.x.y; Windows allows at most 255.255.65535). -->
-    <version>1.0.0</version>
+    <version>1.0.1</version>
     <name>Plugged</name>
     <description>Electrical schema drawing tool following the Belgian AREI rules</description>
     <licenses>

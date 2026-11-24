@@ -33,7 +33,7 @@ import {IconButton, PropertiesBox} from '../../components/PropertiesBox.jsx'
 import {TOOLBAR_ICONS} from '../oneWire/icons.jsx'
 import {useFillHeight} from '../../hooks/useFillHeight.js'
 import {ComponentPalette, matchesSearch, UnplacedPanel} from './SituationPanels.jsx'
-import {itemTypeOf, pagePins, showsLengths} from './SituationSheet.jsx'
+import {itemTypeOf, pagePins, shownItems, showsLengths, SYMBOL_SCALE, symbolScaleOf} from './SituationSheet.jsx'
 import ToolRail, {toolOfKey} from './ToolRail.jsx'
 import {
     boxBox,
@@ -127,6 +127,13 @@ const wireReference = (wire, resolve) => (wire.a?.item == null ? wire.a : wire.p
 // A selection for a plan that is about to be shown (Eendraadschema maken → Toon op het plan on another page): {pageId, ids}. The schema of
 // a page starts afresh when it is shown, so the page takes it over when it mounts.
 let handedSelection = null
+// What Ctrl+C copied, for Ctrl+V on this or another page of the same schema (a plan or a page of the bedradingsschema): {wiring, pageId,
+// elements: {walls, items, wires, boxes}, pastes: {pageId: how often it was pasted there}}. Kept while the app is open, like a clipboard.
+let clipboard = null
+/** Forgets what was copied (for the tests). */
+export const clearClipboard = () => {
+    clipboard = null
+}
 
 export default function SituationSchema({project, setProject, pageIndex, onFooter, neutral, onPageIndex = () => {}, onStatus = () => {}, listKey = 'sit'}) {
     const {t} = useTranslation()
@@ -267,38 +274,42 @@ export default function SituationSchema({project, setProject, pageIndex, onFoote
     }
     const moveSelection = (dx, dy) => updatePage(movedPage(selectedIds, dx, dy))
     const rotateSelection = (degrees) => updatePage({items: items.map((item) => (selectedIds.has(item.id) ? {...item, r: (item.r || 0) + degrees} : item))})
-    const duplicateSelection = () => {
-        const itemIds = new Map(items.filter((item) => selectedIds.has(item.id)).map((item) => [item.id, newId()])),
-            // a copied wire stays on the copies of its symbols; an end on a symbol that is not copied becomes a free end next to it
-            copyEnd = (end) =>
-                end?.item == null
-                    ? {x: round2(end.x + 5), y: round2(end.y + 5)}
-                    : itemIds.has(end.item)
-                      ? {...end, item: itemIds.get(end.item)}
-                      : copyEnd(resolve(end)),
-            newWalls = walls.filter((wall) => selectedIds.has(wall.id)).map((wall) => ({...movedWall(wall, 5, 5), id: newId()})),
-            // copies of combined symbols are a combination of their own
+    // the selected elements as they can be copied: an end of a wire on a symbol that is not copied becomes a free end where it is
+    const selectedElements = () => {
+        const copiedItems = items.filter((item) => selectedIds.has(item.id)),
+            itemIds = new Set(copiedItems.map((item) => item.id)),
+            freeEnd = (end) => {
+                if (end?.item == null || itemIds.has(end.item)) return end
+                const {x, y} = resolve(end)
+                return {x, y}
+            }
+        return {
+            walls: walls.filter((wall) => selectedIds.has(wall.id)),
+            items: copiedItems,
+            wires: wires.filter((wire) => selectedIds.has(wire.id)).map((wire) => ({...wire, a: freeEnd(wire.a), b: freeEnd(wire.b)})),
+            boxes: boxes.filter((box) => selectedIds.has(box.id)),
+        }
+    }
+    // copies of `elements` on this page, `offset` mm right and down, which become the selection; a copied wire stays on the copies of its
+    // symbols, and copies of combined symbols are a combination of their own
+    const addCopies = (elements, offset) => {
+        const itemIds = new Map(elements.items.map((item) => [item.id, newId()])),
+            shift = (point) => ({x: round2(point.x + offset), y: round2(point.y + offset)}),
+            copyEnd = (end) => (end?.item == null ? shift(end) : {...end, item: itemIds.get(end.item)}),
+            newWalls = elements.walls.map((wall) => ({...movedWall(wall, offset, offset), id: newId()})),
             combos = new Map(),
-            newItems = items
-                .filter((item) => itemIds.has(item.id))
-                .map((item) => {
-                    const copy = {...item, id: itemIds.get(item.id), x: item.x + 5, y: item.y + 5}
-                    if (item.combo) {
-                        if (!combos.has(item.combo)) combos.set(item.combo, newId())
-                        copy.combo = combos.get(item.combo)
-                    }
-                    return copy
-                }),
-            newWires = wires
-                .filter((wire) => selectedIds.has(wire.id))
-                .map((wire) => ({
-                    ...wire,
-                    id: newId(),
-                    a: copyEnd(wire.a),
-                    b: copyEnd(wire.b),
-                    points: (wire.points || []).map((point) => ({x: point.x + 5, y: point.y + 5})),
-                })),
-            newBoxes = boxes.filter((box) => selectedIds.has(box.id)).map((box) => ({...movedWall(box, 5, 5), id: newId()}))
+            newItems = elements.items.map((item) => {
+                const copy = {...item, id: itemIds.get(item.id), ...shift(item)}
+                if (item.combo) {
+                    if (!combos.has(item.combo)) combos.set(item.combo, newId())
+                    copy.combo = combos.get(item.combo)
+                }
+                return copy
+            }),
+            newWires = wiring
+                ? elements.wires.map((wire) => ({...wire, id: newId(), a: copyEnd(wire.a), b: copyEnd(wire.b), points: (wire.points || []).map(shift)}))
+                : [],
+            newBoxes = wiring ? elements.boxes.map((box) => ({...movedWall(box, offset, offset), id: newId()})) : []
         updatePage({
             walls: [...walls, ...newWalls],
             items: [...items, ...newItems],
@@ -310,6 +321,21 @@ export default function SituationSchema({project, setProject, pageIndex, onFoote
             ...newWires.map((wire) => ({k: 'wire', id: wire.id})),
             ...newBoxes.map((box) => ({k: 'box', id: box.id})),
         ])
+    }
+    const duplicateSelection = () => selection.length && addCopies(selectedElements(), 5)
+    // Ctrl+C: remembers the selection; Ctrl+V puts a copy on the page that is shown, a bit further each time on the page it came from (on
+    // another page first at the same place: a plan of another floor)
+    const copySelection = () => {
+        if (!selection.length) return false
+        clipboard = {wiring, pageId: page.id, elements: structuredClone(selectedElements()), pastes: {}}
+        onStatus(t('situation.copied', {count: selection.length}))
+        return true
+    }
+    const paste = () => {
+        if (!clipboard || clipboard.wiring !== wiring) return false
+        const count = (clipboard.pastes[page.id] = (clipboard.pastes[page.id] || 0) + 1)
+        addCopies(clipboard.elements, 5 * (clipboard.pageId === page.id ? count : count - 1))
+        return true
     }
     // the pointer handlers of a wall or rectangle (part 'm' = itself, 'a' / 'b' = its corners), a wire (part 'm', its ends 'a' / 'b', its
     // bends 'p0', 'p1', ...) or an item
@@ -505,7 +531,7 @@ export default function SituationSchema({project, setProject, pageIndex, onFoote
         if (box.x1 - box.x0 < 1.5 && box.y1 - box.y0 < 1.5) return
         justBoxSelected.current = true
         const hits = [
-            ...hitsInBox(box, walls, items),
+            ...hitsInBox(box, walls, shownItems(page)),
             ...wires.filter((wire) => wireHitsBox(wirePoints(wire, resolve), box)).map((wire) => ({k: 'wire', id: wire.id})),
             ...boxes.filter((candidate) => boxHitsBox(candidate, box)).map((candidate) => ({k: 'box', id: candidate.id})),
         ]
@@ -627,6 +653,23 @@ export default function SituationSchema({project, setProject, pageIndex, onFoote
         const onKeyDown = (event) => {
             if (/INPUT|TEXTAREA|SELECT/.test(event.target.tagName)) return
             if (event.key === 'Enter' && endWireAtLastPoint()) return event.preventDefault()
+            // copy, cut, paste and duplicate; text selected somewhere on the page is copied as text, as usual
+            if ((event.ctrlKey || event.metaKey) && !event.altKey && !event.shiftKey) {
+                const key = event.key.toLowerCase(),
+                    textSelected = !!String(globalThis.getSelection?.() || '')
+                let done = false
+                if (key === 'c' && !textSelected) done = copySelection()
+                else if (key === 'x' && !textSelected && copySelection()) {
+                    deleteSelection()
+                    done = true
+                } else if (key === 'v') done = paste()
+                else if (key === 'd' && selection.length) {
+                    duplicateSelection()
+                    done = true
+                }
+                if (done) event.preventDefault()
+                if (['c', 'x', 'v', 'd'].includes(key)) return
+            }
             // a letter chooses a tool (shown when the mouse is on its button in the rail), with or without a selection
             const keyTool = toolOfKey(event, railTools.filter(Boolean), t)
             if (keyTool) {
@@ -707,7 +750,9 @@ export default function SituationSchema({project, setProject, pageIndex, onFoote
         [sizeMin, sizeMax] = selectedItem?.kind === 'text' ? [2, 12] : selectedItem?.kind === 'sym' ? (wiring ? WIRING_SYMBOL_SIZES : [4, 20]) : [6, 20]
     const selectionBounds = unionBox([
         ...walls.filter((wall) => selectedIds.has(wall.id)).map(wallBox),
-        ...items.filter((item) => selectedIds.has(item.id)).map(itemBox),
+        ...shownItems(page)
+            .filter((item) => selectedIds.has(item.id))
+            .map(itemBox),
         ...wires
             .filter((wire) => selectedIds.has(wire.id))
             .map((wire) => pointsBox(wirePoints(wire, resolve)))
@@ -752,6 +797,11 @@ export default function SituationSchema({project, setProject, pageIndex, onFoote
         deleteButton:
             tool === 'select' && selectionBounds && !drag && !selectionBox
                 ? {x: Math.min(289, selectionBounds.x1 + 3), y: Math.max(8, selectionBounds.y0 - 3), onClick: deleteSelection}
+                : null,
+        // the copy button under it
+        copyButton:
+            tool === 'select' && selectionBounds && !drag && !selectionBox
+                ? {x: Math.min(289, selectionBounds.x1 + 3), y: Math.max(8, selectionBounds.y0 - 3) + 7.5, onClick: duplicateSelection}
                 : null,
         sheetEvents: {
             onClick: onSheetClick,
@@ -885,7 +935,13 @@ export default function SituationSchema({project, setProject, pageIndex, onFoote
                             }}
                         />
                         <div className="tb icons">
-                            <IconButton id="wire-wire-duplicate" icon={TOOLBAR_ICONS.duplicate} title={t('situation.duplicate')} onClick={duplicateSelection} />
+                            <IconButton
+                                id="wire-wire-duplicate"
+                                icon={TOOLBAR_ICONS.duplicate}
+                                title={t('situation.duplicateTitle')}
+                                label={t('situation.duplicate')}
+                                onClick={duplicateSelection}
+                            />
                             <IconButton
                                 id="wire-wire-delete"
                                 className="props-delete"
@@ -909,7 +965,13 @@ export default function SituationSchema({project, setProject, pageIndex, onFoote
                     >
                         <LineStyleFields idPrefix="wire-box" value={selectedBox} onChange={(patch) => updateSelected('boxes', patch)} />
                         <div className="tb icons">
-                            <IconButton id="wire-box-duplicate" icon={TOOLBAR_ICONS.duplicate} title={t('situation.duplicate')} onClick={duplicateSelection} />
+                            <IconButton
+                                id="wire-box-duplicate"
+                                icon={TOOLBAR_ICONS.duplicate}
+                                title={t('situation.duplicateTitle')}
+                                label={t('situation.duplicate')}
+                                onClick={duplicateSelection}
+                            />
                             <IconButton
                                 id="wire-box-delete"
                                 className="props-delete"
@@ -1071,7 +1133,13 @@ export default function SituationSchema({project, setProject, pageIndex, onFoote
                                     />
                                 </>
                             )}
-                            <IconButton id={P + '-duplicate'} icon={TOOLBAR_ICONS.duplicate} title={t('situation.duplicate')} onClick={duplicateSelection} />
+                            <IconButton
+                                id={P + '-duplicate'}
+                                icon={TOOLBAR_ICONS.duplicate}
+                                title={t('situation.duplicateTitle')}
+                                label={t('situation.duplicate')}
+                                onClick={duplicateSelection}
+                            />
                             <IconButton
                                 id={P + '-delete'}
                                 className="props-delete"
@@ -1109,7 +1177,8 @@ export default function SituationSchema({project, setProject, pageIndex, onFoote
                             <IconButton
                                 id={P + '-wall-duplicate'}
                                 icon={TOOLBAR_ICONS.duplicate}
-                                title={t('situation.duplicate')}
+                                title={t('situation.duplicateTitle')}
+                                label={t('situation.duplicate')}
                                 onClick={duplicateSelection}
                             />
                             <IconButton
@@ -1175,7 +1244,8 @@ export default function SituationSchema({project, setProject, pageIndex, onFoote
                             <IconButton
                                 id={P + '-multi-duplicate'}
                                 icon={TOOLBAR_ICONS.duplicate}
-                                title={t('situation.duplicate')}
+                                title={t('situation.duplicateTitle')}
+                                label={t('situation.duplicate')}
                                 onClick={duplicateSelection}
                             />
                             <IconButton
@@ -1335,6 +1405,22 @@ export default function SituationSchema({project, setProject, pageIndex, onFoote
                             <input id={P + '-free-drawing'} type="checkbox" checked={freeDrawing} onChange={(event) => setFreeDrawing(event.target.checked)} />{' '}
                             {t('situation.freeDrawing')}
                         </label>
+                        {!wiring && (
+                            <label title={t('situation.symbolSizeTitle')}>
+                                {' '}
+                                {t('situation.symbolSize')}{' '}
+                                <input
+                                    id={P + '-symbol-size'}
+                                    type="range"
+                                    min={SYMBOL_SCALE.min}
+                                    max={SYMBOL_SCALE.max}
+                                    step={SYMBOL_SCALE.step}
+                                    value={symbolScaleOf(page)}
+                                    onChange={(event) => updatePage({symScale: +event.target.value})}
+                                />{' '}
+                                <span id={P + '-symbol-size-value'}>{Math.round(symbolScaleOf(page) * 100)}%</span>
+                            </label>
+                        )}
                     </div>
                 </div>
             </div>

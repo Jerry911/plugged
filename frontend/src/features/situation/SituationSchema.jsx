@@ -798,10 +798,10 @@ export default function SituationSchema({project, setProject, pageIndex, onFoote
             tool === 'select' && selectionBounds && !drag && !selectionBox
                 ? {x: Math.min(289, selectionBounds.x1 + 3), y: Math.max(8, selectionBounds.y0 - 3), onClick: deleteSelection}
                 : null,
-        // the copy button under it
+        // the copy button left of it
         copyButton:
             tool === 'select' && selectionBounds && !drag && !selectionBox
-                ? {x: Math.min(289, selectionBounds.x1 + 3), y: Math.max(8, selectionBounds.y0 - 3) + 7.5, onClick: duplicateSelection}
+                ? {x: Math.min(289, selectionBounds.x1 + 3) - 7.5, y: Math.max(8, selectionBounds.y0 - 3), onClick: duplicateSelection}
                 : null,
         sheetEvents: {
             onClick: onSheetClick,

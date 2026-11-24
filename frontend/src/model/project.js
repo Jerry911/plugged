@@ -109,3 +109,43 @@ export const setNodeProperties = (project, id, patch) => ({
     ...project,
     een: project.een.map((page) => ({...page, tree: patchNodeProperties(page.tree, id, patch)})),
 })
+
+/**
+ * `after` (a change of `before`) where the symbols on the plans whose element of the eendraadschema the change removed (a deleted sheet,
+ * circuit or element) are loose symbols again: their type, the marking they had (B4) and the waterproof property stay, so they are still on
+ * the plan and *Eendraadschema maken* makes them again. Otherwise they would point to nothing and no longer be drawn. Unchanged (the same
+ * object) when the change removed no element that a symbol points to.
+ */
+export const keepOrphanSymbols = (before, after) => {
+    if (!before || !after || before.een === after.een || !Array.isArray(before.een) || !Array.isArray(after.een)) return after
+    const remaining = new Set(after.een.flatMap((page) => flatten(page.tree || [])).map((node) => node.id)),
+        removed = new Map(
+            before.een
+                .flatMap((page) => flatten(page.tree || []))
+                .filter((node) => !remaining.has(node.id))
+                .map((node) => [node.id, node]),
+        )
+    if (!removed.size) return after
+    let marks = null
+    const loose = (item) => {
+        if (item.kind !== 'sym' || !item.node || !removed.has(item.node)) return item
+        marks ??= circuitMarks(before)
+        const node = removed.get(item.node),
+            {node: _node, ...rest} = item
+        return {...rest, type: node.type, mark: item.mark ?? marks.get(node.id) ?? '', ...(node.p?.h ? {h: true} : {})}
+    }
+    const change = (pages) => {
+        if (!Array.isArray(pages)) return pages
+        let changed = false
+        const next = pages.map((page) => {
+            const items = (page.items || []).map(loose)
+            if (items.every((item, index) => item === page.items[index])) return page
+            changed = true
+            return {...page, items}
+        })
+        return changed ? next : pages
+    }
+    const sit = change(after.sit),
+        wire = change(after.wire)
+    return sit === after.sit && wire === after.wire ? after : {...after, sit, ...(after.wire ? {wire} : {})}
+}

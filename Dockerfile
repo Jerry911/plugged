@@ -2,6 +2,8 @@
 
 # ---- Build: Maven builds the React frontend (frontend-maven-plugin) and the Spring Boot jar ----
 FROM maven:3.9-eclipse-temurin-25 AS build
+# the Node that the build downloads (26) needs libatomic, which the Maven image does not have
+RUN apt-get update && apt-get install -y --no-install-recommends libatomic1 && rm -rf /var/lib/apt/lists/*
 WORKDIR /build
 COPY frontend frontend
 COPY backend backend

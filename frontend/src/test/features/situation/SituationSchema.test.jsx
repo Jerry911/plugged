@@ -533,8 +533,8 @@ test('a trash button appears at the top right of the selection and deletes it', 
     up(container)
     // a symbol of 7 mm is drawn at 1.5 times its size on a plan (the default symbol size): 10.5 mm
     expect(trash().getAttribute('transform')).toBe('translate(109.25,90.75)')
-    // the copy button under it
-    expect(byId('sit-copy-selection').getAttribute('transform')).toBe('translate(109.25,98.25)')
+    // the copy button left of it
+    expect(byId('sit-copy-selection').getAttribute('transform')).toBe('translate(101.75,90.75)')
     fireEvent.pointerDown(trash(), {clientX: 107, clientY: 92})
     mv(container, 130, 130)
     expect(boxRect(container)).toBeNull()

@@ -955,3 +955,21 @@ test('the language picker switches the whole editor and is remembered; the backe
     // the project itself is not translated: the stored labels stay as they were made
     expect(JSON.parse(puts().at(-1)[1].body).een[0].tree[0].label).toBe('Aansluiting net')
 })
+
+test('deleting a sheet of the eendraadschema leaves its symbols on the situatieschema as loose symbols', async () => {
+    await mount()
+    await act(async () => {})
+    fireEvent.click(getById('tab-sit'))
+    fireEvent.click(getById('sit-place-all'))
+    const placed = () => document.querySelectorAll('[id^="sit-item-"]').length
+    const count = placed()
+    expect(count).toBeGreaterThan(0)
+    fireEvent.click(getById('tab-een'))
+    fireEvent.click(getById('eds-page-add'))
+    fireEvent.click(getById('eds-page-1'))
+    fireEvent.click(getById('eds-page-delete'))
+    fireEvent.click(getById('tab-sit'))
+    // still drawn, now loose symbols of this sheet
+    expect(placed()).toBe(count)
+    expect(document.body).toHaveTextContent(t('situation.components', {count}))
+})

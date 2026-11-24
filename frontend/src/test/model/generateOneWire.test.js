@@ -233,3 +233,45 @@ test('the dialog shows the same lamp more than once as one with its count', asyn
         name = (type) => symbolName(typeOf(project, type))
     expect(pointText(project, ['schakelaar', 'spot', 'spot', 'spot', 'lichtpunt'])).toBe(`${name('schakelaar')} → ${name('spot')} x3, ${name('lichtpunt')}`)
 })
+
+test('deleting the eendraadschema (or one element) leaves the symbols on the plan as loose symbols, so it can be generated again', async () => {
+    const {keepOrphanSymbols} = await import('../../model/project.js')
+    const project = withPlan([
+        sym('schakelaar', 'B1'),
+        sym('spot', 'B1'),
+        sym('spot', 'B1'),
+        sym('stopcontact', 'A1', {h: true}),
+        {id: 'txt', kind: 'text', txt: 'Keuken', x: 5, y: 5, s: 4, r: 0},
+    ])
+    const {project: made} = generateOneWire(project, typeOf)
+    expect(made.sit[0].items.filter((item) => item.node)).toHaveLength(4)
+    // the sheet of the eendraadschema deleted
+    const deleted = keepOrphanSymbols(made, {...made, een: []})
+    const items = deleted.sit[0].items
+    expect(items.map((item) => [item.type, item.mark, !!item.h, item.node])).toEqual([
+        ['schakelaar', 'B1', false, undefined],
+        ['spot', 'B1', false, undefined],
+        ['spot', 'B1', false, undefined],
+        ['stopcontact', 'A1', true, undefined],
+        [undefined, undefined, false, undefined],
+    ])
+    expect(items.map((item) => [item.x, item.y])).toEqual(made.sit[0].items.map((item) => [item.x, item.y]))
+    // ... and generating makes it again
+    const {project: again, plan} = generateOneWire({...deleted, een: project.een}, typeOf)
+    expect(plan.circuits.map((circuit) => circuit.letter)).toEqual(['A', 'B'])
+    expect(again.sit[0].items.filter((item) => item.node)).toHaveLength(4)
+    // one element deleted: only its symbol becomes loose
+    const socket = flatten(made.een[0].tree).find((element) => element.type === 'stopcontact'),
+        withoutSocket = {
+            ...made,
+            een: made.een.map((page) => ({...page, tree: JSON.parse(JSON.stringify(page.tree), (key, value) => (Array.isArray(value) ? value.filter((element) => element?.id !== socket.id) : value))})),
+        }
+    const kept = keepOrphanSymbols(made, withoutSocket).sit[0].items
+    expect(kept.filter((item) => item.node)).toHaveLength(3)
+    expect(kept[3]).toMatchObject({type: 'stopcontact', mark: 'A1', h: true})
+    // a change that removes no element changes nothing
+    const renamed = {...made, name: 'x'}
+    expect(keepOrphanSymbols(made, renamed)).toBe(renamed)
+    const sameTree = {...made, een: made.een.map((page) => ({...page}))}
+    expect(keepOrphanSymbols(made, sameTree)).toBe(sameTree)
+})

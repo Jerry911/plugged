@@ -38,7 +38,7 @@ import {useAutoSave} from '../hooks/useAutoSave.js'
 import {useNarrowScreen} from '../hooks/useFillHeight.js'
 import {exportEds, importEds} from '../model/eds.js'
 import {REQUIRED_FOOTER_FIELDS, rulesNotApplicable, verify} from '../model/rules.js'
-import {unplacedNodes} from '../model/project.js'
+import {keepOrphanSymbols, unplacedNodes} from '../model/project.js'
 import {embedSymbols, OWN_CATEGORY, setLibrary, symbolName} from '../symbols/symbolLibrary.js'
 import {I18nProvider, useTranslation} from '../i18n/I18nProvider.jsx'
 import LanguageSelect from '../i18n/LanguageSelect.jsx'
@@ -134,7 +134,12 @@ function Editor({library, user, desktop = false, onLogout, onAccountDeleted}) {
     const {t, language} = useTranslation()
     const narrowScreen = useNarrowScreen()
     const [initialProject] = useState(newProject)
-    const {project, setProject, reset, undo, redo, canUndo, canRedo} = useHistory(initialProject),
+    const {project, setProject: setHistoryProject, reset, undo, redo, canUndo, canRedo} = useHistory(initialProject),
+        // every change: the symbols on the plans whose element it removed from the eendraadschema stay on the plan as loose symbols
+        setProject = useCallback(
+            (next) => setHistoryProject((current) => keepOrphanSymbols(current, typeof next === 'function' ? next(current) : next)),
+            [setHistoryProject],
+        ),
         savedSnapshot = useRef(JSON.stringify(initialProject)), // the project as last saved or loaded: tells whether there are unsaved changes
         [footerDialog, setFooterDialog] = useState(null),
         // a link to the Info page (/#info, public) opens it also for somebody who is signed in

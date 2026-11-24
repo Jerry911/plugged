@@ -11,15 +11,16 @@ rename *Unreleased* to that version with the date and start a new, empty *Unrele
 
 ### Changed
 
-- Everything up to date: Java 25 (was 21; the Docker images and the desktop program too), Spring Boot 4.2.0, Node 26 LTS for the build, React 19 and the other frontend packages (Vite, Vitest, Playwright, jsdom, pako 3 ...), and the GitHub Actions of the release workflow.
+- Everything up to date: Java 25 (was 21; the Docker images and the desktop program too), Spring Boot 4.2.0, Node 26 LTS for the build, React 19 and the other frontend packages (Vite, Vitest, Playwright, jsdom, pako 3 ...), and the GitHub Actions of the release workflow. The Docker build installs `libatomic1`, which Node 26 needs on Linux.
 
 ### Added
 
-- Situatieschema: copy and paste with Ctrl+C / Ctrl+V (also to another sheet), Ctrl+X and Ctrl+D, and a copy button under the trash button of the selection.
+- Situatieschema: copy and paste with Ctrl+C / Ctrl+V (also to another sheet), Ctrl+X and Ctrl+D, and a copy button next to the trash button of the selection.
 - Situatieschema: a *Symbolen* slider under the plan sets how big the symbols are drawn (default 150 %, bigger than before); they do not follow the scale.
 
 ### Fixed
 
+- Deleting a sheet (or a circuit or element) of the eendraadschema made its symbols disappear from the situatieschema; they now stay as loose symbols with their type and marking (B4), so *Eendraadschema maken* can make them again.
 - Eendraadschema maken: several of the same lamp in one point (four spots marked B4) became four elements; now one element with its count (*x4*).
 - AI link: the steps now point to Customize › Connectors and Customize › Skills (the current place in Claude), with the Owner step for Team/Enterprise.
 - The downloadable skill had a description longer than the 200 characters claude.ai accepts, so uploading it failed.

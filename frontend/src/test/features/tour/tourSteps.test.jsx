@@ -133,7 +133,7 @@ describe('the QR code for the circuit board, near the end of the tour', () => {
     })
     test('shows a small example code that holds the address of the application itself, never a schema', async () => {
         const {render} = await import('@testing-library/react')
-        const {qrModules} = await import('../../../features/project/schemaLink.js')
+        const {qrModules} = await import('../../../features/project/qrCode.js')
         const {container} = render(<>{tourSteps().find((s) => s.id === 'qr').body}</>) // in the active language
         const code = container.querySelector('.tour-qr svg')
         expect(code).not.toBeNull()

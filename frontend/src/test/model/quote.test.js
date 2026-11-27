@@ -122,3 +122,33 @@ test('what cannot be priced is listed: no articles, no price, no frame that larg
     expect(quote.vat.rate).toBe(21)
     expect(quoteOf(project(), list, {labour: false}).problems.map((problem) => problem.kind)).not.toContain('noHourly')
 })
+
+test('optional lines are priced apart, with their own VAT, and stay out of the total; a deposit splits the total', () => {
+    const list = priced()
+    const base = quoteOf(project(), list, {vat: 21})
+    const quote = quoteOf(project(), list, {
+        vat: 21,
+        optional: [{text: 'Laadpaal 7,4 kW', qty: '1', price: '1200'}, {text: ' ', price: '5'}, {text: 'Extra stopcontact', qty: 2, price: '45,50'}],
+        deposit: '30',
+    })
+    expect(quote.total).toBe(base.total)
+    expect(quote.optional).toEqual({
+        lines: [
+            {text: 'Laadpaal 7,4 kW', qty: 1, price: 1200, total: 1200},
+            {text: 'Extra stopcontact', qty: 2, price: 45.5, total: 91},
+        ],
+        subtotal: 1291,
+        vat: 271.11,
+        total: 1562.11,
+    })
+    const deposit = Math.round(base.total * 30) / 100
+    expect(quote.deposit).toEqual({percent: 30, amount: deposit, balance: Math.round((base.total - deposit) * 100) / 100})
+    expect(quote.deposit.amount + quote.deposit.balance).toBeCloseTo(quote.total, 2)
+    // none: no section, no deposit; a deposit of 0 or above 100 % is none
+    expect(base.optional).toBeNull()
+    expect(base.deposit).toBeNull()
+    expect(quoteOf(project(), list, {deposit: 0}).deposit).toBeNull()
+    expect(quoteOf(project(), list, {deposit: 150}).deposit).toBeNull()
+    // reverse charge: the options without VAT too
+    expect(quoteOf(project(), list, {vat: 0, optional: [{text: 'x', price: 10}]}).optional).toMatchObject({subtotal: 10, vat: 0, total: 10})
+})

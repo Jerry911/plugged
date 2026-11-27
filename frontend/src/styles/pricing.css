@@ -195,6 +195,22 @@ table.pricingtable {
     text-align: right;
 }
 
+.quoteextras .hint,
+#quote-versions {
+    color: var(--muted, #666);
+    font-size: 12px;
+}
+
+.quoteversion {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+}
+
+#quote-optional-lines {
+    margin-top: 10px;
+}
+
 .quoteproblems {
     background: var(--warn-bg);
     color: var(--warn);

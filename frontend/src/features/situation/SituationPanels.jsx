@@ -9,6 +9,7 @@ import {useTranslation} from '../../i18n/I18nProvider.jsx'
 import {forwardRef} from 'react'
 import {toDomId} from '../../components/domId.js'
 import Icon from '../../components/Icon.jsx'
+import {SYMBOL_SCALE} from './SituationSheet.jsx'
 
 /** One component as a button: symbol, name on the left, marking (e.g. A7) aligned right. */
 export const ComponentButton = ({project, node, name, mark, id, active, title, onClick}) => (
@@ -35,7 +36,11 @@ export const matchesSearch = (symbolType, search) => {
  * The searchable list of general library components that can be placed loose on the drawing. grouped (the bedradingsschema, some 580
  * symbols): one folding group per category, in the order of symbolTypes; the first one open, all of them while searching.
  */
-export function ComponentPalette({project, symbolTypes, placedCount, search, onSearch, activeType, onChoose, grouped = false, recent = []}) {
+/**
+ * The symbols to place, with a search field and the ones used last. symbolScale / onSymbolScale: how big the symbols of this sheet are drawn
+ * (the plan; null on the bedradingsschema, which draws them at their own size).
+ */
+export function ComponentPalette({project, symbolTypes, placedCount, search, onSearch, activeType, onChoose, grouped = false, recent = [], symbolScale = null, onSymbolScale}) {
     const {t} = useTranslation()
     const button = (symbolType) => (
         <ComponentButton
@@ -62,6 +67,21 @@ export function ComponentPalette({project, symbolTypes, placedCount, search, onS
                 onChange={(event) => onSearch(event.target.value)}
                 style={{width: '100%', boxSizing: 'border-box', margin: '4px 0'}}
             />
+            {symbolScale != null && (
+                <label className="symbolsize" title={t('situation.symbolSizeTitle')}>
+                    {t('situation.symbolSize')}
+                    <input
+                        id="sit-symbol-size"
+                        type="range"
+                        min={SYMBOL_SCALE.min}
+                        max={SYMBOL_SCALE.max}
+                        step={SYMBOL_SCALE.step}
+                        value={symbolScale}
+                        onChange={(event) => onSymbolScale(+event.target.value)}
+                    />
+                    <span id="sit-symbol-size-value">{Math.round(symbolScale * 100)}%</span>
+                </label>
+            )}
             {/* the symbols used last on this tab: one tap to place them again */}
             {!search && recent.length > 0 && (
                 <div id="comp-recent" className="recentstrip" aria-label={t('situation.recent')}>

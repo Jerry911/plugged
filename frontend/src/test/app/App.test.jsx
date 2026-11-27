@@ -755,7 +755,8 @@ test('EDS export downloads the schema as .eds, reports it, and the file imports 
     HTMLAnchorElement.prototype.click.mockClear()
     URL.createObjectURL.mockClear()
     exportAs('eds')
-    expect(HTMLAnchorElement.prototype.click).toHaveBeenCalledTimes(1)
+    // the EDS code is loaded when it is used: the download follows a moment later
+    await waitFor(() => expect(HTMLAnchorElement.prototype.click).toHaveBeenCalledTimes(1))
     await statusIs(t('app.edsExported', {circuits: 1, nodes: 5}))
     const r = importEds(await readBlob(URL.createObjectURL.mock.calls[0][0]))
     expect(r.stats).toMatchObject({circuits: 1, nodes: 5})
@@ -859,7 +860,7 @@ test('the export dialog offers both file types, json first, and downloads the ch
     expect(out.een).toHaveLength(1)
     // .eds: other file, and the message of the export
     exportAs('eds')
-    expect(HTMLAnchorElement.prototype.click).toHaveBeenCalledTimes(2)
+    await waitFor(() => expect(HTMLAnchorElement.prototype.click).toHaveBeenCalledTimes(2))
     await statusShows(t('app.edsExported', {circuits: 0, nodes: 2}))
 })
 test('the export dialog closes with the cross, Annuleer, Escape and the export button, without downloading', async () => {

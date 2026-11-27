@@ -27,8 +27,21 @@
     padding: 2px 6px;
     border: 1px solid var(--border-strong);
     border-radius: 4px;
-    font-size: 12px
+    font-size: 12px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 2px 6px;
+    max-width: 96%
 }
+
+/* the sliders (symbol size, plan opacity) short: the bar stays one row on a normal screen */
+.gridsel input[type='range'] {
+    width: 64px;
+    vertical-align: middle
+}
+
 
 .zoomscroll .sheet {
     max-width: none
@@ -616,6 +629,130 @@
     color: #1b1b1b;
     background: #ffd54a;
     border-radius: 3px
+}
+
+/* an entry of the rail that opens a small panel beside it (Meten, Plan als achtergrond) */
+.toolrail .railmenuwrap {
+    position: relative
+}
+
+.toolrail .railmenu {
+    position: absolute;
+    left: calc(100% + 10px);
+    /* opens upwards: the entries are at the bottom of the rail, the sheet ends under them */
+    bottom: -4px;
+    z-index: 3;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    width: 290px;
+    padding: 6px;
+    background: var(--surface);
+    color: var(--text);
+    border: 1px solid var(--border-strong);
+    border-radius: 8px;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, .25);
+    font-size: 13px
+}
+
+.toolrail .railmenu-title {
+    padding: 2px 6px 4px;
+    font-weight: 600
+}
+
+.toolrail .railmenu-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    width: 100%;
+    padding: 6px;
+    text-align: left;
+    background: transparent;
+    color: inherit;
+    border: 0;
+    border-radius: 6px;
+    cursor: pointer;
+    font: inherit
+}
+
+.toolrail .railmenu-item > span {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 2px
+}
+
+.toolrail .railmenu-item small {
+    color: var(--muted, #666);
+    font-size: 11.5px;
+    line-height: 1.3
+}
+
+.toolrail .railmenu-item:hover:not(:disabled), .toolrail .railmenu-item:focus-visible {
+    background: var(--rail-hover)
+}
+
+.toolrail .railmenu-item.on {
+    background: var(--rail-on-bg);
+    color: var(--rail-on-icon)
+}
+
+.toolrail .railmenu-item.on small {
+    color: inherit
+}
+
+.toolrail .railmenu-item:disabled {
+    opacity: .5;
+    cursor: default
+}
+
+.toolrail .railmenu-item.danger {
+    color: var(--danger, #c0392b)
+}
+
+.toolrail .railmenu-item kbd {
+    padding: 0 4px;
+    font: 600 12px ui-monospace, SFMono-Regular, Menlo, monospace;
+    color: #1b1b1b;
+    background: #ffd54a;
+    border-radius: 3px
+}
+
+.toolrail .railmenu-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 6px
+}
+
+.toolrail .railmenu-row input[type='range'] {
+    flex: 1
+}
+
+.toolrail .railmenu-note {
+    padding: 0 6px 4px;
+    color: var(--muted, #666);
+    font-size: 12px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap
+}
+
+/* what to do while setting the scale of the plan or moving it: at the top of the drawing */
+.modehint {
+    position: absolute;
+    left: 50%;
+    /* under the zoom buttons */
+    top: 4.6em;
+    z-index: 2;
+    transform: translateX(-50%);
+    padding: 5px 12px;
+    background: var(--rail-tip-bg);
+    color: #fff;
+    font-size: 13px;
+    border-radius: 6px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, .25);
+    pointer-events: none
 }
 
 /* the component editor: the rail stands beside the drawing grid, never on it */

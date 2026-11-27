@@ -6,6 +6,7 @@ import {SituationSheet, lengthLabelBox} from '../../../features/situation/Situat
 import {ZOOM_LEVELS as ZOOMS} from '../../../components/ZoomControls.jsx'
 import {circuitMarks as marksOf} from '../../../model/project.js'
 import {setLanguage, t} from '../../../i18n/translate.js'
+import {formatLength, scaleOf} from '../../../model/geometry.js'
 import {baseProject as base, byId, getById, mount, node} from '../../utils.jsx'
 
 const P = () => ({...base(), een: [{id: 'e1', name: 'B', tree: [node('n1', 'stopcontact', [], {label: 'Keuken stopcontact'})]}]})
@@ -237,22 +238,23 @@ test('footer page number counts all printed een sheets before the situatieschema
     expect(getById('sit-sheet-number')).toHaveTextContent(t('sheet.pageOf', {number: 1, total: 1}))
 })
 
-test('drawing snaps to grid points by default; free drawing is an opt-in checkbox', () => {
+test('drawing snaps to grid points by default; free drawing is the last choice of the grid', () => {
     const {container, spy} = mount(SituationSchema, P(), {pageIndex: 0})
-    const cb = getById('sit-free-drawing')
-    expect(cb).not.toBeChecked()
+    const grid = getById('sit-grid')
+    expect(grid).toHaveValue('5')
+    // the bar under the plan holds only the grid
+    expect(grid.closest('.gridsel').querySelectorAll('input, select')).toHaveLength(1)
     tool('wall')
     clk(container, 12, 17)
     clk(container, 48, 17)
     expect(sit(spy).walls[0]).toMatchObject({x1: 10, y1: 15, x2: 50, y2: 15})
     fireEvent.contextMenu(sv(container))
     tool('wall')
-    fireEvent.click(cb)
-    expect(cb).toBeChecked()
+    fireEvent.change(grid, {target: {value: 'free'}})
+    expect(grid).toHaveValue('free')
     clk(container, 12.34, 17.26)
     clk(container, 30.12, 40.06)
     expect(sit(spy).walls[1]).toMatchObject({x1: 12.3, y1: 17.3, x2: 30.1, y2: 40.1})
-    fireEvent.click(cb)
     fireEvent.contextMenu(sv(container))
     tool('wall')
     fireEvent.change(getById('sit-grid'), {target: {value: '2.5'}})
@@ -320,7 +322,7 @@ test('dragging snaps items and walls onto grid points (not when free)', () => {
     fireEvent.pointerMove(sv(container), {clientX: 30, clientY: 32})
     expect(sit(spy).walls[0]).toMatchObject({x1: 10, y1: 30, x2: 50, y2: 30})
     fireEvent.pointerUp(sv(container))
-    fireEvent.click(getById('sit-free-drawing'))
+    fireEvent.change(getById('sit-grid'), {target: {value: 'free'}})
     fireEvent.pointerDown(it(), {clientX: 100, clientY: 100})
     fireEvent.pointerMove(sv(container), {clientX: 103.33, clientY: 101.27})
     expect(sit(spy).items[0]).toMatchObject({x: 103.3, y: 101.3})
@@ -1487,6 +1489,8 @@ test('the symbol size of a plan: bigger by default, set with the slider under th
     init.sit[0].items = [{id: 'i', kind: 'sym', node: 'n1', x: 100, y: 100, r: 0, s: 7}]
     const {container, spy} = mount(SituationSchema, init, {pageIndex: 0}),
         hit = () => grabs(container)[0].querySelector('circle[fill="transparent"]').getAttribute('r')
+    // in the palette of the symbols, under its search field
+    expect(getById('sit-symbol-size').closest('#sit-palette')).toBeTruthy()
     expect(getById('sit-symbol-size')).toHaveValue('1.5')
     expect(getById('sit-symbol-size-value')).toHaveTextContent('150%')
     expect(hit()).toBe('6.75')
@@ -1498,4 +1502,68 @@ test('the symbol size of a plan: bigger by default, set with the slider under th
     expect(sit(spy).items[0].s).toBe(7)
     const printed = render(<SituationSheet project={spy.project} page={sit(spy)} number={1} total={1} />)
     expect(printed.container.querySelector('svg.sheet')).toBeTruthy()
+})
+
+// ---- room name and the measuring tool ----
+test('the Kamer tool asks for the name of the room and puts it in the middle with its floor area; Cancel gives the walls only', () => {
+    const {container, spy} = mount(SituationSchema, P(), {pageIndex: 0})
+    const prompt = vi.spyOn(window, 'prompt').mockReturnValueOnce(' Keuken ').mockReturnValueOnce(null)
+    tool('room')
+    clk(container, 20, 20)
+    clk(container, 60, 50)
+    const page = sit(spy)
+    expect(page.walls).toHaveLength(4)
+    const [label] = page.items
+    expect(label).toMatchObject({kind: 'text', txt: 'Keuken', area: true, s: 4})
+    // in the middle of the room: the text is centred on x 40, its baseline a little under y 35
+    expect(label.x + (6 * 4 * 0.55) / 2).toBeCloseTo(40, 1)
+    expect(label.y).toBeCloseTo(36.4, 1)
+    expect(prompt).toHaveBeenCalledWith(t('situation.roomNamePrompt'))
+    // shown with the area under it
+    expect(container.textContent).toMatch(/Keuken/)
+    expect(container.textContent).toMatch(/m²/)
+    clk(container, 100, 20)
+    clk(container, 120, 40)
+    expect(sit(spy).walls).toHaveLength(8)
+    expect(sit(spy).items).toHaveLength(1)
+    prompt.mockRestore()
+})
+
+test('the measuring tool: segments and the total in metres, ends with a double click, Enter or a right click, Esc clears; nothing is stored', () => {
+    const init = P()
+    const {container, spy} = mount(SituationSchema, init, {pageIndex: 0})
+    const before = JSON.stringify(init.sit[0])
+    fireEvent.click(getById('sit-rail-measure'))
+    tool('measure')
+    const scale = scaleOf(init),
+        metres = (mm) => formatLength(mm, scale)
+    clk(container, 20, 20)
+    clk(container, 60, 20)
+    clk(container, 60, 50)
+    fireEvent.click(sv(container), {clientX: 60, clientY: 50, detail: 2})
+    const labels = () => [...byId('measurement').querySelectorAll('.length-label')].map((label) => label.textContent)
+    expect(labels()).toEqual([metres(40), metres(30)])
+    expect(getById('measurement-total')).toHaveTextContent(t('situation.measureTotal', {length: metres(70)}))
+    // done: the mouse adds nothing; the next click starts a new measurement
+    mv(container, 100, 100)
+    expect(labels()).toHaveLength(2)
+    clk(container, 100, 100)
+    expect(byId('measurement').querySelectorAll('circle')).toHaveLength(1)
+    clk(container, 100, 130)
+    fireEvent.keyDown(document.body, {key: 'Enter'})
+    expect(labels()).toEqual([metres(30)])
+    expect(byId('measurement-total')).toBeNull()
+    // Esc clears it, the tool stays; the next Esc leaves the tool
+    fireEvent.keyDown(document.body, {key: 'Escape'})
+    expect(byId('measurement')).toBeNull()
+    expect(getById('sit-rail-measure')).toHaveClass('on')
+    // a right click ends it, too; another tool clears it
+    clk(container, 10, 10)
+    clk(container, 30, 10)
+    fireEvent.contextMenu(sv(container))
+    expect(labels()).toEqual([metres(20)])
+    tool('wall')
+    expect(byId('measurement')).toBeNull()
+    // never part of the drawing
+    expect(spy.project ? JSON.stringify(sit(spy)) : before).toBe(before)
 })

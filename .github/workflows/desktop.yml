@@ -93,14 +93,28 @@ jobs:
     if: needs.version.outputs.release == 'true'
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v7
       - uses: actions/download-artifact@v8
         with:
           path: installers
           merge-multiple: true
+      # The notes of the release: the section of this version in CHANGELOG.md ("## [1.0.3] - ..." up to the next "## ["); without one, a
+      # pointer to the file. GitHub adds the list of changes since the previous release under it.
+      - name: Release notes from CHANGELOG.md
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+        run: |
+          tr -d '\r' < CHANGELOG.md | awk -v heading="## [$VERSION]" '
+            index($0, heading) == 1 { found = 1; next }
+            found && /^## \[/ { exit }
+            found { print }' > release-notes.md
+          grep -q '[^[:space:]]' release-notes.md || echo "See [CHANGELOG.md](CHANGELOG.md)." > release-notes.md
+          cat release-notes.md
       - uses: softprops/action-gh-release@v3
         with:
           tag_name: v${{ needs.version.outputs.version }}
           target_commitish: ${{ github.sha }}
           name: Plugged ${{ needs.version.outputs.version }}
+          body_path: release-notes.md
           generate_release_notes: true
           files: installers/*

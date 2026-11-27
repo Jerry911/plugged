@@ -4,7 +4,7 @@
 // a fold button and the help of the active tool.
 import {fireEvent} from '@testing-library/react'
 import SituationSchema from '../../../features/situation/SituationSchema.jsx'
-import {DICTIONARIES} from '../../../i18n/translate.js'
+import {DICTIONARIES, t} from '../../../i18n/translate.js'
 import {baseProject, byId, clickId, getById, mount} from '../../utils.jsx'
 
 const wiring = () => ({...baseProject(), wire: [{id: 'w1', name: 'Bedrading 1', walls: [], items: [], wires: [], boxes: []}]})
@@ -35,6 +35,8 @@ test('the rail is on the drawing; each tool has an icon, its name and its key in
         'sit-tool-window',
         'sit-tool-sym',
         'sit-tool-text',
+        'sit-rail-measure',
+        'sit-rail-underlay',
         'sit-template',
     ])
     // the left side has no tools any more: only the components (and the properties of a selection)
@@ -94,4 +96,42 @@ test('the keys of the tools differ from each other in every language and leave R
         expect(keys, language).not.toContain('R')
         keys.forEach((letter) => expect(letter, language).toMatch(/^[A-Z]$/))
     }
+})
+
+test('Meten and Plan als achtergrond open a small panel beside the rail; a choice, Esc or a click outside closes it', () => {
+    mount(SituationSchema, baseProject(), {pageIndex: 0})
+    expect(byId('sit-rail-measure-panel')).toBeNull()
+    fireEvent.click(getById('sit-rail-measure'))
+    expect(getById('sit-rail-measure')).toHaveAttribute('aria-expanded', 'true')
+    // a distance, with its key; the scale of the plan only once there is a plan
+    expect(getById('sit-tool-measure')).toHaveTextContent('E')
+    expect(getById('sit-underlay-scale')).toBeDisabled()
+    expect(getById('sit-underlay-scale')).toHaveTextContent(t('underlay.scaleNeedsPlan'))
+    fireEvent.click(getById('sit-tool-measure'))
+    expect(byId('sit-rail-measure-panel')).toBeNull()
+    // the entry shows the tool is on
+    expect(getById('sit-rail-measure')).toHaveClass('on')
+    // the key still chooses it, from any tool
+    fireEvent.click(getById('sit-tool-wall'))
+    expect(getById('sit-rail-measure')).not.toHaveClass('on')
+    fireEvent.keyDown(document.body, {key: 'e'})
+    expect(getById('sit-rail-measure')).toHaveClass('on')
+    // the plan: one panel at a time; Esc and a click outside close it
+    fireEvent.click(getById('sit-rail-underlay'))
+    getById('sit-underlay-add')
+    fireEvent.click(getById('sit-rail-measure'))
+    expect(byId('sit-rail-underlay-panel')).toBeNull()
+    fireEvent.keyDown(document, {key: 'Escape'})
+    expect(byId('sit-rail-measure-panel')).toBeNull()
+    fireEvent.click(getById('sit-rail-underlay'))
+    fireEvent.pointerDown(document.body)
+    expect(byId('sit-rail-underlay-panel')).toBeNull()
+    // the bar under the plan is back to the grid, free drawing and the symbol size
+    expect(byId('sit-underlay-opacity')).toBeNull()
+})
+
+test('the bedradingsschema has no Meten or plan menus', () => {
+    mount(SituationSchema, {...baseProject(), wire: [{id: 'w1', name: '1', walls: [], items: [], wires: []}]}, {pageIndex: 0, listKey: 'wire'})
+    expect(byId('wire-rail-measure')).toBeNull()
+    expect(byId('wire-rail-underlay')).toBeNull()
 })

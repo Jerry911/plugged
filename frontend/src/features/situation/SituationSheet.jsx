@@ -113,6 +113,41 @@ const SelectionRing = ({size}) => (
     <circle r={Math.max(size, 8) / 1.5} fill="none" stroke={SELECTION_COLOUR} strokeWidth=".4" strokeDasharray="1 1" pointerEvents="none" />
 )
 
+const MEASURE_COLOUR = '#d9480f'
+
+/** The real length along `points` (sheet mm): the sum of its segments. */
+export const pathLength = (points) => points.slice(1).reduce((sum, point, index) => sum + Math.hypot(point.x - points[index].x, point.y - points[index].y), 0)
+
+// The measuring tool: the clicked points as a line with the real length of every segment and, from two segments on, the total next to the
+// last point (to the mouse while measuring). Only on the screen: it is not part of the drawing.
+const Measurement = ({measure, scale, t}) => {
+    const points = measure.cursor ? [...measure.points, measure.cursor] : measure.points,
+        last = points.at(-1),
+        total = pathLength(points)
+    return (
+        <g id="measurement" pointerEvents="none">
+            <polyline
+                points={points.map((point) => `${point.x},${point.y}`).join(' ')}
+                fill="none"
+                stroke={MEASURE_COLOUR}
+                strokeWidth=".6"
+                strokeDasharray={measure.cursor ? '2 1' : undefined}
+            />
+            {measure.points.map((point, index) => (
+                <circle key={index} cx={point.x} cy={point.y} r=".9" fill={MEASURE_COLOUR} />
+            ))}
+            {points.slice(1).map((point, index) => (
+                <LengthLabel key={index} from={points[index]} to={point} scale={scale} colour={MEASURE_COLOUR} />
+            ))}
+            {points.length > 2 && (
+                <text id="measurement-total" x={last.x + 2} y={last.y - 2} fontSize="3.2" fontWeight="bold" fill={MEASURE_COLOUR} stroke="#fff" strokeWidth=".6" paintOrder="stroke">
+                    {t('situation.measureTotal', {length: formatLength(total, scale)})}
+                </text>
+            )}
+        </g>
+    )
+}
+
 // The dashed preview of the wall or room being drawn (`end` = the mouse or the typed length) and its real length(s).
 const DrawingPreview = ({editor, scale}) => {
     const {pending, typedEnd, cursor, tool} = editor
@@ -157,7 +192,7 @@ const DrawingPreview = ({editor, scale}) => {
 
 /**
  * page = the situatieschema (or bedradingsschema) page; number / total = its sheet number. `editor` (only in the editing view):
- * {svgRef, prefix, selection, interactionProps(kind, id, part), pending, typedEnd, cursor, tool, gridSize, selectionBox, deleteButton, copyButton, sheetEvents,
+ * {svgRef, prefix, selection, interactionProps(kind, id, part), pending, typedEnd, cursor, tool, gridSize, selectionBox, deleteButton, copyButton, measure, underlayMode, sheetEvents,
  * pins, wirePreview, boxPreview}; prefix ('sit' or 'wire') starts the ids of the elements.
  */
 export function SituationSheet({project, page, number, total, editor, onFooter}) {
@@ -210,7 +245,22 @@ export function SituationSheet({project, page, number, total, editor, onFooter})
             svgRef={editor?.svgRef}
             sheetId={editor ? prefix + '-sheet' : undefined}
             {...(editor?.sheetEvents || {})}
+            {...(editor?.underlayMode?.kind === 'move' ? {style: {...editor.sheetEvents?.style, cursor: 'move'}} : {})}
         >
+            {/* the plan behind the page (model/underlay.js): under everything; printed unless switched off; not on the bedradingsschema */}
+            {page.underlay?.src && !page.wires && (editor || page.underlay.print !== false) && (
+                <image
+                    id={editor ? prefix + '-underlay' : undefined}
+                    href={page.underlay.src}
+                    x={page.underlay.x}
+                    y={page.underlay.y}
+                    width={page.underlay.w}
+                    height={page.underlay.h}
+                    opacity={page.underlay.opacity ?? 0.5}
+                    preserveAspectRatio="none"
+                    pointerEvents="none"
+                />
+            )}
             {editor && (
                 <>
                     <defs>
@@ -376,6 +426,14 @@ export function SituationSheet({project, page, number, total, editor, onFooter})
                 scale={scale}
             />
             {editor && <DrawingPreview editor={editor} scale={scale} />}
+            {editor?.measure && <Measurement measure={editor.measure} scale={scale} t={t} />}
+            {editor?.underlayMode?.kind === 'scale' &&
+                (editor.underlayMode.points || []).map((point, index) => (
+                    <g key={index} id={prefix + '-scale-point-' + (index + 1)} pointerEvents="none" stroke={MEASURE_COLOUR} strokeWidth=".5">
+                        <path d={`M${point.x - 3},${point.y}h6M${point.x},${point.y - 3}v6`} />
+                        <circle cx={point.x} cy={point.y} r="1.5" fill="none" />
+                    </g>
+                ))}
             {editor?.cursor && (
                 <g pointerEvents="none" stroke={SELECTION_COLOUR} strokeWidth=".35" fill="none">
                     <circle cx={editor.cursor.x} cy={editor.cursor.y} r="1.4" />

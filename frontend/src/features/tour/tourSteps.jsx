@@ -6,7 +6,10 @@ import {FIT_SHEET_LENGTH, parseLength, scaleOf} from '../../model/geometry.js'
 import {flatten} from '../../model/tree.js'
 import {translation} from '../../i18n/translate.js'
 import RichText from '../../i18n/RichText.jsx'
-import {QrCode} from '../project/QrDialog.jsx'
+import {lazyComponent} from '../../components/lazy.jsx'
+
+// the QR code in the step about it: with the QR code library, loaded when the tour shows it
+const QrCode = lazyComponent(() => import('../project/QrDialog.jsx').then((module) => module.QrCode))
 
 const countNodes = (project, matches) => project.een.reduce((sum, page) => sum + flatten(page.tree).filter(matches).length, 0)
 const countItems = (project, matches) => project.sit.reduce((sum, page) => sum + page.items.filter(matches).length, 0)

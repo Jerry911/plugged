@@ -62,8 +62,11 @@ export function frameNeeds(project, list) {
 
 /**
  * The offerte: {lines: [{article, group, name, code, unit, qty, cost, price, total, minutes}], labour: {minutes, hours, rate, total},
- * extras: [{text, qty, price, total}], material, subtotal, vat: {rate, amount}, total, problems: [{kind, ...}]}.
- * options: {margin (% on material, else that of the price list), vat (21, 6 or 0), extras: [{text, qty, price}], labour (false: without)}.
+ * extras: [{text, qty, price, total}], material, subtotal, vat: {rate, amount}, total, optional, deposit, problems: [{kind, ...}]}.
+ * optional: the optional lines, priced apart and not in the total: {lines: [{text, qty, price, total}], subtotal, vat, total} (null when
+ * there are none). deposit: {percent, amount, balance} of the total (incl. VAT) to pay when ordering and at delivery (null without).
+ * options: {margin (% on material, else that of the price list), vat (21, 6 or 0), extras: [{text, qty, price}], labour (false: without),
+ * optional: [{text, qty, price}], deposit (% of the total)}.
  */
 export function quoteOf(project, list, options = {}) {
     const articles = new Map(list.articles.map((article) => [article.id, article])),
@@ -143,15 +146,28 @@ export function quoteOf(project, list, options = {}) {
     if (options.labour !== false && minutes > 0 && rate == null) problems.push({kind: 'noHourly'})
     const labour = options.labour === false ? {minutes: 0, hours: 0, rate: rate ?? 0, total: 0} : {minutes, hours, rate: rate ?? 0, total: roundCents(hours * (rate ?? 0))}
     // extra lines
-    const extras = (options.extras || [])
-        .filter((extra) => extra && String(extra.text || '').trim())
-        .map((extra) => {
-            const qty = amountOf(extra.qty) ?? 1,
-                price = amountOf(extra.price) ?? 0
-            return {text: String(extra.text).trim(), qty, price, total: roundCents(qty * price)}
-        })
+    const extras = pricedLines(options.extras)
     const subtotal = roundCents(material + labour.total + extras.reduce((sum, extra) => sum + extra.total, 0))
     const vatRate = [21, 6, 0].includes(Number(options.vat)) ? Number(options.vat) : list.vat ?? 21,
         vatAmount = roundCents((subtotal * vatRate) / 100)
-    return {lines, labour, extras, material, subtotal, vat: {rate: vatRate, amount: vatAmount}, total: roundCents(subtotal + vatAmount), margin, problems}
+    const total = roundCents(subtotal + vatAmount)
+    // the optional lines: their own subtotal and VAT, outside the total
+    const optionalLines = pricedLines(options.optional),
+        optionalSubtotal = roundCents(optionalLines.reduce((sum, line) => sum + line.total, 0)),
+        optionalVat = roundCents((optionalSubtotal * vatRate) / 100),
+        optional = optionalLines.length ? {lines: optionalLines, subtotal: optionalSubtotal, vat: optionalVat, total: roundCents(optionalSubtotal + optionalVat)} : null
+    // the deposit: a share of the total when ordering, the rest at delivery
+    const percent = amountOf(options.deposit),
+        deposit = percent > 0 && percent <= 100 ? {percent, amount: roundCents((total * percent) / 100), balance: roundCents(total - roundCents((total * percent) / 100))} : null
+    return {lines, labour, extras, material, subtotal, vat: {rate: vatRate, amount: vatAmount}, total, optional, deposit, margin, problems}
 }
+
+// free lines ({text, qty, price} as typed): those with a text, priced
+const pricedLines = (lines) =>
+    (lines || [])
+        .filter((line) => line && String(line.text || '').trim())
+        .map((line) => {
+            const qty = amountOf(line.qty) ?? 1,
+                price = amountOf(line.price) ?? 0
+            return {text: String(line.text).trim(), qty, price, total: roundCents(qty * price)}
+        })

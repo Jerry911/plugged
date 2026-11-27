@@ -7,10 +7,10 @@ import {useEffect, useMemo, useState} from 'react'
 import {useTranslation} from '../../i18n/I18nProvider.jsx'
 import Icon from '../../components/Icon.jsx'
 import {fetchPriceList, fetchPriceLists} from '../../api/pricingApi.js'
-import {VAT_RATES, normalizePriceList} from '../../model/pricing.js'
+import {VAT_RATES, amountOf, normalizePriceList} from '../../model/pricing.js'
 import {quoteOf} from '../../model/quote.js'
 import {download} from '../project/materialsExport.js'
-import {money, quotePdf, quoteRows, quoteXlsx} from './quoteExport.js'
+import {money, optionalRows, quoteNumber, quotePdf, quoteRows, quoteXlsx} from './quoteExport.js'
 
 const XLSX_TYPE = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
 const today = () => new Date().toISOString().slice(0, 10)
@@ -31,8 +31,58 @@ export const newQuoteDetails = (project, list) => {
         margin: list?.margin ?? 0,
         labour: true,
         extras: [],
+        optional: [],
+        deposit: '',
+        version: 1,
         intro: '',
     }
+}
+
+const roundCents = (amount) => Math.round(amount * 100) / 100
+
+// Lines typed by hand (the extra lines, the optional lines): text, quantity, unit price; the optional lines can start from an article of the
+// price list (its price with the margin of the offerte).
+function FreeLines({id, title, hint, lines, onChange, addLabel, articles, margin}) {
+    const {t} = useTranslation()
+    const update = (index, patch) => onChange(lines.map((line, at) => (at === index ? {...line, ...patch} : line)))
+    const fromArticle = (articleId) => {
+        const article = articles.find((candidate) => candidate.id === articleId),
+            cost = amountOf(article?.price)
+        if (!article) return
+        onChange([...lines, {text: article.name, qty: 1, price: cost == null ? '' : String(roundCents(cost * (1 + (amountOf(margin) ?? 0) / 100))).replace('.', ',')}])
+    }
+    return (
+        <div id={id} className="quoteextras">
+            <b>{title}</b>
+            {hint && <span className="hint"> {hint}</span>}
+            {lines.map((line, index) => (
+                <span key={index} className="extra">
+                    <input className="text" placeholder={t('quote.extraText')} aria-label={t('quote.extraText')} value={line.text} onChange={(event) => update(index, {text: event.target.value})} />
+                    <input className="num" aria-label={t('quote.columns.qty')} value={line.qty} onChange={(event) => update(index, {qty: event.target.value})} />
+                    <input className="num" aria-label={t('quote.columns.price')} placeholder="0,00" value={line.price} onChange={(event) => update(index, {price: event.target.value})} />
+                    <button className="danger" aria-label={t('quote.removeExtra')} onClick={() => onChange(lines.filter((_, at) => at !== index))}>
+                        ×
+                    </button>
+                </span>
+            ))}
+            <button id={id + '-add'} onClick={() => onChange([...lines, {text: '', qty: 1, price: ''}])}>
+                {addLabel}
+            </button>
+            {articles?.length > 0 && (
+                <>
+                    {' '}
+                    <select id={id + '-article'} value="" aria-label={t('quote.fromPriceList')} onChange={(event) => fromArticle(event.target.value)}>
+                        <option value="">{t('quote.fromPriceList')}</option>
+                        {articles.map((article) => (
+                            <option key={article.id} value={article.id}>
+                                {article.name}
+                            </option>
+                        ))}
+                    </select>
+                </>
+            )}
+        </div>
+    )
 }
 
 export default function QuoteDialog({project, projectId, onChange, onClose, onManagePrices}) {
@@ -58,12 +108,22 @@ export default function QuoteDialog({project, projectId, onChange, onClose, onMa
     }, [details, list])
     const set = (patch) => onChange({...(details || newQuoteDetails(project, list?.document)), ...patch})
     const quote = useMemo(
-        () => (list && details ? quoteOf(project, list.document, {margin: details.margin, vat: details.vat, extras: details.extras, labour: details.labour}) : null),
+        () =>
+            list && details
+                ? quoteOf(project, list.document, {
+                      margin: details.margin,
+                      vat: details.vat,
+                      extras: details.extras,
+                      labour: details.labour,
+                      optional: details.optional,
+                      deposit: details.deposit,
+                  })
+                : null,
         [project, list, details],
     )
     const company = list?.document.company || {}
     const fileName = (extension) =>
-        [t('quote.fileName'), details?.number, project.name || (projectId ? String(projectId) : '')]
+        [t('quote.fileName'), details && quoteNumber(details).replace(' ', '-'), project.name || (projectId ? String(projectId) : '')]
             .filter(Boolean)
             .join('-')
             .replace(/[^\p{L}\p{N}._-]+/gu, '-')
@@ -106,6 +166,25 @@ export default function QuoteDialog({project, projectId, onChange, onClose, onMa
                             <input id="quote-number" value={details.number} onChange={(event) => set({number: event.target.value})} />
                         </label>
                         <label>
+                            {t('quote.version')}
+                            <span className="quoteversion">
+                                <b id="quote-version">v{Number(details.version) || 1}</b>{' '}
+                                <button
+                                    id="quote-new-version"
+                                    title={t('quote.newVersionTitle')}
+                                    onClick={() =>
+                                        set({
+                                            version: (Number(details.version) || 1) + 1,
+                                            date: today(),
+                                            versions: [...(details.versions || []), {version: Number(details.version) || 1, date: details.date, total: quote?.total ?? null}],
+                                        })
+                                    }
+                                >
+                                    {t('quote.newVersion')}
+                                </button>
+                            </span>
+                        </label>
+                        <label>
                             {t('quote.date')}
                             <input id="quote-date" type="date" value={details.date} onChange={(event) => set({date: event.target.value})} />
                         </label>
@@ -139,6 +218,10 @@ export default function QuoteDialog({project, projectId, onChange, onClose, onMa
                             {t('quote.margin')}
                             <input id="quote-margin" inputMode="decimal" value={details.margin} onChange={(event) => set({margin: event.target.value})} />
                         </label>
+                        <label title={t('quote.depositTitle')}>
+                            {t('quote.deposit')}
+                            <input id="quote-deposit" inputMode="decimal" placeholder="0" value={details.deposit ?? ''} onChange={(event) => set({deposit: event.target.value})} />
+                        </label>
                         <label className="check">
                             <input id="quote-labour" type="checkbox" checked={details.labour !== false} onChange={(event) => set({labour: event.target.checked})} /> {t('quote.withLabour')}
                         </label>
@@ -147,25 +230,25 @@ export default function QuoteDialog({project, projectId, onChange, onClose, onMa
                             <textarea id="quote-intro" rows={2} placeholder={company.intro || ''} value={details.intro || ''} onChange={(event) => set({intro: event.target.value})} />
                         </label>
                     </div>
-                    <div id="quote-extras" className="quoteextras">
-                        <b>{t('quote.extras')}</b>
-                        {(details.extras || []).map((extra, index) => {
-                            const update = (patch) => set({extras: details.extras.map((other, at) => (at === index ? {...other, ...patch} : other))})
-                            return (
-                                <span key={index} className="extra">
-                                    <input className="text" placeholder={t('quote.extraText')} aria-label={t('quote.extraText')} value={extra.text} onChange={(event) => update({text: event.target.value})} />
-                                    <input className="num" aria-label={t('quote.columns.qty')} value={extra.qty} onChange={(event) => update({qty: event.target.value})} />
-                                    <input className="num" aria-label={t('quote.columns.price')} placeholder="0,00" value={extra.price} onChange={(event) => update({price: event.target.value})} />
-                                    <button className="danger" aria-label={t('quote.removeExtra')} onClick={() => set({extras: details.extras.filter((_, at) => at !== index)})}>
-                                        ×
-                                    </button>
-                                </span>
-                            )
-                        })}
-                        <button id="quote-add-extra" onClick={() => set({extras: [...(details.extras || []), {text: '', qty: 1, price: ''}]})}>
-                            {t('quote.addExtra')}
-                        </button>
-                    </div>
+                    <FreeLines id="quote-extras" title={t('quote.extras')} lines={details.extras || []} onChange={(extras) => set({extras})} addLabel={t('quote.addExtra')} />
+                    <FreeLines
+                        id="quote-optional"
+                        title={t('quote.optionalTitle')}
+                        hint={t('quote.optionalHint')}
+                        lines={details.optional || []}
+                        onChange={(optional) => set({optional})}
+                        addLabel={t('quote.addOptional')}
+                        articles={list?.document.articles}
+                        margin={details.margin}
+                    />
+                    {details.versions?.length > 0 && (
+                        <p id="quote-versions" className="hint">
+                            {t('quote.earlierVersions')}{' '}
+                            {details.versions
+                                .map((earlier) => `v${earlier.version} (${earlier.date ? new Date(earlier.date + 'T12:00:00Z').toLocaleDateString(locale) : ''}${earlier.total != null ? ', ' + money(earlier.total, locale) : ''})`)
+                                .join(' · ')}
+                        </p>
+                    )}
                     {!quote && <p>{t('auth.loading')}</p>}
                     {quote && (
                         <>
@@ -236,8 +319,58 @@ export default function QuoteDialog({project, projectId, onChange, onClose, onMa
                                                 {money(quote.total, locale)}
                                             </td>
                                         </tr>
+                                        {quote.deposit && (
+                                            <>
+                                                <tr>
+                                                    <td colSpan={4}>{t('quote.depositLine', {percent: quote.deposit.percent})}</td>
+                                                    <td id="quote-deposit-amount" className="num">
+                                                        {money(quote.deposit.amount, locale)}
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td colSpan={4}>{t('quote.balanceLine')}</td>
+                                                    <td id="quote-balance" className="num">
+                                                        {money(quote.deposit.balance, locale)}
+                                                    </td>
+                                                </tr>
+                                            </>
+                                        )}
                                     </tfoot>
                                 </table>
+                                {quote.optional && (
+                                    <table id="quote-optional-lines">
+                                        <thead>
+                                            <tr className="heading">
+                                                <td colSpan={5}>{t('quote.optionalTitle')}</td>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {optionalRows(quote, locale).map((row, index) => (
+                                                <tr key={index}>
+                                                    <td>{row.text}</td>
+                                                    <td className="num">{row.qtyText}</td>
+                                                    <td />
+                                                    <td className="num">{money(row.price, locale)}</td>
+                                                    <td className="num">{money(row.total, locale)}</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                        <tfoot>
+                                            <tr>
+                                                <td colSpan={4}>{t('quote.optionalSubtotal')}</td>
+                                                <td id="quote-optional-subtotal" className="num">
+                                                    {money(quote.optional.subtotal, locale)}
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td colSpan={4}>{t('quote.optionalTotal', {vat: quote.vat.rate === 0 ? t('quote.vatShifted') : t('quote.vatOf', {rate: quote.vat.rate})})}</td>
+                                                <td id="quote-optional-total" className="num">
+                                                    {money(quote.optional.total, locale)}
+                                                </td>
+                                            </tr>
+                                        </tfoot>
+                                    </table>
+                                )}
                             </div>
                         </>
                     )}

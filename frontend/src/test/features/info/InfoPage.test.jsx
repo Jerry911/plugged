@@ -34,8 +34,8 @@ describe('Info page', () => {
             expect(byId(id)).not.toBeNull()
             expect(getById('nav-' + id)).toHaveTextContent(t('info.sections.' + id))
         }
-        // the shortcuts, with the QR code (Alt+Q), and the ten keys of the drawing tools (the same letters as the tips of the tool rail)
-        expect(getById('info-sneltoetsen').querySelectorAll('kbd')).toHaveLength(translation('info.shortcuts.items').length + 10)
+        // the shortcuts, with the QR code (Alt+Q), and the eleven keys of the drawing tools (the same letters as the tips of the tool rail)
+        expect(getById('info-sneltoetsen').querySelectorAll('kbd')).toHaveLength(translation('info.shortcuts.items').length + 11)
         expect(getById('info-sneltoetsen').textContent).toContain('Alt+Q')
         const muur = [...getById('info-sneltoetsen').querySelectorAll('dl > div')].find((row) => row.textContent.includes('Muur'))
         expect(muur.querySelector('kbd').textContent).toBe(t('situation.toolKeys.wall'))
@@ -276,7 +276,7 @@ describe('Info page in other languages', () => {
                 expect(document.querySelectorAll('article.feature')).toHaveLength(ids('nl').length)
                 expect(document.querySelectorAll('.role')).toHaveLength(translation('info.roles.items', 'nl').length)
                 expect(translation('info.educational.cannot', language)).toHaveLength(translation('info.educational.cannot', 'nl').length)
-                expect(getById('info-sneltoetsen').querySelectorAll('kbd')).toHaveLength(translation('info.shortcuts.items', 'nl').length + 10)
+                expect(getById('info-sneltoetsen').querySelectorAll('kbd')).toHaveLength(translation('info.shortcuts.items', 'nl').length + 11)
                 expect(document.querySelectorAll('details.faq')).toHaveLength(translation('info.faq.questions', 'nl').length)
                 expect(getById('btn-tour')).toHaveTextContent(t('info.startTour'))
                 // the screenshots are those of the language

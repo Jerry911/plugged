@@ -185,9 +185,17 @@ test('the keyboard shortcuts of the Project menu: Alt+L load, Alt+E export, Alt+
     await expect(page.locator('#export-confirm')).toBeVisible()
     await page.keyboard.press('Alt+e')
     await expect(page.locator('#export-confirm')).toHaveCount(0)
-    const chooser = page.waitForEvent('filechooser')
-    await page.keyboard.press('Alt+i')
-    await chooser
+    // Alt+I opens the file chooser. Under load (the long run against the real backend) Chrome now and then reports no chooser for a key
+    // press: press again (at most three times) rather than wait 30 s for an event that does not come.
+    const opensChooser = async () => {
+        for (let attempt = 0; attempt < 3; attempt++) {
+            const chooser = page.waitForEvent('filechooser', {timeout: 5000}).catch(() => null)
+            await page.keyboard.press('Alt+i')
+            if (await chooser) return true
+        }
+        return false
+    }
+    expect(await opensChooser()).toBe(true)
     await page.keyboard.press('Alt+n')
     await expect(app.status()).toHaveText(t('app.newProject'))
     await app.project()

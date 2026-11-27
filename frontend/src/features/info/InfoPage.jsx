@@ -12,8 +12,9 @@ import UiIcon from '../../components/Icon.jsx'
 
 /** Where the source code is (AGPL: whoever uses Plugged can get it). */
 // the tools with a key, in the order of the rail; Draad and Kader are only on the bedradingsschema
-const TOOL_SHORTCUTS = ['select', 'erase', 'wall', 'room', 'door', 'window', 'sym', 'text', 'wire', 'box']
-const WIRING_ONLY_TOOLS = new Set(['wire', 'box'])
+const TOOL_SHORTCUTS = ['select', 'erase', 'wall', 'room', 'door', 'window', 'sym', 'text', 'measure', 'wire', 'box']
+const WIRING_ONLY_TOOLS = new Set(['wire', 'box']),
+    PLAN_ONLY_TOOLS = new Set(['measure'])
 
 export const SOURCE_URL = 'https://github.com/Jerry911/plugged'
 
@@ -278,7 +279,9 @@ export default function InfoPage({onTour, visitor, onLogin, onRegister}) {
             ...translation('info.shortcuts.items').filter((shortcut) => !(info.desktop && shortcut.keys === 'Alt+Q')),
             ...TOOL_SHORTCUTS.map((tool) => ({
                 keys: t('situation.toolKeys.' + tool),
-                text: t(WIRING_ONLY_TOOLS.has(tool) ? 'info.shortcuts.toolWiring' : 'info.shortcuts.tool', {tool: t('situation.tools.' + tool)}),
+                text: t(WIRING_ONLY_TOOLS.has(tool) ? 'info.shortcuts.toolWiring' : PLAN_ONLY_TOOLS.has(tool) ? 'info.shortcuts.toolPlan' : 'info.shortcuts.tool', {
+                    tool: t('situation.tools.' + tool),
+                }),
             })),
         ],
         questions = info.desktop

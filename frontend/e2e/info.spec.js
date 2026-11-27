@@ -33,8 +33,9 @@ test.describe('Info page', () => {
             await page.addInitScript((lang) => localStorage.setItem('plugged.language', lang), language)
             await app.open(backend)
             await page.locator('#tab-info').click()
+            // the info page is loaded when it is first shown
+            await expect(page.locator('.shot img')).toHaveCount(14)
             const sources = await page.locator('.shot img').evaluateAll((images) => images.map((image) => image.getAttribute('src')))
-            expect(sources).toHaveLength(14)
             for (const src of new Set(sources)) {
                 expect(src).toContain(`/info/${language}/`)
                 const response = await page.request.get(src)

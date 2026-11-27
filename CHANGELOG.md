@@ -9,18 +9,46 @@ rename *Unreleased* to that version with the date and start a new, empty *Unrele
 
 ## [Unreleased]
 
-### Changed
-
-- Everything up to date: Java 25 (was 21; the Docker images and the desktop program too), Spring Boot 4.2.0, Node 26 LTS for the build, React 19 and the other frontend packages (Vite, Vitest, Playwright, jsdom, pako 3 ...), and the GitHub Actions of the release workflow. The Docker build installs `libatomic1`, which Node 26 needs on Linux.
+## [1.0.3] - 2026-11-27
 
 ### Added
 
-- Situatieschema: copy and paste with Ctrl+C / Ctrl+V (also to another sheet), Ctrl+X and Ctrl+D, and a copy button next to the trash button of the selection.
-- Situatieschema: a *Symbolen* slider under the plan sets how big the symbols are drawn (default 150 %, bigger than before); they do not follow the scale.
+- Situatieschema: an existing plan (a PDF page or a picture) behind the sheet: fitted to scale with two points, movable, with its visibility, optionally printed; kept small (at most 800 kB per sheet, 3 MB per project). The AI link does not pass the image on to the assistant.
+- Situatieschema: the *Meten* tool (segments and total in metres, only on the screen); *Kamer* asks for the room name and puts it in the middle with its floor area.
+- Situatieschema: *Meten* and *Plan als achtergrond* are entries of the tool rail with a small panel; the symbol size is in the symbol palette (*Grootte op dit blad*) and free drawing is the last choice of *Raster*, so only the grid choice is left under the plan.
+- Offerte: options priced apart and outside the total, numbered versions with the earlier ones listed, and a deposit with the balance on delivery.
+
+### Changed
+
+- Everything up to date: Java 25 (was 21; the Docker images and the desktop program too), Spring Boot 4.2.0, Node 26 LTS for the build, React 19 and the other frontend packages (Vite, Vitest, Playwright, jsdom, pako 3 ...), and the GitHub Actions of the release workflow. The Docker build installs `libatomic1`, which Node 26 needs on Linux.
+- The first page loads about 60 % less: the offerte, the exports, the QR code, the info and account pages and the French and English texts load when they are needed (in the background right after the start).
+- Situatieschema: the copy button of a selection stands next to the trash button instead of under it.
 
 ### Fixed
 
 - Deleting a sheet (or a circuit or element) of the eendraadschema made its symbols disappear from the situatieschema; they now stay as loose symbols with their type and marking (B4), so *Eendraadschema maken* can make them again.
+
+## [1.0.2] - 2026-11-24
+
+### Changed
+
+- Situatieschema: the default symbol size is 150 % (was 200 %).
+
+### Fixed
+
+- Release workflow: the Maven cache is kept when the version changes and downloads are retried, so a build no longer fails on Maven Central's "429 Too Many Requests".
+
+## [1.0.1] - 2026-11-24
+
+Not released as downloads: its build failed on Maven Central's rate limit (see 1.0.2). Its changes are part of 1.0.2.
+
+### Added
+
+- Situatieschema: copy and paste with Ctrl+C / Ctrl+V (also to another sheet), Ctrl+X and Ctrl+D, and a copy button with the trash button of the selection.
+- Situatieschema: a *Symbolen* slider under the plan sets how big the symbols are drawn; they do not follow the scale.
+
+### Fixed
+
 - Eendraadschema maken: several of the same lamp in one point (four spots marked B4) became four elements; now one element with its count (*x4*).
 - AI link: the steps now point to Customize › Connectors and Customize › Skills (the current place in Claude), with the Owner step for Team/Enterprise.
 - The downloadable skill had a description longer than the 200 characters claude.ai accepts, so uploading it failed.
@@ -79,5 +107,8 @@ The first release.
 - Three colour themes (Marine, Werkbank, Helder); works on laptops, tablets and phones.
 - Info page with how to use, FAQ, contact through the mail program and a donate link.
 
-[Unreleased]: https://github.com/Jerry911/plugged/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/Jerry911/plugged/compare/v1.0.3...HEAD
+[1.0.3]: https://github.com/Jerry911/plugged/compare/v1.0.2...v1.0.3
+[1.0.2]: https://github.com/Jerry911/plugged/compare/v1.0.0...v1.0.2
+[1.0.1]: https://github.com/Jerry911/plugged/compare/v1.0.0...e96957d
 [1.0.0]: https://github.com/Jerry911/plugged/releases/tag/v1.0.0

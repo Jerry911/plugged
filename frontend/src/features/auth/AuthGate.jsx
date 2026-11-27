@@ -9,7 +9,10 @@ import {useTranslation} from '../../i18n/I18nProvider.jsx'
 import {fetchAuthStatus, logout} from '../../api/authApi.js'
 import {onUnauthorized} from '../../api/http.js'
 import {AuthLayout, ChangePasswordScreen, LoginForm, LoginScreen, RegisterScreen, SetupScreen} from './AuthScreens.jsx'
-import InfoPage from '../info/InfoPage.jsx'
+import {lazyComponent} from '../../components/lazy.jsx'
+
+// the public info page: loaded when it is shown
+const InfoPage = lazyComponent(() => import('../info/InfoPage.jsx').then((module) => module.default))
 
 const REGISTER_HASH = '#register'
 export const INFO_HASH = '#info'

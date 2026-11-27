@@ -4,14 +4,23 @@ import '@testing-library/jest-dom/vitest'
 import {configure} from '@testing-library/react'
 import standard from './fixtures/standardSymbols.js'
 import {setLibrary} from '../symbols/symbolLibrary.js'
-import {setLanguage} from '../i18n/translate.js'
+import {loadAllLanguages, setLanguage} from '../i18n/translate.js'
 // The symbols come from the backend. The tests use the standard symbols of the backend catalog (generated from StandardSymbols.java,
 // see StandardSymbolsJson in the backend tests) as the active library.
 setLibrary(standard)
+// all languages at hand, so a test can switch the language and check the texts at once
+await loadAllLanguages()
+// the parts of the editor that load when first shown (components/lazy.jsx): loaded before the tests, so they render at once
+beforeAll(async () => {
+    const {preloadAll} = await import('../components/lazy.jsx')
+    await preloadAll()
+})
 // waitFor / findBy* give up after 1 s by default: on a busy machine (all test files in parallel, or next to the Playwright run) a render
 // that answers a mocked request can take longer, which made tests fail now and then. They still fail fast when a test is really wrong
 // with a synchronous expect.
 configure({asyncUtilTimeout: 4000})
+// jsdom has no prompt(): answering it like Cancel (a test that needs an answer mocks it)
+window.prompt = () => null
 beforeEach(() => {
     // Users that have seen the guided tour: the tests of the editor are not interrupted by it (the tour tests call forgetTour). The tour is
     // remembered per user (plugged.tour.<id>); the tests sign in as one of the users with ids 1 to 9.

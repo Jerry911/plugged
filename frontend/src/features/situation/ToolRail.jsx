@@ -3,7 +3,7 @@
 // The tools of the situatieschema and the bedradingsschema as a narrow column of icons on the drawing (like drawing programs do): the
 // name, the shortcut key and a short help of a tool show when the mouse is on it (or the keyboard focus), and a button folds the column
 // away when it is in the way of the drawing.
-import {useEffect, useState} from 'react'
+import {useEffect, useRef, useState} from 'react'
 import {useTranslation} from '../../i18n/I18nProvider.jsx'
 
 const ICONS = {
@@ -27,6 +27,13 @@ const ICONS = {
         <>
             <path d="M15 6a6 6 0 0 0 0 12" />
             <path d="M9 12H3" />
+        </>
+    ),
+    // a folding rule
+    measure: (
+        <>
+            <path d="M3 15.5L15.5 3l5.5 5.5L8.5 21z" />
+            <path d="M7.5 11l2 2M10.5 8l2 2M13.5 5l2 2" />
         </>
     ),
     text: (
@@ -66,6 +73,22 @@ const ICONS = {
         <>
             <path d="M3 12h5M16 12h5" />
             <circle cx="12" cy="12" r="3.2" />
+        </>
+    ),
+    // the scale of the plan behind the sheet: two points with the distance between them
+    scale: (
+        <>
+            <path d="M4 18L20 6" strokeDasharray="2.5 2" />
+            <circle cx="4" cy="18" r="2" />
+            <circle cx="20" cy="6" r="2" />
+        </>
+    ),
+    // a plan behind the sheet: a picture
+    background: (
+        <>
+            <rect x="3.5" y="4.5" width="17" height="15" rx="1.5" />
+            <path d="M3.5 16l5-5 4 4 3-3 5 5" />
+            <circle cx="15.5" cy="9" r="1.6" />
         </>
     ),
     fold: <path d="M15 6l-6 6 6 6" />,
@@ -113,17 +136,33 @@ export const toolOfKey = (event, tools, t) => {
 
 /**
  * prefix = 'sit', 'wire' or 'comp' (the ids); tools = the tools in their order (null = a separator); tool / onTool = the active one; extra =
- * {id, label, title, onClick, disabled}: the button under the tools (a starter template, a plan to copy). The name, key and help of a tool
+ * {id, label, title, onClick, disabled}: the button under the tools (a starter template, a plan to copy). menus = [{id, icon, label, help, on,
+ * content(close)}]: entries under the tools that open a small panel beside the rail (content gets a function that closes it); a click
+ * outside the rail or Esc closes it too. The name, key and help of a tool
  * come from situation.* unless `texts` = {name, key, help} (functions of the tool; key and help may answer null). `docked`: the rail stands
  * beside the drawing instead of on it (the component editor), without the fold button.
  */
-export default function ToolRail({prefix, tools, tool, onTool, extra, texts, docked = false}) {
+export default function ToolRail({prefix, tools, tool, onTool, extra, menus = [], texts, docked = false}) {
     const {t} = useTranslation()
     const nameOf = texts?.name ?? ((name) => t('situation.tools.' + name)),
         keyOf = texts?.key ?? ((name) => toolKey(t, name)),
         helpOf = texts?.help ?? ((name) => t('situation.toolHelp.' + name))
     const [storedFolded, setFolded] = useState(readFolded),
-        folded = !docked && storedFolded
+        folded = !docked && storedFolded,
+        // the id of the menu whose panel is open
+        [openMenu, setOpenMenu] = useState(null),
+        railRef = useRef(null)
+    useEffect(() => {
+        if (!openMenu) return
+        const outside = (event) => !railRef.current?.contains(event.target) && setOpenMenu(null),
+            escape = (event) => event.key === 'Escape' && setOpenMenu(null)
+        document.addEventListener('pointerdown', outside)
+        document.addEventListener('keydown', escape)
+        return () => {
+            document.removeEventListener('pointerdown', outside)
+            document.removeEventListener('keydown', escape)
+        }
+    }, [openMenu])
     useEffect(() => {
         try {
             localStorage.setItem(FOLDED_KEY, storedFolded ? '1' : '0')
@@ -142,6 +181,7 @@ export default function ToolRail({prefix, tools, tool, onTool, extra, texts, doc
     )
     return (
         <div
+            ref={railRef}
             className={'ui toolrail' + (folded ? ' folded' : '') + (docked ? ' docked' : '')}
             id={prefix + '-tools'}
             role="toolbar"
@@ -187,6 +227,30 @@ export default function ToolRail({prefix, tools, tool, onTool, extra, texts, doc
                         <span key={'sep' + index} className="railsep" />
                     ),
                 )}
+            {!folded && menus.length > 0 && <span className="railsep" />}
+            {!folded &&
+                menus.map((menu) => (
+                    <div key={menu.id} className="railmenuwrap">
+                        <button
+                            id={menu.id}
+                            className={'railbtn railmenubtn' + (menu.on || openMenu === menu.id ? ' on' : '')}
+                            aria-haspopup="true"
+                            aria-expanded={openMenu === menu.id}
+                            aria-label={menu.label}
+                            data-tour={'tool-' + menu.id}
+                            onClick={() => setOpenMenu(openMenu === menu.id ? null : menu.id)}
+                        >
+                            <ToolIcon name={menu.icon} />
+                            {openMenu !== menu.id && tip(menu.label, null, menu.help)}
+                        </button>
+                        {openMenu === menu.id && (
+                            <div id={menu.id + '-panel'} className="railmenu" role="menu" aria-label={menu.label}>
+                                <div className="railmenu-title">{menu.label}</div>
+                                {menu.content(() => setOpenMenu(null))}
+                            </div>
+                        )}
+                    </div>
+                ))}
             {!folded && extra && (
                 <>
                     <span className="railsep" />

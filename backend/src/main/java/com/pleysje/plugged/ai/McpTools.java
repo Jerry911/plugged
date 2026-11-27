@@ -126,7 +126,7 @@ public class McpTools {
         answer.put("id", id);
         answer.put("version", document.version());
         answer.put("url", link(request, id));
-        answer.put("document", JSON.readTree(document.json()));
+        answer.put("document", Underlays.strip(JSON.readTree(document.json())));
         return answer;
     }
 
@@ -210,6 +210,8 @@ public class McpTools {
         JsonNode document = args.path("document");
         if (!document.isObject()) throw new Refused("document: the complete project document (a JSON object)");
         String name = document.path("name").isString() ? limit(document.path("name").asString(), 200) : null;
+        // the plans behind the pages were not shown (Underlays.strip): they come back from the stored project
+        Underlays.restore(document, JSON.readTree(projects.document(user.getId(), id).json()));
         long saved = projects.save(user.getId(), id, args.path("version").asLong(), JSON.writeValueAsString(document), name);
         return Map.of("version", saved, "url", link(request, id));
     }

@@ -1,8 +1,6 @@
 // Copyright 2026 Pleysier Jeroen
 // SPDX-License-Identifier: AGPL-3.0-only
 // PDF export and printing: every sheet of the project (eendraadschema and situatieschema), numbered continuously.
-import {jsPDF} from 'jspdf'
-import {svg2pdf} from 'svg2pdf.js'
 import {BoardSheet} from '../oneWire/BoardSheet.jsx'
 import {SituationSheet} from '../situation/SituationSheet.jsx'
 import {sheetPlan} from '../../model/boardLayout.js'
@@ -26,7 +24,9 @@ const PAGE_WIDTH = 297,
 
 /** Turns the rendered sheets under `container` into a vector PDF (one A4 landscape page per sheet); resolves to the jsPDF document. */
 export async function buildPdf(container) {
-    const sheets = container.querySelectorAll('svg.sheet'),
+    // jsPDF and svg2pdf (together about 700 kB) are loaded when a PDF is made, not with the first page
+    const [{jsPDF}, {svg2pdf}] = await Promise.all([import('jspdf'), import('svg2pdf.js')]),
+        sheets = container.querySelectorAll('svg.sheet'),
         pdf = new jsPDF({orientation: 'landscape', unit: 'mm', format: 'a4'})
     for (let index = 0; index < sheets.length; index++) {
         if (index) pdf.addPage()

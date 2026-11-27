@@ -400,16 +400,16 @@ test.describe('the drawing area', () => {
         await app.clickSheet(100, 80)
         expect((await sit(app, backend)).walls).toHaveLength(4)
     })
-    test('grid snapping is on by default; "Vrij tekenen" turns it off', async ({page, app, backend}) => {
+    test('grid snapping is on by default; "Vrij" in the grid choice turns it off', async ({page, app, backend}) => {
         await goto(page, app, backend, project())
-        const free = page.locator('#sit-free-drawing')
-        await expect(free).not.toBeChecked()
+        const grid = page.locator('#sit-grid')
+        await expect(grid).toHaveValue('5')
         await tool(page, 'Muur').click()
         await app.clickSheet(41.3, 40.2)
         await app.clickSheet(103.7, 40.2)
         let w = (await sit(app, backend)).walls[0]
         expect(Number.isInteger(w.x1 / 5) || Number.isInteger(w.x1)).toBe(true)
-        await free.check()
+        await grid.selectOption('free')
         await tool(page, 'Muur').click()
         await app.clickSheet(41.3, 80.2)
         await app.clickSheet(103.7, 80.2)

@@ -28,13 +28,15 @@ import {
 import {useTranslation} from '../../i18n/I18nProvider.jsx'
 import {DEFAULT_ITEM_SIZE, SituationSheet} from './SituationSheet.jsx'
 import TemplateDialog from './TemplateDialog.jsx'
-import {hasDrawing, templatePages} from '../../model/planTemplates.js'
+import {hasDrawing, roomLabel, templatePages} from '../../model/planTemplates.js'
+import {MAX_PROJECT_IMAGE_BYTES, calibratedUnderlay, fittedUnderlay, imageBytes, movedUnderlay, projectImageBytes} from '../../model/underlay.js'
+import {UnderlayError, underlayFromFile} from './underlayImage.js'
 import {IconButton, PropertiesBox} from '../../components/PropertiesBox.jsx'
 import {TOOLBAR_ICONS} from '../oneWire/icons.jsx'
 import {useFillHeight} from '../../hooks/useFillHeight.js'
 import {ComponentPalette, matchesSearch, UnplacedPanel} from './SituationPanels.jsx'
-import {itemTypeOf, pagePins, shownItems, showsLengths, SYMBOL_SCALE, symbolScaleOf} from './SituationSheet.jsx'
-import ToolRail, {toolOfKey} from './ToolRail.jsx'
+import {itemTypeOf, pagePins, shownItems, showsLengths, symbolScaleOf} from './SituationSheet.jsx'
+import ToolRail, {ToolIcon, toolKey, toolOfKey} from './ToolRail.jsx'
 import {
     boxBox,
     boxHitsBox,
@@ -58,6 +60,8 @@ import {generateOneWire, planOneWire} from '../../model/generateOneWire.js'
 
 // the tools in the order of the rail on the drawing; null = a separator between groups
 const TOOLS = ['select', 'erase', null, 'wall', 'room', 'door', 'window', null, 'sym', 'text']
+// tools that are chosen from a menu of the rail (Meten) but have a key of their own too
+const MENU_TOOLS = ['measure']
 const WIRING_TOOLS = ['select', 'erase', null, 'wire', 'box', null, 'wall', 'room', 'door', 'window', null, 'sym', 'text']
 // the default size of a symbol placed on the bedradingsschema (mm) and the range of its size slider: furniture and cars are large
 const WIRING_SYMBOL_SIZE = 10
@@ -156,6 +160,11 @@ export default function SituationSchema({project, setProject, pageIndex, onFoote
         [recentSymbols, setRecentSymbols] = useState(() => readRecent(wiring)),
         // the first point of the wall or room being drawn
         [pending, setPending] = useState(null),
+        // the measuring tool: {points (sheet mm), done}; only on the screen, never in the drawing
+        [measure, setMeasure] = useState(null),
+        // working on the plan behind the page: {kind: 'scale', points} (two clicks, then the real distance) or {kind: 'move', from, original}
+        [underlayMode, setUnderlayMode] = useState(null),
+        [underlayBusy, setUnderlayBusy] = useState(false),
         [gridSize, setGridSize] = useState(5),
         [freeDrawing, setFreeDrawing] = useState(false),
         [zoom, setZoom] = useState(1),
@@ -322,6 +331,197 @@ export default function SituationSchema({project, setProject, pageIndex, onFoote
             ...newBoxes.map((box) => ({k: 'box', id: box.id})),
         ])
     }
+    // ---- the plan behind the page (model/underlay.js) ----
+    // a PDF page or a picture chosen in the file dialog: made small, checked against the limits of the project, laid over the drawing area
+    const chooseUnderlay = async (event) => {
+        const file = event.target.files?.[0]
+        event.target.value = ''
+        if (!file) return
+        setUnderlayBusy(true)
+        try {
+            const image = await underlayFromFile(file, {
+                t,
+                choosePage: async (count) => {
+                    const answer = prompt(t('underlay.pagePrompt', {count}), '1')
+                    const number = Math.round(Number(answer))
+                    return number >= 1 && number <= count ? number : null
+                },
+            })
+            if (!image) return
+            const others = projectImageBytes(project, page.id)
+            if (others + imageBytes(image.src) > MAX_PROJECT_IMAGE_BYTES)
+                return onStatus(t('underlay.projectTooLarge', {max: MAX_PROJECT_IMAGE_BYTES / 1024 / 1024}))
+            updatePage({underlay: {...fittedUnderlay(image.src, image.width, image.height, file.name), ...(page.underlay ? {opacity: page.underlay.opacity} : {})}})
+            onStatus(t('underlay.added'))
+        } catch (error) {
+            onStatus(error instanceof UnderlayError ? error.message : t('underlay.unreadable'))
+        } finally {
+            setUnderlayBusy(false)
+        }
+    }
+    // the scale: two points clicked on the plan, then their real distance; the plan grows or shrinks to the scale of the project
+    const addScalePoint = (point) => {
+        const points = [...(underlayMode.points || []), point]
+        if (points.length < 2) return setUnderlayMode({kind: 'scale', points})
+        setUnderlayMode(null)
+        const metres = parseLength(prompt(t('underlay.distancePrompt')))
+        if (metres == null) return
+        updatePage({underlay: calibratedUnderlay(page.underlay, points[0], points[1], metres, scale)})
+        onStatus(t('underlay.scaled'))
+    }
+    const removeUnderlay = () => {
+        if (!confirm(t('underlay.removeConfirm'))) return
+        setUnderlayMode(null)
+        // undefined: the key is left out when the project is saved
+        updatePage({underlay: undefined})
+    }
+    // the menus under the tools of the rail (plan only): Meten (a distance, the scale of the plan behind the sheet) and the plan behind it
+    const chooseUnderlayFile = () => document.getElementById(P + '-underlay-file').click()
+    const railMenus = [
+        {
+            id: P + '-rail-measure',
+            icon: 'measure',
+            label: t('situation.rail.measure'),
+            help: t('situation.rail.measureHelp'),
+            on: tool === 'measure' || underlayMode?.kind === 'scale',
+            content: (close) => (
+                <>
+                    <button
+                        id={P + '-tool-measure'}
+                        role="menuitem"
+                        title={t('situation.toolHelp.measure')}
+                        className={'railmenu-item' + (tool === 'measure' ? ' on' : '')}
+                        onClick={() => {
+                            chooseTool('measure')
+                            close()
+                        }}
+                    >
+                        <ToolIcon name="measure" size={18} />
+                        <span>
+                            {t('situation.tools.measure')}
+                            <small>{t('situation.rail.measureShort')}</small>
+                        </span>
+                        <kbd>{toolKey(t, 'measure')}</kbd>
+                    </button>
+                    <button
+                        id={P + '-underlay-scale'}
+                        role="menuitem"
+                        title={page.underlay ? t('underlay.scaleTitle') : undefined}
+                        className={'railmenu-item' + (underlayMode?.kind === 'scale' ? ' on' : '')}
+                        disabled={!page.underlay}
+                        onClick={() => {
+                            setUnderlayMode({kind: 'scale', points: []})
+                            close()
+                        }}
+                    >
+                        <ToolIcon name="scale" size={18} />
+                        <span>
+                            {t('underlay.scale')}
+                            <small>{page.underlay ? t('underlay.scaleShort') : t('underlay.scaleNeedsPlan')}</small>
+                        </span>
+                    </button>
+                </>
+            ),
+        },
+        {
+            id: P + '-rail-underlay',
+            icon: 'background',
+            label: t('underlay.label'),
+            help: t('underlay.title'),
+            on: underlayMode?.kind === 'move',
+            content: (close) =>
+                !page.underlay ? (
+                    <>
+                        <button
+                            id={P + '-underlay-add'}
+                            role="menuitem"
+                            className="railmenu-item"
+                            disabled={underlayBusy}
+                            onClick={() => {
+                                chooseUnderlayFile()
+                                close()
+                            }}
+                        >
+                            <ToolIcon name="background" size={18} />
+                            <span>
+                                {underlayBusy ? t('underlay.reading') : t('underlay.add')}
+                                <small>{t('underlay.limits')}</small>
+                            </span>
+                        </button>
+                    </>
+                ) : (
+                    <>
+                        {page.underlay.name && <div className="railmenu-note">{page.underlay.name}</div>}
+                        <label className="railmenu-row" title={t('underlay.opacity')}>
+                            {t('underlay.opacity')}
+                            <input
+                                id={P + '-underlay-opacity'}
+                                type="range"
+                                min="0.1"
+                                max="1"
+                                step="0.05"
+                                value={page.underlay.opacity ?? 0.5}
+                                onChange={(event) => updatePage({underlay: {...page.underlay, opacity: +event.target.value}})}
+                            />
+                        </label>
+                        <label className="railmenu-row" title={t('underlay.printTitle')}>
+                            <input
+                                id={P + '-underlay-print'}
+                                type="checkbox"
+                                checked={page.underlay.print !== false}
+                                onChange={(event) => updatePage({underlay: {...page.underlay, print: event.target.checked ? undefined : false}})}
+                            />
+                            {t('underlay.print')}
+                        </label>
+                        <button
+                            id={P + '-underlay-move'}
+                            role="menuitem"
+                            title={t('underlay.moveTitle')}
+                            className={'railmenu-item' + (underlayMode?.kind === 'move' ? ' on' : '')}
+                            onClick={() => {
+                                setUnderlayMode(underlayMode?.kind === 'move' ? null : {kind: 'move'})
+                                close()
+                            }}
+                        >
+                            <ToolIcon name="select" size={18} />
+                            <span>
+                                {t('underlay.move')}
+                                <small>{t('underlay.moveShort')}</small>
+                            </span>
+                        </button>
+                        <button
+                            id={P + '-underlay-replace'}
+                            role="menuitem"
+                            className="railmenu-item"
+                            disabled={underlayBusy}
+                            onClick={() => {
+                                chooseUnderlayFile()
+                                close()
+                            }}
+                        >
+                            <ToolIcon name="background" size={18} />
+                            <span>
+                                {underlayBusy ? t('underlay.reading') : t('underlay.replace')}
+                            </span>
+                        </button>
+                        <button
+                            id={P + '-underlay-remove'}
+                            role="menuitem"
+                            className="railmenu-item danger"
+                            onClick={() => {
+                                close()
+                                removeUnderlay()
+                            }}
+                        >
+                            <ToolIcon name="erase" size={18} />
+                            <span>
+                                {t('underlay.remove')}
+                            </span>
+                        </button>
+                    </>
+                ),
+        },
+    ]
     const duplicateSelection = () => selection.length && addCopies(selectedElements(), 5)
     // Ctrl+C: remembers the selection; Ctrl+V puts a copy on the page that is shown, a bit further each time on the page it came from (on
     // another page first at the same place: a plan of another floor)
@@ -424,17 +624,29 @@ export default function SituationSchema({project, setProject, pageIndex, onFoote
         if (last && samePoint(last, target.point)) return endWireAtLastPoint()
         setWireDraft({...wireDraft, points: [...wireDraft.points, target.point]})
     }
-    const addRoom = (corner, oppositeCorner) =>
-        updatePage({walls: [...walls, ...rectangleWalls(corner, oppositeCorner).map((wall) => ({id: newId(), ...wall}))]})
+    // a room: its four walls, and on a plan its name in the middle showing the floor area under it (asked at once; Cancel or nothing typed
+    // gives the walls only)
+    const addRoom = (corner, oppositeCorner) => {
+        const newWalls = rectangleWalls(corner, oppositeCorner).map((wall) => ({id: newId(), ...wall})),
+            name = wiring ? '' : (prompt(t('situation.roomNamePrompt')) || '').trim()
+        updatePage({walls: [...walls, ...newWalls], ...(name ? {items: [...items, roomLabel(name, corner, oppositeCorner, newId())]} : {})})
+    }
     const onSheetClick = (event) => {
         if (justBoxSelected.current) {
             justBoxSelected.current = false
             return
         }
+        if (underlayMode?.kind === 'scale') return addScalePoint(sheetPointOf(event))
+        if (underlayMode?.kind === 'move') return
         const point = snappedPointOf(event)
         if (point.y > 180) return
         if (tool === 'select') setSelection([])
         else if (tool === 'wire') onWireClick(sheetPointOf(event))
+        else if (tool === 'measure')
+            // a click adds a point; a double click ends the measurement (its second click adds nothing); a click after that starts a new one
+            setMeasure((current) =>
+                !current || current.done ? {points: [point], done: false} : event.detail >= 2 ? {...current, done: true} : {...current, points: [...current.points, point]},
+            )
         else if (tool === 'box') {
             if (!pending) setPending(point)
             else {
@@ -505,6 +717,10 @@ export default function SituationSchema({project, setProject, pageIndex, onFoote
         updatePage(movedPage(new Set(Object.keys(currentDrag.originals)), moveX, moveY, currentDrag.originals))
     }
     const onPointerMove = (event) => {
+        if (underlayMode?.kind === 'move' && underlayMode.from) {
+            const point = sheetPointOf(event)
+            return updatePage({underlay: movedUnderlay(underlayMode.original, point.x - underlayMode.from.x, point.y - underlayMode.from.y)})
+        }
         if (selectionBox) return setSelectionBox({...selectionBox, to: sheetPointOf(event)})
         if (drag) return dragTo(drag, sheetPointOf(event))
         if (tool !== 'select' && tool !== 'erase') {
@@ -515,6 +731,7 @@ export default function SituationSchema({project, setProject, pageIndex, onFoote
     }
     const startSelectionBox = (event) => {
         justBoxSelected.current = false
+        if (underlayMode?.kind === 'move') return setUnderlayMode({kind: 'move', from: sheetPointOf(event), original: page.underlay})
         if (tool !== 'select' || event.button === 2) return
         const point = sheetPointOf(event)
         if (point.y <= DRAWING_BOTTOM) setSelectionBox({from: point, to: point, add: event.shiftKey})
@@ -596,6 +813,11 @@ export default function SituationSchema({project, setProject, pageIndex, onFoote
     }
     // the situatieschema and the bedradingsschema each have their own strip
     useEffect(() => setRecentSymbols(readRecent(wiring)), [wiring])
+    // a measurement goes when another tool is chosen or another sheet is shown; so does work on the plan behind the page
+    useEffect(() => {
+        setMeasure(null)
+        setUnderlayMode(null)
+    }, [tool, pageIndex])
     useEffect(() => {
         if (pending && dimensionInput.current) dimensionInput.current.focus()
     }, [pending])
@@ -653,6 +875,7 @@ export default function SituationSchema({project, setProject, pageIndex, onFoote
         const onKeyDown = (event) => {
             if (/INPUT|TEXTAREA|SELECT/.test(event.target.tagName)) return
             if (event.key === 'Enter' && endWireAtLastPoint()) return event.preventDefault()
+            if (event.key === 'Enter' && measure && !measure.done) return setMeasure({...measure, done: true})
             // copy, cut, paste and duplicate; text selected somewhere on the page is copied as text, as usual
             if ((event.ctrlKey || event.metaKey) && !event.altKey && !event.shiftKey) {
                 const key = event.key.toLowerCase(),
@@ -671,7 +894,7 @@ export default function SituationSchema({project, setProject, pageIndex, onFoote
                 if (['c', 'x', 'v', 'd'].includes(key)) return
             }
             // a letter chooses a tool (shown when the mouse is on its button in the rail), with or without a selection
-            const keyTool = toolOfKey(event, railTools.filter(Boolean), t)
+            const keyTool = toolOfKey(event, [...railTools.filter(Boolean), ...(wiring ? [] : MENU_TOOLS)], t)
             if (keyTool) {
                 event.preventDefault()
                 return chooseTool(keyTool)
@@ -692,9 +915,13 @@ export default function SituationSchema({project, setProject, pageIndex, onFoote
     // Escape cancels the current tool/placement, same as a right click
     useEffect(() => {
         const onKeyDown = (event) => {
+            // working on the plan behind the page stops first, whatever tool is on
+            if (event.key === 'Escape' && underlayMode) return setUnderlayMode(null)
             if (event.key !== 'Escape' || tool === 'select') return
             // the wire being drawn goes first, the wire tool stays on
             if (wireDraft) return setWireDraft(null)
+            // so does a measurement: Esc clears it, the next Esc leaves the tool
+            if (measure) return setMeasure(null)
             cancelDrawing()
             setTool('select')
         }
@@ -794,6 +1021,8 @@ export default function SituationSchema({project, setProject, pageIndex, onFoote
         tool,
         selectionBox,
         cursor: tool === 'select' || tool === 'erase' ? null : cursor,
+        measure: tool === 'measure' && measure ? {points: measure.points, cursor: measure.done ? null : cursor} : null,
+        underlayMode,
         deleteButton:
             tool === 'select' && selectionBounds && !drag && !selectionBox
                 ? {x: Math.min(289, selectionBounds.x1 + 3), y: Math.max(8, selectionBounds.y0 - 3), onClick: deleteSelection}
@@ -808,6 +1037,7 @@ export default function SituationSchema({project, setProject, pageIndex, onFoote
             onPointerDown: startSelectionBox,
             onPointerMove,
             onPointerUp: () => {
+                if (underlayMode?.kind === 'move' && underlayMode.from) setUnderlayMode({kind: 'move'})
                 setDrag(null)
                 finishSelectionBox()
             },
@@ -818,8 +1048,9 @@ export default function SituationSchema({project, setProject, pageIndex, onFoote
             },
             onContextMenu: (event) => {
                 event.preventDefault()
-                // a right click ends the wire being drawn; the next one leaves the wire tool
+                // a right click ends the wire being drawn; the next one leaves the wire tool (the same for a measurement)
                 if (endWireAtLastPoint()) return
+                if (measure && !measure.done) return setMeasure({...measure, done: true})
                 cancelDrawing()
                 setTool('select')
             },
@@ -1273,6 +1504,8 @@ export default function SituationSchema({project, setProject, pageIndex, onFoote
                         setTool('sym')
                         setRecentSymbols(rememberRecent(wiring, key))
                     }}
+                    symbolScale={wiring ? null : symbolScaleOf(page)}
+                    onSymbolScale={(value) => updatePage({symScale: value})}
                 />
             </div>
             <div className="main">
@@ -1308,11 +1541,20 @@ export default function SituationSchema({project, setProject, pageIndex, onFoote
                             <SituationSheet project={project} page={page} {...pageNumbering(project, page)} editor={editor} onFooter={onFooter} />
                         </div>
                     </ZoomPane>
+                    {!wiring && (
+                        <input id={P + '-underlay-file'} type="file" accept="application/pdf,.pdf,image/png,image/jpeg,image/webp" hidden onChange={chooseUnderlay} />
+                    )}
+                    {underlayMode && (
+                        <div id={P + '-underlay-hint'} className="ui modehint" role="status">
+                            {underlayMode.kind === 'scale' ? t('underlay.scaleHint', {point: (underlayMode.points || []).length + 1}) : t('underlay.moveHint')}
+                        </div>
+                    )}
                     <ToolRail
                         prefix={P}
                         tools={railTools}
                         tool={tool}
                         onTool={chooseTool}
+                        menus={wiring ? [] : railMenus}
                         extra={
                             wiring
                                 ? {
@@ -1391,36 +1633,26 @@ export default function SituationSchema({project, setProject, pageIndex, onFoote
                         </div>
                     )}
                     <div className="ui gridsel" style={zoom === 1 ? undefined : {bottom: 12}}>
-                        <label>
+                        <label title={t('situation.gridTitle')}>
                             {t('situation.grid')}{' '}
-                            <select id={P + '-grid'} value={gridSize} onChange={(event) => setGridSize(+event.target.value)}>
+                            {/* the size of the grid the drawing snaps to, or none: free drawing */}
+                            <select
+                                id={P + '-grid'}
+                                value={freeDrawing ? 'free' : gridSize}
+                                onChange={(event) => {
+                                    const free = event.target.value === 'free'
+                                    setFreeDrawing(free)
+                                    if (!free) setGridSize(+event.target.value)
+                                }}
+                            >
                                 {GRID_SIZES.map((size) => (
                                     <option key={size} value={size}>
                                         {size} mm
                                     </option>
                                 ))}
+                                <option value="free">{t('situation.freeDrawing')}</option>
                             </select>
-                        </label>{' '}
-                        <label>
-                            <input id={P + '-free-drawing'} type="checkbox" checked={freeDrawing} onChange={(event) => setFreeDrawing(event.target.checked)} />{' '}
-                            {t('situation.freeDrawing')}
                         </label>
-                        {!wiring && (
-                            <label title={t('situation.symbolSizeTitle')}>
-                                {' '}
-                                {t('situation.symbolSize')}{' '}
-                                <input
-                                    id={P + '-symbol-size'}
-                                    type="range"
-                                    min={SYMBOL_SCALE.min}
-                                    max={SYMBOL_SCALE.max}
-                                    step={SYMBOL_SCALE.step}
-                                    value={symbolScaleOf(page)}
-                                    onChange={(event) => updatePage({symScale: +event.target.value})}
-                                />{' '}
-                                <span id={P + '-symbol-size-value'}>{Math.round(symbolScaleOf(page) * 100)}%</span>
-                            </label>
-                        )}
                     </div>
                 </div>
             </div>

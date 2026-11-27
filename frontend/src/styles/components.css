@@ -1042,3 +1042,17 @@ button.danger:hover:not(:disabled) .ico {
     color: var(--warn);
     background: var(--warn-bg);
 }
+
+/* the size of the symbols on this sheet, under the search field of the palette */
+.pal .symbolsize {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 0 0 4px;
+    font-size: 12px
+}
+
+.pal .symbolsize input[type='range'] {
+    flex: 1;
+    min-width: 0
+}

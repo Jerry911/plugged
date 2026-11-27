@@ -261,7 +261,7 @@ export const scaleForTemplate = (template, scale) =>
  */
 export const bestScaleForTemplate = (template) => STANDARD_SCALES.find((candidate) => fitsAt(template, candidate)) ?? null
 
-const TEXT_WIDTH_FACTOR = 0.55 // the width of a character relative to the text size, as the situatieschema estimates it
+export const TEXT_WIDTH_FACTOR = 0.55 // the width of a character relative to the text size, as the situatieschema estimates it
 
 /**
  * The situatieschema pages of a template at a scale: one per floor, {name, walls, items} in millimetres on the sheet, centred in the
@@ -314,3 +314,23 @@ export const templatePages = (template, scale, translate, newId) => {
 
 /** Is there anything drawn on these situatieschema pages. */
 export const hasDrawing = (pages) => pages.some((page) => page.walls.length || page.items.length)
+
+/**
+ * The name of a room as a text in the middle of the rectangle from `corner` to `opposite` (sheet mm), showing the floor area under it (the
+ * Kamer tool asks for it after drawing the room). Smaller text when the room is too narrow for the name.
+ */
+export const roomLabel = (name, corner, opposite, id) => {
+    const width = Math.abs(opposite.x - corner.x),
+        size = width < name.length * 4 * TEXT_WIDTH_FACTOR + 4 ? 3 : 4,
+        centre = {x: (corner.x + opposite.x) / 2, y: (corner.y + opposite.y) / 2}
+    return {
+        id,
+        kind: 'text',
+        x: Math.round((centre.x - (name.length * size * TEXT_WIDTH_FACTOR) / 2) * 100) / 100,
+        y: Math.round((centre.y + size * 0.35) * 100) / 100,
+        txt: name,
+        s: size,
+        r: 0,
+        area: true,
+    }
+}

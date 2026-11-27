@@ -26,6 +26,8 @@ test('the picker switches every text, the html language and the names of the sta
 test('new sheets are named in the chosen language; the names of existing sheets stay', async ({page, app, backend}) => {
     await app.open(backend)
     await picker(page).selectOption('en')
+    // the language is there (its texts may still have to load)
+    await expect(page.locator('html')).toHaveAttribute('lang', 'en')
     await page.locator('#eds-page-add').click()
     await expect(page.locator('#eds-page-2')).toHaveText(t('pages.sheetName', {number: 2}, 'en'))
     const saved = await app.save(backend, 1, 'en')

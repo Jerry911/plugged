@@ -5,11 +5,7 @@
 import {useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState} from 'react'
 import OneWireDiagram from '../features/oneWire/OneWireDiagram.jsx'
 import SituationSchema from '../features/situation/SituationSchema.jsx'
-import SymbolEditor from '../features/symbolEditor/SymbolEditor.jsx'
-import InfoPage from '../features/info/InfoPage.jsx'
 import AuthGate from '../features/auth/AuthGate.jsx'
-import AccountPage from '../features/account/AccountPage.jsx'
-import TeacherPage from '../features/admin/TeacherPage.jsx'
 import {fetchRuleSettings, fetchUsers, fetchTheme} from '../api/authApi.js'
 import {ExportDialog, IMPORT_ACCEPT, importKind} from '../features/project/ExportDialog.jsx'
 import ProjectMenu from '../features/project/ProjectMenu.jsx'
@@ -18,31 +14,37 @@ import Icon, {CountBadge} from '../components/Icon.jsx'
 import {applyTheme} from './theme.js'
 import VerifyPanel from '../features/verify/VerifyPanel.jsx'
 import {AllSheets, makePdf} from '../features/project/pdfExport.jsx'
-import {pagesZipName, sheetsPngZip, sheetsSvgZip} from '../features/project/pagesExport.js'
 import Tour, {markTourSeen, tourSeen} from '../features/tour/Tour.jsx'
 import {tourSteps} from '../features/tour/tourSteps.jsx'
 import {useSymbolLibrary} from '../api/useSymbolLibrary.js'
 import {copyProject, createProject, deleteProject, fetchProject, fetchProjectSummaries, knownVersion, restoreVersion, saveProject} from '../api/projectApi.js'
-import ConsentPage from '../features/ai/ConsentPage.jsx'
 import {useOffline} from '../hooks/useOffline.js'
 import {clearOfflineCopies, isOffline, newLocalId, pendingSaves} from '../offline/offlineStore.js'
 import {usePresence} from '../hooks/usePresence.js'
-import MaterialsDialog from '../features/project/MaterialsDialog.jsx'
-import QuoteDialog from '../features/quote/QuoteDialog.jsx'
-import {QrDialog} from '../features/project/QrDialog.jsx'
-import SchemaPdfPage from '../features/project/SchemaPdfPage.jsx'
 import {schemaRequestFromSearch} from '../features/project/schemaLink.js'
 import Toast, {useToast} from '../components/Toast.jsx'
 import {useHistory} from '../hooks/useHistory.js'
 import {useAutoSave} from '../hooks/useAutoSave.js'
 import {useNarrowScreen} from '../hooks/useFillHeight.js'
-import {exportEds, importEds} from '../model/eds.js'
 import {REQUIRED_FOOTER_FIELDS, rulesNotApplicable, verify} from '../model/rules.js'
 import {keepOrphanSymbols, unplacedNodes} from '../model/project.js'
 import {embedSymbols, OWN_CATEGORY, setLibrary, symbolName} from '../symbols/symbolLibrary.js'
 import {I18nProvider, useTranslation} from '../i18n/I18nProvider.jsx'
 import LanguageSelect from '../i18n/LanguageSelect.jsx'
 import PageBar from './PageBar.jsx'
+import {lazyComponent, preloadAll} from '../components/lazy.jsx'
+import {loadAllLanguages} from '../i18n/translate.js'
+
+// not on the first screen: loaded when first shown (and in the background right after the start), with the libraries only they use
+const SymbolEditor = lazyComponent(() => import('../features/symbolEditor/SymbolEditor.jsx').then((module) => module.default)),
+    InfoPage = lazyComponent(() => import('../features/info/InfoPage.jsx').then((module) => module.default)),
+    AccountPage = lazyComponent(() => import('../features/account/AccountPage.jsx').then((module) => module.default)),
+    TeacherPage = lazyComponent(() => import('../features/admin/TeacherPage.jsx').then((module) => module.default)),
+    ConsentPage = lazyComponent(() => import('../features/ai/ConsentPage.jsx').then((module) => module.default)),
+    MaterialsDialog = lazyComponent(() => import('../features/project/MaterialsDialog.jsx').then((module) => module.default)),
+    QuoteDialog = lazyComponent(() => import('../features/quote/QuoteDialog.jsx').then((module) => module.default)),
+    QrDialog = lazyComponent(() => import('../features/project/QrDialog.jsx').then((module) => module.QrDialog)),
+    SchemaPdfPage = lazyComponent(() => import('../features/project/SchemaPdfPage.jsx').then((module) => module.default))
 import {isProjectEmpty, newProject, normalizeProject} from './projectDocument.js'
 
 const TABS = [
@@ -134,6 +136,17 @@ function Editor({library, user, desktop = false, onLogout, onAccountDeleted}) {
     const {t, language} = useTranslation()
     const narrowScreen = useNarrowScreen()
     const [initialProject] = useState(newProject)
+    // the parts that are not on the first screen, in the background once the editor is shown (lazyComponent), and the other languages (a
+    // switch of language is then immediate)
+    useEffect(() => {
+        const start = () => Promise.all([preloadAll(), loadAllLanguages().catch(() => null)])
+        if (typeof requestIdleCallback === 'function') {
+            const id = requestIdleCallback(start, {timeout: 3000})
+            return () => cancelIdleCallback(id)
+        }
+        const id = setTimeout(start, 1000)
+        return () => clearTimeout(id)
+    }, [])
     const {project, setProject: setHistoryProject, reset, undo, redo, canUndo, canRedo} = useHistory(initialProject),
         // every change: the symbols on the plans whose element it removed from the eendraadschema stay on the plan as loose symbols
         setProject = useCallback(
@@ -315,7 +328,8 @@ function Editor({library, user, desktop = false, onLogout, onAccountDeleted}) {
                 if (job === 'pdf') await makePdf(project, printArea.current)
                 else if (job === 'png' || job === 'svg') {
                     // every sheet as a drawing (SVG) or a picture (PNG): the sheets are rendered off screen (AllSheets below) and zipped
-                    const fileName = pagesZipName(project, job)
+                    const {pagesZipName, sheetsPngZip, sheetsSvgZip} = await import('../features/project/pagesExport.js'),
+                        fileName = pagesZipName(project, job)
                     download(await (job === 'svg' ? sheetsSvgZip : sheetsPngZip)(project, printArea.current), 'application/zip', fileName)
                     setStatusMessage(t('pagesExport.done', {file: fileName}))
                 } else window.print()
@@ -550,9 +564,10 @@ function Editor({library, user, desktop = false, onLogout, onAccountDeleted}) {
         setWiringPage(0)
         setTab(ONE_WIRE_TAB)
     }
-    const importEdsText = (text) => {
+    const importEdsText = async (text) => {
         try {
-            const imported = importEds(text)
+            const {importEds} = await import('../model/eds.js'),
+                imported = importEds(text)
             // the situatieschema is not imported: keep the pages and walls, but drop symbols that pointed to the replaced nodes
             setProject((current) => ({
                 ...current,
@@ -584,7 +599,7 @@ function Editor({library, user, desktop = false, onLogout, onAccountDeleted}) {
         event.target.value = ''
         if (!file || restricted) return
         const text = await file.text()
-        if (importKind(file.name, text) === 'eds') importEdsText(text)
+        if (importKind(file.name, text) === 'eds') await importEdsText(text)
         else importJsonText(text)
     }
     const fileBaseName = () => project.footer.titel || 'schema'
@@ -602,7 +617,9 @@ function Editor({library, user, desktop = false, onLogout, onAccountDeleted}) {
             }))
         download(JSON.stringify({...project, custom}), 'application/json', fileBaseName() + '.json')
     }
-    const exportEdsFile = () => {
+    const exportEdsFile = async () => {
+        // the EDS code is loaded when it is used; it recognises the default labels in every language
+        const [{exportEds}] = await Promise.all([import('../model/eds.js'), loadAllLanguages()])
         // symbols without an EDS equivalent (own components, ...) are written as a free consumer named after the symbol
         const result = exportEds(project, Object.fromEntries(symbols.map((symbol) => [symbol.k, symbolName(symbol)])))
         download(result.text, 'text/plain', fileBaseName() + '.eds')

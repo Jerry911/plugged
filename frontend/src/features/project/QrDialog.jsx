@@ -5,7 +5,8 @@
 import {useEffect, useMemo, useState} from 'react'
 import {fetchQrKey, renewQrKey} from '../../api/projectApi.js'
 import {useTranslation} from '../../i18n/I18nProvider.jsx'
-import {QUIET_ZONE, qrModules, qrSvgFile, schemaUrl} from './schemaLink.js'
+import {schemaUrl} from './schemaLink.js'
+import {QUIET_ZONE, qrModules, qrSvgFile} from './qrCode.js'
 import Icon from '../../components/Icon.jsx'
 
 /** The QR code of `text` as an inline SVG (black on white, with its quiet zone). */

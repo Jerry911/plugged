@@ -42,11 +42,17 @@ export function quoteRows(quote, locale) {
     return rows.map((row) => (row.heading ? row : {...row, qtyText: quantity(row.qty, locale)}))
 }
 
+/** The optional lines, with their quantity as text: [{text, qty, qtyText, unit, price, total}]. */
+export const optionalRows = (quote, locale) => (quote.optional?.lines || []).map((line) => ({...line, unit: '', qtyText: quantity(line.qty, locale)}))
+
+/** The number of the offerte with its version from the second one on: "OFF-2026-12 v2". */
+export const quoteNumber = (details) => (details.number || '') + ((Number(details.version) || 1) > 1 ? ' v' + Number(details.version) : '')
+
 const vatLabel = (rate) => (rate === 0 ? t('quote.vatShifted') : t('quote.vatOf', {rate}))
 
 /** The offerte as an Excel workbook (bytes). */
 export function quoteXlsx(quote, details, company, locale) {
-    const rows = [{style: 'title', cells: [t('quote.title') + ' ' + (details.number || '')]}]
+    const rows = [{style: 'title', cells: [t('quote.title') + ' ' + quoteNumber(details)]}]
     if (company.name) rows.push({cells: [company.name, [company.address, company.city].filter(Boolean).join(', ')]})
     if (company.vat) rows.push({cells: [t('pricing.company.vat'), company.vat]})
     rows.push({cells: [t('quote.date'), dateText(details.date, locale)]})
@@ -64,7 +70,18 @@ export function quoteXlsx(quote, details, company, locale) {
     rows.push({cells: [t('quote.subtotal'), '', '', '', {money: quote.subtotal}]})
     rows.push({cells: [vatLabel(quote.vat.rate), '', '', '', {money: quote.vat.amount}]})
     rows.push({style: 'total', cells: [t('quote.total'), '', '', '', {money: quote.total}]})
+    if (quote.deposit) {
+        rows.push({cells: [t('quote.depositLine', {percent: quote.deposit.percent}), '', '', '', {money: quote.deposit.amount}]})
+        rows.push({cells: [t('quote.balanceLine'), '', '', '', {money: quote.deposit.balance}]})
+    }
     if (quote.vat.rate === 0) rows.push({cells: [t('quote.vatShiftedNote')]})
+    if (quote.optional) {
+        rows.push({cells: []})
+        rows.push({style: 'section', cells: [t('quote.optionalTitle'), '', '', '', '']})
+        for (const row of optionalRows(quote, locale)) rows.push({cells: [row.text, row.qty, row.unit, {money: row.price}, {money: row.total}]})
+        rows.push({cells: [t('quote.optionalSubtotal'), '', '', '', {money: quote.optional.subtotal}]})
+        rows.push({cells: [t('quote.optionalTotal', {vat: vatLabel(quote.vat.rate)}), '', '', '', {money: quote.optional.total}]})
+    }
     return xlsxOf(rows, {sheetName: t('quote.title'), widths: [56, 10, 10, 14, 14]})
 }
 
@@ -104,7 +121,7 @@ export function quotePdf(quote, details, company, locale) {
     doc.setFontSize(10)
     doc.setFont('helvetica', 'normal')
     const facts = [
-        [t('quote.number'), details.number || ''],
+        [t('quote.number'), quoteNumber(details)],
         [t('quote.date'), dateText(details.date, locale)],
         [t('quote.validUntil'), dateText(validUntil(details.date, details.validDays), locale)],
         ...(details.site ? [[t('quote.site'), details.site]] : []),
@@ -184,9 +201,42 @@ export function quotePdf(quote, details, company, locale) {
     total(vatLabel(quote.vat.rate), quote.vat.amount)
     total(t('quote.total'), quote.total, true)
     doc.setFont('helvetica', 'normal')
+    if (quote.deposit) {
+        y += 1
+        total(t('quote.depositLine', {percent: quote.deposit.percent}), quote.deposit.amount)
+        total(t('quote.balanceLine'), quote.deposit.balance)
+    }
     y += 4
     if (quote.vat.rate === 0) paragraph(t('quote.vatShiftedNote'))
     if (quote.vat.rate === 6) paragraph(t('quote.vatSixNote'))
+    // the optional lines: a table of their own, with their own total, not part of the offerte's total
+    if (quote.optional) {
+        if (y > BOTTOM - 30) newPage()
+        y += 2
+        doc.setFont('helvetica', 'bold')
+        doc.text(t('quote.optionalTitle'), MARGIN, y)
+        doc.setFont('helvetica', 'normal')
+        y += 6
+        header()
+        for (const row of optionalRows(quote, locale)) {
+            if (y > BOTTOM - 6) {
+                newPage()
+                header()
+            }
+            const text = doc.splitTextToSize(row.text, QTY - MARGIN - 16)
+            doc.text(text, MARGIN + 1, y)
+            doc.text(row.qtyText, QTY, y, {align: 'right'})
+            doc.text(money(row.price, locale), PRICE, y, {align: 'right'})
+            doc.text(money(row.total, locale), right - 1, y, {align: 'right'})
+            y += 5 * text.length
+        }
+        if (y > BOTTOM - 14) newPage()
+        y += 3
+        doc.line(120, y - 3, right, y - 3)
+        total(t('quote.optionalSubtotal'), quote.optional.subtotal)
+        total(t('quote.optionalTotal', {vat: vatLabel(quote.vat.rate)}), quote.optional.total)
+        y += 2
+    }
     if (details.terms || company.terms) {
         doc.setFontSize(8.5)
         paragraph(details.terms || company.terms)
@@ -196,7 +246,7 @@ export function quotePdf(quote, details, company, locale) {
     for (let page = 1; page <= pages; page++) {
         doc.setPage(page)
         doc.setFontSize(8)
-        doc.text([company.name, t('quote.title') + ' ' + (details.number || '')].filter(Boolean).join(' · '), MARGIN, 290)
+        doc.text([company.name, t('quote.title') + ' ' + quoteNumber(details)].filter(Boolean).join(' · '), MARGIN, 290)
         doc.text(t('quote.page', {page, pages}), right, 290, {align: 'right'})
     }
     return doc.output('arraybuffer')

@@ -2,7 +2,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // The end-to-end tests find elements by id; where they check a text they compare it with the translations of the application, in the
 // language the browser starts in (Dutch: playwright.config.js sets the locale nl-BE). `t('app.saved')` = the Dutch text of that key.
-import {interpolate, translation} from '../src/i18n/translate.js'
+import {interpolate, loadAllLanguages, translation} from '../src/i18n/translate.js'
+
+// French and English are loaded on demand in the application (i18n/translate.js): here all of them, to compare with any language
+await loadAllLanguages()
 
 export const LANGUAGE = 'nl'
 export const t = (key, params, language = LANGUAGE) => {

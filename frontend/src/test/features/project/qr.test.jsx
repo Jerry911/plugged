@@ -3,7 +3,8 @@
 import {act, fireEvent, render, waitFor} from '@testing-library/react'
 import {QrDialog} from '../../../features/project/QrDialog.jsx'
 import SchemaPdfPage from '../../../features/project/SchemaPdfPage.jsx'
-import {qrModules, qrSvgFile, schemaRequestFromSearch, schemaUrl} from '../../../features/project/schemaLink.js'
+import {schemaRequestFromSearch, schemaUrl} from '../../../features/project/schemaLink.js'
+import {qrModules, qrSvgFile} from '../../../features/project/qrCode.js'
 import {t} from '../../../i18n/translate.js'
 import {baseProject, byId, getById, node} from '../../utils.jsx'
 import {setLibrary} from '../../../symbols/symbolLibrary.js'
@@ -190,9 +191,9 @@ describe('the page a QR code opens', () => {
         fetchPublicSchema.mockResolvedValue(baseProject())
         render(<SchemaPdfPage id={7} secret={KEY} />)
         expect(byId('schema-loading')).not.toBeNull()
-        await waitFor(() => expect(byId('schema-title')).not.toBeNull())
+        // the page is loaded when it is shown (components/lazy.jsx), its title once the schema is there
+        await waitFor(() => expect(byId('schema-title')?.textContent).toBe('T'))
         expect(fetchPublicSchema).toHaveBeenCalledWith(7, KEY)
-        expect(getById('schema-title').textContent).toBe('T')
         expect(document.title).toBe('T')
         expect(document.querySelectorAll('svg.sheet').length).toBeGreaterThan(0)
         await act(async () => fireEvent.click(getById('schema-pdf')))
